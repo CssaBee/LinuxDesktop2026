@@ -61,6 +61,7 @@ Future work candidates:
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)
 - [Module priority score](docs/survey/module-priority-score.md)
+- [Source search patterns](docs/survey/source-search-patterns.md)
 - [Open questions](docs/survey/open-questions.md)
 - [Architecture decisions](docs/adr)
 - [Original investigation context](docs/context/notepad-plus-plus-native-linux-port-context.md)
@@ -68,4 +69,3 @@ Future work candidates:
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
-
