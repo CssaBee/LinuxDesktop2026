@@ -4,6 +4,16 @@ Candidate modules are scored after the initial repository survey. Scores decide 
 
 ## Scoring Criteria
 
+Scores use a 1 to 5 scale:
+
+- **1**: weak or narrow evidence.
+- **2**: present, but limited or not a good reusable seam yet.
+- **3**: real need with meaningful caveats.
+- **4**: strong need and plausible reusable seam.
+- **5**: very strong need or proof-case value.
+
+Scores measure requirement pressure, not automatic build order. A UI-heavy feature can score high while still being deferred because it belongs in toolkit adapters or application-specific port work.
+
 | Criterion | Meaning |
 |---|---|
 | Frequency | How often the feature appears across surveyed repositories. |
@@ -34,8 +44,11 @@ Candidate modules are scored after the initial repository survey. Scores decide 
 
 - Printing
 - Plugin ABI
+- Global hotkeys/input automation
+- Window discovery/control automation
+- Accessibility/control automation
 - Advanced theming/DPI
-- Accessibility
+- Accessibility integration
 - Installer/package integration
 
 ## Pre-Scoring Notes
@@ -47,11 +60,37 @@ Do not assign final scores from README-level evidence alone. A module can be sco
 - whether existing abstractions already exist,
 - and whether at least several repositories share the same requirement shape.
 
-The first source audit batch gives enough evidence for preliminary direction, but not final totals. The next scoring pass should happen after:
+Do not assign final scores from source usage alone either. A source finding proves that a requirement exists; it does not prove that we should build a new module. Before scoring, run the ecosystem audit in `docs/survey/ecosystem-audit.md` to check existing ports, rewrites, abstractions, and abandoned attempts.
 
-- a deeper Notepad++ source pass focused on one subsystem,
-- a follow-up search for existing libraries per high-priority module,
-- and a quick issue/discussion pass for Linux-demand signals.
+The first source audit batch gives enough evidence for preliminary direction, but not final totals. The next scoring pass should happen after these checks, in priority order:
+
+1. Audit discovered ports, rewrites, and abstraction libraries enough to decide whether each is a reference, dependency candidate, warning sign, or unrelated solution.
+2. Run a deeper Notepad++ source pass focused on one subsystem.
+3. Search existing libraries per high-priority module and classify them as adopt, wrap, recommend, reject, or defer.
+4. Run a quick issue/discussion pass for Linux-demand signals.
+
+**First priority completed enough to continue**: ecosystem audit of discovered ports and abstractions. The first comparison set now covers Nextpad++, XerahS, AHK_X11, libuv, Qt Core, GLib/GIO, wxWidgets, Boost.Process, and Boost.DLL.
+
+**Then selected**: deeper Notepad++ source pass focused on settings/config and standard paths.
+
+Why this subsystem first:
+
+- It is narrow enough to audit deeply without committing to a full UI port.
+- It appears across multiple surveyed applications.
+- Existing libraries solve pieces, but not the migration-specific shape we want.
+- It can produce a tiny first working sample before harder modules such as file watching, plugin loading, clipboard, or drag-and-drop.
+
+**Second priority completed enough to continue**: deeper Notepad++ settings/config audit. The pass found that the real seam is a settings root resolver plus config bundle manager, with ordered save phases, plugin-facing roots, model-file hydration, backup/restore, validation-after-write, and byte-level integrity hooks.
+
+**Then selected**: existing-library follow-up for the first module candidate: settings/config and standard paths. This classified libraries and specifications as adopt, wrap, recommend, reject, or defer before the first sample.
+
+**Third priority completed enough to continue**: settings/config existing-library follow-up. The classification in `docs/survey/settings-config-library-audit.md` says to adopt XDG Base Directory and Microsoft Known Folders as normative behavior, use `std::filesystem` internally, optionally wrap/recommend Boost.Nowide for Windows UTF-8 IO, and treat Qt, GLib, and wxWidgets as recommendations/adapters rather than mandatory dependencies.
+
+**Fourth priority completed enough to continue**: ADR/API sketch for the settings/config module. ADR 0008 defines the first sample boundary and explicitly defers framework adapters, cloud integration, portals, registry editing, and Notepad++ fork changes.
+
+**Fifth priority completed enough to continue**: first executable `ld_settings` sample. The CMake build and CLI demo validate root resolution, model-file hydration, ordered writes, backups, and validation-after-write on Ubuntu.
+
+**Picked next**: add a small repeatable test harness for `ld_settings`, then commit this milestone.
 
 ## Preliminary Evidence From Source Audit Round 1
 
@@ -61,7 +100,7 @@ The first source audit batch gives enough evidence for preliminary direction, bu
 | Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv | First focused search candidate, but split spawn vs desktop-open |
 | Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets | First focused search candidate, excluding plugin ABI compatibility |
 | Single-instance IPC | Medium to strong | WinMerge, AutoHotkey, WinSCP, libuv; Notepad++ follow-up needed | First focused search candidate if scoped to activation/argument passing |
-| Settings/config | Medium | ShareX, Greenshot, Files, Rufus; Notepad++ follow-up needed | Candidate, but split app config from OS integration |
+| Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample | First implementation candidate; sample started |
 | Filesystem/path helpers | Medium | All audited apps touch it; Files/Rufus show complex non-path semantics | Candidate only with narrow scope |
 | Clipboard | Strong but UI-coupled | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, wxWidgets | UI-adjacent; likely toolkit adapter |
 | Drag-and-drop | Medium to strong but UI-coupled | ShareX, Greenshot, Files, WinSCP, wxWidgets | UI-adjacent; likely toolkit adapter |
@@ -69,18 +108,37 @@ The first source audit batch gives enough evidence for preliminary direction, bu
 | Printing | Limited but real | Greenshot, wxWidgets; likely Notepad++/WinMerge follow-up | Future work unless POC requires it |
 | Device/volume operations | Strong boundary signal | Rufus | Future/application-specific; not first library wave |
 
-## Score Table
+## First Scoring Pass
+
+This is a provisional scoring pass after:
+
+- source audit round 1,
+- ecosystem audit round 1,
+- the Notepad++ settings/config deep pass,
+- the settings/config existing-library follow-up,
+- ADR 0008,
+- and the first executable `ld_settings` sample.
+
+The scores are good enough to guide the next work item. They are not final project totals because the larger issue/discussion pass and remaining reference-source audits are still open.
 
 | Candidate module | Frequency | Coupling | Linux complexity | Standalone usefulness | Notepad++ POC value | Total | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Settings/config | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| File watcher | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| Process/shell | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| Dynamic library loading | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| Filesystem/path helpers | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| Single-instance IPC | TBD | TBD | TBD | TBD | TBD | TBD | Pending source verification |
-| GUI/windowing | TBD | TBD | TBD | TBD | TBD | TBD | UI-adjacent; pending source verification |
-| Clipboard | TBD | TBD | TBD | TBD | TBD | TBD | UI-adjacent; pending source verification |
-| Drag-and-drop | TBD | TBD | TBD | TBD | TBD | TBD | UI-adjacent; pending source verification |
-| Common dialogs/resources | TBD | TBD | TBD | TBD | TBD | TBD | UI-adjacent; pending source verification |
-| Printing | TBD | TBD | TBD | TBD | TBD | TBD | Future work unless survey raises priority |
+| Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample started as `ld_settings` |
+| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Next first-candidate follow-up after settings sample stabilizes |
+| Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
+| Filesystem/path helpers | 5 | 3 | 3 | 4 | 5 | 20 | Keep scoped under settings/config first; avoid broad device/path semantics |
+| Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
+| Clipboard | 5 | 4 | 5 | 3 | 4 | 21 | UI-adjacent; design as toolkit/session adapter, not first neutral core |
+| Common dialogs/resources | 4 | 5 | 5 | 2 | 4 | 20 | UI-adjacent; likely migration tooling/docs rather than first library |
+| GUI/windowing | 5 | 5 | 5 | 2 | 5 | 22 | High pressure but too broad; defer to toolkit strategy/Notepad++ POC design |
+| Drag-and-drop | 4 | 4 | 5 | 3 | 2 | 18 | UI-adjacent; toolkit adapter |
+| Single-instance IPC | 3 | 4 | 3 | 4 | 3 | 17 | First-candidate follow-up if scoped to detect vs forward activation |
+| Printing | 2 | 3 | 4 | 2 | 1 | 12 | Future work unless Notepad++ POC or issue pass raises priority |
+
+## Score Consequences
+
+- `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
+- `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
+- `File watcher` and `process/shell` are the best next focused audits after the settings sample has a small test harness.
+- `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
+- `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.

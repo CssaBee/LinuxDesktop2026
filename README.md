@@ -6,7 +6,7 @@ The project starts from a practical proof case: Notepad++ on Ubuntu. Notepad++ i
 
 ## Current Stage
 
-We are in the survey and design stage.
+We are in the survey, design, and first-sample stage.
 
 Before writing production library code, we will:
 
@@ -16,6 +16,20 @@ Before writing production library code, we will:
 4. Score candidate modules by real usage, coupling, Linux complexity, standalone usefulness, and proof-case value.
 5. Run a focused follow-up search for the strongest module candidates.
 6. Pick the first tiny working code sample only after the evidence supports it.
+
+The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config bundle hydration, ordered writes, backup files, and validation-after-write.
+
+For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++ and ShareX-style startup/config code changes when platform policy moves into `ld_settings`.
+
+## Build The First Sample
+
+```sh
+cmake -S . -B build
+cmake --build build
+./build/ld_settings_demo --settings-dir /tmp/linuxdesktop2026-settings-demo
+```
+
+The demo uses a temporary settings override so it does not touch your normal application config directory.
 
 ## Candidate Areas
 
@@ -61,9 +75,14 @@ Future work candidates:
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)
 - [Module priority score](docs/survey/module-priority-score.md)
+- [Ecosystem audit](docs/survey/ecosystem-audit.md)
+- [Notepad++ settings/config audit](docs/survey/notepad-settings-config-audit.md)
+- [Settings/config library follow-up](docs/survey/settings-config-library-audit.md)
+- [Migration examples](docs/examples/migration-examples.md)
 - [Source search patterns](docs/survey/source-search-patterns.md)
 - [Open questions](docs/survey/open-questions.md)
 - [Architecture decisions](docs/adr)
+- [ADR 0008: start with settings/config module](docs/adr/0008-start-with-settings-config-module.md)
 - [Original investigation context](docs/context/notepad-plus-plus-native-linux-port-context.md)
 
 ## License

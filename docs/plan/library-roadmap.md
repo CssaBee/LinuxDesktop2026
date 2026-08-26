@@ -28,3 +28,31 @@ The platform libraries are general-purpose, permissively licensed, and designed 
 5. Build the tiny working sample.
 6. Publish once working code exists with supporting docs.
 
+## Current First Module
+
+The first implementation candidate is settings/config and standard paths.
+
+Decision trail:
+
+- Source and ecosystem survey identified settings/config as a recurring seam.
+- The Notepad++ deep pass narrowed the requirement to a settings root resolver plus config bundle manager.
+- The existing-library follow-up found specs and libraries to adopt, recommend, or defer.
+- ADR 0008 selects this as the first tiny implementation sample.
+
+Next implementation target:
+
+- One CMake library.
+- One CLI example.
+- Linux XDG behavior first.
+- Windows Known Folder behavior shaped in the API, implemented as soon as feasible.
+- Structured diagnostic output suitable for humans, tests, and AI agents.
+
+Current sample:
+
+- `ld_settings` library target.
+- `ld_settings_demo` executable target.
+- Repeatable run with `--settings-dir /tmp/linuxdesktop2026-settings-demo`.
+
+Example documentation:
+
+- `docs/examples/migration-examples.md` shows before/after migration shapes for Notepad++ settings roots, Notepad++ config bundle hydration, and ShareX personal path selection.
