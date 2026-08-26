@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <system_error>
+#include <vector>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -180,6 +181,65 @@ bool has_error(const std::vector<diagnostic>& diagnostics)
     return false;
 }
 
+std::filesystem::path comparable_path(const std::filesystem::path& path)
+{
+    std::error_code ec;
+    auto absolute = path.is_absolute() ? path : std::filesystem::absolute(path, ec);
+    if (ec) {
+        absolute = path;
+    }
+    return absolute.lexically_normal();
+}
+
+bool path_is_at_or_under(const std::filesystem::path& candidate, const std::filesystem::path& root)
+{
+    const auto normalized_candidate = comparable_path(candidate);
+    const auto normalized_root = comparable_path(root);
+    auto candidate_part = normalized_candidate.begin();
+    auto root_part = normalized_root.begin();
+
+    for (; root_part != normalized_root.end(); ++root_part, ++candidate_part) {
+        if (candidate_part == normalized_candidate.end() || *candidate_part != *root_part) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<std::filesystem::path> default_privileged_install_roots()
+{
+#if defined(_WIN32)
+    std::vector<std::filesystem::path> roots;
+    if (const char* program_files = std::getenv("ProgramFiles")) {
+        roots.emplace_back(program_files);
+    }
+    if (const char* program_files_x86 = std::getenv("ProgramFiles(x86)")) {
+        roots.emplace_back(program_files_x86);
+    }
+    if (roots.empty()) {
+        roots.emplace_back("C:\\Program Files");
+        roots.emplace_back("C:\\Program Files (x86)");
+    }
+    return roots;
+#else
+    return {"/usr", "/opt", "/app"};
+#endif
+}
+
+bool is_under_privileged_install_root(const std::filesystem::path& path, const root_options& options)
+{
+    const auto roots = options.privileged_install_roots.empty()
+        ? default_privileged_install_roots()
+        : options.privileged_install_roots;
+
+    for (const auto& root : roots) {
+        if (!root.empty() && path_is_at_or_under(path, root)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string read_text(const std::filesystem::path& path, std::error_code& ec)
 {
     std::ifstream input(path, std::ios::binary);
@@ -246,13 +306,23 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
         std::error_code ec;
         if (std::filesystem::exists(marker, ec)) {
             if (options.allow_portable_root) {
-                report.portable_active = true;
-                auto portable_root = marker.parent_path();
-                report.roots.config = portable_root;
-                report.roots.data = portable_root;
-                report.roots.state = portable_root;
-                report.roots.cache = portable_root / "cache";
-                report.roots.runtime = std::filesystem::path{};
+                const auto portable_root = marker.parent_path();
+                const auto privileged_path = !report.roots.resources.empty() ? report.roots.resources : portable_root;
+                if (options.deny_portable_root_in_privileged_install &&
+                    is_under_privileged_install_root(privileged_path, options)) {
+                    report.diagnostics.push_back(make_diagnostic(
+                        severity::warning,
+                        "portable-denied-privileged-install",
+                        "Portable marker exists, but install root is privileged",
+                        privileged_path));
+                } else {
+                    report.portable_active = true;
+                    report.roots.config = portable_root;
+                    report.roots.data = portable_root;
+                    report.roots.state = portable_root;
+                    report.roots.cache = portable_root / "cache";
+                    report.roots.runtime = std::filesystem::path{};
+                }
             } else {
                 report.diagnostics.push_back(make_diagnostic(
                     severity::warning,
@@ -301,6 +371,31 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
         report.roots.cache = cache_home / app_leaf;
         report.roots.runtime = runtime_dir.empty() ? runtime_dir : runtime_dir / application;
 #endif
+    }
+
+    if (options.sync_config_override) {
+        if (report.settings_override_active) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::info,
+                "sync-config-override-ignored",
+                "Sync config override was ignored because settings override is active",
+                *options.sync_config_override));
+        } else if (report.portable_active && !options.allow_sync_config_for_portable_root) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::info,
+                "sync-config-override-ignored-portable",
+                "Sync config override was ignored because portable root is active",
+                *options.sync_config_override));
+        } else if (options.sync_config_override->is_absolute()) {
+            report.sync_config_override_active = true;
+            report.roots.config = *options.sync_config_override;
+        } else {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "sync-config-override-relative",
+                "Sync config override must be absolute",
+                *options.sync_config_override));
+        }
     }
 
     report.roots.session = report.roots.state / "sessions";

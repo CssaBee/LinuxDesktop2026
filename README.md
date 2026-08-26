@@ -17,7 +17,7 @@ Before writing production library code, we will:
 5. Run a focused follow-up search for the strongest module candidates.
 6. Pick the first tiny working code sample only after the evidence supports it.
 
-The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config bundle hydration, ordered writes, backup files, and validation-after-write.
+The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, backup files, and validation-after-write.
 
 For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++ and ShareX-style startup/config code changes when platform policy moves into `ld_settings`.
 
@@ -26,10 +26,12 @@ For migration shape examples, see [Migration examples](docs/examples/migration-e
 ```sh
 cmake -S . -B build
 cmake --build build
+ctest --test-dir build --output-on-failure
 ./build/ld_settings_demo --settings-dir /tmp/linuxdesktop2026-settings-demo
 ```
 
 The demo uses a temporary settings override so it does not touch your normal application config directory.
+It can also simulate Notepad++-style policy seams with `--sync-config-dir`, `--resource-root`, and `--deny-portable-under-root`.
 
 ## Candidate Areas
 

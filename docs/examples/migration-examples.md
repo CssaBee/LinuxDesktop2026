@@ -87,13 +87,20 @@ bool NppParameters::load()
     // XDG/Known Folder defaults, directory creation, and diagnostics.
     options.portable_marker = *options.resource_root / "doLocalConf.xml";
 
-    // DEFER: Notepad++ has extra Program Files/UAC and cloud-choice rules.
-    // Keep those as explicit policy checks until ld_settings grows named
-    // support for privileged install roots and sync-provider overrides.
-    apply_notepad_plus_plus_local_mode_guards(options);
+    // CHANGE: Program Files/UAC-style portable denial is now a named root policy.
+    // KEEP: Notepad++ still decides which install roots count as privileged for
+    // its compatibility rules and installer layout.
+    options.deny_portable_root_in_privileged_install = true;
+    options.privileged_install_roots = detect_privileged_install_roots();
+
+    // KEEP: Notepad++ still owns the cloud-choice file format and validation.
+    // CHANGE: once the app has an absolute sync directory, ld_settings can move
+    // config/plugin config there while keeping state/session local.
+    options.sync_config_override = readCloudChoiceIfPresentAndValid();
 
     // KEEP: command-line parsing remains app-owned.
-    // CHANGE: a valid override becomes the active config/data/state root.
+    // CHANGE: a valid override becomes the active config/data/state root and
+    // intentionally wins over portable and sync config roots.
     options.settings_override = getCommandLineSettingsDirIfPresent();
 
     const ld::root_report report = ld::resolve_app_roots(identity, options);

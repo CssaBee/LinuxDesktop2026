@@ -90,7 +90,7 @@ Why this subsystem first:
 
 **Fifth priority completed enough to continue**: first executable `ld_settings` sample. The CMake build and CLI demo validate root resolution, model-file hydration, ordered writes, backups, and validation-after-write on Ubuntu.
 
-**Picked next**: add a small repeatable test harness for `ld_settings`, then commit this milestone.
+**Picked next**: settings has a small repeatable test harness. After this milestone, choose the next focused evidence pass between file watcher and process/shell.
 
 ## Preliminary Evidence From Source Audit Round 1
 
@@ -139,6 +139,6 @@ The scores are good enough to guide the next work item. They are not final proje
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
-- `File watcher` and `process/shell` are the best next focused audits after the settings sample has a small test harness.
+- `File watcher` and `process/shell` are the best next focused audits after the settings sample stabilizes.
 - `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
 - `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.

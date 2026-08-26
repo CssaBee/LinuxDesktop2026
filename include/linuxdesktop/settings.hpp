@@ -28,9 +28,21 @@ struct app_identity {
 
 struct root_options {
     std::optional<std::filesystem::path> resource_root;
+
+    // Highest priority: one absolute root for config, data, state, and cache.
     std::optional<std::filesystem::path> settings_override;
+
+    // Moves config/plugin config only; state and sessions stay machine-local.
+    std::optional<std::filesystem::path> sync_config_override;
+
+    // Activates app-local roots when the marker exists and policy allows it.
     std::optional<std::filesystem::path> portable_marker;
+
+    // Used when portable roots must be denied under protected install locations.
+    std::vector<std::filesystem::path> privileged_install_roots;
     bool allow_portable_root = true;
+    bool deny_portable_root_in_privileged_install = false;
+    bool allow_sync_config_for_portable_root = false;
     bool create_directories = true;
 };
 
@@ -50,6 +62,7 @@ struct root_report {
     bool portable_requested = false;
     bool portable_active = false;
     bool settings_override_active = false;
+    bool sync_config_override_active = false;
     std::vector<diagnostic> diagnostics;
 };
 

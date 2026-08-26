@@ -52,6 +52,9 @@ Current sample:
 - `ld_settings` library target.
 - `ld_settings_demo` executable target.
 - Repeatable run with `--settings-dir /tmp/linuxdesktop2026-settings-demo`.
+- Config-only sync override for app-validated cloud/sync choices.
+- Portable-root denial under app-declared privileged install roots.
+- `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 
 Example documentation:
 

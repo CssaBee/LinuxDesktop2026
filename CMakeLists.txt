@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(LinuxDesktop2026 VERSION 0.1.0 LANGUAGES CXX)
 
 option(LD2026_BUILD_EXAMPLES "Build LinuxDesktop2026 examples" ON)
+option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
 
 add_library(ld_settings
     src/settings.cpp
@@ -20,6 +21,17 @@ target_include_directories(ld_settings
 
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
+endif()
+
+if(LD2026_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(ld_settings_tests
+        tests/settings_tests.cpp
+    )
+    target_link_libraries(ld_settings_tests PRIVATE LinuxDesktop2026::ld_settings)
+
+    add_test(NAME ld_settings_tests COMMAND ld_settings_tests)
 endif()
 
 if(LD2026_BUILD_EXAMPLES)

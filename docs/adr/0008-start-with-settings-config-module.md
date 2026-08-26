@@ -13,6 +13,8 @@ The first sample should prove:
 - app name and organization inputs,
 - command-line settings override,
 - optional portable marker policy,
+- optional privileged-install denial for portable roots,
+- optional sync/config override that keeps state and sessions local,
 - separate config/data/state/cache/session/plugin roots,
 - hydration of missing config files from model files,
 - ordered save phases,
@@ -45,8 +47,12 @@ struct app_identity {
 
 struct root_options {
     std::optional<std::filesystem::path> settings_override;
+    std::optional<std::filesystem::path> sync_config_override;
     std::optional<std::filesystem::path> portable_marker;
+    std::vector<std::filesystem::path> privileged_install_roots;
     bool allow_portable_root = true;
+    bool deny_portable_root_in_privileged_install = false;
+    bool allow_sync_config_for_portable_root = false;
 };
 
 struct app_roots {
@@ -81,7 +87,7 @@ Do not include these in the first sample:
 
 - Qt, GLib, or wxWidgets adapters,
 - XML parser ownership,
-- cloud provider integration,
+- cloud provider integration beyond app-provided absolute sync roots,
 - portals,
 - registry editing,
 - Notepad++ fork changes,

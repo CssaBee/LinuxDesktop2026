@@ -13,17 +13,31 @@ namespace {
 using linuxdesktop::settings::diagnostic;
 
 struct cli_options {
+    std::optional<std::filesystem::path> resource_root;
     std::optional<std::filesystem::path> settings_dir;
+    std::optional<std::filesystem::path> sync_config_dir;
     std::optional<std::filesystem::path> portable_marker;
+    std::vector<std::filesystem::path> privileged_install_roots;
+    bool deny_portable_under_privileged_root = false;
+    bool allow_sync_with_portable = false;
     std::filesystem::path model_root = LD2026_EXAMPLE_MODEL_ROOT;
 };
 
 void print_usage(const char* program)
 {
     std::cout
-        << "Usage: " << program << " [--settings-dir PATH] [--portable-marker PATH] [--model-root PATH]\n"
+        << "Usage: " << program << " [options]\n"
         << "\n"
-        << "Runs the first LinuxDesktop2026 settings/config proof sample.\n";
+        << "Runs the first LinuxDesktop2026 settings/config proof sample.\n"
+        << "\n"
+        << "Options:\n"
+        << "  --resource-root PATH\n"
+        << "  --settings-dir PATH\n"
+        << "  --sync-config-dir PATH\n"
+        << "  --portable-marker PATH\n"
+        << "  --deny-portable-under-root PATH\n"
+        << "  --allow-sync-with-portable\n"
+        << "  --model-root PATH\n";
 }
 
 cli_options parse_args(int argc, char** argv)
@@ -46,8 +60,25 @@ cli_options parse_args(int argc, char** argv)
             options.settings_dir = require_value("--settings-dir");
             continue;
         }
+        if (arg == "--sync-config-dir") {
+            options.sync_config_dir = require_value("--sync-config-dir");
+            continue;
+        }
+        if (arg == "--resource-root") {
+            options.resource_root = require_value("--resource-root");
+            continue;
+        }
         if (arg == "--portable-marker") {
             options.portable_marker = require_value("--portable-marker");
+            continue;
+        }
+        if (arg == "--deny-portable-under-root") {
+            options.privileged_install_roots.push_back(require_value("--deny-portable-under-root"));
+            options.deny_portable_under_privileged_root = true;
+            continue;
+        }
+        if (arg == "--allow-sync-with-portable") {
+            options.allow_sync_with_portable = true;
             continue;
         }
         if (arg == "--model-root") {
@@ -101,8 +132,13 @@ int main(int argc, char** argv)
         const auto cli = parse_args(argc, argv);
 
         linuxdesktop::settings::root_options root_options;
+        root_options.resource_root = cli.resource_root;
         root_options.settings_override = cli.settings_dir;
+        root_options.sync_config_override = cli.sync_config_dir;
         root_options.portable_marker = cli.portable_marker;
+        root_options.privileged_install_roots = cli.privileged_install_roots;
+        root_options.deny_portable_root_in_privileged_install = cli.deny_portable_under_privileged_root;
+        root_options.allow_sync_config_for_portable_root = cli.allow_sync_with_portable;
 
         linuxdesktop::settings::app_identity identity;
         identity.organization = "LinuxDesktop2026";
@@ -121,6 +157,7 @@ int main(int argc, char** argv)
         std::cout << "  plugin_config: " << roots.roots.plugin_config.string() << "\n";
         std::cout << "  portable:      " << (roots.portable_active ? "active" : "inactive") << "\n";
         std::cout << "  override:      " << (roots.settings_override_active ? "active" : "inactive") << "\n";
+        std::cout << "  sync config:   " << (roots.sync_config_override_active ? "active" : "inactive") << "\n";
         print_diagnostics(roots.diagnostics);
 
         linuxdesktop::settings::config_file shortcuts_file;
