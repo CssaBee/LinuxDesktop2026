@@ -60,6 +60,7 @@ Current sample:
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
+- C ABI seed for root resolution, with explicit ownership and one free function.
 
 Example documentation:
 
@@ -72,9 +73,19 @@ Example documentation:
 - Keep atomic temp-write/replace as the default write behavior while preserving direct-write opt-out for legacy cases.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Add a first versioned API hygiene pass before broad public promotion.
-- Decide whether the first public sample needs a C wrapper or whether Rust-friendliness remains a design constraint only.
+- Decide whether the C ABI should grow hydration/write wrappers now or stay as a root-resolution seed until a Rust smoke test exists.
 - Keep Notepad++ fork work deferred until the module has enough standalone shape.
 
-## Later Candidate Module
+## Next Candidate Module
 
-File watching remains a likely follow-up after `ld_settings`, but it should wait until the settings/config roadmap is complete enough to publish as the first reusable module.
+File watching remains the strongest follow-up after `ld_settings`. The focused application audit is captured in `docs/survey/file-watcher-audit.md`, and the existing-library follow-up is now started in `docs/survey/file-watcher-library-audit.md`.
+
+Current direction:
+
+- working name `ld_watch`,
+- native Linux `inotify` first,
+- Windows `ReadDirectoryChangesW` shape in the public model,
+- libuv as the strongest reference and possible optional backend,
+- Qt, GLib/GIO, and wxWidgets as recommendations or adapters,
+- Watchman, efsw, e-dant/watcher, and fswatch as study/defer candidates,
+- and an ADR/API sketch before watcher code.

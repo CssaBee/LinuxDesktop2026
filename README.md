@@ -38,8 +38,9 @@ Status legend:
 | `✅` Done | `ld_settings_tests` | Test coverage for the current sample behavior through `ctest`. |
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
-| `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, and module scoring are guiding the next reusable seam. |
-| `📌` Next | `ld_settings` Windows verification | Verify the shaped Windows backend, especially Known Folders and atomic replace semantics, on a real Windows runner or machine. |
+| `✅` Done | `ld_settings` C ABI seed | Root resolution is exposed through a small C-compatible API for future Rust bindings and non-C++ consumers. |
+| `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and the `ld_watch` library follow-up are guiding the next reusable seam. |
+| `📌` Next | `ld_settings` API stability | Define the first formal API/ABI stability promise before broad public promotion. |
 | `📌` Next | File watching (`ld_watch`) | Strongest follow-up candidate once `ld_settings` is ready; start with an ADR/API sketch that stays toolkit-neutral and honest about platform differences. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -151,6 +152,7 @@ Future work candidates:
 - [Domain language](CONTEXT.md)
 - [Library roadmap](docs/plan/library-roadmap.md)
 - [ld_settings Windows verification](docs/plan/ld-settings-windows-verification.md)
+- [ld_settings C ABI](docs/plan/ld-settings-c-abi.md)
 - [Notepad++ proof case plan](docs/plan/notepad-plus-plus-poc.md)
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)
@@ -159,6 +161,7 @@ Future work candidates:
 - [Notepad++ settings/config audit](docs/survey/notepad-settings-config-audit.md)
 - [Settings/config library follow-up](docs/survey/settings-config-library-audit.md)
 - [File watcher focused audit](docs/survey/file-watcher-audit.md)
+- [File watcher library follow-up](docs/survey/file-watcher-library-audit.md)
 - [Migration examples](docs/examples/migration-examples.md)
 - [Source search patterns](docs/survey/source-search-patterns.md)
 - [Open questions](docs/survey/open-questions.md)

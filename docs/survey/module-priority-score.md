@@ -98,13 +98,17 @@ Why this subsystem first:
 
 **Picked next**: Windows verification for `ld_settings`, especially Known Folder lookup and atomic replace behavior. The verification checklist now lives in `docs/plan/ld-settings-windows-verification.md`.
 
-**Parked follow-up**: focused file watcher evidence pass. That pass should determine whether the next module is a tiny `ld_watch` facade or whether existing libraries already cover the sweet spot, but it is no longer ahead of finishing the settings/config roadmap.
+**Eighth priority completed enough to continue**: first C ABI seed for `ld_settings` root resolution. This keeps future Rust binding work realistic without exposing C++ ABI details.
+
+**Eighth priority started**: focused file watcher evidence pass and existing-library follow-up. The application audit in `docs/survey/file-watcher-audit.md` found a real migration seam: single-file and directory watching, save-by-replace behavior, debounce/settle workflows, overflow/rescan diagnostics, and recursive-policy honesty. The library follow-up in `docs/survey/file-watcher-library-audit.md` starts the build/wrap/recommend classification.
+
+**Current watcher direction**: proceed to an ADR/API sketch for a tiny `ld_watch` facade, with native Linux `inotify` first, Windows `ReadDirectoryChangesW` shaped in the API, libuv as the strongest reference/optional-backend candidate, and toolkit watchers recommended through adapters rather than required in the neutral core.
 
 ## Preliminary Evidence From Source Audit Round 1
 
 | Candidate module | Evidence strength | Seen in source audit | Preliminary direction |
 |---|---|---|---|
-| File watcher | Strong | ShareX, Files, libuv, wxWidgets; likely Notepad++ follow-up needed | Park until first settings/config module is easier to consume |
+| File watcher | Strong | Notepad++, ShareX, Files, libuv, Qt, GLib/GIO, wxWidgets, Watchman, efsw, e-dant/watcher, fswatch | Start ADR/API sketch for a tiny `ld_watch` facade |
 | Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv | First focused search candidate, but split spawn vs desktop-open |
 | Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets | First focused search candidate, excluding plugin ABI compatibility |
 | Single-instance IPC | Medium to strong | WinMerge, AutoHotkey, WinSCP, libuv; Notepad++ follow-up needed | First focused search candidate if scoped to activation/argument passing |
@@ -132,7 +136,7 @@ The scores are good enough to guide the next work item. They are not final proje
 | Candidate module | Frequency | Coupling | Linux complexity | Standalone usefulness | Notepad++ POC value | Total | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
 | Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample; consumption path in progress |
-| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Park until `ld_settings` publication readiness is clearer |
+| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Start ADR/API sketch after focused audit and library follow-up |
 | Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
 | Filesystem/path helpers | 5 | 3 | 3 | 4 | 5 | 20 | Keep scoped under settings/config first; avoid broad device/path semantics |
 | Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
@@ -147,6 +151,6 @@ The scores are good enough to guide the next work item. They are not final proje
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
-- `File watcher` is likely the best next ADR/API sketch candidate after `ld_settings` reaches publication readiness; `process/shell` remains the next evidence pass after watcher direction is captured.
+- `File watcher` is now the best next ADR/API sketch candidate after `ld_settings` reaches publication readiness; `process/shell` remains the next evidence pass after watcher direction is captured.
 - `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
 - `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.

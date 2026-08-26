@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(LinuxDesktop2026 VERSION 0.1.0 LANGUAGES CXX)
+project(LinuxDesktop2026 VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
@@ -12,6 +12,7 @@ set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
 
 add_library(ld_settings
     src/settings.cpp
+    src/settings_c.cpp
 )
 
 add_library(LinuxDesktop2026::ld_settings ALIAS ld_settings)
@@ -72,6 +73,14 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_settings_tests PRIVATE LinuxDesktop2026::ld_settings)
 
     add_test(NAME ld_settings_tests COMMAND ld_settings_tests)
+
+    add_executable(ld_settings_c_tests
+        tests/settings_c_tests.c
+    )
+    target_link_libraries(ld_settings_c_tests PRIVATE LinuxDesktop2026::ld_settings)
+
+    add_test(NAME ld_settings_c_tests COMMAND ld_settings_c_tests)
+
     add_test(NAME ld_settings_install_tree_consumer
         COMMAND ${CMAKE_COMMAND}
             -DLD2026_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}

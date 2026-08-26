@@ -1,4 +1,5 @@
 #include "linuxdesktop/settings.hpp"
+#include "linuxdesktop/settings_c.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -295,6 +296,34 @@ void direct_write_validation_restores_backup()
     require(std::filesystem::file_size(target) > 0, "restored target should not be empty");
 }
 
+void c_abi_resolves_settings_override()
+{
+    const auto root = test_root() / "c-override";
+
+    ld_settings_root_options options = {};
+    ld_settings_root_options_init(&options);
+    options.organization = "LinuxDesktop2026";
+    options.application = "c-settings-tests";
+    const auto root_text = root.u8string();
+    options.settings_override = root_text.c_str();
+
+    ld_settings_root_report report = {};
+    const int ok = ld_settings_resolve_app_roots(&options, &report);
+
+    require(ok == 1, "C ABI root resolution should succeed");
+    require(report.settings_override_active == 1, "C ABI settings override should be active");
+    require(report.config != nullptr, "C ABI config path should be allocated");
+    require(std::filesystem::path(report.config) == root, "C ABI config path should match override");
+    require(std::filesystem::path(report.session) == root / "sessions", "C ABI session path should match override");
+    require(std::string(ld_settings_severity_name(LD_SETTINGS_SEVERITY_WARNING)) == "warning",
+        "C ABI severity names should be stable");
+
+    ld_settings_free_root_report(&report);
+
+    require(report.config == nullptr, "C ABI free should clear report");
+    require(report.diagnostic_count == 0, "C ABI free should clear diagnostics");
+}
+
 } // namespace
 
 int main()
@@ -313,6 +342,7 @@ int main()
         {"atomic_write_replaces_target_with_backup", atomic_write_replaces_target_with_backup},
         {"atomic_validation_keeps_original_target", atomic_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
+        {"c_abi_resolves_settings_override", c_abi_resolves_settings_override},
     };
 
     int failures = 0;
