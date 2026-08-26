@@ -39,8 +39,9 @@ Status legend:
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
 | `✅` Done | `ld_settings` C ABI seed | Root resolution is exposed through a small C-compatible API for future Rust bindings and non-C++ consumers. |
+| `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 compatibility expectations. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and the `ld_watch` library follow-up are guiding the next reusable seam. |
-| `📌` Next | `ld_settings` API stability | Define the first formal API/ABI stability promise before broad public promotion. |
+| `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan. |
 | `📌` Next | File watching (`ld_watch`) | Strongest follow-up candidate once `ld_settings` is ready; start with an ADR/API sketch that stays toolkit-neutral and honest about platform differences. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -153,6 +154,7 @@ Future work candidates:
 - [Library roadmap](docs/plan/library-roadmap.md)
 - [ld_settings Windows verification](docs/plan/ld-settings-windows-verification.md)
 - [ld_settings C ABI](docs/plan/ld-settings-c-abi.md)
+- [API and ABI stability](docs/plan/api-stability.md)
 - [Notepad++ proof case plan](docs/plan/notepad-plus-plus-poc.md)
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)

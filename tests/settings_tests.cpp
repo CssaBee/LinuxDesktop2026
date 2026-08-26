@@ -68,6 +68,13 @@ ld::app_identity identity()
     return value;
 }
 
+void exposes_cpp_version()
+{
+    require(ld::version_major == 0, "C++ version major should match project version");
+    require(ld::version_minor == 1, "C++ version minor should match project version");
+    require(ld::version_patch == 0, "C++ version patch should match project version");
+}
+
 void writes_absolute_settings_override()
 {
     const auto root = test_root() / "override";
@@ -317,6 +324,14 @@ void c_abi_resolves_settings_override()
     require(std::filesystem::path(report.session) == root / "sessions", "C ABI session path should match override");
     require(std::string(ld_settings_severity_name(LD_SETTINGS_SEVERITY_WARNING)) == "warning",
         "C ABI severity names should be stable");
+    require(ld_settings_version_major() == LD_SETTINGS_VERSION_MAJOR,
+        "C ABI runtime major should match header major");
+    require(ld_settings_version_minor() == LD_SETTINGS_VERSION_MINOR,
+        "C ABI runtime minor should match header minor");
+    require(ld_settings_version_patch() == LD_SETTINGS_VERSION_PATCH,
+        "C ABI runtime patch should match header patch");
+    require(std::string(ld_settings_version_string()) == "0.1.0",
+        "C ABI version string should match project version");
 
     ld_settings_free_root_report(&report);
 
@@ -329,6 +344,7 @@ void c_abi_resolves_settings_override()
 int main()
 {
     const std::vector<std::pair<const char*, void (*)()>> tests = {
+        {"exposes_cpp_version", exposes_cpp_version},
         {"writes_absolute_settings_override", writes_absolute_settings_override},
         {"rejects_relative_settings_override", rejects_relative_settings_override},
         {"denies_portable_under_privileged_install_root", denies_portable_under_privileged_install_root},

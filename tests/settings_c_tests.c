@@ -15,6 +15,13 @@ int main(void)
     options.application = "c-smoke";
     options.settings_override = "/tmp/linuxdesktop2026-c-smoke";
 
+    if (ld_settings_version_major() != LD_SETTINGS_VERSION_MAJOR ||
+        ld_settings_version_minor() != LD_SETTINGS_VERSION_MINOR ||
+        ld_settings_version_patch() != LD_SETTINGS_VERSION_PATCH ||
+        strcmp(ld_settings_version_string(), "0.1.0") != 0) {
+        return EXIT_FAILURE;
+    }
+
     if (!ld_settings_resolve_app_roots(&options, &report)) {
         return EXIT_FAILURE;
     }

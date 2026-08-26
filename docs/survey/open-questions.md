@@ -26,7 +26,7 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **Which module should provide the first tiny working code sample?** Settings/config and standard paths. ADR 0008 selects it, and `ld_settings_demo` is now the first executable sample.
 - **Which candidate modules deserve focused follow-up after the first scoring pass?** File watcher and process/shell are the strongest next first-candidate follow-ups. Dynamic library loading and single-instance IPC remain first-wave candidates but should wait until the next evidence pass is chosen.
 - **What did the file watcher focused pass find?** File watching is a real reusable seam, but the useful module is not a thin inotify wrapper. It should expose event mapping, debounce/stabilization, overflow/rescan diagnostics, recursive-policy honesty, and app-owned routing. Next step after `ld_settings` publication readiness: ADR/API sketch for `ld_watch`.
-- **What is left before `ld_settings` is publication-ready?** Partly answered: CMake consumption, atomic temp-write/replace, Windows verification scaffolding, and a C ABI root-resolution seed are now covered; next, define the formal API/ABI stability promise and keep Notepad++ fork changes deferred until the standalone library shape is stable.
+- **What is left before `ld_settings` is publication-ready?** Partly answered: CMake consumption, atomic temp-write/replace, Windows verification scaffolding, a C ABI root-resolution seed, and a pre-1.0 API/ABI stability policy are now covered. Next, prepare the Notepad++ fork integration plan while keeping broad file-watcher work parked.
 
 ## File Watcher Follow-Up
 

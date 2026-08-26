@@ -61,6 +61,7 @@ Current sample:
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
 - C ABI seed for root resolution, with explicit ownership and one free function.
+- Public version constants/functions for C++ and C ABI consumers.
 
 Example documentation:
 
@@ -72,9 +73,9 @@ Example documentation:
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
 - Keep atomic temp-write/replace as the default write behavior while preserving direct-write opt-out for legacy cases.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
-- Add a first versioned API hygiene pass before broad public promotion.
+- Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Decide whether the C ABI should grow hydration/write wrappers now or stay as a root-resolution seed until a Rust smoke test exists.
-- Keep Notepad++ fork work deferred until the module has enough standalone shape.
+- Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Next Candidate Module
 

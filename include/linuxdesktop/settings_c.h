@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#define LD_SETTINGS_VERSION_MAJOR 0
+#define LD_SETTINGS_VERSION_MINOR 1
+#define LD_SETTINGS_VERSION_PATCH 0
+
 enum ld_settings_severity {
     LD_SETTINGS_SEVERITY_INFO = 0,
     LD_SETTINGS_SEVERITY_WARNING = 1,
@@ -70,6 +74,14 @@ LD_SETTINGS_API int ld_settings_resolve_app_roots(
 LD_SETTINGS_API void ld_settings_free_root_report(struct ld_settings_root_report* report);
 
 LD_SETTINGS_API const char* ld_settings_severity_name(int severity);
+
+LD_SETTINGS_API int ld_settings_version_major(void);
+
+LD_SETTINGS_API int ld_settings_version_minor(void);
+
+LD_SETTINGS_API int ld_settings_version_patch(void);
+
+LD_SETTINGS_API const char* ld_settings_version_string(void);
 
 #ifdef __cplusplus
 }

@@ -100,6 +100,12 @@ Why this subsystem first:
 
 **Eighth priority completed enough to continue**: first C ABI seed for `ld_settings` root resolution. This keeps future Rust binding work realistic without exposing C++ ABI details.
 
+**Ninth priority completed enough to continue**: first API/ABI stability policy and version surface. C++ exposes version constants; the C ABI exposes matching macros and runtime functions.
+
+**Picked next**: prepare the Notepad++ fork integration plan for the standalone `ld_settings` surface.
+
+**Tenth priority completed enough to continue**: Notepad++ integration prep. The POC plan now defines a narrow first fork patch that maps settings/config behavior to `ld_settings` while keeping XML parsing, UI, plugin ABI, and Windows compatibility app-owned.
+
 **Eighth priority started**: focused file watcher evidence pass and existing-library follow-up. The application audit in `docs/survey/file-watcher-audit.md` found a real migration seam: single-file and directory watching, save-by-replace behavior, debounce/settle workflows, overflow/rescan diagnostics, and recursive-policy honesty. The library follow-up in `docs/survey/file-watcher-library-audit.md` starts the build/wrap/recommend classification.
 
 **Current watcher direction**: proceed to an ADR/API sketch for a tiny `ld_watch` facade, with native Linux `inotify` first, Windows `ReadDirectoryChangesW` shaped in the API, libuv as the strongest reference/optional-backend candidate, and toolkit watchers recommended through adapters rather than required in the neutral core.

@@ -206,4 +206,24 @@ const char* ld_settings_severity_name(int severity)
     }
 }
 
+int ld_settings_version_major(void)
+{
+    return LD_SETTINGS_VERSION_MAJOR;
+}
+
+int ld_settings_version_minor(void)
+{
+    return LD_SETTINGS_VERSION_MINOR;
+}
+
+int ld_settings_version_patch(void)
+{
+    return LD_SETTINGS_VERSION_PATCH;
+}
+
+const char* ld_settings_version_string(void)
+{
+    return "0.1.0";
+}
+
 } // extern "C"
