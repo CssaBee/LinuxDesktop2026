@@ -150,6 +150,7 @@ Future work candidates:
 
 - [Domain language](CONTEXT.md)
 - [Library roadmap](docs/plan/library-roadmap.md)
+- [ld_settings Windows verification](docs/plan/ld-settings-windows-verification.md)
 - [Notepad++ proof case plan](docs/plan/notepad-plus-plus-poc.md)
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)

@@ -70,7 +70,7 @@ Example documentation:
 - Keep `ld_settings` tiny and toolkit-neutral.
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
 - Keep atomic temp-write/replace as the default write behavior while preserving direct-write opt-out for legacy cases.
-- Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior.
+- Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Add a first versioned API hygiene pass before broad public promotion.
 - Decide whether the first public sample needs a C wrapper or whether Rust-friendliness remains a design constraint only.
 - Keep Notepad++ fork work deferred until the module has enough standalone shape.

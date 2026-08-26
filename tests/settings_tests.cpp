@@ -170,6 +170,22 @@ void settings_override_wins_over_sync_override()
         "ignored sync override should report a diagnostic");
 }
 
+#if defined(_WIN32)
+void windows_default_roots_are_resolved()
+{
+    ld::root_options options;
+    options.create_directories = false;
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(!report.roots.config.empty(), "Windows config root should be resolved");
+    require(!report.roots.data.empty(), "Windows data root should be resolved");
+    require(!report.roots.state.empty(), "Windows state root should be resolved");
+    require(!report.roots.cache.empty(), "Windows cache root should be resolved");
+    require(!report.roots.session.empty(), "Windows session root should be resolved");
+}
+#endif
+
 void hydration_copies_missing_models()
 {
     const auto root = test_root();
@@ -290,6 +306,9 @@ int main()
         {"sync_config_override_keeps_state_local", sync_config_override_keeps_state_local},
         {"rejects_relative_sync_config_override", rejects_relative_sync_config_override},
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
+#if defined(_WIN32)
+        {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
+#endif
         {"hydration_copies_missing_models", hydration_copies_missing_models},
         {"atomic_write_replaces_target_with_backup", atomic_write_replaces_target_with_backup},
         {"atomic_validation_keeps_original_target", atomic_validation_keeps_original_target},

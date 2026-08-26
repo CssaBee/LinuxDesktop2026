@@ -96,7 +96,7 @@ Why this subsystem first:
 
 **Seventh priority completed enough to continue**: atomic temp-write/replace for `write_with_backup`. The default path now writes a same-directory temporary file, validates it before commit, backs up the previous target when requested, and replaces the target only after the pending file is acceptable.
 
-**Picked next**: Windows verification for `ld_settings`, especially Known Folder lookup and atomic replace behavior.
+**Picked next**: Windows verification for `ld_settings`, especially Known Folder lookup and atomic replace behavior. The verification checklist now lives in `docs/plan/ld-settings-windows-verification.md`.
 
 **Parked follow-up**: focused file watcher evidence pass. That pass should determine whether the next module is a tiny `ld_watch` facade or whether existing libraries already cover the sweet spot, but it is no longer ahead of finishing the settings/config roadmap.
 
