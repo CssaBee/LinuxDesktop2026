@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -48,6 +49,14 @@ std::filesystem::path test_root()
         fail("failed to create test root: " + ec.message());
     }
     return root;
+}
+
+std::string read_file(const std::filesystem::path& path)
+{
+    std::ifstream input(path, std::ios::binary);
+    std::ostringstream buffer;
+    buffer << input.rdbuf();
+    return buffer.str();
 }
 
 ld::app_identity identity()
@@ -188,7 +197,34 @@ void hydration_copies_missing_models()
     require(std::filesystem::exists(target / "config.xml"), "hydration target should exist");
 }
 
-void write_validation_restores_backup()
+void atomic_write_replaces_target_with_backup()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+
+    ld::write_options options;
+    options.target = target;
+    options.content = "<Config saved=\"new\" />\n";
+    options.keep_backup = true;
+
+    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+        return read_file(path).find("new") != std::string::npos;
+    });
+
+    require(report.ok, "valid atomic write should succeed");
+    require(report.backup_path.has_value(), "valid atomic write should keep old target as backup");
+    require(report.temp_path.has_value(), "atomic write should report temp path");
+    require(!std::filesystem::exists(*report.temp_path), "atomic temp file should be replaced away");
+    require(read_file(target).find("new") != std::string::npos, "target should contain new content");
+    require(read_file(*report.backup_path).find("old") != std::string::npos, "backup should contain old content");
+}
+
+void atomic_validation_keeps_original_target()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -208,9 +244,38 @@ void write_validation_restores_backup()
         return false;
     });
 
-    require(!report.ok, "invalid write should fail");
-    require(report.backup_path.has_value(), "invalid write should have backup");
-    require(has_diagnostic(report.diagnostics, "backup-restored"), "invalid write should restore backup");
+    require(!report.ok, "invalid atomic write should fail");
+    require(!report.backup_path.has_value(), "invalid atomic write should not need a backup");
+    require(report.temp_path.has_value(), "invalid atomic write should report temp path");
+    require(!std::filesystem::exists(*report.temp_path), "invalid atomic temp file should be cleaned");
+    require(has_diagnostic(report.diagnostics, "temp-cleaned"), "invalid atomic write should report temp cleanup");
+    require(read_file(target).find("old") != std::string::npos, "original target should stay untouched");
+}
+
+void direct_write_validation_restores_backup()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+
+    ld::write_options options;
+    options.target = target;
+    options.content = "";
+    options.keep_backup = true;
+    options.atomic_replace = false;
+
+    const auto report = ld::write_with_backup(options, [](const std::filesystem::path&, std::string& message) {
+        message = "empty writes are invalid in this test";
+        return false;
+    });
+
+    require(!report.ok, "invalid direct write should fail");
+    require(report.backup_path.has_value(), "invalid direct write should have backup");
+    require(has_diagnostic(report.diagnostics, "backup-restored"), "invalid direct write should restore backup");
     require(std::filesystem::file_size(target) > 0, "restored target should not be empty");
 }
 
@@ -226,7 +291,9 @@ int main()
         {"rejects_relative_sync_config_override", rejects_relative_sync_config_override},
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
         {"hydration_copies_missing_models", hydration_copies_missing_models},
-        {"write_validation_restores_backup", write_validation_restores_backup},
+        {"atomic_write_replaces_target_with_backup", atomic_write_replaces_target_with_backup},
+        {"atomic_validation_keeps_original_target", atomic_validation_keeps_original_target},
+        {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
     };
 
     int failures = 0;

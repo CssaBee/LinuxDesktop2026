@@ -89,11 +89,13 @@ struct write_options {
     std::filesystem::path target;
     std::string content;
     bool keep_backup = true;
+    bool atomic_replace = true;
 };
 
 struct write_report {
     bool ok = false;
     std::optional<std::filesystem::path> backup_path;
+    std::optional<std::filesystem::path> temp_path;
     std::vector<diagnostic> diagnostics;
 };
 

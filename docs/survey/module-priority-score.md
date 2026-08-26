@@ -90,17 +90,25 @@ Why this subsystem first:
 
 **Fifth priority completed enough to continue**: first executable `ld_settings` sample. The CMake build and CLI demo validate root resolution, model-file hydration, ordered writes, backups, and validation-after-write on Ubuntu.
 
-**Picked next**: settings has a small repeatable test harness. After this milestone, choose the next focused evidence pass between file watcher and process/shell.
+**Then selected**: finish the `ld_settings` consumption path before starting a new module. The first module needs to be usable by GitHub users and AI agents through ordinary CMake flows, not only runnable inside this repository.
+
+**Sixth priority completed enough to continue**: installed CMake package support and an install-tree consumer smoke test for `LinuxDesktop2026::ld_settings`.
+
+**Seventh priority completed enough to continue**: atomic temp-write/replace for `write_with_backup`. The default path now writes a same-directory temporary file, validates it before commit, backs up the previous target when requested, and replaces the target only after the pending file is acceptable.
+
+**Picked next**: Windows verification for `ld_settings`, especially Known Folder lookup and atomic replace behavior.
+
+**Parked follow-up**: focused file watcher evidence pass. That pass should determine whether the next module is a tiny `ld_watch` facade or whether existing libraries already cover the sweet spot, but it is no longer ahead of finishing the settings/config roadmap.
 
 ## Preliminary Evidence From Source Audit Round 1
 
 | Candidate module | Evidence strength | Seen in source audit | Preliminary direction |
 |---|---|---|---|
-| File watcher | Strong | ShareX, Files, libuv, wxWidgets; likely Notepad++ follow-up needed | First focused search candidate |
+| File watcher | Strong | ShareX, Files, libuv, wxWidgets; likely Notepad++ follow-up needed | Park until first settings/config module is easier to consume |
 | Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv | First focused search candidate, but split spawn vs desktop-open |
 | Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets | First focused search candidate, excluding plugin ABI compatibility |
 | Single-instance IPC | Medium to strong | WinMerge, AutoHotkey, WinSCP, libuv; Notepad++ follow-up needed | First focused search candidate if scoped to activation/argument passing |
-| Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample | First implementation candidate; sample started |
+| Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample | First implementation candidate; finish consumption path |
 | Filesystem/path helpers | Medium | All audited apps touch it; Files/Rufus show complex non-path semantics | Candidate only with narrow scope |
 | Clipboard | Strong but UI-coupled | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, wxWidgets | UI-adjacent; likely toolkit adapter |
 | Drag-and-drop | Medium to strong but UI-coupled | ShareX, Greenshot, Files, WinSCP, wxWidgets | UI-adjacent; likely toolkit adapter |
@@ -123,8 +131,8 @@ The scores are good enough to guide the next work item. They are not final proje
 
 | Candidate module | Frequency | Coupling | Linux complexity | Standalone usefulness | Notepad++ POC value | Total | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample started as `ld_settings` |
-| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Next first-candidate follow-up after settings sample stabilizes |
+| Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample; consumption path in progress |
+| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Park until `ld_settings` publication readiness is clearer |
 | Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
 | Filesystem/path helpers | 5 | 3 | 3 | 4 | 5 | 20 | Keep scoped under settings/config first; avoid broad device/path semantics |
 | Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
@@ -139,6 +147,6 @@ The scores are good enough to guide the next work item. They are not final proje
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
-- `File watcher` and `process/shell` are the best next focused audits after the settings sample stabilizes.
+- `File watcher` is likely the best next ADR/API sketch candidate after `ld_settings` reaches publication readiness; `process/shell` remains the next evidence pass after watcher direction is captured.
 - `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
 - `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.

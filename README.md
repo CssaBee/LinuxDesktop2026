@@ -17,7 +17,7 @@ Before writing production library code, we will:
 5. Run a focused follow-up search for the strongest module candidates.
 6. Pick the first tiny working code sample only after the evidence supports it.
 
-The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, backup files, and validation-after-write.
+The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, and validation-before-commit.
 
 For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++ and ShareX-style startup/config code changes when platform policy moves into `ld_settings`.
 
@@ -34,12 +34,12 @@ Status legend:
 
 | Status | Category | Current state |
 | --- | --- | --- |
-| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, backup files, and validation-after-write. |
+| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, and validation-before-commit. |
 | `✅` Done | `ld_settings_tests` | Test coverage for the current sample behavior through `ctest`. |
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, and module scoring are guiding the next reusable seam. |
-| `📌` Next | `ld_settings` API hygiene | Review public names, option semantics, diagnostics, and write guarantees before broad public promotion. |
+| `📌` Next | `ld_settings` Windows verification | Verify the shaped Windows backend, especially Known Folders and atomic replace semantics, on a real Windows runner or machine. |
 | `📌` Next | File watching (`ld_watch`) | Strongest follow-up candidate once `ld_settings` is ready; start with an ADR/API sketch that stays toolkit-neutral and honest about platform differences. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |

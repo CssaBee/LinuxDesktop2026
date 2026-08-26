@@ -26,7 +26,8 @@ The platform libraries are general-purpose, permissively licensed, and designed 
 3. Run a focused follow-up search for the strongest candidates.
 4. Select the first module and code sample.
 5. Build the tiny working sample.
-6. Publish once working code exists with supporting docs.
+6. Make the first sample easy to consume from CMake.
+7. Publish once working code exists with supporting docs.
 
 ## Current First Module
 
@@ -50,12 +51,30 @@ Next implementation target:
 Current sample:
 
 - `ld_settings` library target.
+- `LinuxDesktop2026::ld_settings` namespaced target.
 - `ld_settings_demo` executable target.
 - Repeatable run with `--settings-dir /tmp/linuxdesktop2026-settings-demo`.
 - Config-only sync override for app-validated cloud/sync choices.
 - Portable-root denial under app-declared privileged install roots.
+- Atomic temp-write/replace before committing high-value config files.
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
+- Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
+- Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
 
 Example documentation:
 
 - `docs/examples/migration-examples.md` shows before/after migration shapes for Notepad++ settings roots, Notepad++ config bundle hydration, and ShareX personal path selection.
+
+## Near-Term Settings/Config Roadmap
+
+- Keep `ld_settings` tiny and toolkit-neutral.
+- Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
+- Keep atomic temp-write/replace as the default write behavior while preserving direct-write opt-out for legacy cases.
+- Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior.
+- Add a first versioned API hygiene pass before broad public promotion.
+- Decide whether the first public sample needs a C wrapper or whether Rust-friendliness remains a design constraint only.
+- Keep Notepad++ fork work deferred until the module has enough standalone shape.
+
+## Later Candidate Module
+
+File watching remains a likely follow-up after `ld_settings`, but it should wait until the settings/config roadmap is complete enough to publish as the first reusable module.

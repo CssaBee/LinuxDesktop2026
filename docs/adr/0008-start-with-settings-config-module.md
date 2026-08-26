@@ -18,7 +18,7 @@ The first sample should prove:
 - separate config/data/state/cache/session/plugin roots,
 - hydration of missing config files from model files,
 - ordered save phases,
-- backup plus validation-after-write for one session-like file,
+- atomic temp-write/replace plus backup and validation-before-commit for one session-like file,
 - structured diagnostics,
 - and CMake consumption.
 
@@ -77,8 +77,9 @@ Expected first operations:
 - resolve roots,
 - create required directories,
 - hydrate missing config files,
-- write a file with backup,
-- validate written contents through an app callback,
+- write a file through a same-directory temporary file,
+- validate pending contents through an app callback before replacing the target,
+- keep a backup of the previous target when requested,
 - and return a report suitable for CLI output, tests, and GUI messages.
 
 ## Deferred

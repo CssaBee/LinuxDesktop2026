@@ -162,7 +162,7 @@ if (!loadSession(session))
     restoreBackupOrStartEmptySession(session);
 ```
 
-After, the same task hydrates the config bundle, loads the app-owned XML documents, and saves the same ordered files with backup/validation:
+After, the same task hydrates the config bundle, loads the app-owned XML documents, and saves the same ordered files with temp-write/replace plus backup/validation:
 
 ```cpp
 namespace ld = linuxdesktop::settings;
@@ -207,6 +207,8 @@ bool NppParameters::loadConfigFiles()
 bool NppParameters::saveConfigFiles()
 {
     // KEEP: the save order is app behavior. The survey found that order matters.
+    // CHANGE: each write goes to a same-directory temp file first, validates
+    // before commit when a callback is provided, then atomically replaces the target.
     const auto shortcuts = ld::write_with_backup({
         _userPath / "shortcuts.xml",
         serialize_shortcuts_xml(),
@@ -234,7 +236,7 @@ bool NppParameters::saveConfigFiles()
 }
 ```
 
-The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: file family hydration, missing-file policy, ordered writes, backups, validation-after-write, and structured errors.
+The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: file family hydration, missing-file policy, ordered writes, atomic temp-write/replace, backups, validation-before-commit, and structured errors.
 
 ## Example 3: ShareX Personal Path Selection
 

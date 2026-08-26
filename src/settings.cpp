@@ -13,6 +13,8 @@
 #include <ShlObj.h>
 #include <objbase.h>
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 namespace linuxdesktop::settings {
@@ -31,6 +33,54 @@ std::string sanitize_segment(std::string value, std::string fallback = {})
         }
     }
     return value.empty() ? fallback : value;
+}
+
+unsigned long current_process_id()
+{
+#if defined(_WIN32)
+    return static_cast<unsigned long>(GetCurrentProcessId());
+#else
+    return static_cast<unsigned long>(getpid());
+#endif
+}
+
+std::filesystem::path unique_temp_path_for(const std::filesystem::path& target)
+{
+    const auto parent = target.parent_path();
+    const auto stem = target.filename().string();
+    for (int attempt = 0; attempt != 100; ++attempt) {
+        auto candidate = parent / (stem + ".tmp." + std::to_string(current_process_id()) + "." + std::to_string(attempt));
+        std::error_code ec;
+        if (!std::filesystem::exists(candidate, ec)) {
+            return candidate;
+        }
+    }
+    return parent / (stem + ".tmp." + std::to_string(current_process_id()) + ".fallback");
+}
+
+bool replace_file(const std::filesystem::path& from, const std::filesystem::path& to, std::error_code& ec)
+{
+    ec.clear();
+#if defined(_WIN32)
+    if (MoveFileExW(from.wstring().c_str(), to.wstring().c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
+        ec = std::error_code(static_cast<int>(GetLastError()), std::system_category());
+        return false;
+    }
+    return true;
+#else
+    std::filesystem::rename(from, to, ec);
+    return !ec;
+#endif
+}
+
+bool write_file_content(const std::filesystem::path& target, const std::string& content)
+{
+    std::ofstream output(target, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        return false;
+    }
+    output.write(content.data(), static_cast<std::streamsize>(content.size()));
+    return static_cast<bool>(output);
 }
 
 std::filesystem::path home_directory()
@@ -476,8 +526,13 @@ write_report write_with_backup(const write_options& options, validation_callback
     }
 
     std::error_code ec;
+    const auto write_target = options.atomic_replace ? unique_temp_path_for(options.target) : options.target;
+    if (options.atomic_replace) {
+        report.temp_path = write_target;
+    }
+
     const auto backup = options.target.string() + ".bak";
-    if (options.keep_backup && std::filesystem::exists(options.target, ec)) {
+    if (!options.atomic_replace && options.keep_backup && std::filesystem::exists(options.target, ec)) {
         std::filesystem::copy_file(options.target, backup, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
             report.diagnostics.push_back(make_diagnostic(
@@ -490,37 +545,43 @@ write_report write_with_backup(const write_options& options, validation_callback
         report.backup_path = backup;
     }
 
-    {
-        std::ofstream output(options.target, std::ios::binary | std::ios::trunc);
-        if (!output) {
-            report.diagnostics.push_back(make_diagnostic(
-                severity::error,
-                "write-open-failed",
-                "Could not open target for writing",
-                options.target));
-            return report;
+    if (!write_file_content(write_target, options.content)) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            options.atomic_replace ? "temp-write-failed" : "write-failed",
+            options.atomic_replace ? "Could not write temporary target content" : "Could not write target content",
+            write_target));
+        if (options.atomic_replace) {
+            std::filesystem::remove(write_target, ec);
         }
-        output.write(options.content.data(), static_cast<std::streamsize>(options.content.size()));
-        if (!output) {
-            report.diagnostics.push_back(make_diagnostic(
-                severity::error,
-                "write-failed",
-                "Could not write target content",
-                options.target));
-            return report;
-        }
+        return report;
     }
 
     if (validate) {
         std::string validation_message;
-        if (!validate(options.target, validation_message)) {
+        if (!validate(write_target, validation_message)) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
                 "validation-failed",
                 validation_message.empty() ? "Written file failed validation" : validation_message,
-                options.target));
+                write_target));
 
-            if (report.backup_path) {
+            if (options.atomic_replace) {
+                std::filesystem::remove(write_target, ec);
+                if (ec) {
+                    report.diagnostics.push_back(make_diagnostic(
+                        severity::warning,
+                        "temp-cleanup-failed",
+                        ec.message(),
+                        write_target));
+                } else {
+                    report.diagnostics.push_back(make_diagnostic(
+                        severity::info,
+                        "temp-cleaned",
+                        "Removed invalid temporary file",
+                        write_target));
+                }
+            } else if (report.backup_path) {
                 std::filesystem::copy_file(*report.backup_path, options.target, std::filesystem::copy_options::overwrite_existing, ec);
                 if (ec) {
                     report.diagnostics.push_back(make_diagnostic(
@@ -536,6 +597,34 @@ write_report write_with_backup(const write_options& options, validation_callback
                         options.target));
                 }
             }
+            return report;
+        }
+    }
+
+    if (options.atomic_replace && options.keep_backup && std::filesystem::exists(options.target, ec)) {
+        std::filesystem::copy_file(options.target, backup, std::filesystem::copy_options::overwrite_existing, ec);
+        if (ec) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "backup-copy-failed",
+                ec.message(),
+                backup));
+            if (options.atomic_replace) {
+                std::filesystem::remove(write_target, ec);
+            }
+            return report;
+        }
+        report.backup_path = backup;
+    }
+
+    if (options.atomic_replace) {
+        if (!replace_file(write_target, options.target, ec)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "atomic-replace-failed",
+                ec.message(),
+                options.target));
+            std::filesystem::remove(write_target, ec);
             return report;
         }
     }
