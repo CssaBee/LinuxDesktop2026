@@ -3317,6 +3317,13 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
 
 #if defined(_WIN32)
     report.path = registry_target_path(run_key_for(entry), entry.id);
+    if (options.dry_run) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "autostart-dry-run",
+            "Autostart Registry value was planned but not written",
+            *report.path));
+    }
     registry::value value;
     value.name = entry.id;
     value.type = registry::value_type::string;
@@ -3490,6 +3497,13 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
 
 #if defined(_WIN32)
     report.path = registry_target_path(policy_key_for(entry), entry.key);
+    if (options.dry_run) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "policy-dry-run",
+            "Managed/enforced policy Registry value was planned but not written",
+            *report.path));
+    }
     registry::value value;
     value.name = entry.key;
     value.type = registry::value_type::string;

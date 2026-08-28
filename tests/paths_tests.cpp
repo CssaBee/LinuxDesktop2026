@@ -143,6 +143,27 @@ void stringifies_public_enums()
 
 void resolves_linux_xdg_base_directories_from_injected_environment()
 {
+#if defined(_WIN32)
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.environment["APPDATA"] = fixture_path({"appdata", "roaming"}).string();
+    options.environment["LOCALAPPDATA"] = fixture_path({"appdata", "local"}).string();
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+    require(selected_path(report, ld::path_family::config) == fixture_path({"appdata", "roaming", "LinuxDesktop2026", "paths-tests"}),
+        "Windows config path should use APPDATA");
+    require(selected_path(report, ld::path_family::data) == fixture_path({"appdata", "roaming", "LinuxDesktop2026", "paths-tests"}),
+        "Windows data path should use APPDATA");
+    require(selected_path(report, ld::path_family::state) == fixture_path({"appdata", "local", "LinuxDesktop2026", "paths-tests", "state"}),
+        "Windows state path should use LOCALAPPDATA");
+    require(selected_path(report, ld::path_family::cache) == fixture_path({"appdata", "local", "LinuxDesktop2026", "paths-tests", "cache"}),
+        "Windows cache path should use LOCALAPPDATA");
+    require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::environment),
+        "Windows config candidate should be source-labeled");
+#else
     ld::app_identity identity;
     identity.organization = "LinuxDesktop2026";
     identity.application = "paths-tests";
@@ -164,10 +185,27 @@ void resolves_linux_xdg_base_directories_from_injected_environment()
         "cache path should use XDG_CACHE_HOME");
     require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::xdg_base_dir),
         "XDG config candidate should be source-labeled");
+#endif
 }
 
 void resolves_home_fallbacks_when_xdg_is_unset()
 {
+#if defined(_WIN32)
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.environment["APPDATA"] = "";
+    options.environment["LOCALAPPDATA"] = "";
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+    const auto config = selected_path(report, ld::path_family::config);
+    require(config == fixture_path({"home", "AppData", "Roaming", "LinuxDesktop2026", "paths-tests"}),
+        "Windows config path should fall back under HOME AppData, got " + config.string());
+    require(selected_path(report, ld::path_family::state) == fixture_path({"home", "AppData", "Local", "LinuxDesktop2026", "paths-tests", "state"}),
+        "Windows state path should fall back under HOME AppData");
+#else
     std::error_code ec;
     std::filesystem::remove_all(fixture_path({"home", ".config", "user-dirs.dirs"}), ec);
 
@@ -189,10 +227,14 @@ void resolves_home_fallbacks_when_xdg_is_unset()
         "documents path should use stable HOME fallback when XDG user-dirs is missing");
     require(selected_path(report, ld::path_family::templates) == fixture_path({"home", "Templates"}),
         "templates path should use stable HOME fallback when XDG user-dirs is missing");
+#endif
 }
 
 void resolves_xdg_user_dirs_from_config_file()
 {
+#if defined(_WIN32)
+    return;
+#else
     const auto base = std::filesystem::temp_directory_path() / "linuxdesktop2026-xdg-user-dirs-tests";
     std::error_code ec;
     std::filesystem::remove_all(base, ec);
@@ -230,10 +272,25 @@ void resolves_xdg_user_dirs_from_config_file()
         "XDG user-dir candidate should be source-labeled");
 
     std::filesystem::remove_all(base, ec);
+#endif
 }
 
 void reports_user_dir_legacy_and_site_fallback_candidates()
 {
+#if defined(_WIN32)
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.legacy_config_files = {fixture_path({"etc", "nut", "ups.conf"}), "relative-legacy.conf"};
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::legacy_path_relative_ignored),
+        "relative legacy paths should be diagnosed");
+    require(has_candidate(report, ld::path_family::config, ld::candidate_source::legacy),
+        "legacy config file candidates should be reported");
+#else
     const auto base = std::filesystem::temp_directory_path() / "linuxdesktop2026-xdg-user-dirs-diagnostics";
     std::error_code ec;
     std::filesystem::remove_all(base, ec);
@@ -273,6 +330,7 @@ void reports_user_dir_legacy_and_site_fallback_candidates()
 #endif
 
     std::filesystem::remove_all(base, ec);
+#endif
 }
 
 void rejects_relative_overrides_and_environment_values()
@@ -288,16 +346,24 @@ void rejects_relative_overrides_and_environment_values()
 
     require(has_diagnostic(report.diagnostics, ld::diagnostic_code::override_relative_ignored),
         "relative explicit override should be diagnosed");
+#if defined(_WIN32)
+    require(selected_path(report, ld::path_family::config) != std::filesystem::path("relative-config"),
+        "relative config override should be ignored");
+#else
     require(has_diagnostic(report.diagnostics, ld::diagnostic_code::environment_relative_ignored),
         "relative environment path should be diagnosed");
     require(selected_path(report, ld::path_family::config) == fixture_path({"home", ".config", "LinuxDesktop2026", "paths-tests"}),
         "relative config override should be ignored");
     require(selected_path(report, ld::path_family::data) == fixture_path({"home", ".local", "share", "LinuxDesktop2026", "paths-tests"}),
         "relative data environment should be ignored");
+#endif
 }
 
 void reports_missing_home_without_selecting_user_scoped_fallbacks()
 {
+#if defined(_WIN32)
+    return;
+#else
     ld::app_identity identity;
     identity.organization = "LinuxDesktop2026";
     identity.application = "paths-tests";
@@ -312,6 +378,7 @@ void reports_missing_home_without_selecting_user_scoped_fallbacks()
         "config should not be guessed without HOME or XDG_CONFIG_HOME");
     require(report.selected.find(ld::path_family::documents) == report.selected.end(),
         "documents should not be guessed without HOME");
+#endif
 }
 
 void resolves_executable_install_resource_and_temp_paths()

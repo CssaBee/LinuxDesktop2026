@@ -110,33 +110,22 @@ int main(void)
     make_path(plugin_vendor, sizeof(plugin_vendor), "vendor\\vst3");
     make_path(plugin_vendor_dirty, sizeof(plugin_vendor_dirty), "vendor\\vst3\\..\\vst3");
 
-    struct ld_paths_environment_entry env[1];
-    env[0].name = "XDG_CONFIG_HOME";
-    env[0].value = config;
-
     struct ld_paths_resolver_options resolver_options;
     struct ld_paths_resolver_report resolver_report;
     memset(&resolver_report, 0, sizeof(resolver_report));
     ld_paths_resolver_options_init(&resolver_options);
     resolver_options.organization = "LinuxDesktop2026";
     resolver_options.application = "c-paths";
+    resolver_options.config_override = config;
     resolver_options.home_directory = home;
     resolver_options.executable_path = executable;
     resolver_options.temp_override = temp;
-    resolver_options.environment = env;
-    resolver_options.environment_count = 1;
     resolver_options.use_process_environment = 0;
 
     if (!ld_paths_resolve_app_paths(&resolver_options, &resolver_report)) {
         return EXIT_FAILURE;
     }
-    snprintf(expected_config, sizeof(expected_config), "%s%cLinuxDesktop2026%cc-paths", config,
-#if defined(_WIN32)
-        '\\', '\\'
-#else
-        '/', '/'
-#endif
-    );
+    snprintf(expected_config, sizeof(expected_config), "%s", config);
     snprintf(expected_resources, sizeof(expected_resources), "%s%clinuxdesktop2026-c-paths%copt%clinuxdesktop2026%cshare%cc-paths", temp_root(),
 #if defined(_WIN32)
         '\\', '\\', '\\', '\\', '\\'

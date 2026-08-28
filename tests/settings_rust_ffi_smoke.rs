@@ -114,7 +114,15 @@ pub extern "C" fn ld_settings_rust_ffi_smoke() -> c_int {
         ld_settings_root_options_init(&mut options);
         options.organization = b"LinuxDesktop2026\0".as_ptr() as *const c_char;
         options.application = b"rust-ffi-smoke\0".as_ptr() as *const c_char;
+        #[cfg(windows)]
+        {
+            options.settings_override =
+                b"C:\\Temp\\linuxdesktop2026-rust-ffi-smoke\0".as_ptr() as *const c_char;
+        }
+        #[cfg(not(windows))]
+        {
         options.settings_override = b"/tmp/linuxdesktop2026-rust-ffi-smoke\0".as_ptr() as *const c_char;
+        }
         if ld_settings_version_major() != 0 {
             return 1;
         }
