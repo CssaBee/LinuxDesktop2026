@@ -376,6 +376,7 @@ struct apply_options {
     bool dry_run = true;
     bool allow_global_write = false;
     bool allow_desktop_integration_write = false;
+    bool allow_policy_write = false;
 };
 
 }
@@ -395,13 +396,39 @@ Linux backend:
 
 ### Managed And Enforced Preferences
 
+First C++ API shape:
+
+```cpp
+namespace linuxdesktop::settings::effects {
+
+struct policy_entry {
+    std::string id;
+    std::string schema_id;
+    std::string group;
+    std::string key;
+    std::string value;
+    bool enforced = false;
+    bool user_scope = false;
+};
+
+policy_report apply_policy(const policy_entry&, const apply_options& = {});
+policy_report remove_policy(const policy_entry&, const apply_options& = {});
+policy_report query_policy(const policy_entry&, const apply_options& = {});
+
+}
+```
+
 Windows backend:
 
 - Registry policy keys and app-owned HKLM/HKCU layers.
+- `Software\Policies\<schema/group>` values are written through the raw Registry backend.
+- global writes require both `allow_policy_write` and `allow_global_write`.
 
 Linux backend:
 
 - dconf/GSettings-compatible defaults and lock files where schemas exist, without linking GLib.
+- defaults are emitted as keyfiles; enforced settings also emit lock files.
+- the initial implementation supports override directories for safe tests and staged package generation.
 - Return diagnostics when no schema/backend exists.
 
 ## C ABI Requirements
@@ -443,8 +470,9 @@ Required examples before ship:
 7. Add JSON Registry import/export. `(initial C++ snapshot format and tree wrappers implemented)`
 8. Add `.reg` compatibility import/export. `(initial C++ snapshot format and tree wrappers implemented)`
 9. Implement autostart Windows and Linux backends. `(initial C++ API/backend implemented; Windows verification pending)`
-10. Implement managed/enforced policy Windows and Linux backends.
-11. Add Windows CI and manual verification transcript.
+10. Implement managed/enforced policy Windows and Linux backends. `(initial C++ API/backend implemented; Windows verification pending)`
+11. Add Windows CI and manual verification transcript. `(CI exists; transcript remains pending after a real Windows run)`
+12. Expand the C ABI past roots/layers. `(autostart and policy effects implemented; migration and Registry remain pending)`
 
 ## Current Status
 
@@ -468,6 +496,9 @@ Implemented in the current C++ sample:
 - Registry tree JSON/`.reg` import/export wrappers over the raw Registry API,
 - autostart effect API with dry-run-first writes,
 - Linux XDG Autostart `.desktop` write/query/remove support,
-- Windows `CurrentVersion\Run` autostart backend shape over the raw Registry API.
+- Windows `CurrentVersion\Run` autostart backend shape over the raw Registry API,
+- managed/enforced policy effect API with dry-run-first writes,
+- Linux dconf/GSettings-compatible defaults and lock-file generation without GLib,
+- Windows `Software\Policies` backend shape over the raw Registry API.
 
-The next code work should start with managed/enforced policy, then C ABI coverage for migration/Registry/effect concepts. Windows CI or a Windows container/manual run must verify the Registry backend, autostart backend, and tree import/export before the module can be considered shippable.
+The next code work should start with C ABI coverage for migration and Registry concepts. Windows CI or a Windows container/manual run must verify the Registry backend, autostart backend, policy backend, and tree import/export before the module can be considered shippable.

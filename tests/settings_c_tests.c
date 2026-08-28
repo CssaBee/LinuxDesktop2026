@@ -59,5 +59,62 @@ int main(void)
     }
 
     ld_settings_free_root_report(&report);
-    return report.config == NULL ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (report.config != NULL) {
+        return EXIT_FAILURE;
+    }
+
+    struct ld_settings_effect_options effect_options;
+    ld_settings_effect_options_init(&effect_options);
+    effect_options.allow_desktop_integration_write = 1;
+    effect_options.autostart_directory_override = "/tmp/linuxdesktop2026-c-smoke-autostart";
+
+    const char* arguments[] = {"--profile", "Default"};
+    struct ld_settings_autostart_entry autostart;
+    memset(&autostart, 0, sizeof(autostart));
+    autostart.id = "linuxdesktop2026-c-smoke";
+    autostart.display_name = "LinuxDesktop2026 C Smoke";
+    autostart.executable = "/usr/bin/ld-settings-c-smoke";
+    autostart.arguments = arguments;
+    autostart.argument_count = 2;
+    autostart.enabled = 1;
+    autostart.user_scope = 1;
+
+    struct ld_settings_effect_report effect_report;
+    memset(&effect_report, 0, sizeof(effect_report));
+    if (!ld_settings_apply_autostart(&autostart, &effect_options, &effect_report) ||
+        effect_report.ok != 1 ||
+        effect_report.dry_run != 1) {
+        ld_settings_free_effect_report(&effect_report);
+        return EXIT_FAILURE;
+    }
+    ld_settings_free_effect_report(&effect_report);
+    if (effect_report.path != NULL) {
+        return EXIT_FAILURE;
+    }
+
+    struct ld_settings_policy_entry policy;
+    memset(&policy, 0, sizeof(policy));
+    policy.id = "linuxdesktop2026-c-policy";
+    policy.schema_id = "org.linuxdesktop2026.c-smoke";
+    policy.key = "theme";
+    policy.value = "'dark'";
+    policy.user_scope = 1;
+
+    effect_options.allow_policy_write = 1;
+    effect_options.policy_defaults_directory_override = "/tmp/linuxdesktop2026-c-smoke-policy/defaults";
+
+    struct ld_settings_policy_report policy_report;
+    memset(&policy_report, 0, sizeof(policy_report));
+    if (!ld_settings_apply_policy(&policy, &effect_options, &policy_report) ||
+        policy_report.ok != 1 ||
+        policy_report.dry_run != 1 ||
+        policy_report.present != 1 ||
+        !policy_report.value ||
+        strcmp(policy_report.value, "'dark'") != 0) {
+        ld_settings_free_policy_report(&policy_report);
+        return EXIT_FAILURE;
+    }
+    ld_settings_free_policy_report(&policy_report);
+
+    return policy_report.value == NULL ? EXIT_SUCCESS : EXIT_FAILURE;
 }

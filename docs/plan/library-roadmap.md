@@ -64,8 +64,10 @@ Current sample:
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
-- C ABI seed for root resolution, with explicit ownership and one free function.
+- C ABI surface for root/layer reports, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
+- Autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
+- Managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
 
 Expanded ship direction:
 
@@ -87,9 +89,8 @@ Example documentation:
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving `linuxdesktop::settings` aliases.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
-- Grow the C ABI beyond root resolution before ship, including named roots and config-layer reports.
-- Implement named roots, component roots, config layers, portable levels, migration plans, Windows Registry support, autostart, and managed/enforced policy before declaring `ld_settings` shippable.
-- Verify the Windows Registry/autostart backend paths before claiming the expanded settings/effects API is ready to ship.
+- Grow the remaining C ABI before ship, including migration plans/execution and Registry snapshots/import/export.
+- Verify the Windows Registry/autostart/policy backend paths before claiming the expanded settings/effects API is ready to ship.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Next Candidate Module

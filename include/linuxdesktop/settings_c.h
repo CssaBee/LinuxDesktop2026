@@ -189,13 +189,100 @@ struct ld_settings_root_report {
     size_t diagnostic_count;
 };
 
+struct ld_settings_effect_options {
+    int dry_run;
+    int allow_global_write;
+    int allow_desktop_integration_write;
+    int allow_policy_write;
+    const char* autostart_directory_override;
+    const char* policy_defaults_directory_override;
+    const char* policy_locks_directory_override;
+};
+
+struct ld_settings_autostart_entry {
+    const char* id;
+    const char* display_name;
+    const char* executable;
+    const char* const* arguments;
+    size_t argument_count;
+    const char* working_directory;
+    int enabled;
+    int user_scope;
+};
+
+struct ld_settings_effect_report {
+    int ok;
+    int dry_run;
+    int enabled;
+    char* path;
+    struct ld_settings_diagnostic* diagnostics;
+    size_t diagnostic_count;
+};
+
+struct ld_settings_policy_entry {
+    const char* id;
+    const char* schema_id;
+    const char* group;
+    const char* key;
+    const char* value;
+    int enforced;
+    int user_scope;
+};
+
+struct ld_settings_policy_report {
+    int ok;
+    int dry_run;
+    int present;
+    int enforced;
+    char* path;
+    char* value;
+    struct ld_settings_diagnostic* diagnostics;
+    size_t diagnostic_count;
+};
+
 LD_SETTINGS_API void ld_settings_root_options_init(struct ld_settings_root_options* options);
+
+LD_SETTINGS_API void ld_settings_effect_options_init(struct ld_settings_effect_options* options);
 
 LD_SETTINGS_API int ld_settings_resolve_app_roots(
     const struct ld_settings_root_options* options,
     struct ld_settings_root_report* report);
 
 LD_SETTINGS_API void ld_settings_free_root_report(struct ld_settings_root_report* report);
+
+LD_SETTINGS_API int ld_settings_apply_autostart(
+    const struct ld_settings_autostart_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_effect_report* report);
+
+LD_SETTINGS_API int ld_settings_remove_autostart(
+    const struct ld_settings_autostart_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_effect_report* report);
+
+LD_SETTINGS_API int ld_settings_query_autostart(
+    const struct ld_settings_autostart_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_effect_report* report);
+
+LD_SETTINGS_API void ld_settings_free_effect_report(struct ld_settings_effect_report* report);
+
+LD_SETTINGS_API int ld_settings_apply_policy(
+    const struct ld_settings_policy_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_policy_report* report);
+
+LD_SETTINGS_API int ld_settings_remove_policy(
+    const struct ld_settings_policy_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_policy_report* report);
+
+LD_SETTINGS_API int ld_settings_query_policy(
+    const struct ld_settings_policy_entry* entry,
+    const struct ld_settings_effect_options* options,
+    struct ld_settings_policy_report* report);
+
+LD_SETTINGS_API void ld_settings_free_policy_report(struct ld_settings_policy_report* report);
 
 LD_SETTINGS_API const char* ld_settings_severity_name(int severity);
 

@@ -701,6 +701,110 @@ void autostart_global_write_requires_permission()
         "global autostart write should require allow_global_write");
 }
 
+ld::effects::policy_entry policy_entry_for_tests()
+{
+    ld::effects::policy_entry entry;
+    entry.id = "settings-tests-theme";
+    entry.schema_id = "org.linuxdesktop2026.settings-tests";
+    entry.key = "theme";
+    entry.value = "'dark'";
+    return entry;
+}
+
+void policy_write_requires_explicit_permission()
+{
+    namespace effects = linuxdesktop::settings::effects;
+
+    auto entry = policy_entry_for_tests();
+
+    effects::apply_options options;
+    options.policy_defaults_directory_override = test_root() / "dconf" / "defaults";
+
+    const auto report = effects::apply_policy(entry, options);
+    require(!report.ok, "policy write should be denied without permission");
+    require(has_diagnostic(report.diagnostics, "policy-write-denied"),
+        "policy write should require allow_policy_write");
+}
+
+void policy_global_write_requires_permission()
+{
+    namespace effects = linuxdesktop::settings::effects;
+
+    auto entry = policy_entry_for_tests();
+    entry.user_scope = false;
+
+    effects::apply_options options;
+    options.allow_policy_write = true;
+    options.policy_defaults_directory_override = test_root() / "dconf" / "defaults";
+
+    const auto report = effects::apply_policy(entry, options);
+    require(!report.ok, "global policy write should be denied without permission");
+    require(has_diagnostic(report.diagnostics, "policy-global-write-denied"),
+        "global policy write should require allow_global_write");
+}
+
+void policy_dry_run_does_not_write()
+{
+    namespace effects = linuxdesktop::settings::effects;
+
+    auto entry = policy_entry_for_tests();
+    entry.user_scope = true;
+
+    const auto root = test_root() / "dconf" / "defaults";
+    effects::apply_options options;
+    options.allow_policy_write = true;
+    options.policy_defaults_directory_override = root;
+
+    const auto report = effects::apply_policy(entry, options);
+    require(report.ok, "policy dry-run should succeed");
+    require(report.dry_run, "policy dry-run should report dry_run");
+    require(report.present, "policy dry-run should report planned presence");
+    require(report.path.has_value(), "policy dry-run should report defaults path");
+    require(!std::filesystem::exists(*report.path), "policy dry-run should not write a file");
+    require(has_diagnostic(report.diagnostics, "policy-dry-run"),
+        "policy dry-run should include a dry-run diagnostic");
+}
+
+void policy_linux_writes_queries_and_removes_dconf_files()
+{
+#if !defined(_WIN32)
+    namespace effects = linuxdesktop::settings::effects;
+
+    auto entry = policy_entry_for_tests();
+    entry.enforced = true;
+    entry.user_scope = true;
+
+    const auto root = test_root() / "dconf";
+    effects::apply_options options;
+    options.dry_run = false;
+    options.allow_policy_write = true;
+    options.policy_defaults_directory_override = root / "defaults";
+    options.policy_locks_directory_override = root / "locks";
+
+    const auto applied = effects::apply_policy(entry, options);
+    require(applied.ok, "Linux policy write should succeed");
+    require(applied.path.has_value(), "Linux policy write should report defaults path");
+    require(read_file(*applied.path).find("[org/linuxdesktop2026/settings-tests]") != std::string::npos,
+        "Linux policy file should include dconf group");
+    require(read_file(*applied.path).find("theme='dark'") != std::string::npos,
+        "Linux policy file should include GVariant-ready value");
+
+    const auto queried = effects::query_policy(entry, options);
+    require(queried.ok, "Linux policy query should succeed");
+    require(queried.present, "Linux policy query should report present value");
+    require(queried.enforced, "Linux policy query should report lock file");
+    require(queried.value.has_value() && *queried.value == "'dark'", "Linux policy query should return value literal");
+
+    const auto removed = effects::remove_policy(entry, options);
+    require(removed.ok, "Linux policy removal should succeed");
+    require(!std::filesystem::exists(*applied.path), "Linux policy removal should remove defaults file");
+
+    const auto queried_after_remove = effects::query_policy(entry, options);
+    require(queried_after_remove.ok, "Linux policy query after removal should succeed");
+    require(!queried_after_remove.present, "Linux policy query after removal should report absent value");
+#endif
+}
+
 void c_abi_resolves_settings_override()
 {
     const auto root = test_root() / "c-override";
@@ -783,6 +887,10 @@ int main()
         {"autostart_dry_run_does_not_write", autostart_dry_run_does_not_write},
         {"autostart_linux_writes_queries_and_removes_desktop_file", autostart_linux_writes_queries_and_removes_desktop_file},
         {"autostart_global_write_requires_permission", autostart_global_write_requires_permission},
+        {"policy_write_requires_explicit_permission", policy_write_requires_explicit_permission},
+        {"policy_global_write_requires_permission", policy_global_write_requires_permission},
+        {"policy_dry_run_does_not_write", policy_dry_run_does_not_write},
+        {"policy_linux_writes_queries_and_removes_dconf_files", policy_linux_writes_queries_and_removes_dconf_files},
         {"c_abi_resolves_settings_override", c_abi_resolves_settings_override},
     };
 

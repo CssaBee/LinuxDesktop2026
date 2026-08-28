@@ -154,6 +154,13 @@ Linux backend:
 - report when no schema/backend is available,
 - do not use GLib as a dependency.
 
+Implementation status:
+
+- Initial C++ policy effect API now exists as `apply_policy`, `query_policy`, and `remove_policy`.
+- Linux emits dconf/GSettings-compatible defaults and locks without a GLib dependency.
+- Windows routes to `Software\Policies` through the raw Registry backend shape.
+- Real Windows verification is still required before this can be called shippable.
+
 Source anchors:
 
 - https://help.gnome.org/system-admin-guide/dconf-profiles.html

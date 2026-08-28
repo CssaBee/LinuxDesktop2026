@@ -428,7 +428,10 @@ struct apply_options {
     bool dry_run = true;
     bool allow_global_write = false;
     bool allow_desktop_integration_write = false;
+    bool allow_policy_write = false;
     std::optional<std::filesystem::path> autostart_directory_override;
+    std::optional<std::filesystem::path> policy_defaults_directory_override;
+    std::optional<std::filesystem::path> policy_locks_directory_override;
 };
 
 struct effect_report {
@@ -439,9 +442,33 @@ struct effect_report {
     std::vector<diagnostic> diagnostics;
 };
 
+struct policy_entry {
+    std::string id;
+    std::string schema_id;
+    std::string group;
+    std::string key;
+    std::string value;
+    bool enforced = false;
+    bool user_scope = false;
+};
+
+struct policy_report {
+    bool ok = false;
+    bool dry_run = false;
+    bool present = false;
+    bool enforced = false;
+    std::optional<std::filesystem::path> path;
+    std::optional<std::string> value;
+    std::vector<diagnostic> diagnostics;
+};
+
 effect_report apply_autostart(const autostart_entry& entry, const apply_options& options = {});
 effect_report remove_autostart(const autostart_entry& entry, const apply_options& options = {});
 effect_report query_autostart(const autostart_entry& entry, const apply_options& options = {});
+
+policy_report apply_policy(const policy_entry& entry, const apply_options& options = {});
+policy_report remove_policy(const policy_entry& entry, const apply_options& options = {});
+policy_report query_policy(const policy_entry& entry, const apply_options& options = {});
 
 } // namespace effects
 
