@@ -104,6 +104,8 @@ struct watch_path {
     // Absolute/root-relative are std::filesystem paths so callers keep LinuxDesktop2026 path semantics
     // instead of flattening backend-native paths into strings.
     std::filesystem::path absolute;
+    // Directory watches report paths relative to the watched directory. Single-file watches report
+    // the watched filename for target-file events, even when a backend watches the parent directory.
     std::optional<std::filesystem::path> root_relative;
     watch_id root;
     path_type type = path_type::unknown;

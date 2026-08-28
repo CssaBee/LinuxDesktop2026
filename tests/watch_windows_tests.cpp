@@ -208,9 +208,13 @@ void windows_single_file_watch_survives_save_by_replace()
     auto event = collector.wait_for_path(ld::event_kind::renamed_new, file);
     require(event.caller_tag == "windows-single-file", "Windows single-file event should echo caller tag");
     require(event.path.root.value == report.id.value, "Windows single-file path should carry watch id");
+    require(event.path.root_relative == std::filesystem::path("watched.txt"),
+        "Windows single-file replace should report the watched filename as root-relative");
 
     writes_file(file, "newer");
-    collector.wait_for_path(ld::event_kind::modified, file);
+    event = collector.wait_for_path(ld::event_kind::modified, file);
+    require(event.path.root_relative == std::filesystem::path("watched.txt"),
+        "Windows single-file modification should report the watched filename as root-relative");
 }
 
 } // namespace

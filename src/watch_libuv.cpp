@@ -390,7 +390,9 @@ private:
 
         const std::filesystem::path relative = filename ? std::filesystem::path(filename) : std::filesystem::path{};
         event.path.absolute = relative.empty() ? record->watched_absolute : record->watched_absolute / relative;
-        if (!relative.empty()) {
+        if (record->target_type == path_type::file && event.path.absolute == record->watched_absolute) {
+            event.path.root_relative = record->watched_absolute.filename();
+        } else if (!relative.empty()) {
             event.path.root_relative = relative;
         }
 

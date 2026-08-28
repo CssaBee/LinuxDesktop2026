@@ -178,7 +178,7 @@ std::string_view to_string(backend_kind value);
 
 The API should expose portable event kinds first. Backend masks, raw names, or platform-specific details belong in optional diagnostics/debug fields unless a later advanced API earns them.
 
-The first release should not expose a stable C ABI. C ABI work belongs after the C++ event and ownership model survive prototype tests.
+The first release should not expose a stable C ABI. `ld_watch` C ABI design is postponed until the release-preview pass, after the C++ event, ownership, callback, queue, and path models survive native backend verification.
 
 ## Lifecycle And Delivery
 
@@ -278,6 +278,8 @@ Watcher events should not return bare strings as the normal path model. They sho
 - optional root-relative path,
 - watch/root identity,
 - and backend-native debug information.
+
+For directory watches, `root_relative` is relative to the watched directory. For single-file watches, target-file events report the watched filename as `root_relative`, even when the backend is implemented by watching the parent directory and filtering events. The public API must not expose `"."` or a backend parent-directory-relative artifact for that normal single-file case.
 
 This keeps application code in LinuxDesktop2026 vocabulary while preserving enough detail for debugging Windows/Linux backend differences.
 

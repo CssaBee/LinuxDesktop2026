@@ -258,10 +258,14 @@ void native_single_file_watch_handles_save_by_replace()
     const auto event = collector.wait_for_kind(ld::event_kind::renamed_new);
     require(event.caller_tag == "single-file", "single-file event should echo caller tag");
     require(event.path.absolute == file, "single-file replace should report target file");
+    require(event.path.root_relative == std::filesystem::path("watched.txt"),
+        "single-file replace should report the watched filename as root-relative");
 
     writes_file(file, "newer");
     const auto modified = collector.wait_for_path(ld::event_kind::modified, file);
     require(modified.caller_tag == "single-file", "single-file watch should keep filtering after replacement");
+    require(modified.path.root_relative == std::filesystem::path("watched.txt"),
+        "single-file modification should report the watched filename as root-relative");
 }
 
 void native_recursive_policy_is_honest()

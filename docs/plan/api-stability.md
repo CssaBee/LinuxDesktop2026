@@ -55,6 +55,8 @@ ld_paths_version_string()
 
 The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function.
 
+`ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until the release-preview pass so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
+
 ## Pre-1.0 Rules
 
 Allowed in `0.x` minor releases:

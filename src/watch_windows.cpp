@@ -435,6 +435,11 @@ private:
             path.backend_debug_name = "windows:" + absolute.string();
 
             std::error_code ec;
+            if (target_type == path_type::file && absolute == watched_absolute) {
+                path.root_relative = watched_absolute.filename();
+                return path;
+            }
+
             const auto relative = std::filesystem::relative(absolute, watched_absolute, ec);
             if (!ec && !relative.empty() && *relative.begin() != std::filesystem::path("..")) {
                 path.root_relative = relative;
