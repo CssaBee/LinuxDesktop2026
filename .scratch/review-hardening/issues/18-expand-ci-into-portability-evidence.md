@@ -1,8 +1,8 @@
-# 13 — Expand CI Into Portability Evidence
+# 18 — Expand CI Into Portability Evidence
 
-**What to build:** CI should move beyond smoke coverage and produce credible portability evidence for the supported platforms and toolchains.
+**What to build:** CI should move beyond smoke coverage and produce credible portability evidence for the supported platforms and toolchains, building on the first Fedora signal.
 
-**Blocked by:** None — can start immediately.
+**Blocked by:** 13 — Add Fedora CI Baseline.
 
 **Status:** ready-for-agent
 
