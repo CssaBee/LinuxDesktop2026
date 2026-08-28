@@ -258,6 +258,10 @@ void native_single_file_watch_handles_save_by_replace()
     const auto event = collector.wait_for_kind(ld::event_kind::renamed_new);
     require(event.caller_tag == "single-file", "single-file event should echo caller tag");
     require(event.path.absolute == file, "single-file replace should report target file");
+
+    writes_file(file, "newer");
+    const auto modified = collector.wait_for_path(ld::event_kind::modified, file);
+    require(modified.caller_tag == "single-file", "single-file watch should keep filtering after replacement");
 }
 
 void native_recursive_policy_is_honest()
@@ -303,6 +307,99 @@ void native_recursive_emulation_expands_new_directories()
     require(event.path.absolute == nested, "new file under discovered directory should be reported");
     require(event.path.root_relative == std::filesystem::path("child/nested.txt"),
         "new file under discovered directory should be root-relative");
+}
+
+void native_recursive_emulation_reports_deep_tree_created_before_expansion()
+{
+    const auto root = test_root();
+    event_collector collector;
+    ld::watcher watcher;
+    watcher.set_callback([&](const ld::watch_event& event) {
+        collector.push(event);
+    });
+
+    ld::watch_options options;
+    options.path = root;
+    options.recursive = ld::recursive_policy::emulate;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native recursive emulation should start for deep tree test");
+
+    const auto child = root / "child";
+    const auto grandchild = child / "grandchild";
+    const auto nested = grandchild / "nested.txt";
+    std::filesystem::create_directories(grandchild);
+    writes_file(nested, "inside");
+
+    collector.wait_for_path(ld::event_kind::created, child);
+    auto event = collector.wait_for_path(ld::event_kind::created, nested);
+    require(event.path.root_relative == std::filesystem::path("child/grandchild/nested.txt"),
+        "deep discovered file should be root-relative to original watch");
+    require(has_diagnostic(event.diagnostics, "watch.recursive.discovered"),
+        "deep discovered file should carry recursive discovery diagnostic");
+}
+
+void native_recursive_emulation_handles_directory_rename_with_existing_child()
+{
+    const auto root = test_root();
+    const auto source = root / "source";
+    const auto child = source / "child";
+    const auto nested = child / "nested.txt";
+    std::filesystem::create_directories(child);
+    writes_file(nested, "inside");
+
+    event_collector collector;
+    ld::watcher watcher;
+    watcher.set_callback([&](const ld::watch_event& event) {
+        collector.push(event);
+    });
+
+    ld::watch_options options;
+    options.path = root;
+    options.recursive = ld::recursive_policy::emulate;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native recursive emulation should start for rename race test");
+
+    const auto renamed = root / "renamed";
+    const auto renamed_nested = renamed / "child" / "nested.txt";
+    std::filesystem::rename(source, renamed);
+
+    const auto event = collector.wait_for_path(ld::event_kind::created, renamed_nested);
+    require(event.path.root_relative == std::filesystem::path("renamed/child/nested.txt"),
+        "renamed directory's existing child should be reported under original root");
+    require(has_diagnostic(event.diagnostics, "watch.recursive.discovered"),
+        "renamed directory expansion should mark synthetic child discovery");
+}
+
+void native_remove_and_rename_churn_preserves_watch()
+{
+    const auto root = test_root();
+    event_collector collector;
+    ld::watcher watcher;
+    watcher.set_callback([&](const ld::watch_event& event) {
+        collector.push(event);
+    });
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native directory watch should start for churn test");
+
+    const auto removed = root / "removed.txt";
+    writes_file(removed, "remove");
+    collector.wait_for_path(ld::event_kind::created, removed);
+    std::filesystem::remove(removed);
+    collector.wait_for_path(ld::event_kind::removed, removed);
+
+    const auto before = root / "before.txt";
+    const auto after = root / "after.txt";
+    writes_file(before, "rename");
+    collector.wait_for_path(ld::event_kind::created, before);
+    std::filesystem::rename(before, after);
+    collector.wait_for_path(ld::event_kind::renamed_new, after);
+
+    const auto still_watched = root / "still-watched.txt";
+    writes_file(still_watched, "ok");
+    collector.wait_for_path(ld::event_kind::created, still_watched);
 }
 
 void native_recursive_emulation_skips_symlinked_directories()
@@ -386,8 +483,11 @@ int main()
         native_single_file_watch_handles_save_by_replace();
         native_recursive_policy_is_honest();
         native_recursive_emulation_expands_new_directories();
+        native_recursive_emulation_reports_deep_tree_created_before_expansion();
+        native_recursive_emulation_handles_directory_rename_with_existing_child();
         native_recursive_emulation_skips_symlinked_directories();
         native_recursive_emulation_skips_duplicate_existing_directories();
+        native_remove_and_rename_churn_preserves_watch();
         native_same_directory_watches_fan_out_and_remove_independently();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";

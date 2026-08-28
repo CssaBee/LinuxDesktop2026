@@ -69,12 +69,24 @@ linuxdesktop::diagnostic diagnostic(
 
 class simulated_backend final : public ld::detail::watch_backend {
 public:
+    void fail_next_add(linuxdesktop::diagnostic diagnostic)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        next_add_failure_ = std::move(diagnostic);
+    }
+
     ld::start_report add_watch(ld::watch_id id, const ld::watch_options& options) override
     {
         std::lock_guard<std::mutex> lock(mutex_);
         ld::start_report report;
         report.id = id;
         report.capabilities = capabilities_;
+
+        if (next_add_failure_.has_value()) {
+            report.diagnostics.push_back(std::move(*next_add_failure_));
+            next_add_failure_.reset();
+            return report;
+        }
 
         if (stopped_) {
             report.diagnostics.push_back(diagnostic(
@@ -244,6 +256,7 @@ private:
     ld::capability_report capabilities_{ld::backend_kind::simulated, false, true, true, true, {}};
     std::vector<watch_record> watches_;
     std::deque<ld::watch_event> events_;
+    std::optional<linuxdesktop::diagnostic> next_add_failure_;
     bool stopped_ = false;
 };
 
@@ -387,6 +400,57 @@ void maps_rename_and_overflow_state()
     require(watcher.state() == ld::stream_state::degraded, "watcher should retain degraded state");
 }
 
+void preserves_backend_resource_limit_start_diagnostics()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    backend->fail_next_add(diagnostic(
+        linuxdesktop::severity::error,
+        std::string(ld::diagnostic_code::resource_limit),
+        "simulated backend watch limit reached",
+        root));
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(!report.ok, "resource-limit start failure should not start a watch");
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::resource_limit),
+        "resource-limit start failure should preserve diagnostic code");
+    require(watcher.wait_for(std::chrono::milliseconds{1}) == std::nullopt,
+        "failed resource-limit start should not enqueue events");
+}
+
+void preserves_resource_limit_event_diagnostics()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "watch should start before resource-limit event");
+
+    auto event = backend->event_for(report.id, ld::event_kind::error, {});
+    event.state = ld::stream_state::degraded;
+    event.rescan_recommended = true;
+    event.diagnostics.push_back(diagnostic(
+        linuxdesktop::severity::error,
+        std::string(ld::diagnostic_code::resource_limit),
+        "simulated backend resource limit",
+        root));
+    backend->push(std::move(event));
+
+    const auto received = watcher.wait();
+    require(received.has_value(), "resource-limit event should arrive");
+    require(has_diagnostic(received->diagnostics, ld::diagnostic_code::resource_limit),
+        "resource-limit event diagnostic should be preserved");
+    require(watcher.state() == ld::stream_state::degraded,
+        "resource-limit event should degrade watcher state");
+}
+
 void remove_watch_is_idempotent_and_stop_wakes_wait()
 {
     const auto root = test_root();
@@ -512,6 +576,8 @@ int main()
         supports_pull_delivery_and_paths();
         supports_callback_delivery();
         maps_rename_and_overflow_state();
+        preserves_backend_resource_limit_start_diagnostics();
+        preserves_resource_limit_event_diagnostics();
         remove_watch_is_idempotent_and_stop_wakes_wait();
         captures_settled_file_options_in_start_path();
         settled_file_wait_does_not_block_raw_delivery();

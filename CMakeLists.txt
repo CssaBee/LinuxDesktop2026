@@ -47,6 +47,7 @@ endif()
 
 add_library(ld_paths
     src/paths.cpp
+    src/paths_c.cpp
 )
 
 add_library(LinuxDesktop2026::ld_paths ALIAS ld_paths)
@@ -168,6 +169,13 @@ if(LD2026_BUILD_TESTS)
 
     add_test(NAME ld_paths_tests COMMAND ld_paths_tests)
 
+    add_executable(ld_paths_c_tests
+        tests/paths_c_tests.c
+    )
+    target_link_libraries(ld_paths_c_tests PRIVATE LinuxDesktop2026::ld_paths)
+
+    add_test(NAME ld_paths_c_tests COMMAND ld_paths_c_tests)
+
     if(LD2026_RUSTC)
         set(LD2026_RUST_FFI_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/settings_rust_ffi_smoke${CMAKE_C_OUTPUT_EXTENSION}")
         add_custom_command(
@@ -256,4 +264,9 @@ if(LD2026_BUILD_EXAMPLES)
         examples/paths_demo.cpp
     )
     target_link_libraries(ld_paths_demo PRIVATE LinuxDesktop2026::ld_paths)
+
+    add_executable(ld_paths_c_demo
+        examples/paths_c_demo.c
+    )
+    target_link_libraries(ld_paths_c_demo PRIVATE LinuxDesktop2026::ld_paths)
 endif()

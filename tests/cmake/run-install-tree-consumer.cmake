@@ -59,3 +59,11 @@ execute_process(
 if(NOT run_result EQUAL 0)
     message(FATAL_ERROR "Running install-tree consumer failed with ${run_result}")
 endif()
+
+execute_process(
+    COMMAND "${LD2026_CONSUMER_BINARY_DIR}/ld_paths_c_consumer"
+    RESULT_VARIABLE run_paths_c_result
+)
+if(NOT run_paths_c_result EQUAL 0)
+    message(FATAL_ERROR "Running C ld_paths install-tree consumer failed with ${run_paths_c_result}")
+endif()

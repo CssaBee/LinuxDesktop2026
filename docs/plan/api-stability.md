@@ -27,9 +27,12 @@ linuxdesktop::to_string(linuxdesktop::severity::warning)
 linuxdesktop::settings::version_major
 linuxdesktop::settings::version_minor
 linuxdesktop::settings::version_patch
+linuxdesktop::paths::version_major
+linuxdesktop::paths::version_minor
+linuxdesktop::paths::version_patch
 ```
 
-`linuxdesktop::settings::severity`, `linuxdesktop::settings::diagnostic`, and `linuxdesktop::settings::to_string` remain source-compatible aliases for the shared C++ diagnostic vocabulary.
+`linuxdesktop::settings::severity`, `linuxdesktop::settings::diagnostic`, `linuxdesktop::settings::to_string`, `linuxdesktop::paths::severity`, `linuxdesktop::paths::diagnostic`, and `linuxdesktop::paths::to_string` remain source-compatible aliases for the shared C++ diagnostic vocabulary.
 
 C and Rust FFI consumers can read:
 
@@ -41,7 +44,16 @@ ld_settings_version_major()
 ld_settings_version_minor()
 ld_settings_version_patch()
 ld_settings_version_string()
+LD_PATHS_VERSION_MAJOR
+LD_PATHS_VERSION_MINOR
+LD_PATHS_VERSION_PATCH
+ld_paths_version_major()
+ld_paths_version_minor()
+ld_paths_version_patch()
+ld_paths_version_string()
 ```
+
+The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function.
 
 ## Pre-1.0 Rules
 

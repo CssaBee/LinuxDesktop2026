@@ -126,6 +126,9 @@ void windows_directory_watch_reports_basic_events()
 
     writes_file(file, "two");
     collector.wait_for_path(ld::event_kind::modified, file);
+
+    std::filesystem::remove(file);
+    collector.wait_for_path(ld::event_kind::removed, file);
 }
 
 void windows_rename_pairs_adjacent_old_and_new_names()
@@ -180,6 +183,36 @@ void windows_native_recursive_reports_nested_file()
         "Windows recursive event should be root-relative");
 }
 
+void windows_single_file_watch_survives_save_by_replace()
+{
+    const auto root = test_root();
+    const auto file = root / "watched.txt";
+    writes_file(file, "old");
+
+    event_collector collector;
+    ld::watcher watcher;
+    watcher.set_callback([&](const ld::watch_event& event) {
+        collector.push(event);
+    });
+
+    ld::watch_options options;
+    options.path = file;
+    options.caller_tag = "windows-single-file";
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "Windows single-file watch should start");
+
+    const auto temp = root / "watched.txt.tmp";
+    writes_file(temp, "new");
+    std::filesystem::rename(temp, file);
+
+    auto event = collector.wait_for_path(ld::event_kind::renamed_new, file);
+    require(event.caller_tag == "windows-single-file", "Windows single-file event should echo caller tag");
+    require(event.path.root.value == report.id.value, "Windows single-file path should carry watch id");
+
+    writes_file(file, "newer");
+    collector.wait_for_path(ld::event_kind::modified, file);
+}
+
 } // namespace
 
 int main()
@@ -189,6 +222,7 @@ int main()
         windows_directory_watch_reports_basic_events();
         windows_rename_pairs_adjacent_old_and_new_names();
         windows_native_recursive_reports_nested_file();
+        windows_single_file_watch_survives_save_by_replace();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;

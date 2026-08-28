@@ -124,7 +124,7 @@ Exit bar:
 
 ### Milestone 5: Public Prototype Polish
 
-Status: planned before community sharing.
+Status: implemented for packaging, examples, C ABI smoke coverage, and docs; still blocked from broad community announcement by Milestone 3 depth and real Windows verification.
 
 Implement:
 
@@ -142,6 +142,12 @@ Exit bar:
 - C callers can allocate, inspect, and free reports through documented ownership rules,
 - examples do not depend on a developer's real home directory,
 - and unsupported platform behavior is reported, not hidden.
+
+Remaining before public prototype announcement:
+
+- complete Milestone 3 XDG user-dir and legacy fallback chain modeling,
+- run the Windows 10/11 Known Folder and plugin-default verification checklist,
+- and decide whether custom plugin path sets need C ABI exposure in the first public cut.
 
 ## Proposed API Shape
 

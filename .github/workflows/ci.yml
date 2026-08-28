@@ -29,6 +29,10 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      - name: Verify Windows watcher backend
+        if: runner.os == 'Windows'
+        run: ctest --test-dir build -R ld_watch_windows_tests --output-on-failure
+
       - name: Windows verification note
         if: runner.os == 'Windows'
         shell: pwsh
