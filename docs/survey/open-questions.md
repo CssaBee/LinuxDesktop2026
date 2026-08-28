@@ -30,7 +30,7 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **What is left before `ld_settings` is shippable?** Answered at the product level: the current code is a working first sample, not a finished module. Before ship, `ld_settings` needs named roots, component roots, portable levels, all config layers, migration plans, full practical Windows Registry support, Linux equivalents for relevant Registry effects, autostart, managed/enforced policy, expanded C ABI coverage, Windows verification, and real migration examples.
 - **Are file associations and protocol handlers in `ld_settings` first scope?** No. They are unsupported in first `ld_settings`; users should open GitHub issues for them. They likely belong in future desktop integration work.
 - **Is autostart in `ld_settings` first scope?** Yes. Implement Windows startup Registry behavior and Linux XDG Autostart support with explicit safety flags.
-- **Are managed and enforced settings in first scope?** Yes. Implement Windows Registry policy support and Linux dconf/GSettings policy support where the backend/schema is available.
+- **Are managed and enforced settings in first scope?** Yes. Implement Windows Registry policy support and Linux dconf/GSettings-compatible policy files where the backend/schema is available, without a GLib dependency.
 
 ## File Watcher Follow-Up
 

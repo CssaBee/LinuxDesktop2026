@@ -190,6 +190,57 @@ void settings_override_wins_over_sync_override()
         "ignored sync override should report a diagnostic");
 }
 
+void resolves_named_roots_and_layers()
+{
+    const auto root = test_root() / "settings";
+
+    ld::root_options options;
+    options.settings_override = root;
+    options.named_roots = {
+        {"logs", ld::root_purpose::logs, ld::persistence_class::machine_local, "Logs", true},
+        {"profiles", ld::root_purpose::profiles, ld::persistence_class::roaming, "Profiles", true},
+    };
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.named_roots.size() == 2, "two named roots should be resolved");
+    require(report.named_roots[0].name == "logs", "first named root should preserve name");
+    require(report.named_roots[0].path == report.roots.state / "Logs", "machine-local logs should live under state");
+    require(report.named_roots[1].path == report.roots.config / "Profiles", "roaming profiles should live under config");
+    require(report.layers.candidates.size() >= 6, "layer report should include default/user/local/managed/enforced candidates");
+    require(report.layers.active_write_layer.has_value(), "layer report should include active write layer");
+    require(report.layers.active_read_order.front().kind == ld::config_layer_kind::enforced,
+        "enforced layer should have highest default precedence");
+}
+
+void resolves_component_roots()
+{
+    const auto root = test_root() / "settings";
+
+    ld::component_root_request plugin;
+    plugin.name = "compare-plugin";
+    plugin.kind = ld::component_kind::plugin;
+    plugin.roots = {
+        {"config", ld::root_purpose::component_config, ld::persistence_class::roaming, "Config", true},
+        {"state", ld::root_purpose::component_state, ld::persistence_class::machine_local, "State", true},
+    };
+
+    ld::root_options options;
+    options.settings_override = root;
+    options.component_roots = {plugin};
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.component_roots.size() == 1, "one component root group should be resolved");
+    require(report.component_roots[0].name == "compare-plugin", "component name should be preserved");
+    require(report.component_roots[0].kind == ld::component_kind::plugin, "component kind should be preserved");
+    require(report.component_roots[0].roots.size() == 2, "component should expose requested roots");
+    require(report.component_roots[0].roots[0].path == root / "components" / "compare-plugin" / "Config",
+        "component config should live below component namespace");
+    require(report.component_roots[0].roots[1].path == root / "components" / "compare-plugin" / "State",
+        "component state should live below component namespace");
+}
+
 #if defined(_WIN32)
 void windows_default_roots_are_resolved()
 {
@@ -325,6 +376,14 @@ void c_abi_resolves_settings_override()
     options.application = "c-settings-tests";
     const auto root_text = root.u8string();
     options.settings_override = root_text.c_str();
+    ld_settings_named_root_request named_root = {};
+    named_root.name = "logs";
+    named_root.purpose = LD_SETTINGS_ROOT_PURPOSE_LOGS;
+    named_root.persistence = LD_SETTINGS_PERSISTENCE_MACHINE_LOCAL;
+    named_root.relative_path = "Logs";
+    named_root.create = 1;
+    options.named_roots = &named_root;
+    options.named_root_count = 1;
 
     ld_settings_root_report report = {};
     const int ok = ld_settings_resolve_app_roots(&options, &report);
@@ -334,6 +393,12 @@ void c_abi_resolves_settings_override()
     require(report.config != nullptr, "C ABI config path should be allocated");
     require(std::filesystem::path(report.config) == root, "C ABI config path should match override");
     require(std::filesystem::path(report.session) == root / "sessions", "C ABI session path should match override");
+    require(report.named_root_count == 1, "C ABI should expose named roots");
+    require(std::string(report.named_roots[0].name) == "logs", "C ABI named root should preserve name");
+    require(std::filesystem::path(report.named_roots[0].path) == root / "Logs",
+        "C ABI named root should resolve path");
+    require(report.config_layer_count >= 6, "C ABI should expose config layer candidates");
+    require(report.active_write_layer != nullptr, "C ABI should expose active write layer");
     require(std::string(ld_settings_severity_name(LD_SETTINGS_SEVERITY_WARNING)) == "warning",
         "C ABI severity names should be stable");
     require(ld_settings_version_major() == LD_SETTINGS_VERSION_MAJOR,
@@ -364,6 +429,8 @@ int main()
         {"sync_config_override_keeps_state_local", sync_config_override_keeps_state_local},
         {"rejects_relative_sync_config_override", rejects_relative_sync_config_override},
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
+        {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
+        {"resolves_component_roots", resolves_component_roots},
 #if defined(_WIN32)
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif

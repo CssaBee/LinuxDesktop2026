@@ -401,7 +401,7 @@ Windows backend:
 
 Linux backend:
 
-- GSettings/dconf defaults and lock files where schemas exist.
+- dconf/GSettings-compatible defaults and lock files where schemas exist, without linking GLib.
 - Return diagnostics when no schema/backend exists.
 
 ## C ABI Requirements

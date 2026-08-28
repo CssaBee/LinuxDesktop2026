@@ -37,7 +37,7 @@ Relevant first-scope mechanisms:
 
 - XDG Base Directory for app-owned config, data, state, cache, and runtime locations.
 - App-owned config files for preferences and structured state.
-- dconf/GSettings for GNOME-style managed and enforced preferences.
+- dconf/GSettings-compatible keyfiles and locks for GNOME-style managed and enforced preferences, without linking GLib.
 - XDG Autostart `.desktop` files for login startup.
 
 Explicitly not implemented in `ld_settings` first ship:
@@ -60,7 +60,7 @@ Source anchors:
 
 | Windows Registry-backed effect | Linux equivalent | First `ld_settings` decision |
 |---|---|---|
-| App preferences | XDG config file, app-owned payload, optional GSettings adapter | Implement path/layer lifecycle; app owns payload parsing unless using registry value API. |
+| App preferences | XDG config file, app-owned payload, optional dconf-compatible policy files | Implement path/layer lifecycle; app owns payload parsing unless using registry value API. |
 | Portable settings | App-adjacent config/data roots, explicit portable level | Implement. |
 | Machine-local state | XDG state/cache/runtime roots | Implement. |
 | Managed defaults | HKLM/app policy or app-owned global config | Implement Windows; implement Linux via dconf/GSettings plan and backend. |
@@ -149,10 +149,10 @@ Windows backend:
 
 Linux backend:
 
-- use GSettings/dconf where a schema exists,
+- use dconf/GSettings-compatible keyfiles and locks where a schema exists,
 - support writing admin default keyfiles and lock files only when explicitly requested,
 - report when no schema/backend is available,
-- avoid making GLib a mandatory dependency in the neutral root/path layer.
+- do not use GLib as a dependency.
 
 Source anchors:
 
@@ -180,5 +180,5 @@ Policy: users should open GitHub issues when they need these. The issue should i
 - Survey more source anchors for Greenshot startup Registry handling.
 - Survey Files default-file-manager Registry handling.
 - Survey Open-Shell settings/policy source if it remains in corpus.
-- Decide whether Linux dconf execution can be implemented without requiring GLib at link time.
+- Keep Linux dconf execution file-based; do not add a GLib dependency.
 - Decide whether `.reg` parsing/writing belongs in a separate small translation unit or a sub-namespace.
