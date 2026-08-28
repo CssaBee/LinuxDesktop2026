@@ -18,7 +18,7 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
 ## Required Changes
 
 1. Treat C++ APIs as source-compatible only. Keep existing C ABI entry points compatible where practical, but postpone C ABI expansion and binary-stability design until release-candidate status.
-2. Split `ld_settings` by responsibility. Keep settings root/config-bundle behavior; route general path discovery through `ld_paths`; postpone or extract Registry, autostart, policy, and migration execution once real consumers prove the shape.
+2. Split `ld_settings` by responsibility. Keep settings root/config-bundle behavior; route general path discovery through `ld_paths`; extract desktop integration effects to the planned `ld_desktop` module; extract migration planning/execution and app-settings Registry migration compatibility to the planned `ld_migration` module.
 3. Correct write-safety semantics. Distinguish atomic namespace replacement from crash-durable writes, and use secure exclusive temporary-file creation.
 4. Harden `ld_watch` before expanding it. Define callback threading/reentrancy, bound internal queues, handle callback exceptions, and stress recursive watching.
 5. Upgrade CI from smoke coverage to portability evidence: GCC and Clang on Linux, MSVC on Windows, Debug and Release, shared-library builds, sanitizer jobs, and older supported Ubuntu coverage where practical.
@@ -45,6 +45,7 @@ The project should look less ambitious in the short term and more credible over 
 Confirmed problems:
 
 - `ld_settings` has exceeded its original narrow module boundary.
+- ADR 0012 defines the required boundary correction: `ld_settings` narrows to settings/config behavior, `ld_paths` owns generic root policy, `ld_desktop` owns desktop integration effects, and `ld_migration` owns migration behavior.
 - Linux atomic replacement currently does not imply crash durability.
 - Temporary-file creation currently uses predictable names and a check-then-open pattern.
 - `ld_watch` needs stronger callback, queue, and stress-test contracts before ship.

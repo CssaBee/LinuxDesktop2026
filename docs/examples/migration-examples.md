@@ -754,7 +754,10 @@ bool NppParameters::load()
 }
 ```
 
-`ld_paths` makes the path decision inspectable. `ld_settings` still handles config bundle hydration, writes, migration plans, Registry snapshots, autostart effects, and policy effects.
+`ld_paths` makes the path decision inspectable. Under ADR 0012,
+`ld_settings` keeps config bundle hydration and writes; migration plans and
+Registry snapshot portability move to `ld_migration`; autostart and policy
+effects move to `ld_desktop`.
 
 ## Example 7: OpenRGB XDG Config And Autostart Split
 
@@ -986,6 +989,6 @@ The extraction is deliberately delayed until `ld_paths` has its own resolver tes
 
 - LinuxDesktop2026 modules should expose policy-level operations, not raw wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`, `CopyFile`, or XDG environment parsing.
 - `ld_paths` should own path families, path lists, executable/resource roots, candidate reports, and typed plugin path sets.
-- `ld_settings` should own config bundles, writes, migrations, Registry snapshots, autostart effects, and policy effects until those effects are split further.
+- `ld_settings` should own config bundles and writes. Generic root policy belongs to `ld_paths`; migration behavior and app-settings Registry portability belong to `ld_migration`; autostart, policy, and other desktop integration effects belong to `ld_desktop`.
 - Users should see small application changes: declare identity, declare overrides/portable markers, inspect path and layer reports, hydrate a bundle, write with backup/validation, then keep app-specific parsing in the app.
 - AI agents should have enough surrounding code to recognize the migration seam and propose a safe incremental patch instead of trying to port an entire GUI at once.

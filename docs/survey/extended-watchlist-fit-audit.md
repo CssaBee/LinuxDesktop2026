@@ -83,7 +83,7 @@ Fit:
 
 Feature implications:
 
-- Desktop-entry escaping needs to be explicit if autostart stays in `ld_settings`.
+- Desktop-entry escaping needs to be explicit in `ld_desktop`; current `ld_settings` autostart code is temporary prototype evidence.
 - Service/headless startup belongs in future service/daemon planning, not the settings module.
 
 ### sample-cpp-plugin
@@ -131,7 +131,7 @@ Relevant source:
 Fit:
 
 - Strong roadmap changer. It validates settings migration/snapshots, desktop integration, process execution, and single-instance IPC.
-- Current `ld_settings` covers some of the config-root and migration direction, but not desktop integration or process/IPC behavior.
+- Current `ld_settings` covers some config-root and migration prototype behavior, but ADR 0012 moves stable migration ownership to `ld_migration` and desktop integration to `ld_desktop`.
 
 Feature implications:
 
@@ -172,7 +172,7 @@ Fit:
 
 Feature implications:
 
-- `ld_settings` migration plans should expose skipped paths and partial failures clearly.
+- `ld_migration` plans should expose skipped paths and partial failures clearly.
 - `ld_paths` should include install/runtime-root helpers and custom-root override reporting.
 - Future dynamic loader/process designs should account for DLL search-path safety.
 

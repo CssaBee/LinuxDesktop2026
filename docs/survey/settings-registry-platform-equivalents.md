@@ -58,18 +58,18 @@ Source anchors:
 
 ## Effect Mapping
 
-| Windows Registry-backed effect | Linux equivalent | First `ld_settings` decision |
+| Windows Registry-backed effect | Linux equivalent | ADR 0012 module decision |
 |---|---|---|
-| App preferences | XDG config file, app-owned payload, optional dconf-compatible policy files | Implement path/layer lifecycle; app owns payload parsing unless using registry value API. |
-| Portable settings | App-adjacent config/data roots, explicit portable level | Implement. |
-| Machine-local state | XDG state/cache/runtime roots | Implement. |
-| Managed defaults | HKLM/app policy or app-owned global config | Implement Windows; implement Linux via dconf/GSettings plan and backend. |
-| Enforced policy | Windows policy keys, dconf locks | Implement both, with enforced values non-overridable. |
-| Startup with system | `CurrentVersion\Run` or startup folder | Implement Windows and XDG Autostart backend. |
-| File associations | `Software\Classes`, ProgID, UserChoice | Not supported in first `ld_settings`; issue-requested future work. |
-| Protocol handlers | URL protocol registration | Not supported in first `ld_settings`; issue-requested future work. |
-| Shell context menu | Explorer shell extension/command keys | Not supported in first `ld_settings`; likely future `ld_desktop` or app-specific. |
-| Recent documents / jump lists | RecentDocs/Jump Lists | Not supported in first `ld_settings`; future UI/desktop integration. |
+| App preferences | XDG config file, app-owned payload | `ld_settings` owns path/layer lifecycle; app owns payload parsing. App-settings Registry migration compatibility moves to `ld_migration`. |
+| Portable settings | App-adjacent config/data roots, explicit portable level | `ld_settings` owns settings-specific portable behavior; generic root selection moves through `ld_paths`. |
+| Machine-local state | XDG state/cache/runtime roots | Generic root policy belongs to `ld_paths`; settings-specific reporting remains in `ld_settings`. |
+| Managed defaults | HKLM/app policy or app-owned global config | `ld_desktop` owns managed policy effects. |
+| Enforced policy | Windows policy keys, dconf locks | `ld_desktop` owns enforced policy effects. |
+| Startup with system | `CurrentVersion\Run` or startup folder | `ld_desktop` owns Windows startup and XDG Autostart backends. |
+| File associations | `Software\Classes`, ProgID, UserChoice | `ld_desktop`. |
+| Protocol handlers | URL protocol registration | `ld_desktop`. |
+| Shell context menu | Explorer shell extension/command keys | `ld_desktop` where practical, otherwise app-specific. |
+| Recent documents / jump lists | RecentDocs/Jump Lists | Future UI/desktop integration, likely outside `ld_settings`. |
 | Environment variables | Registry environment keys | Later; likely `environment.d`/shell profile/systemd user integration after separate survey. |
 | Services | Service Control Manager Registry/service APIs | Out of `ld_settings`; future process/system module if ever. |
 | COM/shell extensions | COM registration | Out of scope for first-wave portable libraries. |

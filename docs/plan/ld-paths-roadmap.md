@@ -228,7 +228,7 @@ The final API does not need to use these exact names. The important commitments 
 `ld_settings` should keep its current internal root resolver until `ld_paths` has tests, examples, and install-tree consumer coverage. After that, plan a small extraction:
 
 - `ld_paths` resolves config/data/state/cache/resource roots.
-- `ld_settings` consumes those roots to hydrate config bundles, write settings safely, and plan migrations.
+- `ld_settings` consumes those roots to hydrate config bundles and write settings safely. Migration planning moves to `ld_migration`.
 - `ld_settings` keeps autostart and policy effects until a later desktop integration split is planned.
 - shared diagnostics remain in `ld_core`.
 

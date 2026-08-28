@@ -11,6 +11,7 @@ The project promises:
 - Public C++ headers live under `include/linuxdesktop/`.
 - Public C ABI headers use plain C types and avoid C++ standard library types.
 - C++ APIs are source-compatibility interfaces only; no stable C++ binary ABI is promised while public values expose standard-library types.
+- Before `1.0`, C++ APIs may break when a source audit, proof integration, or module-boundary correction proves that the current shape is wrong.
 - Existing C ABI entry points should remain compatible where practical, easy to bind, and deliberately versioned, but C ABI expansion and binary-stability design are postponed until release-candidate status.
 - Breaking source changes or C ABI changes require a minor version bump while `major == 0`.
 - Patch releases should preserve source compatibility and C ABI compatibility for documented functions.
@@ -65,6 +66,7 @@ The `ld_paths` C ABI currently covers root resolution reports, candidate reports
 Allowed in `0.x` minor releases:
 
 - rename provisional types or functions,
+- remove or move C++ APIs that belong to a different module boundary,
 - add fields to C++ structs,
 - change diagnostics when behavior becomes more accurate,
 - and tighten validation around unsafe or ambiguous inputs.

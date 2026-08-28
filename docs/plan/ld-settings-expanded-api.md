@@ -1,14 +1,28 @@
 # Expanded `ld_settings` API Plan
 
-This plan captures the post-grilling shape of `ld_settings`. It supersedes the idea that the module is only a standard-path resolver.
+Status: superseded for module ownership by ADR 0012. This document remains an
+inventory of prototype behavior and survey-derived API pressure. It is not the
+controlling plan for what `ld_settings` should own at ship-candidate status.
 
-`ld_settings` is a toolkit-neutral configuration placement, lifecycle, Registry compatibility, and policy-effect library.
+This plan captures the older post-grilling prototype shape that temporarily
+expanded `ld_settings` beyond a standard-path resolver.
 
-It still does not parse every application's settings payload. Applications keep ownership of XML, JSON, INI, TOML, database, and domain-specific validation unless they choose to use the Registry value API.
+ADR 0012 narrows `ld_settings` to toolkit-neutral settings/config behavior.
+Generic path policy moves to `ld_paths`; desktop integration effects move to
+the planned `ld_desktop`; migration planning/execution and app-settings Registry
+migration compatibility move to the planned `ld_migration`.
+
+Even in that broader prototype, `ld_settings` did not parse every
+application's settings payload. Applications kept ownership of XML, JSON, INI,
+TOML, database, and domain-specific validation unless they opted into the
+prototype Registry value API.
 
 ## Shippable Scope
 
-`ld_settings` can become a ship candidate only when the following are implemented and verified:
+Under ADR 0012, `ld_settings` can become a ship candidate only when the
+settings/config items below are implemented and verified. Registry, desktop
+effects, and migration items are extraction inventory for `ld_desktop` and
+`ld_migration`, not stable `ld_settings` responsibilities.
 
 - fixed standard roots,
 - named roots,
@@ -32,7 +46,7 @@ It still does not parse every application's settings payload. Applications keep 
 
 No half-finished product: documentation-only placeholders are acceptable during development, but not for the first declared shippable release.
 
-## Proposed Namespaces
+## Historical Prototype Namespaces
 
 ```cpp
 namespace linuxdesktop::settings;
@@ -43,8 +57,12 @@ namespace linuxdesktop::settings::effects;
 Rationale:
 
 - root/config lifecycle remains easy to discover,
-- raw Registry operations do not pollute the root API,
-- effect APIs can model autostart and policy without pretending every Registry effect belongs to config files.
+- raw Registry operations were kept out of the root API during the prototype,
+- effect APIs modeled autostart and policy during the prototype.
+
+ADR 0012 changes the target ownership: future stable desktop-effect APIs belong
+under `ld_desktop`, and future stable migration APIs belong under
+`ld_migration`.
 
 ## Core Types
 
@@ -216,12 +234,18 @@ Rules:
 
 - app-owned XML remains app-owned,
 - app-owned JSON/INI/TOML remains app-owned unless the app opts into helper adapters later,
-- Registry value import/export is owned by `ld_settings::registry`,
+- Registry value import/export was owned by `ld_settings::registry` in the
+  prototype; ADR 0012 moves app-settings Registry migration compatibility to
+  `ld_migration`,
 - merge callbacks let the app decide content semantics.
 
-## Migration Plans
+## Migration Plans Prototype
 
 Hydration copies missing defaults. Migration moves or transforms existing user state. Keep them separate.
+
+ADR 0012 moves migration planning/execution to the planned `ld_migration`
+module. `ld_settings` may describe settings bundles and participate in
+migrations, but it should not own the stable migration engine.
 
 ```cpp
 enum class migration_action_kind {
@@ -260,7 +284,12 @@ Execution rules:
 - every executed action reports before/after state where practical,
 - rollback support is required for portable run-scoped registry/file moves before release.
 
-## Registry API
+## Registry API Prototype
+
+ADR 0012 splits Registry-shaped behavior by meaning. App-settings Registry
+snapshot/import/export compatibility belongs to `ld_migration` when used to move
+application state. Registry-equivalent behavior whose purpose is desktop,
+startup, shell, policy, or session integration belongs to `ld_desktop`.
 
 ### Registry Types
 
@@ -339,7 +368,11 @@ Safety rules:
 - policy writes require explicit permission,
 - Linux builds return unsupported diagnostics for raw Registry operations unless reading/writing a portable Registry snapshot file.
 
-## Effects API
+## Effects API Prototype
+
+ADR 0012 moves desktop integration effects to the planned `ld_desktop` module.
+The current `linuxdesktop::settings::effects` implementation is temporary
+prototype evidence.
 
 Only these effects are first-scope:
 
@@ -466,7 +499,7 @@ Required examples before ship:
 - Autostart enable/disable on Windows and Linux.
 - Managed/enforced policy plan on Windows and Linux.
 
-## Implementation Order
+## Historical Implementation Order
 
 1. Update docs and examples to reflect the expanded API.
 2. Add named roots and component roots to C++ and the existing C ABI. `(implemented)`
@@ -509,7 +542,7 @@ Implemented in the current C++ sample:
 - Windows `Software\Policies` backend shape over the raw Registry API.
 
 The next code work should harden module boundaries, write safety, and Windows
-verification before adding new C ABI families. Windows CI or a Windows
-container/manual run must verify the Registry backend, autostart backend,
-policy backend, and tree import/export before the module can be considered a
-ship candidate.
+verification before adding new C ABI families. Per ADR 0012, the Registry,
+autostart, policy, and migration behavior listed here must be extracted to
+`ld_desktop` and `ld_migration` before those APIs can be considered ship
+candidates.

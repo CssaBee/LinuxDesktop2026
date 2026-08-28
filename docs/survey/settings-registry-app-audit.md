@@ -2,7 +2,7 @@
 
 This survey expands the original `ld_settings` pass. The goal is to test whether the current API is enough for real Windows-heavy applications and cross-platform references.
 
-Conclusion: the current `ld_settings` sample is a useful seed, but it is not shippable yet. Real applications need named roots, component roots, config layers, migration plans, autostart support, and full Windows Registry support with safe execution controls.
+Conclusion: the current `ld_settings` sample is a useful seed, but it is not shippable yet. Real applications need named roots, component roots, config layers, migration plans, autostart support, and full Windows Registry support with safe execution controls. ADR 0012 keeps the settings/config subset in `ld_settings` and moves desktop effects to `ld_desktop` and migration behavior to `ld_migration`.
 
 ## Requirement Summary
 
@@ -11,12 +11,12 @@ Conclusion: the current `ld_settings` sample is a useful seed, but it is not shi
 | Standard user/config/data/state/cache roots | Notepad++, ShareX, KeePassXC, Qt, wxWidgets, XDG | Keep fixed roots, but add layered read candidates and named/component roots. |
 | Portable settings beside the app | Notepad++, ShareX, System Informer, Rufus, WinSCP, PortableApps | Replace boolean portable mode with explicit portable levels and safety diagnostics. |
 | Roaming/shared vs machine-local settings | KeePassXC, Qt, Windows AppData, WinSCP | Add first-class config layers and root persistence metadata. |
-| Registry-backed preferences | WinSCP, Greenshot, Files, Rufus, Windows desktop apps | Implement Windows Registry read/write/enumerate/delete/import/export. |
-| Registry-to-file portability | WinSCP, PortableApps, Rufus, System Informer | Add registry export/import and migration plans with JSON canonical format plus `.reg` compatibility. |
+| Registry-backed preferences | WinSCP, Greenshot, Files, Rufus, Windows desktop apps | Keep as prototype evidence; app-settings Registry migration compatibility belongs to `ld_migration`, while desktop/system Registry-equivalent behavior belongs to `ld_desktop`. |
+| Registry-to-file portability | WinSCP, PortableApps, Rufus, System Informer | Move registry export/import and migration plans with JSON canonical format plus `.reg` compatibility to `ld_migration`. |
 | Admin-managed and enforced settings | WinSCP docs, dconf profiles/locks, Windows policy conventions | Add managed and enforced layers, with enforced values non-overridable. |
-| Startup/autostart integration | Greenshot/ShareX category, Windows `Run` keys, XDG Autostart | Implement autostart effect planning and backend execution in `ld_settings`. |
-| File associations and protocol handlers | WinSCP setup, Windows shell registry, freedesktop MIME/Desktop Entry specs | Do not implement now; users should request these through GitHub issues. |
-| Migration from legacy locations | ShareX, KeePassXC, wxWidgets | Add `migration_plan` as a separate API from hydration. |
+| Startup/autostart integration | Greenshot/ShareX category, Windows `Run` keys, XDG Autostart | Move autostart effect planning and backend execution to `ld_desktop`. |
+| File associations and protocol handlers | WinSCP setup, Windows shell registry, freedesktop MIME/Desktop Entry specs | Move to `ld_desktop`. |
+| Migration from legacy locations | ShareX, KeePassXC, wxWidgets | Move `migration_plan` and execution behavior to `ld_migration`; keep hydration separate in `ld_settings`. |
 | Test mode / isolated roots | Qt `QStandardPaths`, CI needs | Add explicit test/sandbox root override options. |
 
 ## Application Findings

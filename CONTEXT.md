@@ -84,6 +84,14 @@ _Avoid_: All desktop platforms, Linux everywhere
 A public API design constraint that keeps concepts small, ownership explicit, threading documented, and future non-C++ bindings plausible.
 _Avoid_: Rust implementation requirement, premature FFI layer
 
+**Pre-1.0 C++ API rule**:
+Before `1.0`, C++ APIs may break when source audits, proof integrations, or
+module-boundary corrections show that the current shape is wrong. Such breaks
+must be deliberate, documented, and accompanied by replacement guidance. Existing
+C ABI entry points are best-effort compatible where practical until
+release-candidate status; C ABI expansion waits until then.
+_Avoid_: Stable C++ ABI promise, permanent prototype API
+
 **Permissive license posture**:
 The intent to publish the general-purpose platform libraries under the MIT License, while preserving compatibility with proof-case constraints.
 _Avoid_: Private helper license, application-bound licensing
