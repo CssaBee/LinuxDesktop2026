@@ -62,6 +62,12 @@ std::filesystem::path test_root()
     return root;
 }
 
+std::string path_to_utf8_string(const std::filesystem::path& value)
+{
+    const auto text = value.u8string();
+    return std::string(reinterpret_cast<const char*>(text.data()), text.size());
+}
+
 std::string read_file(const std::filesystem::path& path)
 {
     std::ifstream input(path, std::ios::binary);
@@ -813,7 +819,7 @@ void c_abi_resolves_settings_override()
     ld_settings_root_options_init(&options);
     options.organization = "LinuxDesktop2026";
     options.application = "c-settings-tests";
-    const auto root_text = root.u8string();
+    const auto root_text = path_to_utf8_string(root);
     options.settings_override = root_text.c_str();
     ld_settings_named_root_request named_root = {};
     named_root.name = "logs";
