@@ -90,7 +90,8 @@ Do not include these in the first sample:
 - XML parser ownership,
 - cloud provider integration beyond app-provided absolute sync roots,
 - portals,
-- registry editing,
+- registry editing beyond prototype reports until at least one real integration proves the needed shape,
+- enterprise policy and autostart expansion beyond narrowly tested migration effects,
 - Notepad++ fork changes,
 - file watching,
 - plugin ABI compatibility,
@@ -99,3 +100,16 @@ Do not include these in the first sample:
 ## Consequences
 
 This module gives the project a small executable proof before harder Linux desktop seams. It also creates a reusable foundation for the Notepad++ proof case without committing us to a full Notepad++ port strategy yet.
+
+## Review Update
+
+The current implementation has grown past the original "small settings/config module" boundary. `ld_settings` now includes root selection, config layers, migration planning/execution, Registry-shaped data, autostart effects, managed/enforced policy effects, and write/backup behavior. That is useful prototype evidence, but it must not be treated as a shippable module boundary.
+
+Before `ld_settings` can be called stable or production-ready:
+
+- Move generic path discovery and root reporting through `ld_paths`.
+- Split or postpone policy/effect domains that are not settings-specific, especially Registry import/export, autostart, and enterprise policy.
+- Define the write guarantee precisely. "Atomic replace" means namespace replacement only unless the implementation also provides durable write/rename/fsync behavior on the platform.
+- Replace predictable check-then-open temporary-file creation with platform-safe exclusive creation.
+- Keep migration execution behind dry-run-first APIs and real application integration tests.
+- Validate the public layer model against at least two real consumers before preserving enum names or precedence behavior.

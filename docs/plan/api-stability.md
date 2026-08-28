@@ -10,7 +10,9 @@ The project promises:
 
 - Public C++ headers live under `include/linuxdesktop/`.
 - Public C ABI headers use plain C types and avoid C++ standard library types.
-- Breaking source or ABI changes require a minor version bump while `major == 0`.
+- C++ APIs are source-compatibility interfaces only; no stable C++ binary ABI is promised while public values expose standard-library types.
+- Existing C ABI entry points should remain easy to bind and deliberately versioned, but C ABI expansion and binary-stability design are postponed until release-candidate status.
+- Breaking source changes or C ABI changes require a minor version bump while `major == 0`.
 - Patch releases should preserve source compatibility and C ABI compatibility for documented functions.
 - Removed or renamed public functions should be called out in release notes or migration docs.
 - C ABI callers own no returned memory directly; they release reports through the matching free function.
@@ -53,9 +55,9 @@ ld_paths_version_patch()
 ld_paths_version_string()
 ```
 
-The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function.
+The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function. Do not broaden this surface until release-candidate API evidence exists.
 
-`ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until the release-preview pass so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
+`ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until release-candidate status so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
 
 ## Pre-1.0 Rules
 
@@ -63,7 +65,6 @@ Allowed in `0.x` minor releases:
 
 - rename provisional types or functions,
 - add fields to C++ structs,
-- add C ABI functions,
 - change diagnostics when behavior becomes more accurate,
 - and tighten validation around unsafe or ambiguous inputs.
 
@@ -76,6 +77,8 @@ Avoid unless strongly justified:
 - or silently weakening write-safety guarantees.
 
 If one of those happens before `1.0`, document it as a breaking change.
+
+At release-candidate status, revisit whether the C ABI should use opaque handles or versioned/size-tagged structs for long-lived objects and large reports. Plain C structs are easier to bind than C++ values, but they can still freeze layout too early.
 
 ## Deferred
 
