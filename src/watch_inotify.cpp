@@ -104,7 +104,7 @@ public:
         if (fd_ < 0 || stopped_) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.unavailable",
+                std::string(diagnostic_code::backend_unavailable),
                 "inotify is unavailable",
                 options.path));
             return report;
@@ -115,7 +115,7 @@ public:
         if (!std::filesystem::exists(absolute, ec)) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.not_found",
+                std::string(diagnostic_code::path_not_found),
                 "Watch path does not exist",
                 absolute));
             return report;
@@ -125,7 +125,7 @@ public:
         if (type == path_type::other || type == path_type::unknown) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.unsupported_type",
+                std::string(diagnostic_code::path_unsupported_type),
                 "Watch path is not a regular file or directory",
                 absolute));
             return report;
@@ -134,7 +134,7 @@ public:
         if (options.recursive == recursive_policy::native_if_supported) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.recursive.unsupported",
+                std::string(diagnostic_code::recursive_unsupported),
                 "inotify does not provide one native recursive watch",
                 absolute));
             return report;
@@ -144,7 +144,7 @@ public:
             report.capabilities.emulated_recursive = true;
             report.diagnostics.push_back(make_diagnostic(
                 severity::warning,
-                "watch.recursive.emulated",
+                std::string(diagnostic_code::recursive_emulated),
                 "Recursive watching is emulated with one inotify watch per directory",
                 absolute));
         }
@@ -163,7 +163,7 @@ public:
         if (!report.ok && report.diagnostics.empty()) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 "Failed to create inotify watch",
                 absolute));
         }
@@ -246,13 +246,13 @@ public:
                 if (is_stopped()) {
                     return std::nullopt;
                 }
-                return error_event("watch.backend.error", std::strerror(errno));
+                return error_event(std::string(diagnostic_code::backend_error), std::strerror(errno));
             }
             if (item.revents & POLLNVAL) {
                 if (is_stopped()) {
                     return std::nullopt;
                 }
-                return error_event("watch.backend.error", "inotify descriptor is invalid");
+                return error_event(std::string(diagnostic_code::backend_error), "inotify descriptor is invalid");
             }
 
             std::vector<char> buffer(16 * 1024);
@@ -264,7 +264,7 @@ public:
                 if (is_stopped()) {
                     return std::nullopt;
                 }
-                return error_event("watch.backend.error", std::strerror(errno));
+                return error_event(std::string(diagnostic_code::backend_error), std::strerror(errno));
             }
 
             std::optional<watch_event> next;
@@ -312,14 +312,19 @@ private:
     capability_report capabilities_locked() const
     {
         capability_report report;
+        report.backend = backend_kind::inotify;
         report.native_recursive = false;
         report.emulated_recursive = true;
         report.overflow_reporting = true;
         report.settled_file_helper = false;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            std::string(diagnostic_code::backend_inotify),
+            "Using inotify backend"));
         if (fd_ < 0) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.unavailable",
+                std::string(diagnostic_code::backend_unavailable),
                 "inotify is unavailable"));
         }
         return report;
@@ -349,24 +354,24 @@ private:
 
     diagnostic inotify_add_watch_diagnostic(int error, const std::filesystem::path& watch_root) const
     {
-        auto code = std::string{"watch.backend.error"};
+        auto code = std::string{diagnostic_code::backend_error};
         auto message = std::string{std::strerror(error)};
         if (error == ENOSPC) {
-            code = "watch.resource.limit";
+            code = diagnostic_code::resource_limit;
             message = "inotify watch limit reached";
             const auto max_watches = read_text_file("/proc/sys/fs/inotify/max_user_watches");
             if (max_watches.has_value()) {
                 message += " (max_user_watches=" + *max_watches + ")";
             }
         } else if (error == EMFILE || error == ENFILE) {
-            code = "watch.resource.limit";
+            code = diagnostic_code::resource_limit;
             message = "inotify file descriptor limit reached";
             const auto max_instances = read_text_file("/proc/sys/fs/inotify/max_user_instances");
             if (max_instances.has_value()) {
                 message += " (max_user_instances=" + *max_instances + ")";
             }
         } else if (error == EACCES) {
-            code = "watch.path.access_denied";
+            code = diagnostic_code::path_access_denied;
             message = "Permission denied while creating inotify watch";
         }
 
@@ -389,10 +394,10 @@ private:
                     it.disable_recursion_pending();
                 }
                 report.diagnostics.push_back(make_diagnostic(
-                    severity::warning,
-                    "watch.recursive.symlink_skipped",
-                    "Recursive emulation does not follow symlinked directories",
-                    absolute));
+                severity::warning,
+                std::string(diagnostic_code::recursive_symlink_skipped),
+                "Recursive emulation does not follow symlinked directories",
+                absolute));
                 continue;
             }
             if (it->is_directory(entry_ec)) {
@@ -403,7 +408,7 @@ private:
         if (ec) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::warning,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 ec.message(),
                 root));
         }
@@ -424,7 +429,7 @@ private:
         if (has_watch_root_locked(id, normalized_root)) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::info,
-                "watch.recursive.duplicate_skipped",
+                std::string(diagnostic_code::recursive_duplicate_skipped),
                 "Recursive emulation skipped an already watched directory",
                 normalized_root));
             return;
@@ -527,7 +532,7 @@ private:
             } else {
                 event.diagnostics.push_back(make_diagnostic(
                     severity::warning,
-                    "watch.rename.unpaired",
+                    std::string(diagnostic_code::rename_unpaired),
                     "Rename destination did not have a matching source",
                     event.path.absolute));
             }
@@ -563,7 +568,7 @@ private:
         if (std::filesystem::is_symlink(std::filesystem::symlink_status(root, symlink_ec))) {
             ready_events_.push_back(diagnostic_event(parent, make_diagnostic(
                 severity::warning,
-                "watch.recursive.symlink_skipped",
+                std::string(diagnostic_code::recursive_symlink_skipped),
                 "Recursive emulation does not follow symlinked directories",
                 root)));
             return;
@@ -580,7 +585,7 @@ private:
                 }
                 ready_events_.push_back(diagnostic_event(parent, make_diagnostic(
                     severity::warning,
-                    "watch.recursive.symlink_skipped",
+                    std::string(diagnostic_code::recursive_symlink_skipped),
                     "Recursive emulation does not follow symlinked directories",
                     absolute)));
                 continue;
@@ -615,7 +620,7 @@ private:
         event.caller_tag = record.caller_tag;
         event.diagnostics.push_back(make_diagnostic(
             severity::info,
-            "watch.recursive.discovered",
+            std::string(diagnostic_code::recursive_discovered),
             "Discovered path while expanding an emulated recursive watch",
             absolute));
         return event;
@@ -658,11 +663,11 @@ private:
         event.rescan_recommended = true;
         event.diagnostics.push_back(make_diagnostic(
             severity::error,
-            "watch.overflow",
+            std::string(diagnostic_code::overflow),
             "inotify reported event queue overflow"));
         event.diagnostics.push_back(make_diagnostic(
             severity::warning,
-            "watch.rescan_recommended",
+            std::string(diagnostic_code::rescan_recommended),
             "Rescan watched roots before trusting further events"));
         return event;
     }
@@ -696,7 +701,7 @@ public:
         report.id = id;
         report.diagnostics.push_back(make_diagnostic(
             severity::error,
-            "watch.backend.unavailable",
+            std::string(diagnostic_code::backend_unavailable),
             "No native watcher backend is available in this prototype",
             options.path));
         return report;
@@ -720,10 +725,11 @@ public:
     capability_report capabilities() const override
     {
         capability_report report;
+        report.backend = backend_kind::unavailable;
         report.overflow_reporting = false;
         report.diagnostics.push_back(make_diagnostic(
             severity::error,
-            "watch.backend.unavailable",
+            std::string(diagnostic_code::backend_unavailable),
             "No native watcher backend is available in this prototype"));
         return report;
     }

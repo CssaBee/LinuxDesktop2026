@@ -11,6 +11,7 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -35,7 +36,7 @@ void require(bool condition, const std::string& message)
     }
 }
 
-bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, const std::string& code)
+bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, std::string_view code)
 {
     for (const auto& item : diagnostics) {
         if (item.code == code) {
@@ -78,7 +79,7 @@ public:
         if (stopped_) {
             report.diagnostics.push_back(diagnostic(
                 linuxdesktop::severity::error,
-                "watch.backend.unavailable",
+                std::string(ld::diagnostic_code::backend_unavailable),
                 "simulated backend is stopped",
                 options.path));
             return report;
@@ -90,7 +91,7 @@ public:
         if (!std::filesystem::exists(path, ec)) {
             report.diagnostics.push_back(diagnostic(
                 linuxdesktop::severity::error,
-                "watch.path.not_found",
+                std::string(ld::diagnostic_code::path_not_found),
                 "watch path does not exist",
                 path));
             return report;
@@ -98,7 +99,7 @@ public:
         if (options.recursive == ld::recursive_policy::native_if_supported && !capabilities_.native_recursive) {
             report.diagnostics.push_back(diagnostic(
                 linuxdesktop::severity::error,
-                "watch.recursive.unsupported",
+                std::string(ld::diagnostic_code::recursive_unsupported),
                 "native recursive watch is unavailable",
                 path));
             return report;
@@ -106,7 +107,7 @@ public:
         if (options.recursive == ld::recursive_policy::emulate) {
             report.diagnostics.push_back(diagnostic(
                 linuxdesktop::severity::warning,
-                "watch.recursive.emulated",
+                std::string(ld::diagnostic_code::recursive_emulated),
                 "recursive watch is simulated with subdirectory watches",
                 path));
         }
@@ -216,13 +217,13 @@ public:
         event.rescan_recommended = it->overflow == ld::overflow_policy::request_rescan;
         event.diagnostics.push_back(diagnostic(
             linuxdesktop::severity::error,
-            "watch.overflow",
+            std::string(ld::diagnostic_code::overflow),
             "simulated overflow",
             it->path));
         if (event.rescan_recommended) {
             event.diagnostics.push_back(diagnostic(
                 linuxdesktop::severity::warning,
-                "watch.rescan_recommended",
+                std::string(ld::diagnostic_code::rescan_recommended),
                 "rescan recommended",
                 it->path));
         }
@@ -240,7 +241,7 @@ private:
 
     mutable std::mutex mutex_;
     std::condition_variable cv_;
-    ld::capability_report capabilities_{false, true, true, true, {}};
+    ld::capability_report capabilities_{ld::backend_kind::simulated, false, true, true, true, {}};
     std::vector<watch_record> watches_;
     std::deque<ld::watch_event> events_;
     bool stopped_ = false;
@@ -261,6 +262,9 @@ void exposes_public_version_and_strings()
     require(ld::to_string(ld::recursive_policy::emulate) == "emulate", "recursive policy should stringify");
     require(ld::to_string(ld::overflow_policy::request_rescan) == "request_rescan", "overflow policy should stringify");
     require(ld::to_string(ld::stream_state::degraded) == "degraded", "stream state should stringify");
+    require(ld::to_string(ld::backend_kind::simulated) == "simulated", "backend kind should stringify");
+    require(ld::diagnostic_code::backend_error == std::string_view("watch.backend.error"),
+        "diagnostic code constants should be public");
 }
 
 void reports_start_failures_and_recursive_policy()
@@ -272,7 +276,7 @@ void reports_start_failures_and_recursive_policy()
     missing.path = test_root() / "missing";
     auto report = watcher.add_watch(missing);
     require(!report.ok, "missing path should not start");
-    require(has_diagnostic(report.diagnostics, "watch.path.not_found"), "missing path should diagnose path");
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::path_not_found), "missing path should diagnose path");
 
     const auto root = test_root();
     ld::watch_options recursive;
@@ -280,12 +284,14 @@ void reports_start_failures_and_recursive_policy()
     recursive.recursive = ld::recursive_policy::native_if_supported;
     report = watcher.add_watch(recursive);
     require(!report.ok, "native recursive request should fail when unsupported");
-    require(has_diagnostic(report.diagnostics, "watch.recursive.unsupported"), "native recursive should diagnose unsupported");
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::recursive_unsupported),
+        "native recursive should diagnose unsupported");
 
     recursive.recursive = ld::recursive_policy::emulate;
     report = watcher.add_watch(recursive);
     require(report.ok, "emulated recursive request should start");
-    require(has_diagnostic(report.diagnostics, "watch.recursive.emulated"), "emulated recursive should diagnose policy");
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::recursive_emulated),
+        "emulated recursive should diagnose policy");
 }
 
 void supports_pull_delivery_and_paths()
@@ -299,9 +305,13 @@ void supports_pull_delivery_and_paths()
     options.caller_tag = "project-tree";
     const auto report = watcher.add_watch(options);
     require(report.ok, "directory watch should start");
+    require(report.capabilities.backend == ld::backend_kind::simulated, "start report should identify backend");
+    require(watcher.capabilities().backend == ld::backend_kind::simulated, "capability report should identify backend");
+    require(watcher.wait_for(std::chrono::milliseconds{1}) == std::nullopt,
+        "timed wait should return empty when no event is queued");
 
     backend->push(backend->event_for(report.id, ld::event_kind::created, "new.txt"));
-    const auto event = watcher.wait();
+    const auto event = watcher.wait_for(std::chrono::seconds{2});
     require(event.has_value(), "blocking wait should return pushed event");
     require(event->kind == ld::event_kind::created, "event kind should round trip");
     require(event->caller_tag == "project-tree", "caller tag should round trip");
@@ -373,7 +383,7 @@ void maps_rename_and_overflow_state()
     require(event->kind == ld::event_kind::overflow, "overflow kind should be preserved");
     require(event->state == ld::stream_state::degraded, "overflow event should mark degraded state");
     require(event->rescan_recommended, "overflow should request rescan");
-    require(has_diagnostic(event->diagnostics, "watch.overflow"), "overflow should diagnose lost sync");
+    require(has_diagnostic(event->diagnostics, ld::diagnostic_code::overflow), "overflow should diagnose lost sync");
     require(watcher.state() == ld::stream_state::degraded, "watcher should retain degraded state");
 }
 
@@ -423,7 +433,8 @@ void captures_settled_file_options_in_start_path()
 
     const auto received = watcher.wait();
     require(received.has_value(), "settled-file event should arrive");
-    require(has_diagnostic(received->diagnostics, "watch.settle.ready"), "settled-file readiness should be visible");
+    require(has_diagnostic(received->diagnostics, ld::diagnostic_code::settle_ready),
+        "settled-file readiness should be visible");
 }
 
 void settled_file_wait_does_not_block_raw_delivery()

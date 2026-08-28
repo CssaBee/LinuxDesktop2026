@@ -88,7 +88,7 @@ public:
         if (!std::filesystem::exists(absolute, ec)) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.not_found",
+                std::string(diagnostic_code::path_not_found),
                 "Watch path does not exist",
                 absolute));
             return report;
@@ -98,7 +98,7 @@ public:
         if (type == path_type::other || type == path_type::unknown) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.unsupported_type",
+                std::string(diagnostic_code::path_unsupported_type),
                 "Watch path is not a regular file or directory",
                 absolute));
             return report;
@@ -108,7 +108,7 @@ public:
             !libuv_recursive_supported()) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.recursive.unsupported",
+                std::string(diagnostic_code::recursive_unsupported),
                 "libuv recursive watching is not available on this platform",
                 absolute));
             return report;
@@ -169,13 +169,14 @@ public:
     capability_report capabilities() const override
     {
         capability_report report;
+        report.backend = backend_kind::libuv;
         report.native_recursive = libuv_recursive_supported();
         report.emulated_recursive = false;
         report.overflow_reporting = false;
         report.settled_file_helper = false;
         report.diagnostics.push_back(make_diagnostic(
             severity::info,
-            "watch.backend.libuv",
+            std::string(diagnostic_code::backend_libuv),
             "Using libuv fs-event backend"));
         return report;
     }
@@ -220,7 +221,7 @@ private:
             command_result result;
             result.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.unavailable",
+                std::string(diagnostic_code::backend_unavailable),
                 "libuv watcher backend is stopped",
                 value.options.path));
             return result;
@@ -296,7 +297,7 @@ private:
         if (init < 0) {
             result.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 uv_strerror(init),
                 absolute));
             delete record;
@@ -317,7 +318,7 @@ private:
         if (started < 0) {
             result.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 uv_strerror(started),
                 absolute));
             uv_close(reinterpret_cast<uv_handle_t*>(&record->handle), [](uv_handle_t* handle) {
@@ -380,7 +381,7 @@ private:
             event.path.type = record->target_type;
             event.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 uv_strerror(status),
                 record->watched_absolute));
             push_event(std::move(event));

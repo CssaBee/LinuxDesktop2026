@@ -76,6 +76,14 @@ enum class stream_state {
     stopped
 };
 
+enum class backend_kind {
+    unavailable,
+    inotify,
+    read_directory_changes_w,
+    libuv,
+    simulated
+};
+
 struct watch_id {
     std::uint64_t value = 0;
 };
@@ -119,6 +127,7 @@ struct watch_event {
 using event_callback = std::function<void(const watch_event&)>;
 
 struct capability_report {
+    backend_kind backend = backend_kind::unavailable;
     bool native_recursive = false;
     bool emulated_recursive = false;
     bool overflow_reporting = true;
@@ -150,6 +159,7 @@ public:
     void set_callback(event_callback callback);
     std::optional<watch_event> poll();
     std::optional<watch_event> wait();
+    std::optional<watch_event> wait_for(std::chrono::milliseconds timeout);
 
     capability_report capabilities() const;
     stream_state state() const;
@@ -160,6 +170,7 @@ std::string_view to_string(path_type value);
 std::string_view to_string(recursive_policy value);
 std::string_view to_string(overflow_policy value);
 std::string_view to_string(stream_state value);
+std::string_view to_string(backend_kind value);
 
 } // namespace linuxdesktop::watch
 ```
@@ -178,6 +189,7 @@ The first `watcher` object owns backend resources and an internal event queue.
 - `stop` closes backend resources, wakes any blocking `wait`, and moves the stream to `stopped`.
 - `poll` returns the next queued event or `std::nullopt` without blocking.
 - `wait` blocks until an event is available or the watcher is stopped; stopped watchers return `std::nullopt`.
+- `wait_for` blocks until an event is available, the timeout expires, or the watcher is stopped; timeout and stopped both return `std::nullopt`.
 - `set_callback` installs process-local callback delivery; passing an empty callback returns future events to `poll`/`wait` delivery.
 - Callbacks are invoked from the watcher delivery thread or caller-pumped backend thread, never promised on a UI thread.
 - Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
@@ -271,15 +283,27 @@ Diagnostics should use the shared C++ vocabulary from `ld_core`, introduced by A
 The first diagnostic codes should include:
 
 - `watch.backend.unavailable`
+- `watch.backend.error`
+- `watch.backend.inotify`
+- `watch.backend.windows`
+- `watch.backend.libuv`
 - `watch.path.not_found`
 - `watch.path.unsupported_type`
+- `watch.path.access_denied`
 - `watch.recursive.unsupported`
+- `watch.recursive.native`
 - `watch.recursive.emulated`
+- `watch.recursive.symlink_skipped`
+- `watch.recursive.duplicate_skipped`
+- `watch.recursive.discovered`
 - `watch.overflow`
 - `watch.rescan_recommended`
+- `watch.resource.limit`
 - `watch.rename.unpaired`
 - `watch.settle.timeout`
-- `watch.backend.error`
+- `watch.settle.ready`
+
+These names are public `linuxdesktop::watch::diagnostic_code` constants; consumers should compare against those constants instead of spelling raw strings.
 
 ## Prototype Boundary
 
@@ -315,7 +339,7 @@ Deterministic tests should use the private simulated backend and cover:
 
 - create, modify, remove, metadata, and rename event mapping,
 - paired and unpaired rename events,
-- event queue `poll` and `wait` behavior,
+- event queue `poll`, `wait`, and `wait_for` behavior,
 - callback delivery ownership,
 - `caller_tag` round trips,
 - `watch_path` absolute/root-relative/root identity fields,
@@ -381,6 +405,8 @@ Still prototype-grade:
 - Recursive emulation now expands dynamically when new subdirectories appear, skips duplicate directory watches inside one logical recursive watch, fans out shared native descriptor events to multiple logical watches, reports skipped symlinked directories, and maps common inotify resource-limit failures into `watch.resource.limit` diagnostics.
 - Settled-file support now runs outside the raw backend delivery path and coalesces repeated events by source/path, but it still needs broader timeout, cancellation, and large-batch tests.
 - The deterministic test hook is private/internal through `src/watch_backend.hpp`; it is no longer exposed as a public `watcher` constructor in the installed header.
+- Public API stabilization has started: `capability_report` identifies `backend_kind`, diagnostic code names are public constants, `watch_id` has equality operators, `watch_path` keeps path values instead of bare strings, and pull delivery has timeout-capable `wait_for`.
+- Remaining public API stabilization work is limited to deciding whether to add a C ABI after the C++ ownership model survives native verification, final wording for root-relative path behavior on Windows single-file watches, and whether capability reporting needs richer limit/cost fields after stress testing.
 
 ## Consequences
 

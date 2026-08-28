@@ -55,15 +55,59 @@ enum class stream_state {
     stopped
 };
 
+enum class backend_kind {
+    unavailable,
+    inotify,
+    read_directory_changes_w,
+    libuv,
+    simulated
+};
+
 struct watch_id {
     std::uint64_t value = 0;
 };
 
+inline bool operator==(watch_id lhs, watch_id rhs)
+{
+    return lhs.value == rhs.value;
+}
+
+inline bool operator!=(watch_id lhs, watch_id rhs)
+{
+    return !(lhs == rhs);
+}
+
+namespace diagnostic_code {
+inline constexpr std::string_view backend_unavailable = "watch.backend.unavailable";
+inline constexpr std::string_view backend_error = "watch.backend.error";
+inline constexpr std::string_view backend_inotify = "watch.backend.inotify";
+inline constexpr std::string_view backend_windows = "watch.backend.windows";
+inline constexpr std::string_view backend_libuv = "watch.backend.libuv";
+inline constexpr std::string_view path_not_found = "watch.path.not_found";
+inline constexpr std::string_view path_unsupported_type = "watch.path.unsupported_type";
+inline constexpr std::string_view path_access_denied = "watch.path.access_denied";
+inline constexpr std::string_view recursive_unsupported = "watch.recursive.unsupported";
+inline constexpr std::string_view recursive_native = "watch.recursive.native";
+inline constexpr std::string_view recursive_emulated = "watch.recursive.emulated";
+inline constexpr std::string_view recursive_symlink_skipped = "watch.recursive.symlink_skipped";
+inline constexpr std::string_view recursive_duplicate_skipped = "watch.recursive.duplicate_skipped";
+inline constexpr std::string_view recursive_discovered = "watch.recursive.discovered";
+inline constexpr std::string_view overflow = "watch.overflow";
+inline constexpr std::string_view rescan_recommended = "watch.rescan_recommended";
+inline constexpr std::string_view resource_limit = "watch.resource.limit";
+inline constexpr std::string_view rename_unpaired = "watch.rename.unpaired";
+inline constexpr std::string_view settle_timeout = "watch.settle.timeout";
+inline constexpr std::string_view settle_ready = "watch.settle.ready";
+} // namespace diagnostic_code
+
 struct watch_path {
+    // Absolute/root-relative are std::filesystem paths so callers keep LinuxDesktop2026 path semantics
+    // instead of flattening backend-native paths into strings.
     std::filesystem::path absolute;
     std::optional<std::filesystem::path> root_relative;
     watch_id root;
     path_type type = path_type::unknown;
+    // Debug-only backend detail. Do not parse this field for routing or persistence.
     std::string backend_debug_name;
 };
 
@@ -98,6 +142,7 @@ struct watch_event {
 using event_callback = std::function<void(const watch_event&)>;
 
 struct capability_report {
+    backend_kind backend = backend_kind::unavailable;
     bool native_recursive = false;
     bool emulated_recursive = false;
     bool overflow_reporting = true;
@@ -136,6 +181,7 @@ public:
     void set_callback(event_callback callback);
     std::optional<watch_event> poll();
     std::optional<watch_event> wait();
+    std::optional<watch_event> wait_for(std::chrono::milliseconds timeout);
 
     capability_report capabilities() const;
     stream_state state() const;
@@ -156,5 +202,6 @@ std::string_view to_string(path_type value);
 std::string_view to_string(recursive_policy value);
 std::string_view to_string(overflow_policy value);
 std::string_view to_string(stream_state value);
+std::string_view to_string(backend_kind value);
 
 } // namespace linuxdesktop::watch

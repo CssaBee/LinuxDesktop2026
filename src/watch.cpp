@@ -93,6 +93,23 @@ std::string_view to_string(stream_state value)
     return "unknown";
 }
 
+std::string_view to_string(backend_kind value)
+{
+    switch (value) {
+    case backend_kind::unavailable:
+        return "unavailable";
+    case backend_kind::inotify:
+        return "inotify";
+    case backend_kind::read_directory_changes_w:
+        return "read_directory_changes_w";
+    case backend_kind::libuv:
+        return "libuv";
+    case backend_kind::simulated:
+        return "simulated";
+    }
+    return "unknown";
+}
+
 class watcher::impl {
 public:
     explicit impl(std::shared_ptr<detail::watch_backend> backend)
@@ -125,7 +142,7 @@ public:
             start_report report;
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.unavailable",
+                std::string(diagnostic_code::backend_unavailable),
                 "Watcher backend is stopped",
                 options.path));
             return report;
@@ -208,6 +225,23 @@ public:
         return event;
     }
 
+    std::optional<watch_event> wait_for(std::chrono::milliseconds timeout)
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (timeout.count() < 0) {
+            timeout = std::chrono::milliseconds{0};
+        }
+        const auto ready = cv_.wait_for(lock, timeout, [this] {
+            return !queue_.empty() || stopped_;
+        });
+        if (!ready || queue_.empty()) {
+            return std::nullopt;
+        }
+        auto event = std::move(queue_.front());
+        queue_.pop_front();
+        return event;
+    }
+
     capability_report capabilities() const
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -215,7 +249,7 @@ public:
             capability_report report;
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.unavailable",
+                std::string(diagnostic_code::backend_unavailable),
                 "Watcher backend is unavailable"));
             return report;
         }
@@ -366,7 +400,7 @@ private:
         if (ec) {
             event.diagnostics.push_back(make_diagnostic(
                 severity::warning,
-                "watch.settle.timeout",
+                std::string(diagnostic_code::settle_timeout),
                 ec.message(),
                 event.path.absolute));
             return event;
@@ -375,7 +409,7 @@ private:
         if (ec) {
             event.diagnostics.push_back(make_diagnostic(
                 severity::warning,
-                "watch.settle.timeout",
+                std::string(diagnostic_code::settle_timeout),
                 ec.message(),
                 event.path.absolute));
             return event;
@@ -392,7 +426,7 @@ private:
             if (ec) {
                 event.diagnostics.push_back(make_diagnostic(
                     severity::warning,
-                    "watch.settle.timeout",
+                    std::string(diagnostic_code::settle_timeout),
                     ec.message(),
                     event.path.absolute));
                 return event;
@@ -401,7 +435,7 @@ private:
             if (ec) {
                 event.diagnostics.push_back(make_diagnostic(
                     severity::warning,
-                    "watch.settle.timeout",
+                    std::string(diagnostic_code::settle_timeout),
                     ec.message(),
                     event.path.absolute));
                 return event;
@@ -417,7 +451,7 @@ private:
 
         event.diagnostics.push_back(make_diagnostic(
             severity::info,
-            "watch.settle.ready",
+            std::string(diagnostic_code::settle_ready),
             "File size and mtime are stable",
             event.path.absolute));
         return event;
@@ -501,6 +535,11 @@ std::optional<watch_event> watcher::poll()
 std::optional<watch_event> watcher::wait()
 {
     return impl_->wait();
+}
+
+std::optional<watch_event> watcher::wait_for(std::chrono::milliseconds timeout)
+{
+    return impl_->wait_for(timeout);
 }
 
 capability_report watcher::capabilities() const

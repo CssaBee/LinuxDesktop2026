@@ -97,7 +97,7 @@ public:
         if (!std::filesystem::exists(absolute, ec)) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.not_found",
+                std::string(diagnostic_code::path_not_found),
                 "Watch path does not exist",
                 absolute));
             return report;
@@ -107,7 +107,7 @@ public:
         if (type == path_type::other || type == path_type::unknown) {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.path.unsupported_type",
+                std::string(diagnostic_code::path_unsupported_type),
                 "Watch path is not a regular file or directory",
                 absolute));
             return report;
@@ -141,7 +141,7 @@ public:
             const auto error = GetLastError();
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                error == ERROR_ACCESS_DENIED ? "watch.path.access_denied" : "watch.backend.error",
+                std::string(error == ERROR_ACCESS_DENIED ? diagnostic_code::path_access_denied : diagnostic_code::backend_error),
                 windows_error_message(error),
                 directory));
             return report;
@@ -152,7 +152,7 @@ public:
             CloseHandle(worker->handle);
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 windows_error_message(error),
                 directory));
             return report;
@@ -162,7 +162,7 @@ public:
             report.capabilities.native_recursive = true;
             report.diagnostics.push_back(make_diagnostic(
                 severity::info,
-                "watch.recursive.native",
+                std::string(diagnostic_code::recursive_native),
                 "Recursive watching is provided by ReadDirectoryChangesW",
                 absolute));
         }
@@ -174,7 +174,7 @@ public:
                 CloseHandle(worker->event);
                 report.diagnostics.push_back(make_diagnostic(
                     severity::error,
-                    "watch.backend.unavailable",
+                    std::string(diagnostic_code::backend_unavailable),
                     "Windows watcher backend is stopped",
                     absolute));
                 return report;
@@ -243,13 +243,14 @@ public:
     capability_report capabilities() const override
     {
         capability_report report;
+        report.backend = backend_kind::read_directory_changes_w;
         report.native_recursive = true;
         report.emulated_recursive = false;
         report.overflow_reporting = true;
         report.settled_file_helper = false;
         report.diagnostics.push_back(make_diagnostic(
             severity::info,
-            "watch.backend.windows",
+            std::string(diagnostic_code::backend_windows),
             "Using ReadDirectoryChangesW backend"));
         return report;
     }
@@ -388,7 +389,7 @@ private:
                 } else {
                     event.diagnostics.push_back(make_diagnostic(
                         severity::warning,
-                        "watch.rename.unpaired",
+                        std::string(diagnostic_code::rename_unpaired),
                         "Rename destination did not have a matching source",
                         absolute));
                 }
@@ -428,13 +429,13 @@ private:
             event.rescan_recommended = overflow == overflow_policy::request_rescan;
             event.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.overflow",
+                std::string(diagnostic_code::overflow),
                 "ReadDirectoryChangesW reported that events may have been lost",
                 watched_absolute));
             if (event.rescan_recommended) {
                 event.diagnostics.push_back(make_diagnostic(
                     severity::warning,
-                    "watch.rescan_recommended",
+                    std::string(diagnostic_code::rescan_recommended),
                     "Rescan watched roots before trusting further events",
                     watched_absolute));
             }
@@ -452,7 +453,7 @@ private:
             event.rescan_recommended = true;
             event.diagnostics.push_back(make_diagnostic(
                 severity::error,
-                "watch.backend.error",
+                std::string(diagnostic_code::backend_error),
                 std::move(message),
                 watched_absolute));
             return event;
