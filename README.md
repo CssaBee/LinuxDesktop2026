@@ -99,6 +99,7 @@ Current backend posture:
 - The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI runs that target explicitly on Windows before the backend is called verified.
 - The first watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, and backend/resource-limit diagnostic preservation. Next watcher work is settled-file hardening, then final API decisions after Windows CI reports green.
 - The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, and `wait_for`; remaining stabilization is C ABI timing after native verification, Windows single-file root-relative wording, and richer capability fields only if stress tests prove they are needed.
+- Windows compatibility work should happen at the LinuxDesktop2026 API layer. Tests and examples should use `ld_paths`, `ld_settings`, and `ld_watch` concepts instead of assuming XDG paths, slash-separated strings, or Registry/file-watcher backend details directly.
 
 ## `ld_paths`
 
@@ -161,7 +162,7 @@ Compatibility matrix:
 | --- | --- |
 | Ubuntu LTS / XDG Linux | Covered by deterministic C++ and C tests for Base Directory fallbacks, XDG user-dir parsing, legacy/site config candidates, path lists, directory previews, and plugin search roots. |
 | Other XDG-like Linux | Best effort through the same XDG Base Directory, XDG user-dir, and HOME fallback behavior; distro-specific user-dir behavior is not verified yet. |
-| Windows 10/11 | Public model includes Known Folder sources, user-dir fallbacks, and Windows plugin defaults, but real Windows runtime verification is still pending. |
+| Windows 10/11 | Public model includes Known Folder sources, user-dir fallbacks, Windows plugin defaults, and CI coverage for deterministic C/C++ path behavior plus hosted-runner Known Folder selection; real Windows verification still needs UTF-8 path, executable-root, unavailable-folder, and plugin-default depth before public announcement. |
 | macOS | No phase-one support promise; API choices should leave room for a later platform backend. |
 
 The first implementation should support Windows 10/11 and Ubuntu LTS, provide C++17 and C entry points, and keep filesystem mutation opt-in.

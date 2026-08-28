@@ -201,10 +201,18 @@ void resolves_home_fallbacks_when_xdg_is_unset()
     const auto report = ld::resolve_app_paths(identity, options);
 
     const auto config = selected_path(report, ld::path_family::config);
-    require(config == fixture_path({"home", "AppData", "Roaming", "LinuxDesktop2026", "paths-tests"}),
-        "Windows config path should fall back under HOME AppData, got " + config.string());
-    require(selected_path(report, ld::path_family::state) == fixture_path({"home", "AppData", "Local", "LinuxDesktop2026", "paths-tests", "state"}),
-        "Windows state path should fall back under HOME AppData");
+    const auto state = selected_path(report, ld::path_family::state);
+    if (has_selected_candidate(report, ld::path_family::config, ld::candidate_source::known_folder)) {
+        require(has_selected_candidate(report, ld::path_family::state, ld::candidate_source::known_folder),
+            "Windows state path should use Known Folder when config uses Known Folder");
+    } else {
+        require(config == fixture_path({"home", "AppData", "Roaming", "LinuxDesktop2026", "paths-tests"}),
+            "Windows config path should fall back under HOME AppData when Known Folder is unavailable, got " + config.string());
+        require(state == fixture_path({"home", "AppData", "Local", "LinuxDesktop2026", "paths-tests", "state"}),
+            "Windows state path should fall back under HOME AppData when Known Folder is unavailable");
+        require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::fallback),
+            "Windows config fallback candidate should be source-labeled");
+    }
 #else
     std::error_code ec;
     std::filesystem::remove_all(fixture_path({"home", ".config", "user-dirs.dirs"}), ec);

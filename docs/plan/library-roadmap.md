@@ -120,7 +120,8 @@ Current direction:
 - public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, and inotify resource-limit diagnostics completed in the prototype hardening pass,
 - public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, and timeout-capable pull delivery,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
-- and next watcher work focused on real Windows CI/local verification, C ABI timing, Windows single-file root-relative wording, and any richer capability fields justified by stress tests.
+- Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, and `ld_settings` effect reports for Registry/autostart/policy targets,
+- and next watcher work focused on real Windows CI/local verification, settled-file hardening, C ABI timing, Windows single-file root-relative wording, and any richer capability fields justified by stress tests.
 
 ## Next Planned Module: ld_paths
 

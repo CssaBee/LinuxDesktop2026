@@ -252,6 +252,8 @@ The private backend interface should be narrow:
 
 Backends must not return public events with bare path strings. They should construct `watch_path` values or provide enough raw information for `src/watch.cpp` to construct them.
 
+Windows compatibility fixes should stay at this same abstraction level. If a Windows backend, CI run, or downstream consumer exposes behavior that does not map cleanly to the current public model, prefer extending `watch_path`, diagnostics, capability reports, or documented policy over leaking `ReadDirectoryChangesW` names, drive-letter assumptions, or raw string paths into application code.
+
 ## Behavioral Promises
 
 - File and directory targets are public concepts.
@@ -406,7 +408,7 @@ Still prototype-grade:
 - Settled-file support now runs outside the raw backend delivery path and coalesces repeated events by source/path, but it still needs broader timeout, cancellation, and large-batch tests.
 - The deterministic test hook is private/internal through `src/watch_backend.hpp`; it is no longer exposed as a public `watcher` constructor in the installed header.
 - Public API stabilization has started: `capability_report` identifies `backend_kind`, diagnostic code names are public constants, `watch_id` has equality operators, `watch_path` keeps path values instead of bare strings, and pull delivery has timeout-capable `wait_for`.
-- Remaining public API stabilization work is verification-first: wait for the explicit Windows CI/local watcher run to pass, finish settled-file timeout/cancellation/large-batch hardening, then decide whether to add a C ABI, finalize wording for root-relative path behavior on Windows single-file watches, and grow capability limit/cost fields only if stress tests prove they are needed.
+- Remaining public API stabilization work is verification-first: keep the explicit Windows CI/local watcher run green, finish settled-file timeout/cancellation/large-batch hardening, then decide whether to add a C ABI, finalize wording for root-relative path behavior on Windows single-file watches, and grow capability limit/cost fields only if stress tests prove they are needed.
 
 ## Consequences
 

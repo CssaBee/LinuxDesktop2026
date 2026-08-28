@@ -40,7 +40,7 @@ Exit bar:
 
 ### Milestone 1: Resolver Core
 
-Status: implemented for the Linux resolver core and deterministic test hooks; Windows verification remains pending.
+Status: implemented for the Linux resolver core, deterministic test hooks, deterministic Windows environment tests, and hosted-runner Known Folder selection; deeper Windows verification remains pending.
 
 Implement:
 
@@ -60,7 +60,7 @@ Implement:
 Exit bar:
 
 - Linux unit tests cover XDG env variables, unset variables, relative invalid overrides, `$HOME` fallback, missing home diagnostics, XDG user-dir parsing, malformed/relative user-dir diagnostics, executable roots, resource roots, install prefix derivation, temp roots, and source-labeled candidates.
-- Windows public model includes environment and Known Folder sources, but Windows tests or a verification checklist still need to cover Known Folders, executable path, UTF-8 paths, and unavailable-folder diagnostics.
+- Windows public model includes environment and Known Folder sources. CI covers deterministic APPDATA/LOCALAPPDATA behavior and hosted-runner Known Folder selection; Windows tests or a verification checklist still need to cover executable path, UTF-8 paths, unavailable-folder diagnostics, and fallback behavior when Known Folders are unavailable.
 - The demo prints a resolver report without touching real user config.
 
 ### Milestone 2: Directory Creation And Path Lists
@@ -145,8 +145,10 @@ Exit bar:
 
 Remaining before public prototype announcement:
 
-- run the Windows 10/11 Known Folder, user-dir fallback, UTF-8 path, executable-root, and plugin-default verification checklist,
+- run the Windows 10/11 UTF-8 path, executable-root, unavailable-folder, Known Folder fallback, and plugin-default verification checklist,
 - and decide whether custom plugin path sets need C ABI exposure in the first public cut.
+
+Windows compatibility rule: keep callers on `ld_paths` root families, source labels, and owned C reports. Do not make tests, demos, `ld_settings`, or future `ld_watch` code depend on XDG-only variables, slash-separated raw strings, or Windows Known Folder paths directly when an `ld_paths` concept can express the same requirement.
 
 ## Proposed API Shape
 
