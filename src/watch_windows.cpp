@@ -411,7 +411,7 @@ private:
 
             std::error_code ec;
             const auto relative = std::filesystem::relative(absolute, watched_absolute, ec);
-            if (!ec && !relative.empty() && relative.native().find("..") != 0) {
+            if (!ec && !relative.empty() && *relative.begin() != std::filesystem::path("..")) {
                 path.root_relative = relative;
             }
             return path;
