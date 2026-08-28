@@ -2,7 +2,7 @@
 
 These examples show the intended shape of application changes when a project adopts LinuxDesktop2026 modules.
 
-They are not full ports and they are not copied source files. Each "before" block is a short, source-anchored reconstruction of the surrounding control flow found during the survey. Each "after" block performs the same app-level task with `ld_settings`.
+They are not full ports and they are not copied source files. Each "before" block is a short, source-anchored reconstruction of the surrounding control flow found during the survey. Each "after" block performs the same app-level task with the LinuxDesktop2026 module that owns the relevant policy.
 
 The comments are part of the example style:
 
@@ -280,6 +280,63 @@ bool NppParameters::saveConfigFiles()
 
 The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: file family hydration, missing-file policy, ordered writes, atomic temp-write/replace, backups, validation-before-commit, and structured errors.
 
+C ABI shape for the same Notepad++ hydration/write task:
+
+```c
+#include "linuxdesktop/settings_c.h"
+
+static int validate_notepad_session(const char* path, char* message, size_t message_size, void* user_data)
+{
+    /* KEEP: validation calls back into Notepad++ session parsing logic. */
+    struct NppParameters* npp = (struct NppParameters*)user_data;
+    if (npp_can_load_session_xml(npp, path)) {
+        return 1;
+    }
+    snprintf(message, message_size, "Notepad++ session XML did not parse");
+    return 0;
+}
+
+void hydrate_and_save_config_files(struct NppParameters* npp)
+{
+    struct ld_settings_config_file files[] = {
+        {"langs.xml", "langs.model.xml", 1},
+        {"stylers.xml", "stylers.model.xml", 1},
+        {"shortcuts.xml", "shortcuts.model.xml", 1},
+        {"contextMenu.xml", "contextMenu.model.xml", 0},
+    };
+
+    struct ld_settings_hydrate_options hydrate;
+    struct ld_settings_hydrate_report hydrated = {0};
+    ld_settings_hydrate_options_init(&hydrate);
+
+    /* KEEP: Notepad++ still chooses model and target roots. */
+    /* CHANGE: copy-missing and skipped-existing reporting are reusable. */
+    hydrate.model_root = npp->install_root_utf8;
+    hydrate.target_root = npp->user_root_utf8;
+    hydrate.files = files;
+    hydrate.file_count = sizeof(files) / sizeof(files[0]);
+
+    if (ld_settings_hydrate_config_bundle(&hydrate, &hydrated)) {
+        npp_log_hydration(&hydrated);
+    }
+    ld_settings_free_hydrate_report(&hydrated);
+
+    struct ld_settings_write_options write_options;
+    struct ld_settings_write_report write_report = {0};
+    const char* session_xml = npp_serialize_session_xml(npp);
+    ld_settings_write_options_init(&write_options);
+
+    /* KEEP: Notepad++ owns save order and XML generation. */
+    /* CHANGE: temp-write, backup, replace, and callback validation are shared. */
+    write_options.target = npp->session_xml_utf8;
+    write_options.content = session_xml;
+    write_options.content_size = strlen(session_xml);
+    ld_settings_write_with_backup(&write_options, validate_notepad_session, npp, &write_report);
+    npp_log_write_result(&write_report);
+    ld_settings_free_write_report(&write_report);
+}
+```
+
 ## Example 3: ShareX Personal Path Selection
 
 Source anchor:
@@ -394,9 +451,10 @@ void Program::UpdatePersonalPath()
     });
     ShowMigrationPreview(path_migration);
 
-    // DEFER: reading the original registry-backed PersonalPath value through
-    // ld_settings::registry lands with the raw Registry backend. The migration
-    // planner already models the safe preview/execute boundary.
+    // CHANGE: ld_settings::registry can represent Registry snapshots/imports
+    // through C++ and C ABI calls.
+    // DEFER: real Windows verification decides when this is safe to advertise
+    // as shippable Registry migration behavior.
 
     // KEEP: ShareX decides which files live under the personal root.
     LoadApplicationConfig(report.roots.config / "ApplicationConfig.json");
@@ -409,6 +467,42 @@ void Program::UpdatePersonalPath()
 ```
 
 This is why the first module keeps diagnostics as first-class output. A migrated app needs to explain whether a path came from CLI, a portable marker, a legacy settings file, XDG defaults, Windows Known Folders, or an ignored invalid override.
+
+C ABI shape for the same ShareX-style migration preview and explicit execution:
+
+```c
+#include "linuxdesktop/settings_c.h"
+
+void preview_or_apply_personal_path_migration(const char* legacy_root, const char* new_root, int user_confirmed)
+{
+    struct ld_settings_migration_action actions[1] = {0};
+    actions[0].kind = LD_SETTINGS_MIGRATION_COPY_DIRECTORY;
+    actions[0].name = "copy legacy personal folder";
+    actions[0].source_path = legacy_root;
+    actions[0].target_path = new_root;
+
+    struct ld_settings_migration_options options;
+    struct ld_settings_migration_report report = {0};
+    ld_settings_migration_options_init(&options);
+
+    /* CHANGE: first call is a dry-run plan for UI/CLI review. */
+    ld_settings_plan_migration(actions, 1, &options, &report);
+    sharex_show_migration_preview(&report);
+    ld_settings_free_migration_report(&report);
+
+    if (!user_confirmed) {
+        return;
+    }
+
+    /* KEEP: ShareX decides when user confirmation is enough. */
+    /* CHANGE: execution uses the same action list and reports per-action state. */
+    options.dry_run = 0;
+    report = (struct ld_settings_migration_report){0};
+    ld_settings_execute_migration_plan(actions, 1, NULL, &options, &report);
+    sharex_log_migration_execution(&report);
+    ld_settings_free_migration_report(&report);
+}
+```
 
 ## Example 4: WinSCP-Style Storage Selection
 
@@ -472,15 +566,41 @@ ConfigStorage OpenConfigurationStorage()
         return IniStorage(write_layer->path / "winscp.ini");
     }
 
-    // DEFER: raw Registry operations are planned for ld_settings::registry.
-    // The C++ API surface exists now; Windows verification and C ABI coverage
-    // are still required before we call the registry backend shippable.
+    // CHANGE: raw Registry and snapshot operations now have C++ and C ABI
+    // entry points.
+    // DEFER: Windows verification is still required before we call the
+    // registry backend shippable.
     // Linux builds can select file-backed layers instead of pretending HKCU exists.
     return OpenPlatformRegistryOrFileStorage(report.layers);
 }
 ```
 
 This example keeps us honest: `ld_settings` should model storage layers and precedence, but it should not force every app into one universal config parser.
+
+C ABI shape for the same WinSCP-style Registry snapshot/export seam:
+
+```c
+#include "linuxdesktop/settings_c.h"
+
+void export_winscp_style_registry_snapshot(void)
+{
+    struct ld_settings_registry_key root = {
+        LD_SETTINGS_REGISTRY_CURRENT_USER,
+        "Software\\Vendor\\App",
+        LD_SETTINGS_REGISTRY_VIEW_NATIVE,
+    };
+    struct ld_settings_registry_format_report exported = {0};
+
+    /* CHANGE: the C ABI exposes JSON and .reg snapshot entry points.
+       KEEP: the app still decides when Registry storage is active. */
+    if (ld_settings_registry_export_tree_json(&root, &exported) && exported.ok) {
+        write_portable_snapshot_file(exported.content);
+    } else {
+        log_registry_snapshot_diagnostics(&exported);
+    }
+    ld_settings_free_registry_format_report(&exported);
+}
+```
 
 ## Example 5: KeePassXC And PortableApps-Style Roots
 
@@ -502,7 +622,7 @@ RunApplication();
 PortableRegistry::MoveKeyAfterRun("HKCU\\Software\\Vendor\\App");
 ```
 
-After, the same task uses general-purpose roots today and leaves portable registry snapshots as an explicit future operation:
+After, the same task uses general-purpose roots and keeps portable Registry snapshots behind explicit preview/execution gates:
 
 ```cpp
 namespace ld = linuxdesktop::settings;
@@ -534,8 +654,8 @@ void BootstrapConfigAndPortableState()
     if (const auto* thumbnails = ld::find_named_root(report, "thumbnails"))
         ThumbnailCache::SetRoot(thumbnails->path);
 
-    // CHANGE: the dry-run migration API can already carry the dangerous
-    // operation as a plan, even though the registry executor is not complete.
+    // CHANGE: the dry-run migration API can carry the dangerous operation as
+    // an inspectable plan instead of running Registry movement implicitly.
     const ld::migration_plan registry_plan = ld::plan_migration({
         {
             ld::migration_action_kind::export_registry,
@@ -548,8 +668,8 @@ void BootstrapConfigAndPortableState()
     });
     ShowMigrationPreview(registry_plan);
 
-    // CHANGE: JSON/.reg snapshot formats now exist, so the next step is wiring
-    // app-specific before/after-run policy around explicit execution:
+    // CHANGE: JSON/.reg snapshot formats and C ABI entry points now exist, so
+    // app-specific before/after-run policy can be wired around explicit execution:
     //
     //   ld::migration_options execute_options;
     //   execute_options.dry_run = false;
@@ -562,10 +682,310 @@ void BootstrapConfigAndPortableState()
 }
 ```
 
-The pattern is the same across surveyed repos: keep the app's data format and compatibility policy, but move repeated platform placement, root families, and layer reporting into `ld_settings`.
+The pattern is the same across surveyed repos: keep the app's data format and compatibility policy, but move repeated platform placement, root families, and layer reporting into LinuxDesktop2026 modules.
+
+## Example 6: Notepad++ Root Placement With `ld_paths`
+
+Source anchors:
+
+- Notepad++ initializes executable/current-directory roots and then uses them as resource and fallback settings roots in `PowerEditor/src/Parameters.cpp`.
+- The earlier `ld_settings` example keeps XML parsing and config hydration in `ld_settings`, but the reusable path placement now belongs in `ld_paths`.
+
+Before, the same constructor-level path code tends to mix executable discovery, resource roots, settings fallback, and portable markers:
+
+```cpp
+NppParameters::NppParameters()
+{
+    wchar_t exe_path[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
+    PathRemoveFileSpecW(exe_path);
+    _nppPath = exe_path;
+
+    wchar_t current_dir[MAX_PATH] = {};
+    GetCurrentDirectoryW(MAX_PATH, current_dir);
+    _currentDirectory = current_dir;
+}
+
+bool NppParameters::load()
+{
+    _isLocal = doesFileExist((_nppPath + L"\\doLocalConf.xml").c_str());
+    _userPath = _isLocal ? _nppPath : getSettingsFolder();
+    _sessionPath = _userPath;
+    _userPluginConfDir = _userPath + L"\\plugins\\Config";
+    return loadConfigFiles();
+}
+```
+
+After, `ld_paths` owns placement and `ld_settings` owns config files:
+
+```cpp
+#include "linuxdesktop/paths.hpp"
+#include "linuxdesktop/settings.hpp"
+
+namespace ldp = linuxdesktop::paths;
+namespace lds = linuxdesktop::settings;
+
+bool NppParameters::load()
+{
+    ldp::resolver_options paths;
+    paths.resource_root = DetectInstallRootFromExecutable();
+    paths.legacy_config_files = {paths.resource_root.value() / "doLocalConf.xml"};
+    paths.config_override = GetCommandLineSettingsDirIfPresent();
+
+    const ldp::resolver_report resolved =
+        ldp::resolve_app_paths({"Notepad-plus-plus", "Notepad++"}, paths);
+
+    // CHANGE: executable/resource/config/state/plugin-config placement comes
+    // from a path report that can explain every candidate and fallback.
+    _nppPath = resolved.selected.at(ldp::path_family::resources);
+    _userPath = resolved.selected.at(ldp::path_family::config);
+    _sessionPath = resolved.selected.at(ldp::path_family::state);
+    _userPluginConfDir = _userPath / "plugins" / "Config";
+
+    // KEEP: settings payload behavior stays in ld_settings and Notepad++.
+    lds::hydrate_options hydrate;
+    hydrate.model_root = _nppPath;
+    hydrate.target_root = _userPath;
+    hydrate.files = NotepadConfigModels();
+    LogPathCandidates(resolved.candidates);
+    LogHydration(lds::hydrate_config_bundle(hydrate));
+
+    return loadConfigFiles();
+}
+```
+
+`ld_paths` makes the path decision inspectable. `ld_settings` still handles config bundle hydration, writes, migration plans, Registry snapshots, autostart effects, and policy effects.
+
+## Example 7: OpenRGB XDG Config And Autostart Split
+
+Source anchors:
+
+- OpenRGB resolves `APPDATA`, `XDG_CONFIG_HOME`, `$HOME/.config`, and the `OpenRGB` app config directory in `ResourceManager.cpp`.
+- OpenRGB writes Linux XDG autostart entries in `AutoStart/AutoStart-Linux.cpp`.
+
+Before, config roots and autostart roots can look like one platform helper even though they are different policies:
+
+```cpp
+std::filesystem::path GetConfigurationDirectory()
+{
+    if (const char* xdg = std::getenv("XDG_CONFIG_HOME"))
+        return std::filesystem::path(xdg) / "OpenRGB";
+
+    if (const char* home = std::getenv("HOME"))
+        return std::filesystem::path(home) / ".config" / "OpenRGB";
+
+    return std::filesystem::current_path();
+}
+
+void EnableAutostart()
+{
+    auto autostart = GetConfigurationDirectory().parent_path() / "autostart";
+    WriteDesktopFile(autostart / "OpenRGB.desktop", EscapedExecPath());
+}
+```
+
+After, `ld_paths` resolves user roots while desktop registration stays a separate effect:
+
+```cpp
+namespace ldp = linuxdesktop::paths;
+namespace lds = linuxdesktop::settings;
+
+void StartOpenRGB()
+{
+    ldp::resolver_options paths;
+    const ldp::resolver_report resolved =
+        ldp::resolve_app_paths({"OpenRGB", "OpenRGB"}, paths);
+
+    const auto config_root = resolved.selected.at(ldp::path_family::config);
+    const auto profile_root = config_root / "profiles";
+
+    // CHANGE: XDG_CONFIG_HOME, HOME fallback, invalid env values, and selected
+    // roots are visible in the candidate report.
+    LogPathCandidates(resolved.candidates);
+
+    LoadJson(config_root / "OpenRGB.json");
+    LoadProfiles(profile_root);
+
+    // DEFER: XDG Autostart file writing is a desktop integration effect.
+    // ld_settings may keep autostart temporarily, but ld_paths only gives
+    // the data/config roots needed by that later effect.
+    lds::write_autostart(BuildOpenRGBAutostartEffect(resolved));
+}
+```
+
+The split prevents `ld_paths` from becoming a hidden desktop-entry generator.
+
+## Example 8: FreeCAD Environment Overrides
+
+Source anchors:
+
+- FreeCAD resolves `FREECAD_USER_HOME`, `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`, Qt standard locations, executable paths, and install roots in `src/App/ApplicationDirectories.cpp`.
+
+Before, application directory code has to interleave environment overrides, runtime roots, and migration compatibility:
+
+```cpp
+ApplicationDirectories dirs;
+dirs.user_home = getenvPath("FREECAD_USER_HOME");
+dirs.user_data = getenvPath("FREECAD_USER_DATA");
+dirs.user_temp = getenvPath("FREECAD_USER_TEMP");
+
+if (dirs.user_data.empty())
+    dirs.user_data = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+
+dirs.executable = FindExecutablePath();
+dirs.resource_root = GuessResourceRoot(dirs.executable);
+MigrateOldConfigIfNeeded(dirs);
+```
+
+After, `ld_paths` turns overrides and fallback roots into a report, while migration remains separate:
+
+```cpp
+namespace ldp = linuxdesktop::paths;
+namespace lds = linuxdesktop::settings;
+
+void InitializeFreeCADDirectories()
+{
+    ldp::resolver_options paths;
+    paths.environment_overrides = {
+        {"FREECAD_USER_HOME", ldp::path_family::config},
+        {"FREECAD_USER_DATA", ldp::path_family::data},
+        {"FREECAD_USER_TEMP", ldp::path_family::temp},
+    };
+    paths.resource_root = InferFreeCADResourceRoot();
+
+    const auto resolved = ldp::resolve_app_paths({"FreeCAD", "FreeCAD"}, paths);
+
+    App::SetUserConfigRoot(resolved.selected.at(ldp::path_family::config));
+    App::SetUserDataRoot(resolved.selected.at(ldp::path_family::data));
+    App::SetTempRoot(resolved.selected.at(ldp::path_family::temp));
+    App::SetResourceRoot(resolved.selected.at(ldp::path_family::resources));
+
+    // KEEP: versioned migration rules stay with settings/app code.
+    const auto migration = lds::plan_migration(BuildFreeCADMigration(resolved));
+    ShowMigrationPreview(migration);
+}
+```
+
+The important part is not replacing Qt. It is making environment-selected roots, fallback choices, and partial failures visible to users and support logs.
+
+## Example 9: Carla Plugin Path Sets
+
+Source anchors:
+
+- Carla defines platform-specific plugin paths for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX in `source/frontend/carla_shared.py` and `source/frontend/pluginlist/pluginlistdialog.cpp`.
+
+Before, every plugin family tends to carry its own default list and environment parsing:
+
+```cpp
+std::vector<std::filesystem::path> vst3Paths()
+{
+    auto paths = SplitEnv("VST3_PATH");
+    paths.push_back("~/.vst3");
+    paths.push_back("/usr/lib/vst3");
+    paths.push_back("/usr/local/lib/vst3");
+    AddWinePrefixVst3Paths(paths);
+    return Normalize(paths);
+}
+```
+
+After, `ld_paths` resolves typed search roots without claiming to load plugins:
+
+```cpp
+namespace ldp = linuxdesktop::paths;
+
+void RefreshCarlaPluginSearchRoots()
+{
+    ldp::plugin_path_options options;
+    options.include_wine_prefix_defaults = true;
+    options.kinds = {
+        ldp::plugin_path_kind::ladspa,
+        ldp::plugin_path_kind::dssi,
+        ldp::plugin_path_kind::lv2,
+        ldp::plugin_path_kind::vst2,
+        ldp::plugin_path_kind::vst3,
+        ldp::plugin_path_kind::clap,
+        ldp::plugin_path_kind::sf2,
+        ldp::plugin_path_kind::sfz,
+        ldp::plugin_path_kind::jsfx,
+    };
+
+    const ldp::plugin_path_report report =
+        ldp::resolve_plugin_path_sets(options);
+
+    for (const auto& set : report.sets)
+        PluginScanner::SetSearchRoots(set.kind, set.paths);
+
+    LogPathCandidates(report.candidates);
+
+    // KEEP: scanning, binary loading, plugin ABI, sandboxing, and host policy
+    // remain Carla or future ld_dynlib/plugin-host work.
+}
+```
+
+This is the clearest reason `ld_paths` cannot stop at config/cache/state roots.
+
+## Example 10: Extract `ld_settings` Root Logic Into `ld_paths`
+
+Source anchors:
+
+- The current LinuxDesktop2026 `ld_settings` sample resolves roots directly before hydrating bundles, writing config, and planning migrations.
+- The `ld_paths` roadmap says to keep that resolver until `ld_paths` has tests and install-tree consumer coverage.
+
+Before extraction, `ld_settings` owns both placement and settings behavior:
+
+```cpp
+namespace linuxdesktop::settings {
+
+root_report resolve_app_roots(app_identity identity, root_options options)
+{
+    root_report report;
+    report.roots.config = ResolveXdgOrKnownFolderConfig(identity, options);
+    report.roots.data = ResolveXdgOrKnownFolderData(identity, options);
+    report.roots.state = ResolveStateRoot(identity, options);
+    report.roots.cache = ResolveCacheRoot(identity, options);
+    report.roots.resources = ResolveResourceRoot(options);
+    report.layers = BuildConfigLayers(report.roots, options);
+    return report;
+}
+
+}
+```
+
+After extraction, `ld_settings` asks `ld_paths` for placement and keeps settings-specific work:
+
+```cpp
+namespace linuxdesktop::settings {
+
+root_report resolve_app_roots(app_identity identity, root_options options)
+{
+    paths::resolver_options path_options;
+    path_options.config_override = options.settings_override;
+    path_options.resource_root = options.resource_root;
+    path_options.legacy_config_files = BuildLegacyMarkers(options);
+
+    const paths::resolver_report paths =
+        paths::resolve_app_paths(ToPathIdentity(identity), path_options);
+
+    root_report report;
+    report.roots.config = paths.selected.at(paths::path_family::config);
+    report.roots.data = paths.selected.at(paths::path_family::data);
+    report.roots.state = paths.selected.at(paths::path_family::state);
+    report.roots.cache = paths.selected.at(paths::path_family::cache);
+    report.roots.resources = paths.selected.at(paths::path_family::resources);
+    report.diagnostics = MergeDiagnostics(paths.diagnostics, SettingsDiagnostics(options));
+    report.layers = BuildConfigLayers(report.roots, options);
+    return report;
+}
+
+}
+```
+
+The extraction is deliberately delayed until `ld_paths` has its own resolver tests, demo, CMake target, and install-tree consumer test.
 
 ## What These Examples Prove
 
-- The first module should expose policy-level operations, not raw wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`, `CopyFile`, or XDG environment parsing.
-- Users should see small application changes: declare identity, declare overrides/portable markers, declare named/component roots, inspect layer reports, hydrate a bundle, write with backup/validation, then keep app-specific parsing in the app.
-- AI agents should have enough surrounding code to recognize the migration seam and propose a safe incremental patch instead of trying to port an entire GUI at once. Tiny bites. No heroic yak rodeo.
+- LinuxDesktop2026 modules should expose policy-level operations, not raw wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`, `CopyFile`, or XDG environment parsing.
+- `ld_paths` should own path families, path lists, executable/resource roots, candidate reports, and typed plugin path sets.
+- `ld_settings` should own config bundles, writes, migrations, Registry snapshots, autostart effects, and policy effects until those effects are split further.
+- Users should see small application changes: declare identity, declare overrides/portable markers, inspect path and layer reports, hydrate a bundle, write with backup/validation, then keep app-specific parsing in the app.
+- AI agents should have enough surrounding code to recognize the migration seam and propose a safe incremental patch instead of trying to port an entire GUI at once.

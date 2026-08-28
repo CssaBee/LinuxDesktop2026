@@ -33,7 +33,7 @@ The platform libraries are general-purpose, permissively licensed, and designed 
 
 ## Current First Module
 
-The first implementation candidate is settings/config and standard paths.
+The first implementation candidate is settings/config.
 
 Decision trail:
 
@@ -42,7 +42,7 @@ Decision trail:
 - The existing-library follow-up found specs and libraries to adopt, recommend, or defer.
 - ADR 0008 selects this as the first tiny implementation sample.
 
-Next implementation target:
+Original implementation target:
 
 - One CMake library.
 - One CLI example.
@@ -65,7 +65,7 @@ Current sample:
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
-- C ABI surface for root/layer reports, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
+- C ABI surface for root/layer reports, config hydration, atomic writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
 - Autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
 - Managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
@@ -78,10 +78,11 @@ Expanded ship direction:
 - The expanded survey lives in `docs/survey/settings-registry-app-audit.md` and `docs/survey/settings-registry-platform-equivalents.md`.
 - The proposed API shape lives in `docs/plan/ld-settings-expanded-api.md`.
 - The extended watchlist fit audit lives in `docs/survey/extended-watchlist-fit-audit.md` and keeps broader desktop integration, process/IPC, dynamic loading, and service behavior out of the first `ld_settings` ship scope.
+- Path resolution that is not settings-specific is moving to the next planned module, `ld_paths`.
 
 Example documentation:
 
-- `docs/examples/migration-examples.md` shows before/after migration shapes for Notepad++ settings roots, Notepad++ config bundle hydration, and ShareX personal path selection.
+- `docs/examples/migration-examples.md` shows before/after migration shapes for settings adoption, path resolution, plugin path sets, and internal extraction from `ld_settings` to `ld_paths`.
 
 ## Near-Term Settings/Config Roadmap
 
@@ -91,13 +92,13 @@ Example documentation:
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving `linuxdesktop::settings` aliases.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
-- Grow the remaining C ABI before ship, including migration plans/execution and Registry snapshots/import/export.
+- Keep the expanded C ABI covered by C tests and the conditional Rust FFI smoke test.
 - Verify the Windows Registry/autostart/policy backend paths before claiming the expanded settings/effects API is ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
 - Keep autostart effect support, but move desktop entries beyond autostart, icons, MIME registrations, URL protocols, and desktop database updates to future desktop integration work.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
-## Next Candidate Module
+## Current Follow-Up Prototype
 
 File watching remains the strongest follow-up after `ld_settings`. The focused application audit is captured in `docs/survey/file-watcher-audit.md`, the broader application audit is captured in `docs/survey/file-watcher-application-audit.md`, and the broader existing-library follow-up is captured in `docs/survey/file-watcher-library-audit.md`.
 
@@ -117,8 +118,47 @@ Current direction:
 - raw events, settled-file trigger, and dirty-path refresh as named layers,
 - ADR 0010 as the implementation-ready API boundary,
 - public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, and inotify resource-limit diagnostics completed in the prototype hardening pass,
+- public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, and timeout-capable pull delivery,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
-- and next watcher work focused on real Windows CI/local verification plus C/C++ API stabilization.
+- and next watcher work focused on real Windows CI/local verification, C ABI timing, Windows single-file root-relative wording, and any richer capability fields justified by stress tests.
+
+## Next Planned Module: ld_paths
+
+`ld_paths` is the next planned module. The focused survey is captured in `docs/survey/ld-paths-application-audit.md`, and the implementation roadmap is captured in `docs/plan/ld-paths-roadmap.md`.
+
+The module should start resolver-first, but the public prototype should be broad enough to share with the community without feeling like a private spike.
+
+Planned public prototype scope:
+
+- Windows 10/11 and Ubuntu LTS first.
+- C++17 API backed by shared `ld_core` diagnostics.
+- Small C ABI before the community-facing prototype is announced.
+- Standard user paths beyond settings roots: config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, and public share.
+- Executable path, executable directory, resource root, and install prefix reporting.
+- Source-labeled candidate reports for explicit options, environment overrides, XDG base dirs, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks.
+- Path-list parsing and joining with platform separators.
+- Typed plugin path sets for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX.
+- Wine-prefix-aware defaults where the plugin ecosystem evidence needs them.
+- Opt-in directory creation helpers after resolution.
+- Install-tree consumer coverage for `LinuxDesktop2026::ld_paths`.
+
+Out of scope for first `ld_paths`:
+
+- macOS support promise,
+- settings payload hydration,
+- migration copy/move execution,
+- desktop entry/icon/MIME/protocol registration,
+- process launch,
+- IPC,
+- dynamic library loading,
+- plugin ABI,
+- and broad filesystem operations such as watching, indexing, or device/volume management.
+
+Extraction plan:
+
+- Keep `ld_settings` on its current internal root resolver until `ld_paths` has resolver tests and install-tree consumer coverage.
+- Then refactor `ld_settings` to consume `ld_paths` for config/data/state/cache/resource placement.
+- Keep bundle hydration, ordered writes, Registry snapshots, policy effects, autostart effects, and migration execution inside `ld_settings` until those domains get their own modules.
 
 ## Extended Watchlist Consequences
 
@@ -126,7 +166,7 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 
 Near-term planning changes:
 
-- Promote `ld_paths` to a first-class planning target. It should cover standard user paths beyond settings roots, XDG user dirs, executable/resource/install roots, path-list parsing, environment override diagnostics, legacy fallbacks, Wine-prefix-aware defaults, and typed plugin path sets.
+- Promote `ld_paths` to the next planned module. It should cover standard user paths beyond settings roots, XDG user dirs, executable/resource/install roots, path-list parsing, environment override diagnostics, legacy fallbacks, Wine-prefix-aware defaults, and typed plugin path sets.
 - Promote `ld_process` to a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
 - Promote `ld_ipc` after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
 - Add future desktop integration work for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.

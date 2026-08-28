@@ -32,6 +32,10 @@ _Avoid_: Similar app list, porting showcase
 A set of 15 to 20 repositories used as evidence for the first platform-library design, including about five projects that already have a successful abstraction or native port.
 _Avoid_: Exhaustive repository scan, Notepad++ only
 
+**Extended survey watchlist**:
+A larger set of products, frameworks, utilities, and boundary cases to revisit when a new module needs fresh evidence beyond the first survey corpus.
+_Avoid_: Audited corpus, link dump, final adoption list
+
 **Unported candidate**:
 A Windows-oriented application whose users have repeatedly requested Linux support, but where maintainers have declined, deferred, or never completed a native Linux port.
 _Avoid_: Failed project, irrelevant Windows app
@@ -87,6 +91,30 @@ _Avoid_: Private helper license, application-bound licensing
 **Survey artifact set**:
 The documentation produced by the requirement survey: repository notes, a Windows feature matrix, module priority scoring, and open questions.
 _Avoid_: Giant report, research notes pile
+
+**Challenge ecosystem**:
+A recurring set of module-sized portability projects that can serve as university assignments, contributor onboarding, API validation, and future implementation experiments.
+_Avoid_: Toy exercises, tutorial-only examples, unrelated coding katas
+
+**Desktop integration effect**:
+A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
+_Avoid_: Settings file, GUI toolkit feature, installer only
+
+**Path resolver**:
+A platform-library capability that chooses, normalizes, and explains filesystem locations for application use without owning the files' payload formats or application policy.
+_Avoid_: File manager, settings engine, migration executor
+
+**Path family**:
+A named group of related filesystem locations that share a purpose, such as user configuration, cache, state, documents, executable roots, resource roots, or plugin search roots.
+_Avoid_: Path string, folder bucket, arbitrary directory
+
+**Plugin path set**:
+A typed collection of search roots for one plugin or asset ecosystem, including its platform defaults, environment overrides, and compatibility fallbacks.
+_Avoid_: Plugin ABI, plugin host, dynamic loader
+
+**Service/daemon lifecycle**:
+The operating-system behavior needed to run, signal, supervise, or communicate with a long-running background process.
+_Avoid_: Ordinary process launch, single-instance GUI activation
 
 **Platform-library monorepo**:
 A single repository containing the general-purpose platform libraries, examples, tests, and shared build infrastructure while module boundaries are still evolving.

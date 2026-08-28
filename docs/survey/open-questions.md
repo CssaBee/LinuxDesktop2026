@@ -19,11 +19,11 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **Which reference implementations should be audited first?** `libuv` and `wxWidgets` were audited first because they directly cover first-candidate modules and UI-adjacent native abstractions.
 - **Which repos look like boundary cases?** Rufus is the clearest boundary/negative case so far because device/volume APIs are central rather than incidental.
 - **Should scoring wait for ecosystem verification?** Yes. Source usage shows requirements; ecosystem audit decides whether we build, wrap, document, or defer.
-- **Which Notepad++ subsystem should become the first proof case?** Partly answered: start with settings/config and standard paths because it is narrow, recurring across surveyed apps, and can produce a tiny working sample before UI-heavy work.
+- **Which Notepad++ subsystem should become the first proof case?** Answered: start with settings/config and the path roots required by settings because it is narrow, recurring across surveyed apps, and can produce a tiny working sample before UI-heavy work.
 - **Should file watching become the next implementation module?** Answered for the current roadmap: yes, `ld_watch` is the next module candidate after the broader audit, with ADR 0010 now defining the implementation-ready public boundary before prototype work.
 - **What did the first Notepad++ subsystem pass find?** Settings/config is not a scalar settings problem. It is a settings root resolver plus config bundle manager with ordered save phases, plugin-facing roots, hydration, backup/restore, and validation-after-write requirements.
 - **Which existing tools should be adopted, wrapped, studied, or rejected for the first module?** Partly answered for settings/config: adopt XDG Base Directory, Microsoft Known Folders, and `std::filesystem`; wrap or recommend Boost.Nowide if needed; recommend or adapt Qt, GLib, and wxWidgets; defer desktop/shell specs and portals.
-- **Which module should provide the first tiny working code sample?** Settings/config and standard paths. ADR 0008 selects it, and `ld_settings_demo` is now the first executable sample.
+- **Which module should provide the first tiny working code sample?** Settings/config. ADR 0008 selects it, and `ld_settings_demo` is now the first executable sample.
 - **Which candidate modules deserve focused follow-up after the first scoring pass?** File watcher and process/shell are the strongest next first-candidate follow-ups. Dynamic library loading and single-instance IPC remain first-wave candidates but should wait until the next evidence pass is chosen.
 - **What did the file watcher focused pass find?** File watching is a real reusable seam, but the useful module is not a thin inotify wrapper. It should expose event mapping, debounce/stabilization, settled-file readiness, overflow/rescan diagnostics, recursive-policy honesty, dirty-path refresh as a named future layer, and app-owned routing.
 - **What should happen before `ld_watch` code?** Answered: shared C++ diagnostics now live in `ld_core`, the broader watcher audit is complete, ADR 0010 contains the implementation-ready header/source/test checklist, and the first broad prototype now exists.
@@ -31,6 +31,7 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **Are file associations and protocol handlers in `ld_settings` first scope?** No. They are unsupported in first `ld_settings`; users should open GitHub issues for them. They likely belong in future desktop integration work.
 - **Is autostart in `ld_settings` first scope?** Yes. Implement Windows startup Registry behavior and Linux XDG Autostart support with explicit safety flags.
 - **Are managed and enforced settings in first scope?** Yes. Implement Windows Registry policy support and Linux dconf/GSettings-compatible policy files where the backend/schema is available, without a GLib dependency.
+- **What is the next planned module after the current settings/watch work?** Answered: `ld_paths`. The accepted plan is resolver-first but broad enough for a community-facing prototype, with standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, C++17 first, and a small C ABI before public prototype announcement.
 
 ## File Watcher Follow-Up
 
@@ -40,3 +41,10 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **How much debounce belongs in core?** Include separate opt-in debounce and settled-file helpers for ShareX-style workflows, but keep higher-level task routing application-owned.
 - **How should watcher paths be represented?** Return an `ld_watch` path value with absolute path, optional root-relative path, watch/root identity, and backend-debug representation; do not expose bare strings as the normal event path model.
 - **What shared vocabulary is needed before watcher code?** ADR 0009 answers this, and the C++ implementation now exposes `severity`, `diagnostic`, and `to_string(severity)` through `ld_core`; `ld_settings` aliases and C ABI names stay stable.
+
+## ld_paths Follow-Up
+
+- **Which path resolver milestones are needed before implementation?** Answered in `docs/plan/ld-paths-roadmap.md`: resolver core, directory creation/path lists, user dirs/legacy fallbacks, typed plugin path sets, and public prototype polish.
+- **Which application examples should guide `ld_paths`?** Answered in `docs/survey/ld-paths-application-audit.md` and `docs/examples/migration-examples.md`: Notepad++, OpenRGB, FreeCAD, Carla, and internal `ld_settings` extraction.
+- **When should `ld_settings` consume `ld_paths`?** After `ld_paths` has resolver tests, a demo, CMake target export, and install-tree consumer coverage.
+- **What still needs design during implementation?** Final C++ type names, C ABI ownership layout, Windows Known Folder test strategy, exact plugin path defaults, and how much directory creation belongs in the first public prototype.
