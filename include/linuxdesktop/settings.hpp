@@ -412,4 +412,37 @@ operation_report import_tree_reg(const key& key, std::string_view content, const
 
 } // namespace registry
 
+namespace effects {
+
+struct autostart_entry {
+    std::string id;
+    std::string display_name;
+    std::filesystem::path executable;
+    std::vector<std::string> arguments;
+    std::filesystem::path working_directory;
+    bool enabled = true;
+    bool user_scope = true;
+};
+
+struct apply_options {
+    bool dry_run = true;
+    bool allow_global_write = false;
+    bool allow_desktop_integration_write = false;
+    std::optional<std::filesystem::path> autostart_directory_override;
+};
+
+struct effect_report {
+    bool ok = false;
+    bool dry_run = false;
+    bool enabled = false;
+    std::optional<std::filesystem::path> path;
+    std::vector<diagnostic> diagnostics;
+};
+
+effect_report apply_autostart(const autostart_entry& entry, const apply_options& options = {});
+effect_report remove_autostart(const autostart_entry& entry, const apply_options& options = {});
+effect_report query_autostart(const autostart_entry& entry, const apply_options& options = {});
+
+} // namespace effects
+
 } // namespace linuxdesktop::settings

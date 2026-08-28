@@ -1,4 +1,3 @@
-#include "linuxdesktop/watch.hpp"
 #include "watch_backend.hpp"
 
 #include <algorithm>
@@ -267,7 +266,7 @@ void exposes_public_version_and_strings()
 void reports_start_failures_and_recursive_policy()
 {
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options missing;
     missing.path = test_root() / "missing";
@@ -293,7 +292,7 @@ void supports_pull_delivery_and_paths()
 {
     const auto root = test_root();
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options options;
     options.path = root;
@@ -316,7 +315,7 @@ void supports_callback_delivery()
 {
     const auto root = test_root();
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options options;
     options.path = root;
@@ -348,7 +347,7 @@ void maps_rename_and_overflow_state()
 {
     const auto root = test_root();
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options options;
     options.path = root;
@@ -382,7 +381,7 @@ void remove_watch_is_idempotent_and_stop_wakes_wait()
 {
     const auto root = test_root();
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options options;
     options.path = root;
@@ -411,7 +410,7 @@ void captures_settled_file_options_in_start_path()
         output << "stable";
     }
     const auto backend = make_backend();
-    ld::watcher watcher(backend);
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
 
     ld::watch_options options;
     options.path = root;
@@ -427,6 +426,71 @@ void captures_settled_file_options_in_start_path()
     require(has_diagnostic(received->diagnostics, "watch.settle.ready"), "settled-file readiness should be visible");
 }
 
+void settled_file_wait_does_not_block_raw_delivery()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "slow.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{500}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "slow.txt"));
+    backend->push(backend->overflow_for(report.id));
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto received = watcher.wait();
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    require(received.has_value(), "raw event should arrive while settle is pending");
+    require(received->kind == ld::event_kind::overflow, "raw event should bypass pending settle work");
+    require(elapsed < std::chrono::milliseconds{300}, "raw delivery should not wait for settled-file debounce");
+}
+
+void settled_file_events_coalesce_by_source_and_path()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "coalesce.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{25}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    auto first = backend->event_for(report.id, ld::event_kind::modified, "coalesce.txt");
+    first.diagnostics.push_back(diagnostic(
+        linuxdesktop::severity::info,
+        "test.first",
+        "first event"));
+    auto second = backend->event_for(report.id, ld::event_kind::modified, "coalesce.txt");
+    second.diagnostics.push_back(diagnostic(
+        linuxdesktop::severity::info,
+        "test.second",
+        "second event"));
+
+    backend->push(std::move(first));
+    backend->push(std::move(second));
+
+    const auto received = watcher.wait();
+    require(received.has_value(), "coalesced settled-file event should arrive");
+    require(has_diagnostic(received->diagnostics, "test.second"), "latest settled-file event should be delivered");
+    require(!has_diagnostic(received->diagnostics, "test.first"), "stale settled-file event should be dropped");
+    std::this_thread::sleep_for(std::chrono::milliseconds{75});
+    require(watcher.poll() == std::nullopt, "stale settled-file event should not arrive later");
+}
+
 } // namespace
 
 int main()
@@ -439,6 +503,8 @@ int main()
         maps_rename_and_overflow_state();
         remove_watch_is_idempotent_and_stop_wakes_wait();
         captures_settled_file_options_in_start_path();
+        settled_file_wait_does_not_block_raw_delivery();
+        settled_file_events_coalesce_by_source_and_path();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;

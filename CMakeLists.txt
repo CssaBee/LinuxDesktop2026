@@ -7,6 +7,8 @@ include(GNUInstallDirs)
 
 option(LD2026_BUILD_EXAMPLES "Build LinuxDesktop2026 examples" ON)
 option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
+option(LD2026_WATCH_ENABLE_LIBUV "Enable the optional libuv watcher backend when libuv is available" ON)
+option(LD2026_WATCH_PREFER_LIBUV "Prefer libuv over the native inotify backend for ld_watch" OFF)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
 
@@ -58,6 +60,21 @@ target_include_directories(ld_watch
 )
 
 target_link_libraries(ld_watch PUBLIC LinuxDesktop2026::ld_core)
+
+if(LD2026_WATCH_ENABLE_LIBUV)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(LIBUV QUIET IMPORTED_TARGET libuv)
+    endif()
+    if(TARGET PkgConfig::LIBUV)
+        target_sources(ld_watch PRIVATE src/watch_libuv.cpp)
+        target_link_libraries(ld_watch PRIVATE PkgConfig::LIBUV)
+        target_compile_definitions(ld_watch PRIVATE LINUXDESKTOP2026_WATCH_HAS_LIBUV)
+        if(LD2026_WATCH_PREFER_LIBUV)
+            target_compile_definitions(ld_watch PRIVATE LINUXDESKTOP2026_WATCH_PREFER_LIBUV)
+        endif()
+    endif()
+endif()
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(ld_watch PRIVATE pthread)

@@ -612,6 +612,95 @@ void registry_import_requires_explicit_permission()
         "Registry JSON import should require allow_import");
 }
 
+ld::effects::autostart_entry autostart_entry_for_tests()
+{
+    ld::effects::autostart_entry entry;
+    entry.id = "linuxdesktop2026-settings-tests";
+    entry.display_name = "LinuxDesktop2026 Settings Tests";
+    entry.executable = "/usr/bin/ld-settings-test";
+    entry.arguments = {"--profile", "Default User"};
+    return entry;
+}
+
+void autostart_dry_run_does_not_write()
+{
+    namespace effects = linuxdesktop::settings::effects;
+
+    const auto root = test_root() / "autostart";
+    const auto entry = autostart_entry_for_tests();
+
+    effects::apply_options options;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root;
+
+    const auto report = effects::apply_autostart(entry, options);
+    require(report.ok, "autostart dry-run should succeed");
+    require(report.dry_run, "autostart dry-run should report dry_run");
+    require(report.path.has_value(), "autostart dry-run should report target path");
+    require(!std::filesystem::exists(*report.path), "autostart dry-run should not write a file");
+    require(has_diagnostic(report.diagnostics, "autostart-dry-run"),
+        "autostart dry-run should include a dry-run diagnostic");
+}
+
+void autostart_linux_writes_queries_and_removes_desktop_file()
+{
+#if !defined(_WIN32)
+    namespace effects = linuxdesktop::settings::effects;
+
+    const auto root = test_root() / "autostart";
+    const auto entry = autostart_entry_for_tests();
+
+    effects::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root;
+
+    const auto applied = effects::apply_autostart(entry, options);
+    require(applied.ok, "Linux autostart write should succeed");
+    require(applied.path.has_value(), "Linux autostart write should report path");
+    const auto content = read_file(*applied.path);
+    require(content.find("[Desktop Entry]") != std::string::npos, "autostart file should be a desktop entry");
+    require(content.find("Type=Application") != std::string::npos, "autostart file should be an application entry");
+    require(content.find("Name=LinuxDesktop2026 Settings Tests") != std::string::npos,
+        "autostart file should include display name");
+    require(content.find("Exec=/usr/bin/ld-settings-test --profile 'Default User'") != std::string::npos,
+        "autostart file should quote arguments in Exec");
+
+    auto queried = effects::query_autostart(entry, options);
+    require(queried.ok, "Linux autostart query should succeed");
+    require(queried.enabled, "Linux autostart query should report enabled file");
+
+    auto disabled_entry = entry;
+    disabled_entry.enabled = false;
+    const auto disabled = effects::apply_autostart(disabled_entry, options);
+    require(disabled.ok, "Linux disabled autostart write should succeed");
+    queried = effects::query_autostart(entry, options);
+    require(queried.ok, "Linux disabled autostart query should succeed");
+    require(!queried.enabled, "Linux Hidden=true autostart file should query as disabled");
+
+    const auto removed = effects::remove_autostart(entry, options);
+    require(removed.ok, "Linux autostart remove should succeed");
+    require(!std::filesystem::exists(*applied.path), "Linux autostart remove should delete the desktop file");
+#endif
+}
+
+void autostart_global_write_requires_permission()
+{
+    namespace effects = linuxdesktop::settings::effects;
+
+    auto entry = autostart_entry_for_tests();
+    entry.user_scope = false;
+
+    effects::apply_options options;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = test_root() / "autostart";
+
+    const auto report = effects::apply_autostart(entry, options);
+    require(!report.ok, "global autostart write should be denied without permission");
+    require(has_diagnostic(report.diagnostics, "autostart-global-write-denied"),
+        "global autostart write should require allow_global_write");
+}
+
 void c_abi_resolves_settings_override()
 {
     const auto root = test_root() / "c-override";
@@ -691,6 +780,9 @@ int main()
         {"registry_json_snapshot_round_trips", registry_json_snapshot_round_trips},
         {"registry_reg_snapshot_round_trips", registry_reg_snapshot_round_trips},
         {"registry_import_requires_explicit_permission", registry_import_requires_explicit_permission},
+        {"autostart_dry_run_does_not_write", autostart_dry_run_does_not_write},
+        {"autostart_linux_writes_queries_and_removes_desktop_file", autostart_linux_writes_queries_and_removes_desktop_file},
+        {"autostart_global_write_requires_permission", autostart_global_write_requires_permission},
         {"c_abi_resolves_settings_override", c_abi_resolves_settings_override},
     };
 

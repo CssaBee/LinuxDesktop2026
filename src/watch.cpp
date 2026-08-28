@@ -4,6 +4,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -101,6 +102,9 @@ public:
             worker_ = std::thread([this] {
                 run();
             });
+            settle_worker_ = std::thread([this] {
+                run_settle();
+            });
         } else {
             state_ = stream_state::stopped;
         }
@@ -164,8 +168,12 @@ public:
             }
         }
         cv_.notify_all();
+        settle_cv_.notify_all();
         if (worker_.joinable()) {
             worker_.join();
+        }
+        if (settle_worker_.joinable()) {
+            settle_worker_.join();
         }
     }
 
@@ -221,6 +229,12 @@ public:
     }
 
 private:
+    struct settle_task {
+        std::string key;
+        std::uint64_t generation = 0;
+        watch_event event;
+    };
+
     void run()
     {
         for (;;) {
@@ -233,8 +247,11 @@ private:
                 }
                 continue;
             }
-            apply_settle_policy(*event);
-            deliver(std::move(*event));
+            if (needs_settle(*event)) {
+                enqueue_for_settle(std::move(*event));
+            } else {
+                deliver(std::move(*event));
+            }
         }
     }
 
@@ -248,27 +265,100 @@ private:
         return it->second;
     }
 
-    void apply_settle_policy(watch_event& event) const
+    bool is_stopped_for_settle() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return stopped_;
+    }
+
+    bool wait_for_settle_delay(std::chrono::milliseconds delay) const
+    {
+        if (delay.count() <= 0) {
+            return !is_stopped_for_settle();
+        }
+        std::unique_lock<std::mutex> lock(mutex_);
+        return !settle_cv_.wait_for(lock, delay, [this] {
+            return stopped_;
+        });
+    }
+
+    bool needs_settle(const watch_event& event) const
     {
         if (event.kind != event_kind::created && event.kind != event_kind::modified &&
             event.kind != event_kind::renamed_new) {
-            return;
+            return false;
         }
         if (event.path.type == path_type::directory) {
-            return;
+            return false;
         }
 
         const auto options = options_for(event.source);
         if (!options.has_value() || !options->settle.has_value()) {
-            return;
+            return false;
+        }
+        return true;
+    }
+
+    std::string settle_key(const watch_event& event) const
+    {
+        return std::to_string(event.source.value) + "\n" + event.path.absolute.string();
+    }
+
+    void enqueue_for_settle(watch_event event)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto key = settle_key(event);
+        const auto generation = ++settle_generations_[key];
+        settle_queue_.push_back(settle_task{std::move(key), generation, std::move(event)});
+        settle_cv_.notify_one();
+    }
+
+    void run_settle()
+    {
+        for (;;) {
+            settle_task task;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                settle_cv_.wait(lock, [this] {
+                    return stopped_ || !settle_queue_.empty();
+                });
+                if (settle_queue_.empty()) {
+                    return;
+                }
+                task = std::move(settle_queue_.front());
+                settle_queue_.pop_front();
+            }
+
+            auto event = apply_settle_policy(std::move(task.event));
+            if (!event.has_value()) {
+                return;
+            }
+            if (is_current_settle_task(task.key, task.generation)) {
+                deliver(std::move(*event));
+            }
+        }
+    }
+
+    bool is_current_settle_task(const std::string& key, std::uint64_t generation) const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto it = settle_generations_.find(key);
+        return !stopped_ && it != settle_generations_.end() && it->second == generation;
+    }
+
+    std::optional<watch_event> apply_settle_policy(watch_event event) const
+    {
+        const auto options = options_for(event.source);
+        if (!options.has_value() || !options->settle.has_value()) {
+            return event;
         }
 
         const auto settle = *options->settle;
-        if (settle.debounce_for.count() > 0) {
-            std::this_thread::sleep_for(settle.debounce_for);
+        if (!wait_for_settle_delay(settle.debounce_for)) {
+            return std::nullopt;
         }
         if (settle.stable_for.count() <= 0) {
-            return;
+            return event;
         }
 
         std::error_code ec;
@@ -279,7 +369,7 @@ private:
                 "watch.settle.timeout",
                 ec.message(),
                 event.path.absolute));
-            return;
+            return event;
         }
         auto last_write = std::filesystem::last_write_time(event.path.absolute, ec);
         if (ec) {
@@ -288,14 +378,16 @@ private:
                 "watch.settle.timeout",
                 ec.message(),
                 event.path.absolute));
-            return;
+            return event;
         }
 
         auto stable_for = std::chrono::milliseconds{0};
         const auto poll_interval =
             settle.poll_interval.count() > 0 ? settle.poll_interval : std::chrono::milliseconds{100};
         while (stable_for < settle.stable_for) {
-            std::this_thread::sleep_for(poll_interval);
+            if (!wait_for_settle_delay(poll_interval)) {
+                return std::nullopt;
+            }
             const auto size = std::filesystem::file_size(event.path.absolute, ec);
             if (ec) {
                 event.diagnostics.push_back(make_diagnostic(
@@ -303,7 +395,7 @@ private:
                     "watch.settle.timeout",
                     ec.message(),
                     event.path.absolute));
-                return;
+                return event;
             }
             const auto write_time = std::filesystem::last_write_time(event.path.absolute, ec);
             if (ec) {
@@ -312,7 +404,7 @@ private:
                     "watch.settle.timeout",
                     ec.message(),
                     event.path.absolute));
-                return;
+                return event;
             }
             if (size == last_size && write_time == last_write) {
                 stable_for += poll_interval;
@@ -328,6 +420,7 @@ private:
             "watch.settle.ready",
             "File size and mtime are stable",
             event.path.absolute));
+        return event;
     }
 
     void deliver(watch_event event)
@@ -350,11 +443,15 @@ private:
 
     mutable std::mutex mutex_;
     std::condition_variable cv_;
+    mutable std::condition_variable settle_cv_;
     std::shared_ptr<detail::watch_backend> backend_;
     std::thread worker_;
+    std::thread settle_worker_;
     std::deque<watch_event> queue_;
     event_callback callback_;
     std::map<std::uint64_t, watch_options> watches_;
+    std::deque<settle_task> settle_queue_;
+    std::map<std::string, std::uint64_t> settle_generations_;
     std::uint64_t next_id_ = 1;
     stream_state state_ = stream_state::clean;
     bool stopped_ = false;
@@ -415,5 +512,14 @@ stream_state watcher::state() const
 {
     return impl_->state();
 }
+
+namespace detail {
+
+watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend)
+{
+    return watcher(std::move(backend));
+}
+
+} // namespace detail
 
 } // namespace linuxdesktop::watch

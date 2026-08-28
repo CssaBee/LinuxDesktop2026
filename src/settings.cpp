@@ -2890,4 +2890,363 @@ operation_report import_tree_reg(const key& key, std::string_view content, const
 
 } // namespace registry
 
+namespace effects {
+namespace {
+
+std::string sanitize_autostart_id(std::string value)
+{
+    return sanitize_segment(std::move(value), "application") + ".desktop";
+}
+
+std::string desktop_escape(const std::string& value)
+{
+    std::string escaped;
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\':
+            escaped += "\\\\";
+            break;
+        case '\n':
+            escaped += "\\n";
+            break;
+        default:
+            escaped.push_back(ch);
+            break;
+        }
+    }
+    return escaped;
+}
+
+std::string shell_quote(const std::string& value)
+{
+    if (value.empty()) {
+        return "''";
+    }
+    bool simple = true;
+    for (const char ch : value) {
+        if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '/' && ch != '.' && ch != '_' && ch != '-' && ch != ':') {
+            simple = false;
+            break;
+        }
+    }
+    if (simple) {
+        return value;
+    }
+    std::string quoted = "'";
+    for (const char ch : value) {
+        if (ch == '\'') {
+            quoted += "'\\''";
+        } else {
+            quoted.push_back(ch);
+        }
+    }
+    quoted += "'";
+    return quoted;
+}
+
+std::string autostart_command(const autostart_entry& entry)
+{
+    std::string command = shell_quote(entry.executable.string());
+    for (const auto& argument : entry.arguments) {
+        command += " ";
+        command += shell_quote(argument);
+    }
+    return command;
+}
+
+void append_autostart_validation(const autostart_entry& entry, std::vector<diagnostic>& diagnostics)
+{
+    if (entry.id.empty()) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-id-empty",
+            "Autostart entry requires a stable id"));
+    }
+    if (entry.display_name.empty()) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-display-name-empty",
+            "Autostart entry requires a display name"));
+    }
+    if (entry.executable.empty()) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-executable-empty",
+            "Autostart entry requires an executable path"));
+    }
+}
+
+std::filesystem::path user_autostart_directory(std::vector<diagnostic>& diagnostics)
+{
+    if (auto config_home = absolute_env_path("XDG_CONFIG_HOME", diagnostics)) {
+        return *config_home / "autostart";
+    }
+    const auto home = home_directory();
+    if (home.empty()) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-home-unavailable",
+            "Cannot resolve the user autostart directory without HOME or XDG_CONFIG_HOME"));
+        return {};
+    }
+    return home / ".config" / "autostart";
+}
+
+std::filesystem::path autostart_directory(const autostart_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
+{
+    if (options.autostart_directory_override.has_value()) {
+        return *options.autostart_directory_override;
+    }
+    if (!entry.user_scope) {
+        return std::filesystem::path("/etc/xdg/autostart");
+    }
+    return user_autostart_directory(diagnostics);
+}
+
+std::filesystem::path autostart_path(const autostart_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
+{
+    const auto directory = autostart_directory(entry, options, diagnostics);
+    if (directory.empty()) {
+        return {};
+    }
+    return directory / sanitize_autostart_id(entry.id);
+}
+
+std::string desktop_file_content(const autostart_entry& entry)
+{
+    std::ostringstream output;
+    output << "[Desktop Entry]\n";
+    output << "Type=Application\n";
+    output << "Name=" << desktop_escape(entry.display_name) << "\n";
+    output << "Exec=" << desktop_escape(autostart_command(entry)) << "\n";
+    if (!entry.working_directory.empty()) {
+        output << "Path=" << desktop_escape(entry.working_directory.string()) << "\n";
+    }
+    output << "Terminal=false\n";
+    if (!entry.enabled) {
+        output << "Hidden=true\n";
+    }
+    output << "X-LinuxDesktop2026-Autostart=true\n";
+    return output.str();
+}
+
+bool desktop_file_hidden(const std::string& content)
+{
+    std::istringstream input(content);
+    std::string line;
+    while (std::getline(input, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line == "Hidden=true" || line == "Hidden=True" || line == "Hidden=1") {
+            return true;
+        }
+    }
+    return false;
+}
+
+effect_report permission_denied_report(
+    const autostart_entry& entry,
+    const apply_options& options,
+    std::string code,
+    std::string message)
+{
+    effect_report report;
+    report.dry_run = options.dry_run;
+    report.enabled = entry.enabled;
+    report.diagnostics.push_back(make_diagnostic(severity::error, std::move(code), std::move(message)));
+    return report;
+}
+
+#if defined(_WIN32)
+registry::key run_key_for(const autostart_entry& entry)
+{
+    registry::key key;
+    key.root = entry.user_scope ? registry::hive::current_user : registry::hive::local_machine;
+    key.subkey = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    return key;
+}
+
+registry::options registry_options_for(const autostart_entry& entry, const apply_options& options)
+{
+    registry::options registry_options;
+    registry_options.dry_run = options.dry_run;
+    registry_options.allow_hklm_write = !entry.user_scope && options.allow_global_write;
+    return registry_options;
+}
+#endif
+
+} // namespace
+
+effect_report apply_autostart(const autostart_entry& entry, const apply_options& options)
+{
+    effect_report report;
+    report.dry_run = options.dry_run;
+    report.enabled = entry.enabled;
+    append_autostart_validation(entry, report.diagnostics);
+    if (!entry.user_scope && !options.allow_global_write) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-global-write-denied",
+            "Machine-wide autostart changes require allow_global_write"));
+    }
+    if (!options.allow_desktop_integration_write) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-write-denied",
+            "Autostart changes require allow_desktop_integration_write"));
+    }
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+
+#if defined(_WIN32)
+    registry::value value;
+    value.name = entry.id;
+    value.type = registry::value_type::string;
+    const auto command = autostart_command(entry);
+    value.bytes.assign(
+        reinterpret_cast<const std::byte*>(command.data()),
+        reinterpret_cast<const std::byte*>(command.data() + command.size()));
+    const auto written = registry::write_value(run_key_for(entry), value, registry_options_for(entry, options));
+    report.ok = written.ok;
+    report.diagnostics.insert(report.diagnostics.end(), written.diagnostics.begin(), written.diagnostics.end());
+    return report;
+#else
+    report.path = autostart_path(entry, options, report.diagnostics);
+    if (report.path->empty() || has_error(report.diagnostics)) {
+        return report;
+    }
+    if (options.dry_run) {
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "autostart-dry-run",
+            "Autostart desktop entry was planned but not written",
+            *report.path));
+        return report;
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(report.path->parent_path(), ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-create-directory-failed",
+            ec.message(),
+            report.path->parent_path()));
+        return report;
+    }
+    if (!write_file_content(*report.path, desktop_file_content(entry))) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-write-failed",
+            "Failed to write XDG autostart desktop entry",
+            *report.path));
+        return report;
+    }
+    report.ok = true;
+    return report;
+#endif
+}
+
+effect_report remove_autostart(const autostart_entry& entry, const apply_options& options)
+{
+    effect_report report;
+    report.dry_run = options.dry_run;
+    append_autostart_validation(entry, report.diagnostics);
+    if (!entry.user_scope && !options.allow_global_write) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-global-write-denied",
+            "Machine-wide autostart changes require allow_global_write"));
+    }
+    if (!options.allow_desktop_integration_write) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-write-denied",
+            "Autostart changes require allow_desktop_integration_write"));
+    }
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+
+#if defined(_WIN32)
+    const auto deleted = registry::delete_value(run_key_for(entry), entry.id, registry_options_for(entry, options));
+    report.ok = deleted.ok;
+    report.diagnostics.insert(report.diagnostics.end(), deleted.diagnostics.begin(), deleted.diagnostics.end());
+    return report;
+#else
+    report.path = autostart_path(entry, options, report.diagnostics);
+    if (report.path->empty() || has_error(report.diagnostics)) {
+        return report;
+    }
+    if (options.dry_run) {
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "autostart-dry-run",
+            "Autostart desktop entry removal was planned but not applied",
+            *report.path));
+        return report;
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(*report.path, ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-remove-failed",
+            ec.message(),
+            *report.path));
+        return report;
+    }
+    report.ok = true;
+    return report;
+#endif
+}
+
+effect_report query_autostart(const autostart_entry& entry, const apply_options& options)
+{
+    effect_report report;
+    append_autostart_validation(entry, report.diagnostics);
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+
+#if defined(_WIN32)
+    const auto value = registry::read_value(run_key_for(entry), entry.id);
+    report.ok = value.ok;
+    report.enabled = value.ok && value.item.has_value();
+    report.diagnostics.insert(report.diagnostics.end(), value.diagnostics.begin(), value.diagnostics.end());
+    return report;
+#else
+    report.path = autostart_path(entry, options, report.diagnostics);
+    if (report.path->empty() || has_error(report.diagnostics)) {
+        return report;
+    }
+    std::error_code ec;
+    if (!std::filesystem::exists(*report.path, ec)) {
+        report.ok = true;
+        report.enabled = false;
+        return report;
+    }
+    std::error_code read_ec;
+    const auto content = read_text(*report.path, read_ec);
+    if (read_ec) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "autostart-read-failed",
+            read_ec.message(),
+            *report.path));
+        return report;
+    }
+    report.ok = true;
+    report.enabled = !desktop_file_hidden(content);
+    return report;
+#endif
+}
+
+} // namespace effects
+
 } // namespace linuxdesktop::settings

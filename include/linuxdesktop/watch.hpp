@@ -14,6 +14,8 @@
 
 namespace linuxdesktop::watch {
 
+class watcher;
+
 inline constexpr int version_major = 0;
 inline constexpr int version_minor = 1;
 inline constexpr int version_patch = 0;
@@ -110,9 +112,12 @@ struct start_report {
     std::vector<linuxdesktop::diagnostic> diagnostics;
 };
 
+#if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
 namespace detail {
 class watch_backend;
+watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
 } // namespace detail
+#endif
 
 class watcher {
 public:
@@ -123,8 +128,6 @@ public:
     watcher& operator=(const watcher&) = delete;
     watcher(watcher&&) noexcept;
     watcher& operator=(watcher&&) noexcept;
-
-    explicit watcher(std::shared_ptr<detail::watch_backend> backend);
 
     start_report add_watch(const watch_options& options);
     bool remove_watch(watch_id id);
@@ -138,6 +141,12 @@ public:
     stream_state state() const;
 
 private:
+#if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+    friend watcher detail::make_watcher_for_backend(std::shared_ptr<detail::watch_backend> backend);
+
+    explicit watcher(std::shared_ptr<detail::watch_backend> backend);
+#endif
+
     class impl;
     std::unique_ptr<impl> impl_;
 };

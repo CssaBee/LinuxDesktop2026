@@ -218,7 +218,7 @@ Linux should start with native `inotify`.
 
 Windows should be shaped around `ReadDirectoryChangesW`.
 
-libuv should be recommended for applications that already want a libuv loop and only need coarse rename/change notifications. It should remain the strongest reference and possible optional backend, but it should not be a required first dependency because its public watcher API intentionally reports only change/rename categories and brings event-loop ownership into the API.
+libuv should be recommended for applications that already want a libuv loop and only need coarse rename/change notifications. It is now available as an optional backend seam when CMake finds libuv, but it should not be a required dependency because its public watcher API intentionally reports only change/rename categories and brings event-loop ownership into the implementation.
 
 Qt, GLib/GIO, wxWidgets, and .NET `FileSystemWatcher` should be documented as ecosystem-native options or adapter targets, not required dependencies.
 
@@ -334,7 +334,10 @@ Linux smoke tests should create a temporary directory and cover:
 - directory create/modify/remove,
 - rename within one watched directory,
 - single-file watch behavior across save-by-replace,
-- and an unsupported recursive-native request producing an honest diagnostic on `inotify`.
+- an unsupported recursive-native request producing an honest diagnostic on `inotify`,
+- emulated recursive expansion when new subdirectories are created under a watched tree,
+- symlinked directories being skipped with an explicit diagnostic during recursive emulation,
+- and duplicate directory watches being skipped inside one emulated recursive watch.
 
 Smoke tests should avoid forcing a real kernel queue overflow in normal CI.
 
@@ -362,6 +365,7 @@ Implemented:
 - private backend interface in `src/watch_backend.hpp`,
 - watcher lifecycle, event queue, callback delivery, blocking pull delivery, and state tracking in `src/watch.cpp`,
 - native Linux `inotify` backend in `src/watch_inotify.cpp`,
+- optional libuv backend in `src/watch_libuv.cpp`, compiled only when libuv is available through `pkg-config`,
 - simulated-backend tests in `tests/watch_tests.cpp`,
 - Linux `inotify` smoke tests in `tests/watch_inotify_tests.cpp`,
 - install/export consumer coverage for `LinuxDesktop2026::ld_watch`,
@@ -370,9 +374,10 @@ Implemented:
 Still prototype-grade:
 
 - Windows is API-shaped but not implemented or smoke-verified.
-- Recursive emulation covers initial directory trees but not dynamic subdirectory expansion yet.
-- Settled-file support provides a blocking debounce/stable size/mtime helper in the delivery path; it is not yet a coalescing scheduler.
-- The backend injection constructor is exposed through `detail` so deterministic tests can drive the prototype; this should be revisited before a stable public API.
+- The optional libuv backend needs a machine with libuv installed for compile/runtime verification. It is intentionally not the default Ubuntu backend while native inotify exposes richer Linux behavior.
+- Recursive emulation now expands dynamically when new subdirectories appear, skips duplicate directory watches inside one logical recursive watch, fans out shared native descriptor events to multiple logical watches, reports skipped symlinked directories, and maps common inotify resource-limit failures into `watch.resource.limit` diagnostics.
+- Settled-file support now runs outside the raw backend delivery path and coalesces repeated events by source/path, but it still needs broader timeout, cancellation, and large-batch tests.
+- The deterministic test hook is private/internal through `src/watch_backend.hpp`; it is no longer exposed as a public `watcher` constructor in the installed header.
 
 ## Consequences
 

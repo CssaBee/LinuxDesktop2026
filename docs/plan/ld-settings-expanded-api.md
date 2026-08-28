@@ -442,7 +442,7 @@ Required examples before ship:
 6. Implement Windows Registry raw operations. `(initial C++ API/backend implemented; Windows verification pending)`
 7. Add JSON Registry import/export. `(initial C++ snapshot format and tree wrappers implemented)`
 8. Add `.reg` compatibility import/export. `(initial C++ snapshot format and tree wrappers implemented)`
-9. Implement autostart Windows and Linux backends.
+9. Implement autostart Windows and Linux backends. `(initial C++ API/backend implemented; Windows verification pending)`
 10. Implement managed/enforced policy Windows and Linux backends.
 11. Add Windows CI and manual verification transcript.
 
@@ -465,6 +465,9 @@ Implemented in the current C++ sample:
 - structured unsupported diagnostics for raw Registry calls on non-Windows platforms,
 - canonical JSON Registry snapshot serialization/parsing,
 - `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
-- Registry tree JSON/`.reg` import/export wrappers over the raw Registry API.
+- Registry tree JSON/`.reg` import/export wrappers over the raw Registry API,
+- autostart effect API with dry-run-first writes,
+- Linux XDG Autostart `.desktop` write/query/remove support,
+- Windows `CurrentVersion\Run` autostart backend shape over the raw Registry API.
 
-The next code work should start with autostart, then managed/enforced policy, and C ABI coverage for migration/Registry concepts. Windows CI or a Windows container/manual run must verify the Registry backend and tree import/export before the module can be considered shippable.
+The next code work should start with managed/enforced policy, then C ABI coverage for migration/Registry/effect concepts. Windows CI or a Windows container/manual run must verify the Registry backend, autostart backend, and tree import/export before the module can be considered shippable.

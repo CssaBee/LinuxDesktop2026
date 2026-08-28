@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+#define LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS
+#endif
+
 #include "linuxdesktop/watch.hpp"
 
 #include <optional>
@@ -18,5 +22,7 @@ public:
 };
 
 std::shared_ptr<watch_backend> make_native_backend();
+std::shared_ptr<watch_backend> make_libuv_backend();
+watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
 
 } // namespace linuxdesktop::watch::detail

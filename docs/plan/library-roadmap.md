@@ -89,6 +89,7 @@ Example documentation:
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Grow the C ABI beyond root resolution before ship, including named roots and config-layer reports.
 - Implement named roots, component roots, config layers, portable levels, migration plans, Windows Registry support, autostart, and managed/enforced policy before declaring `ld_settings` shippable.
+- Verify the Windows Registry/autostart backend paths before claiming the expanded settings/effects API is ready to ship.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Next Candidate Module
@@ -100,7 +101,7 @@ Current direction:
 - working name `ld_watch`,
 - broad prototype implemented with native Linux `inotify` first,
 - Windows `ReadDirectoryChangesW` shape in the public model,
-- libuv recommended for libuv-shaped apps and kept as the strongest coarse-event-loop reference,
+- optional libuv backend seam added for libuv-shaped apps while native Linux `inotify` remains the default Ubuntu backend,
 - efsw kept as the strongest future wrap candidate if the prototype proves direct native implementation too costly,
 - e-dant/watcher kept as the strongest compact source/API reference,
 - Qt, GLib/GIO, wxWidgets, and .NET `FileSystemWatcher` as recommendations, adapters, or migration references,
@@ -108,4 +109,5 @@ Current direction:
 - an `ld_watch` path value instead of bare strings for normal event paths,
 - raw events, settled-file trigger, and dirty-path refresh as named layers,
 - ADR 0010 as the implementation-ready API boundary,
-- and next watcher work focused on hardening recursive emulation, settled-file scheduling, Windows backend verification, and public API cleanup.
+- public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, and inotify resource-limit diagnostics completed in the prototype hardening pass,
+- and next watcher work focused on Windows backend verification, libuv backend verification, and C/C++ API stabilization.
