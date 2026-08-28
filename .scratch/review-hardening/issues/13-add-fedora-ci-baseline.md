@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] CI has a Fedora-based job or containerized job that configures, builds, and runs the current test suite.
-- [ ] The Fedora job installs only the packages needed for the existing CMake/Ninja test path.
-- [ ] Fedora failures are visible as a distinct CI result, not hidden inside a generic Linux job.
+- [x] CI has a Fedora-based job or containerized job that configures, builds, and runs the current test suite.
+- [x] The Fedora job installs only the packages needed for the existing CMake/Ninja test path.
+- [x] Fedora failures are visible as a distinct CI result, not hidden inside a generic Linux job.

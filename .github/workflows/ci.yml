@@ -58,3 +58,24 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build-libuv --output-on-failure
+
+  fedora:
+    name: Fedora CMake
+    runs-on: ubuntu-latest
+    container: fedora:latest
+
+    steps:
+      - name: Install build dependencies
+        run: dnf install -y cmake gcc-c++ git ninja-build
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build-fedora -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build-fedora
+
+      - name: Test
+        run: ctest --test-dir build-fedora --output-on-failure
