@@ -47,7 +47,7 @@ Status legend:
 | `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` still needs real Windows Registry/autostart/policy verification, rollback evidence, and a published Rust crate before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and expanded settings/Registry survey are guiding reusable seams. The broader `ld_watch` application/library follow-up is complete enough to guide implementation. |
 | `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. |
-| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C prototype is present with `LinuxDesktop2026::ld_paths`, version constants/functions, shared diagnostics, path family/source enums, resolver reports, deterministic resolver hooks, Linux XDG Base Directory behavior, user-directory fallbacks, executable/resource/install roots, opt-in directory creation, path-list parsing/joining, typed plugin path sets, Wine-prefix-aware defaults, tests, demos, and install-tree consumer coverage. Remaining prototype work: XDG user-dir parsing, legacy fallback chains, and Windows verification before public prototype announcement. |
+| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C prototype is present with `LinuxDesktop2026::ld_paths`, version constants/functions, shared diagnostics, path family/source enums, resolver reports, deterministic resolver hooks, Linux XDG Base Directory behavior, XDG user-dir parsing, user-directory fallbacks, executable/resource/install roots, legacy and site-default config candidates, opt-in directory creation, path-list parsing/joining, typed plugin path sets, Wine-prefix-aware defaults, tests, demos, and install-tree consumer coverage. Remaining prototype work: Windows verification before public prototype announcement. |
 | `📌` Next | `ld_settings` and `ld_paths` extraction | Keep the current `ld_settings` resolver until `ld_paths` has tests and install-tree consumer coverage, then refactor settings root placement through `ld_paths`. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -113,7 +113,9 @@ Current backend posture:
 - small C ABI reports for selected roots, candidates, path-list parsing, and plugin path sets
 - deterministic environment, home, temp, and executable path hooks for tests and examples
 - Linux XDG Base Directory resolution with HOME fallbacks
-- executable path, executable directory, install prefix, resource root, temp, and standard user-directory fallback resolution
+- XDG `user-dirs.dirs` parsing with malformed/relative entry diagnostics and HOME fallbacks
+- executable path, executable directory, install prefix, resource root, temp, and standard user-directory resolution
+- legacy and site-default config candidates in resolver reports
 - opt-in directory creation helpers with dry-run defaults
 - path-list parsing/joining with platform separators, duplicate filtering, and rejection diagnostics
 - typed plugin path sets for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX
@@ -147,7 +149,7 @@ C callers use `linuxdesktop/paths_c.h`. Reports own their returned strings and a
 
 The prototype should resolve and report:
 
-- config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, and public-share paths,
+- config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public-share paths,
 - executable path, executable directory, resource root, and install prefix,
 - explicit options, environment overrides, XDG Base Directory values, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks,
 - path lists using platform separators,
@@ -157,9 +159,9 @@ Compatibility matrix:
 
 | Platform | Current prototype status |
 | --- | --- |
-| Ubuntu LTS / XDG Linux | Covered by deterministic C++ and C tests for Base Directory fallbacks, path lists, directory previews, and plugin search roots. XDG `user-dirs.dirs` parsing and legacy chains remain planned. |
-| Other XDG-like Linux | Best effort through the same XDG Base Directory and HOME fallback behavior; distro-specific user-dir behavior is not verified yet. |
-| Windows 10/11 | Public model includes Known Folder sources and Windows plugin defaults, but real Windows runtime verification is still pending. |
+| Ubuntu LTS / XDG Linux | Covered by deterministic C++ and C tests for Base Directory fallbacks, XDG user-dir parsing, legacy/site config candidates, path lists, directory previews, and plugin search roots. |
+| Other XDG-like Linux | Best effort through the same XDG Base Directory, XDG user-dir, and HOME fallback behavior; distro-specific user-dir behavior is not verified yet. |
+| Windows 10/11 | Public model includes Known Folder sources, user-dir fallbacks, and Windows plugin defaults, but real Windows runtime verification is still pending. |
 | macOS | No phase-one support promise; API choices should leave room for a later platform backend. |
 
 The first implementation should support Windows 10/11 and Ubuntu LTS, provide C++17 and C entry points, and keep filesystem mutation opt-in.

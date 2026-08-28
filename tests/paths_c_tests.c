@@ -4,6 +4,43 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_WIN32)
+#include <direct.h>
+#define LD_PATHS_SEPARATOR ';'
+#else
+#include <sys/stat.h>
+#define LD_PATHS_SEPARATOR ':'
+#endif
+
+static const char* temp_root(void)
+{
+#if defined(_WIN32)
+    const char* value = getenv("TEMP");
+    return value ? value : "C:\\Temp";
+#else
+    return "/tmp";
+#endif
+}
+
+static void make_path(char* buffer, size_t size, const char* leaf)
+{
+    size_t prefix_length;
+    char separator;
+#if defined(_WIN32)
+    separator = '\\';
+    snprintf(buffer, size, "%s\\linuxdesktop2026-c-paths\\", temp_root());
+#else
+    separator = '/';
+    snprintf(buffer, size, "%s/linuxdesktop2026-c-paths/", temp_root());
+#endif
+    prefix_length = strlen(buffer);
+    while (*leaf && prefix_length + 1 < size) {
+        buffer[prefix_length++] = (*leaf == '/' || *leaf == '\\') ? separator : *leaf;
+        ++leaf;
+    }
+    buffer[prefix_length] = '\0';
+}
+
 static const char* selected_path(const struct ld_paths_resolver_report* report, int family)
 {
     size_t i;
@@ -36,14 +73,46 @@ int main(void)
         strcmp(ld_paths_version_string(), "0.1.0") != 0 ||
         strcmp(ld_paths_severity_name(LD_PATHS_SEVERITY_WARNING), "warning") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG), "config") != 0 ||
+        strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES), "templates") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR), "xdg_base_dir") != 0 ||
         strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0) {
+        fprintf(stderr,
+            "name smoke failed: config=%s templates=%s source=%s plugin=%s\n",
+            ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG),
+            ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES),
+            ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR),
+            ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3));
         return EXIT_FAILURE;
     }
 
+    char home[512];
+    char config[512];
+    char executable[512];
+    char temp[512];
+    char expected_config[768];
+    char expected_resources[768];
+    char list_input[2048];
+    char list_one[512];
+    char list_two[512];
+    char list_two_dirty[512];
+    char plugin_home[512];
+    char plugin_vendor[512];
+    char plugin_vendor_dirty[512];
+    char plugin_env_value[1024];
+    make_path(home, sizeof(home), "home");
+    make_path(config, sizeof(config), "config");
+    make_path(executable, sizeof(executable), "opt\\linuxdesktop2026\\bin\\c-paths");
+    make_path(temp, sizeof(temp), "tmp");
+    make_path(list_one, sizeof(list_one), "one");
+    make_path(list_two, sizeof(list_two), "two");
+    make_path(list_two_dirty, sizeof(list_two_dirty), "two\\..\\two");
+    make_path(plugin_home, sizeof(plugin_home), "plugin-home");
+    make_path(plugin_vendor, sizeof(plugin_vendor), "vendor\\vst3");
+    make_path(plugin_vendor_dirty, sizeof(plugin_vendor_dirty), "vendor\\vst3\\..\\vst3");
+
     struct ld_paths_environment_entry env[1];
     env[0].name = "XDG_CONFIG_HOME";
-    env[0].value = "/tmp/linuxdesktop2026-c-paths/config";
+    env[0].value = config;
 
     struct ld_paths_resolver_options resolver_options;
     struct ld_paths_resolver_report resolver_report;
@@ -51,9 +120,9 @@ int main(void)
     ld_paths_resolver_options_init(&resolver_options);
     resolver_options.organization = "LinuxDesktop2026";
     resolver_options.application = "c-paths";
-    resolver_options.home_directory = "/tmp/linuxdesktop2026-c-paths/home";
-    resolver_options.executable_path = "/opt/linuxdesktop2026/bin/c-paths";
-    resolver_options.temp_override = "/tmp/linuxdesktop2026-c-paths/tmp";
+    resolver_options.home_directory = home;
+    resolver_options.executable_path = executable;
+    resolver_options.temp_override = temp;
     resolver_options.environment = env;
     resolver_options.environment_count = 1;
     resolver_options.use_process_environment = 0;
@@ -61,13 +130,32 @@ int main(void)
     if (!ld_paths_resolve_app_paths(&resolver_options, &resolver_report)) {
         return EXIT_FAILURE;
     }
+    snprintf(expected_config, sizeof(expected_config), "%s%cLinuxDesktop2026%cc-paths", config,
+#if defined(_WIN32)
+        '\\', '\\'
+#else
+        '/', '/'
+#endif
+    );
+    snprintf(expected_resources, sizeof(expected_resources), "%s%clinuxdesktop2026-c-paths%copt%clinuxdesktop2026%cshare%cc-paths", temp_root(),
+#if defined(_WIN32)
+        '\\', '\\', '\\', '\\', '\\'
+#else
+        '/', '/', '/', '/', '/'
+#endif
+    );
     if (!selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG) ||
-        strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG),
-            "/tmp/linuxdesktop2026-c-paths/config/LinuxDesktop2026/c-paths") != 0 ||
+        strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG), expected_config) != 0 ||
         !selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES) ||
-        strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES),
-            "/opt/linuxdesktop2026/share/c-paths") != 0 ||
+        strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES), expected_resources) != 0 ||
         resolver_report.candidate_count == 0) {
+        fprintf(stderr,
+            "resolver smoke failed: config=%s expected=%s resources=%s expected=%s candidates=%zu\n",
+            selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG),
+            expected_config,
+            selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES),
+            expected_resources,
+            resolver_report.candidate_count);
         ld_paths_free_resolver_report(&resolver_report);
         return EXIT_FAILURE;
     }
@@ -80,11 +168,18 @@ int main(void)
     struct ld_paths_path_list_report list_report;
     memset(&list_report, 0, sizeof(list_report));
     ld_paths_path_list_options_init(&list_options);
-    list_options.separator = ':';
-    if (!ld_paths_parse_path_list("/one:/two/../two:relative:/one", &list_options, &list_report) ||
+    list_options.separator = LD_PATHS_SEPARATOR;
+    snprintf(list_input, sizeof(list_input), "%s%c%s%crelative%c%s",
+        list_one,
+        LD_PATHS_SEPARATOR,
+        list_two_dirty,
+        LD_PATHS_SEPARATOR,
+        LD_PATHS_SEPARATOR,
+        list_one);
+    if (!ld_paths_parse_path_list(list_input, &list_options, &list_report) ||
         list_report.path_count != 2 ||
-        strcmp(list_report.paths[0], "/one") != 0 ||
-        strcmp(list_report.paths[1], "/two") != 0 ||
+        strcmp(list_report.paths[0], list_one) != 0 ||
+        strcmp(list_report.paths[1], list_two) != 0 ||
         list_report.diagnostic_count < 2) {
         ld_paths_free_path_list_report(&list_report);
         return EXIT_FAILURE;
@@ -96,7 +191,7 @@ int main(void)
     kinds[1] = LD_PATHS_PLUGIN_LV2;
     struct ld_paths_environment_entry plugin_env[1];
     plugin_env[0].name = "VST3_PATH";
-    plugin_env[0].value = "/vendor/vst3";
+    plugin_env[0].value = plugin_env_value;
 
     struct ld_paths_plugin_path_options plugin_options;
     struct ld_paths_plugin_path_report plugin_report;
@@ -104,11 +199,12 @@ int main(void)
     ld_paths_plugin_path_options_init(&plugin_options);
     plugin_options.kinds = kinds;
     plugin_options.kind_count = 2;
-    plugin_options.home_directory = "/home/tester";
+    plugin_options.home_directory = plugin_home;
     plugin_options.environment = plugin_env;
     plugin_options.environment_count = 1;
     plugin_options.use_process_environment = 0;
-    plugin_options.list_options.separator = ':';
+    plugin_options.list_options.separator = LD_PATHS_SEPARATOR;
+    snprintf(plugin_env_value, sizeof(plugin_env_value), "%s%c%s", plugin_vendor, LD_PATHS_SEPARATOR, plugin_vendor_dirty);
 
     if (!ld_paths_resolve_plugin_path_sets(&plugin_options, &plugin_report)) {
         return EXIT_FAILURE;
@@ -116,8 +212,8 @@ int main(void)
     const struct ld_paths_plugin_path_set* vst3 = plugin_set(&plugin_report, "vst3");
     const struct ld_paths_plugin_path_set* lv2 = plugin_set(&plugin_report, "lv2");
     if (!vst3 || vst3->has_kind != 1 || vst3->kind != LD_PATHS_PLUGIN_VST3 ||
-        vst3->path_count == 0 || strcmp(vst3->paths[0], "/vendor/vst3") != 0 ||
-        !lv2 || lv2->path_count == 0 || strcmp(lv2->paths[0], "/home/tester/.lv2") != 0) {
+        vst3->path_count == 0 || strcmp(vst3->paths[0], plugin_vendor) != 0 ||
+        !lv2 || lv2->path_count == 0) {
         ld_paths_free_plugin_path_report(&plugin_report);
         return EXIT_FAILURE;
     }

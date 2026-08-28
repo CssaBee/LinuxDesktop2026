@@ -133,7 +133,7 @@ Current public prototype scope:
 - Windows 10/11 and Ubuntu LTS first.
 - C++17 API backed by shared `ld_core` diagnostics.
 - Small C ABI for root reports, candidate reports, path-list parsing, and typed plugin path sets.
-- Standard user paths beyond settings roots: config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, and public share.
+- Standard user paths beyond settings roots: config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public share.
 - Executable path, executable directory, resource root, and install prefix reporting.
 - Source-labeled candidate reports for explicit options, environment overrides, XDG base dirs, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks.
 - Path-list parsing and joining with platform separators.
@@ -166,7 +166,7 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 
 Near-term planning changes:
 
-- Promote `ld_paths` to the next planned module. It now covers standard user paths beyond settings roots, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. XDG user-dir parsing, explicit legacy fallback chains, and Windows verification remain before public prototype announcement.
+- Promote `ld_paths` to the next planned module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Real Windows verification remains before public prototype announcement.
 - Promote `ld_process` to a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
 - Promote `ld_ipc` after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
 - Add future desktop integration work for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.

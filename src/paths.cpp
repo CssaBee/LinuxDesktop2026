@@ -2,6 +2,9 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
@@ -183,6 +186,67 @@ std::filesystem::path expand_home(const std::filesystem::path& path, const std::
         return home.empty() ? path : home / text.substr(2);
     }
     return path;
+}
+
+std::string trim(std::string_view value)
+{
+    size_t first = 0;
+    while (first < value.size() && std::isspace(static_cast<unsigned char>(value[first]))) {
+        ++first;
+    }
+
+    size_t last = value.size();
+    while (last > first && std::isspace(static_cast<unsigned char>(value[last - 1]))) {
+        --last;
+    }
+
+    return std::string(value.substr(first, last - first));
+}
+
+std::string unquote_xdg_value(std::string value)
+{
+    value = trim(value);
+    if (value.size() < 2 || value.front() != '"' || value.back() != '"') {
+        return value;
+    }
+
+    std::string result;
+    result.reserve(value.size() - 2);
+    bool escaping = false;
+    for (size_t i = 1; i + 1 < value.size(); ++i) {
+        const char ch = value[i];
+        if (escaping) {
+            result.push_back(ch);
+            escaping = false;
+            continue;
+        }
+        if (ch == '\\') {
+            escaping = true;
+            continue;
+        }
+        result.push_back(ch);
+    }
+    if (escaping) {
+        result.push_back('\\');
+    }
+    return result;
+}
+
+std::filesystem::path expand_xdg_user_dir_value(std::string value, const std::filesystem::path& home)
+{
+    value = unquote_xdg_value(std::move(value));
+    if (!home.empty()) {
+        if (value == "$HOME") {
+            return home;
+        }
+        if (value.rfind("$HOME/", 0) == 0) {
+            return home / value.substr(6);
+        }
+        if (value.rfind("${HOME}/", 0) == 0) {
+            return home / value.substr(8);
+        }
+    }
+    return std::filesystem::path(value);
 }
 
 std::vector<plugin_path_kind> default_plugin_kinds()
@@ -402,14 +466,190 @@ void select_base_directory(
     }
 }
 
+void append_site_directory_candidates(
+    resolver_report& report,
+    const resolver_options& options,
+    const std::string& env_name,
+    const std::string& default_value,
+    path_family family,
+    const std::filesystem::path& app_leaf)
+{
+    auto raw = environment_value(options, env_name).value_or(default_value);
+    path_list_options list_options;
+    list_options.separator = ':';
+    auto parsed = parse_path_list(raw, list_options);
+    for (auto candidate : parsed.candidates) {
+        candidate.family = family;
+        candidate.source = candidate.selected ? candidate_source::site_default : candidate_source::environment;
+        candidate.selected = false;
+        if (candidate.source == candidate_source::site_default) {
+            candidate.path /= app_leaf;
+        }
+        for (const auto& item : candidate.diagnostics) {
+            report.diagnostics.push_back(item);
+        }
+        report.candidates.push_back(std::move(candidate));
+    }
+}
+
+void append_legacy_config_candidates(
+    resolver_report& report,
+    const std::vector<std::filesystem::path>& legacy_config_files)
+{
+    for (const auto& path : legacy_config_files) {
+        if (path.is_absolute()) {
+            add_candidate(report, path_family::config, candidate_source::legacy, path, false);
+            continue;
+        }
+
+        add_candidate(
+            report,
+            path_family::config,
+            candidate_source::legacy,
+            path,
+            false,
+            {make_diagnostic(
+                severity::warning,
+                std::string(diagnostic_code::legacy_path_relative_ignored),
+                "Legacy config path must be absolute",
+                path)});
+    }
+}
+
+const std::map<std::string, path_family>& xdg_user_dir_families()
+{
+    static const std::map<std::string, path_family> families = {
+        {"XDG_DOCUMENTS_DIR", path_family::documents},
+        {"XDG_DESKTOP_DIR", path_family::desktop},
+        {"XDG_DOWNLOAD_DIR", path_family::downloads},
+        {"XDG_MUSIC_DIR", path_family::music},
+        {"XDG_PICTURES_DIR", path_family::pictures},
+        {"XDG_VIDEOS_DIR", path_family::videos},
+        {"XDG_TEMPLATES_DIR", path_family::templates},
+        {"XDG_PUBLICSHARE_DIR", path_family::public_share},
+    };
+    return families;
+}
+
+std::map<path_family, std::filesystem::path> parse_xdg_user_dirs(
+    resolver_report& report,
+    const resolver_options& options,
+    const std::filesystem::path& home)
+{
+    std::map<path_family, std::filesystem::path> result;
+    if (home.empty()) {
+        return result;
+    }
+
+    std::filesystem::path config_home = home / ".config";
+    if (auto configured = absolute_environment_path(options, report, "XDG_CONFIG_HOME", path_family::config)) {
+        config_home = *configured;
+    }
+    const auto file_path = config_home / "user-dirs.dirs";
+
+    std::error_code ec;
+    if (!std::filesystem::exists(file_path, ec)) {
+        return result;
+    }
+
+    std::ifstream file(file_path);
+    if (!file) {
+        append_report_diagnostic(report, make_diagnostic(
+            severity::warning,
+            std::string(diagnostic_code::xdg_user_dir_unreadable),
+            "XDG user-dirs file could not be read",
+            file_path));
+        return result;
+    }
+
+    std::string line;
+    size_t line_number = 0;
+    while (std::getline(file, line)) {
+        ++line_number;
+        const auto stripped = trim(line);
+        if (stripped.empty() || stripped.front() == '#') {
+            continue;
+        }
+
+        const auto equals = stripped.find('=');
+        if (equals == std::string::npos) {
+            append_report_diagnostic(report, make_diagnostic(
+                severity::warning,
+                std::string(diagnostic_code::xdg_user_dir_malformed),
+                "Malformed XDG user-dirs entry at line " + std::to_string(line_number),
+                file_path));
+            continue;
+        }
+
+        const auto key = trim(std::string_view(stripped).substr(0, equals));
+        const auto family = xdg_user_dir_families().find(key);
+        if (family == xdg_user_dir_families().end()) {
+            continue;
+        }
+
+        const auto value = expand_xdg_user_dir_value(stripped.substr(equals + 1), home);
+        if (!value.is_absolute()) {
+            add_candidate(
+                report,
+                family->second,
+                candidate_source::xdg_user_dir,
+                value,
+                false,
+                {make_diagnostic(
+                    severity::warning,
+                    std::string(diagnostic_code::xdg_user_dir_relative_ignored),
+                    key + " is relative and was ignored",
+                    value)});
+            continue;
+        }
+
+        result[family->second] = value.lexically_normal();
+    }
+
+    return result;
+}
+
 void select_user_directory(
     resolver_report& report,
     path_family family,
     const std::filesystem::path& home,
-    const std::filesystem::path& leaf)
+    const std::filesystem::path& leaf,
+    const std::map<path_family, std::filesystem::path>& xdg_user_dirs = {})
 {
+    if (report.selected.find(family) != report.selected.end()) {
+        return;
+    }
+
+    const auto configured = xdg_user_dirs.find(family);
+    if (configured != xdg_user_dirs.end()) {
+        add_candidate(report, family, candidate_source::xdg_user_dir, configured->second, true);
+        return;
+    }
+
     if (!home.empty()) {
         add_candidate(report, family, candidate_source::fallback, home / leaf, true);
+    }
+}
+
+void select_user_directory_candidate(
+    resolver_report& report,
+    path_family family,
+    candidate_source source,
+    const std::optional<std::filesystem::path>& path,
+    const std::filesystem::path& home,
+    const std::filesystem::path& fallback_leaf)
+{
+    if (report.selected.find(family) != report.selected.end()) {
+        return;
+    }
+
+    if (path && !path->empty()) {
+        add_candidate(report, family, source, *path, true);
+        return;
+    }
+
+    if (!home.empty()) {
+        add_candidate(report, family, candidate_source::fallback, home / fallback_leaf, true);
     }
 }
 
@@ -507,6 +747,8 @@ std::string_view to_string(path_family value)
         return "pictures";
     case path_family::videos:
         return "videos";
+    case path_family::templates:
+        return "templates";
     case path_family::public_share:
         return "public_share";
     case path_family::executable:
@@ -612,6 +854,7 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_absolute_override(report, path_family::resources, options.resource_root);
     select_absolute_override(report, path_family::install_prefix, options.install_prefix);
     select_absolute_override(report, path_family::executable, options.executable_path);
+    append_legacy_config_candidates(report, options.legacy_config_files);
 
 #if defined(_WIN32)
     const auto home = home_directory(options);
@@ -657,15 +900,14 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
         }
     }
 
-    if (!home.empty()) {
-        select_user_directory(report, path_family::documents, home, "Documents");
-        select_user_directory(report, path_family::desktop, home, "Desktop");
-        select_user_directory(report, path_family::downloads, home, "Downloads");
-        select_user_directory(report, path_family::music, home, "Music");
-        select_user_directory(report, path_family::pictures, home, "Pictures");
-        select_user_directory(report, path_family::videos, home, "Videos");
-        select_user_directory(report, path_family::public_share, home, "Public");
-    }
+    select_user_directory_candidate(report, path_family::documents, candidate_source::known_folder, known_folder(FOLDERID_Documents, report, path_family::documents), home, "Documents");
+    select_user_directory_candidate(report, path_family::desktop, candidate_source::known_folder, known_folder(FOLDERID_Desktop, report, path_family::desktop), home, "Desktop");
+    select_user_directory_candidate(report, path_family::downloads, candidate_source::known_folder, known_folder(FOLDERID_Downloads, report, path_family::downloads), home, "Downloads");
+    select_user_directory_candidate(report, path_family::music, candidate_source::known_folder, known_folder(FOLDERID_Music, report, path_family::music), home, "Music");
+    select_user_directory_candidate(report, path_family::pictures, candidate_source::known_folder, known_folder(FOLDERID_Pictures, report, path_family::pictures), home, "Pictures");
+    select_user_directory_candidate(report, path_family::videos, candidate_source::known_folder, known_folder(FOLDERID_Videos, report, path_family::videos), home, "Videos");
+    select_user_directory_candidate(report, path_family::templates, candidate_source::known_folder, known_folder(FOLDERID_Templates, report, path_family::templates), home, "Templates");
+    select_user_directory_candidate(report, path_family::public_share, candidate_source::known_folder, known_folder(FOLDERID_Public, report, path_family::public_share), home, "Public");
 #else
     const auto home = home_directory(options);
     if (home.empty()) {
@@ -680,13 +922,18 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_base_directory(report, options, path_family::state, "XDG_STATE_HOME", home.empty() ? std::filesystem::path{} : home / ".local" / "state", app_leaf);
     select_base_directory(report, options, path_family::cache, "XDG_CACHE_HOME", home.empty() ? std::filesystem::path{} : home / ".cache", app_leaf);
 
-    select_user_directory(report, path_family::documents, home, "Documents");
-    select_user_directory(report, path_family::desktop, home, "Desktop");
-    select_user_directory(report, path_family::downloads, home, "Downloads");
-    select_user_directory(report, path_family::music, home, "Music");
-    select_user_directory(report, path_family::pictures, home, "Pictures");
-    select_user_directory(report, path_family::videos, home, "Videos");
-    select_user_directory(report, path_family::public_share, home, "Public");
+    append_site_directory_candidates(report, options, "XDG_CONFIG_DIRS", "/etc/xdg", path_family::config, app_leaf);
+    append_site_directory_candidates(report, options, "XDG_DATA_DIRS", "/usr/local/share:/usr/share", path_family::data, app_leaf);
+
+    const auto xdg_user_dirs = parse_xdg_user_dirs(report, options, home);
+    select_user_directory(report, path_family::documents, home, "Documents", xdg_user_dirs);
+    select_user_directory(report, path_family::desktop, home, "Desktop", xdg_user_dirs);
+    select_user_directory(report, path_family::downloads, home, "Downloads", xdg_user_dirs);
+    select_user_directory(report, path_family::music, home, "Music", xdg_user_dirs);
+    select_user_directory(report, path_family::pictures, home, "Pictures", xdg_user_dirs);
+    select_user_directory(report, path_family::videos, home, "Videos", xdg_user_dirs);
+    select_user_directory(report, path_family::templates, home, "Templates", xdg_user_dirs);
+    select_user_directory(report, path_family::public_share, home, "Public", xdg_user_dirs);
 #endif
 
     if (report.selected.find(path_family::temp) == report.selected.end()) {

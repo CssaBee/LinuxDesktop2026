@@ -49,7 +49,7 @@ Implement:
 - `LinuxDesktop2026::ld_paths` namespaced target,
 - app identity,
 - resolver options,
-- standard root report for config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, and public share,
+- standard root report for config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public share,
 - executable path and executable directory,
 - resource root and install prefix options,
 - source-labeled candidate reporting,
@@ -59,7 +59,7 @@ Implement:
 
 Exit bar:
 
-- Linux unit tests cover XDG env variables, unset variables, relative invalid overrides, `$HOME` fallback, missing home diagnostics, executable roots, resource roots, install prefix derivation, temp roots, and source-labeled candidates.
+- Linux unit tests cover XDG env variables, unset variables, relative invalid overrides, `$HOME` fallback, missing home diagnostics, XDG user-dir parsing, malformed/relative user-dir diagnostics, executable roots, resource roots, install prefix derivation, temp roots, and source-labeled candidates.
 - Windows public model includes environment and Known Folder sources, but Windows tests or a verification checklist still need to cover Known Folders, executable path, UTF-8 paths, and unavailable-folder diagnostics.
 - The demo prints a resolver report without touching real user config.
 
@@ -86,15 +86,15 @@ Exit bar:
 
 ### Milestone 3: User Dirs And Legacy Fallbacks
 
-Status: planned.
+Status: implemented for the C++ and C resolver reports on Linux; real Windows 10/11 verification remains pending.
 
 Implement:
 
 - XDG `user-dirs.dirs` parsing for Documents, Desktop, Downloads, Music, Pictures, Videos, Templates, and Public,
 - fallback behavior when `user-dirs.dirs` is missing, malformed, or points to relative paths,
 - Windows equivalent folder resolution,
-- legacy fallback chain modeling,
-- explicit config file/directory candidate chains shaped by NUT and OpenRGB evidence,
+- legacy fallback chain modeling for configured absolute legacy config files,
+- explicit config directory candidate chains shaped by NUT and OpenRGB evidence through XDG user, legacy, and site-default candidates,
 - and source labels such as explicit option, environment variable, XDG user dir, known folder, legacy file, site default, executable relative, and fallback.
 
 Exit bar:
@@ -145,8 +145,7 @@ Exit bar:
 
 Remaining before public prototype announcement:
 
-- complete Milestone 3 XDG user-dir and legacy fallback chain modeling,
-- run the Windows 10/11 Known Folder and plugin-default verification checklist,
+- run the Windows 10/11 Known Folder, user-dir fallback, UTF-8 path, executable-root, and plugin-default verification checklist,
 - and decide whether custom plugin path sets need C ABI exposure in the first public cut.
 
 ## Proposed API Shape
@@ -173,6 +172,7 @@ enum class path_family {
     music,
     pictures,
     videos,
+    templates,
     public_share,
     executable,
     install_prefix,

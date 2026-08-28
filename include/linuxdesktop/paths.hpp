@@ -32,6 +32,10 @@ inline constexpr std::string_view directory_create_failed = "paths.directory.cre
 inline constexpr std::string_view path_list_relative_ignored = "paths.path_list.relative_ignored";
 inline constexpr std::string_view path_list_empty_entry_ignored = "paths.path_list.empty_entry_ignored";
 inline constexpr std::string_view path_list_duplicate_ignored = "paths.path_list.duplicate_ignored";
+inline constexpr std::string_view xdg_user_dir_malformed = "paths.xdg_user_dir.malformed";
+inline constexpr std::string_view xdg_user_dir_relative_ignored = "paths.xdg_user_dir.relative_ignored";
+inline constexpr std::string_view xdg_user_dir_unreadable = "paths.xdg_user_dir.unreadable";
+inline constexpr std::string_view legacy_path_relative_ignored = "paths.legacy.relative_ignored";
 } // namespace diagnostic_code
 
 struct app_identity {
@@ -51,6 +55,7 @@ enum class path_family {
     music,
     pictures,
     videos,
+    templates,
     public_share,
     executable,
     executable_directory,
