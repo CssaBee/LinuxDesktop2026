@@ -14,7 +14,19 @@ The current surface wraps root resolution and the first report vocabulary:
 - caller releases all returned memory with `ld_settings_free_root_report`,
 - named roots, component roots, config layers, active read order, active write layer, and portable level are exposed in the report.
 
-The current surface also wraps first-scope desktop effects:
+The current surface also wraps first-scope mutation and migration helpers:
+
+- config bundle hydration,
+- `write_with_backup` with optional validation callback,
+- migration plan creation,
+- migration plan execution from C-supplied actions,
+- Registry JSON snapshot serialization/parsing,
+- `.reg` snapshot serialization/parsing,
+- Registry tree JSON/`.reg` export/import entry points,
+- report-owned UTF-8 paths/content/diagnostics,
+- and one matching free function per report family.
+
+It also wraps first-scope desktop effects:
 
 - autostart apply/remove/query,
 - managed/enforced policy apply/remove/query,
@@ -68,14 +80,12 @@ A future Rust crate can bind this surface with:
 
 The Rust side should not free individual strings directly.
 
+The repository includes `tests/settings_rust_ffi_smoke.rs`, a tiny conditional `rustc` smoke test. When `rustc` is available at configure time, CMake builds a Rust object that calls the C ABI and links it into a C++ test executable. When `rustc` is not available, the regular C/C++ test suite still runs and the Rust smoke test is skipped.
+
 ## Deferred
 
-- C ABI wrappers for migration plans and migration execution reports.
-- C ABI wrappers for Registry snapshots/import/export.
-- C ABI wrappers for config bundle hydration.
-- C ABI wrappers for `write_with_backup`.
 - A published Rust crate.
 - Ownership helpers for individual strings or diagnostics.
 - Stable ABI/version negotiation.
 
-The next useful step is C ABI coverage for migration and Registry, followed by a tiny Rust FFI smoke test.
+The next useful step is real Windows verification for Registry/autostart/policy behavior, followed by a small safe Rust crate wrapper once the ABI names settle.

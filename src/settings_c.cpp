@@ -9,6 +9,8 @@
 #include <new>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace {
 
@@ -142,6 +144,7 @@ bool assign_path(char*& target, const std::filesystem::path& value)
 }
 
 bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count);
+std::optional<std::filesystem::path> optional_path(const char* value);
 
 void free_named_root(ld_settings_named_root& root)
 {
@@ -206,6 +209,109 @@ void free_policy_report_fields(ld_settings_policy_report& report)
     report = {};
 }
 
+void free_string_array(char** values, size_t count)
+{
+    if (!values) {
+        return;
+    }
+    for (size_t index = 0; index != count; ++index) {
+        std::free(values[index]);
+    }
+    std::free(values);
+}
+
+void free_hydrate_report_fields(ld_settings_hydrate_report& report)
+{
+    free_string_array(report.copied, report.copied_count);
+    free_string_array(report.skipped_existing, report.skipped_existing_count);
+    if (report.diagnostics) {
+        for (size_t index = 0; index != report.diagnostic_count; ++index) {
+            free_diagnostic(report.diagnostics[index]);
+        }
+        std::free(report.diagnostics);
+    }
+    report = {};
+}
+
+void free_write_report_fields(ld_settings_write_report& report)
+{
+    std::free(report.backup_path);
+    std::free(report.temp_path);
+    if (report.diagnostics) {
+        for (size_t index = 0; index != report.diagnostic_count; ++index) {
+            free_diagnostic(report.diagnostics[index]);
+        }
+        std::free(report.diagnostics);
+    }
+    report = {};
+}
+
+void free_migration_action_fields(ld_settings_migration_action& action)
+{
+    std::free(const_cast<char*>(action.name));
+    std::free(const_cast<char*>(action.source_path));
+    std::free(const_cast<char*>(action.target_path));
+    action = {};
+}
+
+void free_migration_action_result_fields(ld_settings_migration_action_result& result)
+{
+    free_migration_action_fields(result.action);
+    if (result.diagnostics) {
+        for (size_t index = 0; index != result.diagnostic_count; ++index) {
+            free_diagnostic(result.diagnostics[index]);
+        }
+        std::free(result.diagnostics);
+    }
+    result = {};
+}
+
+void free_migration_report_fields(ld_settings_migration_report& report)
+{
+    if (report.actions) {
+        for (size_t index = 0; index != report.action_count; ++index) {
+            free_migration_action_fields(report.actions[index]);
+        }
+        std::free(report.actions);
+    }
+    if (report.results) {
+        for (size_t index = 0; index != report.result_count; ++index) {
+            free_migration_action_result_fields(report.results[index]);
+        }
+        std::free(report.results);
+    }
+    if (report.diagnostics) {
+        for (size_t index = 0; index != report.diagnostic_count; ++index) {
+            free_diagnostic(report.diagnostics[index]);
+        }
+        std::free(report.diagnostics);
+    }
+    report = {};
+}
+
+void free_registry_operation_report_fields(ld_settings_registry_operation_report& report)
+{
+    if (report.diagnostics) {
+        for (size_t index = 0; index != report.diagnostic_count; ++index) {
+            free_diagnostic(report.diagnostics[index]);
+        }
+        std::free(report.diagnostics);
+    }
+    report = {};
+}
+
+void free_registry_format_report_fields(ld_settings_registry_format_report& report)
+{
+    std::free(report.content);
+    if (report.diagnostics) {
+        for (size_t index = 0; index != report.diagnostic_count; ++index) {
+            free_diagnostic(report.diagnostics[index]);
+        }
+        std::free(report.diagnostics);
+    }
+    report = {};
+}
+
 bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count)
 {
     diagnostics = nullptr;
@@ -232,6 +338,29 @@ bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_dia
             }
             std::free(diagnostics);
             diagnostics = nullptr;
+            count = 0;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool fill_path_array(const std::vector<std::filesystem::path>& source, char**& values, size_t& count)
+{
+    values = nullptr;
+    count = 0;
+    if (source.empty()) {
+        return true;
+    }
+    values = static_cast<char**>(std::calloc(source.size(), sizeof(char*)));
+    if (!values) {
+        return false;
+    }
+    count = source.size();
+    for (size_t index = 0; index != source.size(); ++index) {
+        if (!assign_path(values[index], source[index])) {
+            free_string_array(values, count);
+            values = nullptr;
             count = 0;
             return false;
         }
@@ -422,6 +551,311 @@ bool fill_policy_report(const ld::effects::policy_report& source, ld_settings_po
     return true;
 }
 
+int migration_kind_to_c(ld::migration_action_kind value)
+{
+    return static_cast<int>(value);
+}
+
+ld::migration_action_kind migration_kind_from_c(int value)
+{
+    if (value < LD_SETTINGS_MIGRATION_COPY_FILE || value > LD_SETTINGS_MIGRATION_WRITE_POLICY) {
+        return ld::migration_action_kind::copy_file;
+    }
+    return static_cast<ld::migration_action_kind>(value);
+}
+
+bool fill_migration_action(const ld::migration_action& source, ld_settings_migration_action& target)
+{
+    target = {};
+    target.kind = migration_kind_to_c(source.kind);
+    target.dangerous = source.dangerous ? 1 : 0;
+    target.requires_elevation = source.requires_elevation ? 1 : 0;
+    char* name = nullptr;
+    char* source_path = nullptr;
+    char* target_path = nullptr;
+    if (!assign_string(name, source.name) ||
+        !assign_path(source_path, source.source_path) ||
+        !assign_path(target_path, source.target_path)) {
+        std::free(name);
+        std::free(source_path);
+        std::free(target_path);
+        free_migration_action_fields(target);
+        return false;
+    }
+    target.name = name;
+    target.source_path = source_path;
+    target.target_path = target_path;
+    return true;
+}
+
+bool fill_migration_actions(
+    const std::vector<ld::migration_action>& source,
+    ld_settings_migration_action*& actions,
+    size_t& count)
+{
+    actions = nullptr;
+    count = 0;
+    if (source.empty()) {
+        return true;
+    }
+    actions = static_cast<ld_settings_migration_action*>(
+        std::calloc(source.size(), sizeof(ld_settings_migration_action)));
+    if (!actions) {
+        return false;
+    }
+    count = source.size();
+    for (size_t index = 0; index != source.size(); ++index) {
+        if (!fill_migration_action(source[index], actions[index])) {
+            for (size_t free_index = 0; free_index <= index; ++free_index) {
+                free_migration_action_fields(actions[free_index]);
+            }
+            std::free(actions);
+            actions = nullptr;
+            count = 0;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool fill_migration_result(
+    const ld::migration_action_result& source,
+    ld_settings_migration_action_result& target)
+{
+    target = {};
+    target.planned = source.planned ? 1 : 0;
+    target.executed = source.executed ? 1 : 0;
+    target.skipped = source.skipped ? 1 : 0;
+    if (!fill_migration_action(source.action, target.action) ||
+        !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_migration_action_result_fields(target);
+        return false;
+    }
+    return true;
+}
+
+bool has_error_diagnostic(const std::vector<ld::diagnostic>& diagnostics)
+{
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.level == ld::severity::error) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool fill_migration_report(const ld::migration_plan& source, ld_settings_migration_report& target)
+{
+    target = {};
+    target.ok = has_error_diagnostic(source.diagnostics) ? 0 : 1;
+    target.dry_run = source.dry_run ? 1 : 0;
+    if (!fill_migration_actions(source.actions, target.actions, target.action_count) ||
+        !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_migration_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+bool fill_migration_report(const ld::migration_execution_report& source, ld_settings_migration_report& target)
+{
+    target = {};
+    target.ok = source.ok ? 1 : 0;
+    target.dry_run = source.dry_run ? 1 : 0;
+    if (!source.actions.empty()) {
+        target.results = static_cast<ld_settings_migration_action_result*>(
+            std::calloc(source.actions.size(), sizeof(ld_settings_migration_action_result)));
+        if (!target.results) {
+            return false;
+        }
+        target.result_count = source.actions.size();
+        for (size_t index = 0; index != source.actions.size(); ++index) {
+            if (!fill_migration_result(source.actions[index], target.results[index])) {
+                free_migration_report_fields(target);
+                return false;
+            }
+        }
+    }
+    if (!fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_migration_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+bool fill_hydrate_report(const ld::hydrate_report& source, ld_settings_hydrate_report& target)
+{
+    target = {};
+    if (!fill_path_array(source.copied, target.copied, target.copied_count) ||
+        !fill_path_array(source.skipped_existing, target.skipped_existing, target.skipped_existing_count) ||
+        !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_hydrate_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+bool fill_write_report(const ld::write_report& source, ld_settings_write_report& target)
+{
+    target = {};
+    target.ok = source.ok ? 1 : 0;
+    if (source.backup_path && !assign_path(target.backup_path, *source.backup_path)) {
+        free_write_report_fields(target);
+        return false;
+    }
+    if (source.temp_path && !assign_path(target.temp_path, *source.temp_path)) {
+        free_write_report_fields(target);
+        return false;
+    }
+    if (!fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_write_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+ld::registry::hive registry_hive_from_c(int value)
+{
+    if (value < LD_SETTINGS_REGISTRY_CURRENT_USER || value > LD_SETTINGS_REGISTRY_CURRENT_CONFIG) {
+        return ld::registry::hive::current_user;
+    }
+    return static_cast<ld::registry::hive>(value);
+}
+
+ld::registry::view registry_view_from_c(int value)
+{
+    switch (value) {
+    case LD_SETTINGS_REGISTRY_VIEW_32:
+        return ld::registry::view::registry_32;
+    case LD_SETTINGS_REGISTRY_VIEW_64:
+        return ld::registry::view::registry_64;
+    case LD_SETTINGS_REGISTRY_VIEW_NATIVE:
+    default:
+        return ld::registry::view::native;
+    }
+}
+
+ld::registry::value_type registry_value_type_from_c(int value)
+{
+    if (value < LD_SETTINGS_REGISTRY_VALUE_NONE || value > LD_SETTINGS_REGISTRY_VALUE_UNKNOWN) {
+        return ld::registry::value_type::unknown;
+    }
+    return static_cast<ld::registry::value_type>(value);
+}
+
+ld::registry::key registry_key_from_c(const ld_settings_registry_key* source)
+{
+    ld::registry::key key;
+    if (!source) {
+        return key;
+    }
+    key.root = registry_hive_from_c(source->hive);
+    key.subkey = source->subkey ? source->subkey : "";
+    key.registry_view = registry_view_from_c(source->view);
+    return key;
+}
+
+ld::registry::options registry_options_from_c(const ld_settings_registry_options* source)
+{
+    ld::registry::options options;
+    if (!source) {
+        return options;
+    }
+    options.allow_hklm_write = source->allow_hklm_write != 0;
+    options.allow_policy_write = source->allow_policy_write != 0;
+    options.allow_recursive_delete = source->allow_recursive_delete != 0;
+    options.allow_import = source->allow_import != 0;
+    options.dry_run = source->dry_run != 0;
+    return options;
+}
+
+ld::registry::snapshot registry_snapshot_from_c(
+    const ld_settings_registry_key* root,
+    const ld_settings_registry_value* values,
+    size_t value_count)
+{
+    ld::registry::snapshot snapshot;
+    snapshot.root = registry_key_from_c(root);
+    for (size_t index = 0; index != value_count; ++index) {
+        const auto& source = values[index];
+        ld::registry::snapshot_value item;
+        item.key_path = source.key_path ? source.key_path : "";
+        item.item.name = source.name ? source.name : "";
+        item.item.type = registry_value_type_from_c(source.type);
+        item.item.bytes.reserve(source.byte_count);
+        if (!source.bytes && source.byte_count != 0) {
+            continue;
+        }
+        for (size_t byte_index = 0; byte_index != source.byte_count; ++byte_index) {
+            item.item.bytes.push_back(static_cast<std::byte>(source.bytes[byte_index]));
+        }
+        snapshot.values.push_back(std::move(item));
+    }
+    return snapshot;
+}
+
+bool fill_registry_operation_report(
+    const ld::registry::operation_report& source,
+    ld_settings_registry_operation_report& target)
+{
+    target = {};
+    target.ok = source.ok ? 1 : 0;
+    target.dry_run = source.dry_run ? 1 : 0;
+    if (!fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_registry_operation_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+bool fill_registry_format_report(
+    const ld::registry::format_report& source,
+    ld_settings_registry_format_report& target)
+{
+    target = {};
+    target.ok = source.ok ? 1 : 0;
+    if (!assign_string(target.content, source.content) ||
+        !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
+        free_registry_format_report_fields(target);
+        return false;
+    }
+    return true;
+}
+
+ld::migration_options migration_options_from_c(const ld_settings_migration_options* source)
+{
+    ld::migration_options options;
+    if (!source) {
+        return options;
+    }
+    options.dry_run = source->dry_run != 0;
+    options.allow_dangerous = source->allow_dangerous != 0;
+    options.allow_elevation = source->allow_elevation != 0;
+    options.create_parent_directories = source->create_parent_directories != 0;
+    options.overwrite_existing = source->overwrite_existing != 0;
+    return options;
+}
+
+std::vector<ld::migration_action> migration_actions_from_c(
+    const ld_settings_migration_action* actions,
+    size_t action_count)
+{
+    std::vector<ld::migration_action> result;
+    result.reserve(action_count);
+    for (size_t index = 0; index != action_count; ++index) {
+        const auto& source = actions[index];
+        ld::migration_action action;
+        action.kind = migration_kind_from_c(source.kind);
+        action.name = source.name ? source.name : "";
+        action.source_path = optional_path(source.source_path).value_or(std::filesystem::path{});
+        action.target_path = optional_path(source.target_path).value_or(std::filesystem::path{});
+        action.dangerous = source.dangerous != 0;
+        action.requires_elevation = source.requires_elevation != 0;
+        result.push_back(std::move(action));
+    }
+    return result;
+}
+
 std::optional<std::filesystem::path> optional_path(const char* value)
 {
     if (!value || !value[0]) {
@@ -503,6 +937,44 @@ void ld_settings_effect_options_init(ld_settings_effect_options* options)
         return;
     }
 
+    *options = {};
+    options->dry_run = 1;
+}
+
+void ld_settings_hydrate_options_init(ld_settings_hydrate_options* options)
+{
+    if (!options) {
+        return;
+    }
+    *options = {};
+    options->create_target_root = 1;
+}
+
+void ld_settings_write_options_init(ld_settings_write_options* options)
+{
+    if (!options) {
+        return;
+    }
+    *options = {};
+    options->keep_backup = 1;
+    options->atomic_replace = 1;
+}
+
+void ld_settings_migration_options_init(ld_settings_migration_options* options)
+{
+    if (!options) {
+        return;
+    }
+    *options = {};
+    options->dry_run = 1;
+    options->create_parent_directories = 1;
+}
+
+void ld_settings_registry_options_init(ld_settings_registry_options* options)
+{
+    if (!options) {
+        return;
+    }
     *options = {};
     options->dry_run = 1;
 }
@@ -773,6 +1245,330 @@ void ld_settings_free_policy_report(ld_settings_policy_report* report)
         return;
     }
     free_policy_report_fields(*report);
+}
+
+int ld_settings_hydrate_config_bundle(
+    const ld_settings_hydrate_options* options,
+    ld_settings_hydrate_report* report)
+{
+    if (!options || !report || !options->model_root || !options->target_root) {
+        return 0;
+    }
+    try {
+        ld::hydrate_options hydrate;
+        hydrate.model_root = options->model_root;
+        hydrate.target_root = options->target_root;
+        hydrate.create_target_root = options->create_target_root != 0;
+        for (size_t index = 0; index != options->file_count; ++index) {
+            const auto& source = options->files[index];
+            ld::config_file file;
+            file.name = source.name ? source.name : "";
+            file.model_name = source.model_name ? source.model_name : "";
+            file.required = source.required != 0;
+            hydrate.files.push_back(std::move(file));
+        }
+        return fill_hydrate_report(ld::hydrate_config_bundle(hydrate), *report) ? 1 : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+void ld_settings_free_hydrate_report(ld_settings_hydrate_report* report)
+{
+    if (!report) {
+        return;
+    }
+    free_hydrate_report_fields(*report);
+}
+
+int ld_settings_write_with_backup(
+    const ld_settings_write_options* options,
+    ld_settings_validate_file_callback validate,
+    void* user_data,
+    ld_settings_write_report* report)
+{
+    if (!options || !report || !options->target) {
+        return 0;
+    }
+    try {
+        ld::write_options write;
+        write.target = options->target;
+        if (options->content) {
+            const auto size = options->content_size;
+            write.content = size == 0 ? std::string(options->content) : std::string(options->content, size);
+        }
+        write.keep_backup = options->keep_backup != 0;
+        write.atomic_replace = options->atomic_replace != 0;
+
+        ld::validation_callback callback;
+        if (validate) {
+            callback = [validate, user_data](const std::filesystem::path& path, std::string& message) {
+                char buffer[1024] = {};
+                const int ok = validate(path.u8string().c_str(), buffer, sizeof(buffer), user_data);
+                message = buffer;
+                return ok != 0;
+            };
+        }
+        return fill_write_report(ld::write_with_backup(write, callback), *report) ? 1 : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+void ld_settings_free_write_report(ld_settings_write_report* report)
+{
+    if (!report) {
+        return;
+    }
+    free_write_report_fields(*report);
+}
+
+int ld_settings_plan_migration(
+    const ld_settings_migration_action* actions,
+    size_t action_count,
+    const ld_settings_migration_options* options,
+    ld_settings_migration_report* report)
+{
+    if ((!actions && action_count != 0) || !report) {
+        return 0;
+    }
+    try {
+        return fill_migration_report(
+            ld::plan_migration(migration_actions_from_c(actions, action_count), migration_options_from_c(options)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_execute_migration_plan(
+    const ld_settings_migration_action* actions,
+    size_t action_count,
+    const ld_settings_migration_options* plan_options,
+    const ld_settings_migration_options* execute_options,
+    ld_settings_migration_report* report)
+{
+    if ((!actions && action_count != 0) || !report) {
+        return 0;
+    }
+    try {
+        const auto plan = ld::plan_migration(
+            migration_actions_from_c(actions, action_count),
+            migration_options_from_c(plan_options));
+        return fill_migration_report(
+            ld::execute_migration_plan(plan, migration_options_from_c(execute_options)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+void ld_settings_free_migration_report(ld_settings_migration_report* report)
+{
+    if (!report) {
+        return;
+    }
+    free_migration_report_fields(*report);
+}
+
+int ld_settings_registry_serialize_json(
+    const ld_settings_registry_key* root,
+    const ld_settings_registry_value* values,
+    size_t value_count,
+    ld_settings_registry_format_report* report)
+{
+    if (!root || (!values && value_count != 0) || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_format_report(
+            ld::registry::serialize_snapshot_json(registry_snapshot_from_c(root, values, value_count)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_parse_json(const char* content, ld_settings_registry_format_report* report)
+{
+    if (!content || !report) {
+        return 0;
+    }
+    try {
+        const auto parsed = ld::registry::parse_snapshot_json(content);
+        ld::registry::format_report formatted;
+        formatted.ok = parsed.ok;
+        formatted.diagnostics = parsed.diagnostics;
+        if (parsed.item) {
+            formatted = ld::registry::serialize_snapshot_json(*parsed.item);
+            formatted.diagnostics.insert(formatted.diagnostics.begin(), parsed.diagnostics.begin(), parsed.diagnostics.end());
+        }
+        return fill_registry_format_report(formatted, *report) ? 1 : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_serialize_reg(
+    const ld_settings_registry_key* root,
+    const ld_settings_registry_value* values,
+    size_t value_count,
+    ld_settings_registry_format_report* report)
+{
+    if (!root || (!values && value_count != 0) || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_format_report(
+            ld::registry::serialize_snapshot_reg(registry_snapshot_from_c(root, values, value_count)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_parse_reg(const char* content, ld_settings_registry_format_report* report)
+{
+    if (!content || !report) {
+        return 0;
+    }
+    try {
+        const auto parsed = ld::registry::parse_snapshot_reg(content);
+        ld::registry::format_report formatted;
+        formatted.ok = parsed.ok;
+        formatted.diagnostics = parsed.diagnostics;
+        if (parsed.item) {
+            formatted = ld::registry::serialize_snapshot_reg(*parsed.item);
+            formatted.diagnostics.insert(formatted.diagnostics.begin(), parsed.diagnostics.begin(), parsed.diagnostics.end());
+        }
+        return fill_registry_format_report(formatted, *report) ? 1 : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_export_tree_json(
+    const ld_settings_registry_key* root,
+    ld_settings_registry_format_report* report)
+{
+    if (!root || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_format_report(
+            ld::registry::export_tree_json(registry_key_from_c(root)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_import_tree_json(
+    const ld_settings_registry_key* root,
+    const char* content,
+    const ld_settings_registry_options* options,
+    ld_settings_registry_operation_report* report)
+{
+    if (!root || !content || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_operation_report(
+            ld::registry::import_tree_json(registry_key_from_c(root), content, registry_options_from_c(options)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_export_tree_reg(
+    const ld_settings_registry_key* root,
+    ld_settings_registry_format_report* report)
+{
+    if (!root || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_format_report(
+            ld::registry::export_tree_reg(registry_key_from_c(root)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ld_settings_registry_import_tree_reg(
+    const ld_settings_registry_key* root,
+    const char* content,
+    const ld_settings_registry_options* options,
+    ld_settings_registry_operation_report* report)
+{
+    if (!root || !content || !report) {
+        return 0;
+    }
+    try {
+        return fill_registry_operation_report(
+            ld::registry::import_tree_reg(registry_key_from_c(root), content, registry_options_from_c(options)),
+            *report)
+            ? 1
+            : 0;
+    } catch (const std::bad_alloc&) {
+        return 0;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+void ld_settings_free_registry_operation_report(ld_settings_registry_operation_report* report)
+{
+    if (!report) {
+        return;
+    }
+    free_registry_operation_report_fields(*report);
+}
+
+void ld_settings_free_registry_format_report(ld_settings_registry_format_report* report)
+{
+    if (!report) {
+        return;
+    }
+    free_registry_format_report_fields(*report);
 }
 
 const char* ld_settings_severity_name(int severity)

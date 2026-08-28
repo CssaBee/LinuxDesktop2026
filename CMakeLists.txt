@@ -129,6 +129,7 @@ install(EXPORT LinuxDesktop2026Targets
 
 if(LD2026_BUILD_TESTS)
     enable_testing()
+    find_program(LD2026_RUSTC rustc)
 
     add_executable(ld_settings_tests
         tests/settings_tests.cpp
@@ -143,6 +144,28 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_settings_c_tests PRIVATE LinuxDesktop2026::ld_settings)
 
     add_test(NAME ld_settings_c_tests COMMAND ld_settings_c_tests)
+
+    if(LD2026_RUSTC)
+        set(LD2026_RUST_FFI_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/settings_rust_ffi_smoke${CMAKE_C_OUTPUT_EXTENSION}")
+        add_custom_command(
+            OUTPUT "${LD2026_RUST_FFI_OBJECT}"
+            COMMAND "${LD2026_RUSTC}"
+                --edition=2021
+                --crate-type staticlib
+                --emit=obj
+                -C panic=abort
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/settings_rust_ffi_smoke.rs"
+                -o "${LD2026_RUST_FFI_OBJECT}"
+            DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests/settings_rust_ffi_smoke.rs"
+            VERBATIM
+        )
+        add_executable(ld_settings_rust_ffi_smoke
+            tests/settings_rust_ffi_smoke_driver.cpp
+            "${LD2026_RUST_FFI_OBJECT}"
+        )
+        target_link_libraries(ld_settings_rust_ffi_smoke PRIVATE LinuxDesktop2026::ld_settings)
+        add_test(NAME ld_settings_rust_ffi_smoke COMMAND ld_settings_rust_ffi_smoke)
+    endif()
 
     add_executable(ld_watch_tests
         tests/watch_tests.cpp
