@@ -1,5 +1,6 @@
 #include "linuxdesktop/settings.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -221,6 +222,19 @@ void create_directory_if_needed(const std::filesystem::path& path, std::vector<d
     }
 }
 
+bool create_directory_for_root(const std::filesystem::path& path, std::vector<diagnostic>& diagnostics)
+{
+    const auto before = diagnostics.size();
+    const auto existed = !path.empty() && std::filesystem::is_directory(path);
+    create_directory_if_needed(path, diagnostics);
+    for (auto index = before; index != diagnostics.size(); ++index) {
+        if (diagnostics[index].level == severity::error) {
+            return false;
+        }
+    }
+    return !existed && !path.empty() && std::filesystem::is_directory(path);
+}
+
 bool has_error(const std::vector<diagnostic>& diagnostics)
 {
     for (const auto& item : diagnostics) {
@@ -229,6 +243,235 @@ bool has_error(const std::vector<diagnostic>& diagnostics)
         }
     }
     return false;
+}
+
+int default_precedence(config_layer_kind kind)
+{
+    switch (kind) {
+    case config_layer_kind::defaults:
+        return 10;
+    case config_layer_kind::global:
+        return 20;
+    case config_layer_kind::user:
+        return 30;
+    case config_layer_kind::local:
+        return 40;
+    case config_layer_kind::portable:
+        return 50;
+    case config_layer_kind::managed:
+        return 60;
+    case config_layer_kind::enforced:
+        return 70;
+    }
+    return 0;
+}
+
+std::filesystem::path base_path_for(const app_roots& roots, persistence_class persistence, root_purpose purpose)
+{
+    switch (persistence) {
+    case persistence_class::machine_local:
+        if (purpose == root_purpose::cache || purpose == root_purpose::temp) {
+            return roots.cache;
+        }
+        if (purpose == root_purpose::runtime) {
+            return roots.runtime;
+        }
+        return roots.state;
+    case persistence_class::portable:
+        return roots.config;
+    case persistence_class::ephemeral:
+        return roots.cache;
+    case persistence_class::managed:
+        return roots.config / "managed";
+    case persistence_class::enforced:
+        return roots.config / "enforced";
+    case persistence_class::roaming:
+        break;
+    }
+
+    switch (purpose) {
+    case root_purpose::resources:
+        return roots.resources;
+    case root_purpose::config:
+    case root_purpose::plugin_config:
+    case root_purpose::profiles:
+    case root_purpose::backup:
+    case root_purpose::component_config:
+    case root_purpose::managed_config:
+    case root_purpose::enforced_config:
+    case root_purpose::custom:
+        return roots.config;
+    case root_purpose::data:
+    case root_purpose::component_data:
+        return roots.data;
+    case root_purpose::state:
+    case root_purpose::session:
+    case root_purpose::logs:
+    case root_purpose::component_state:
+        return roots.state;
+    case root_purpose::cache:
+    case root_purpose::temp:
+        return roots.cache;
+    case root_purpose::runtime:
+        return roots.runtime;
+    }
+    return roots.config;
+}
+
+std::filesystem::path default_relative_path(const named_root_request& request)
+{
+    if (!request.relative_path.empty()) {
+        return request.relative_path;
+    }
+    if (!request.name.empty()) {
+        return sanitize_segment(request.name);
+    }
+
+    switch (request.purpose) {
+    case root_purpose::logs:
+        return "logs";
+    case root_purpose::profiles:
+        return "profiles";
+    case root_purpose::backup:
+        return "backups";
+    case root_purpose::temp:
+        return "temp";
+    case root_purpose::plugin_config:
+        return std::filesystem::path{"plugins"} / "Config";
+    case root_purpose::component_config:
+        return "config";
+    case root_purpose::component_data:
+        return "data";
+    case root_purpose::component_state:
+        return "state";
+    case root_purpose::managed_config:
+        return "managed";
+    case root_purpose::enforced_config:
+        return "enforced";
+    default:
+        return {};
+    }
+}
+
+named_root resolve_named_root(const named_root_request& request, const app_roots& roots, bool create_directories)
+{
+    named_root result;
+    result.name = request.name;
+    result.purpose = request.purpose;
+    result.persistence = request.persistence;
+
+    if (request.name.empty()) {
+        result.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "named-root-name-empty",
+            "Named root requires a non-empty name"));
+        return result;
+    }
+
+    const auto relative = default_relative_path(request);
+    if (relative.is_absolute()) {
+        result.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "named-root-relative-path-absolute",
+            "Named root relative_path must be relative",
+            relative));
+        return result;
+    }
+
+    const auto base = base_path_for(roots, request.persistence, request.purpose);
+    if (base.empty()) {
+        result.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "named-root-base-empty",
+            "Named root base path could not be resolved"));
+        return result;
+    }
+
+    result.path = relative.empty() ? base : base / relative;
+    if (create_directories && request.create) {
+        result.created = create_directory_for_root(result.path, result.diagnostics);
+    }
+    return result;
+}
+
+void append_unique_name_diagnostics(std::vector<named_root>& roots)
+{
+    std::vector<std::string> seen;
+    for (auto& root : roots) {
+        if (std::find(seen.begin(), seen.end(), root.name) != seen.end()) {
+            root.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "named-root-duplicate",
+                "Named root names must be unique within the same scope"));
+        } else {
+            seen.push_back(root.name);
+        }
+    }
+}
+
+layer_report build_layer_report(const app_identity& identity, const root_report& report)
+{
+    layer_report layers;
+    const auto organization = sanitize_segment(identity.organization);
+    const auto application = sanitize_segment(identity.application, "application");
+    const auto app_leaf = organization.empty() ? application : organization + "/" + application;
+
+    const auto add_layer = [&](config_layer_kind kind,
+                               storage_backend backend,
+                               std::string name,
+                               std::filesystem::path path,
+                               bool writable,
+                               bool required = false,
+                               bool enforced = false) {
+        config_layer layer;
+        layer.kind = kind;
+        layer.backend = backend;
+        layer.name = std::move(name);
+        layer.path = std::move(path);
+        layer.writable = writable;
+        layer.required = required;
+        layer.enforced = enforced;
+        layer.precedence = default_precedence(kind);
+        layers.candidates.push_back(layer);
+    };
+
+    add_layer(config_layer_kind::defaults, storage_backend::file, "defaults", report.roots.resources, false, false, false);
+#if defined(_WIN32)
+    add_layer(config_layer_kind::global, storage_backend::registry, "global", "HKLM/Software/" + app_leaf, false, false, false);
+    add_layer(config_layer_kind::user, storage_backend::registry, "user", "HKCU/Software/" + app_leaf, true, false, false);
+    add_layer(config_layer_kind::local, storage_backend::file, "local", report.roots.state, true, false, false);
+    add_layer(config_layer_kind::managed, storage_backend::registry, "managed", "HKLM/Software/Policies/" + app_leaf, false, false, false);
+    add_layer(config_layer_kind::enforced, storage_backend::registry, "enforced", "HKLM/Software/Policies/" + app_leaf, false, false, true);
+#else
+    add_layer(config_layer_kind::global, storage_backend::file, "global", std::filesystem::path{"/etc/xdg"} / app_leaf, false, false, false);
+    add_layer(config_layer_kind::user, storage_backend::file, "user", report.roots.config, true, false, false);
+    add_layer(config_layer_kind::local, storage_backend::file, "local", report.roots.state, true, false, false);
+    add_layer(config_layer_kind::managed, storage_backend::file, "managed", std::filesystem::path{"/etc/dconf/db"} / application / "defaults", false, false, false);
+    add_layer(config_layer_kind::enforced, storage_backend::file, "enforced", std::filesystem::path{"/etc/dconf/db"} / application / "locks", false, false, true);
+#endif
+    if (report.portable_active) {
+        add_layer(config_layer_kind::portable, storage_backend::file, "portable", report.roots.config, true, false, false);
+    }
+    if (report.settings_override_active) {
+        add_layer(config_layer_kind::user, storage_backend::override_values, "settings_override", report.roots.config, true, false, false);
+    }
+    if (report.sync_config_override_active) {
+        add_layer(config_layer_kind::user, storage_backend::override_values, "sync_config_override", report.roots.config, true, false, false);
+    }
+
+    layers.active_read_order = layers.candidates;
+    std::sort(layers.active_read_order.begin(), layers.active_read_order.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.precedence > rhs.precedence;
+    });
+
+    for (const auto& layer : layers.active_read_order) {
+        if (layer.writable) {
+            layers.active_write_layer = layer;
+            break;
+        }
+    }
+
+    return layers;
 }
 
 std::filesystem::path comparable_path(const std::filesystem::path& path)
@@ -311,25 +554,14 @@ std::string read_text(const std::filesystem::path& path, std::error_code& ec)
 
 } // namespace
 
-std::string to_string(severity value)
-{
-    switch (value) {
-    case severity::info:
-        return "info";
-    case severity::warning:
-        return "warning";
-    case severity::error:
-        return "error";
-    }
-    return "unknown";
-}
-
 root_report resolve_app_roots(const app_identity& identity, const root_options& options)
 {
     root_report report;
     const auto organization = sanitize_segment(identity.organization);
     const auto application = sanitize_segment(identity.application, "application");
     const auto app_leaf = organization.empty() ? application : organization + "/" + application;
+
+    report.portable = options.portable;
 
     report.roots.resources = options.resource_root.value_or(executable_resource_guess(report.diagnostics));
 
@@ -355,7 +587,7 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
         const auto marker = *options.portable_marker;
         std::error_code ec;
         if (std::filesystem::exists(marker, ec)) {
-            if (options.allow_portable_root) {
+            if (options.allow_portable_root && options.portable != portable_level::off) {
                 const auto portable_root = marker.parent_path();
                 const auto privileged_path = !report.roots.resources.empty() ? report.roots.resources : portable_root;
                 if (options.deny_portable_root_in_privileged_install &&
@@ -450,6 +682,36 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
 
     report.roots.session = report.roots.state / "sessions";
     report.roots.plugin_config = report.roots.config / "plugins" / "Config";
+
+    for (const auto& request : options.named_roots) {
+        report.named_roots.push_back(resolve_named_root(request, report.roots, options.create_directories));
+    }
+    append_unique_name_diagnostics(report.named_roots);
+
+    for (const auto& request : options.component_roots) {
+        component_root_group component;
+        component.name = request.name;
+        component.kind = request.kind;
+
+        if (request.name.empty()) {
+            component.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "component-root-name-empty",
+                "Component root requires a non-empty name"));
+        }
+
+        const auto component_leaf = sanitize_segment(request.name, "component");
+        for (const auto& root_request : request.roots) {
+            auto scoped_request = root_request;
+            const auto relative = default_relative_path(scoped_request);
+            scoped_request.relative_path = std::filesystem::path{"components"} / component_leaf / relative;
+            component.roots.push_back(resolve_named_root(scoped_request, report.roots, options.create_directories));
+        }
+        append_unique_name_diagnostics(component.roots);
+        report.component_roots.push_back(std::move(component));
+    }
+
+    report.layers = build_layer_report(identity, report);
 
     if (options.create_directories && !has_error(report.diagnostics)) {
         create_directory_if_needed(report.roots.config, report.diagnostics);

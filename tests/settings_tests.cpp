@@ -75,6 +75,18 @@ void exposes_cpp_version()
     require(ld::version_patch == 0, "C++ version patch should match project version");
 }
 
+void settings_diagnostics_use_shared_core_vocabulary()
+{
+    ld::diagnostic settings_diagnostic;
+    settings_diagnostic.level = ld::severity::warning;
+    settings_diagnostic.code = "shared-diagnostic";
+
+    linuxdesktop::diagnostic core_diagnostic = settings_diagnostic;
+    require(core_diagnostic.code == "shared-diagnostic", "settings diagnostics should alias shared diagnostics");
+    require(linuxdesktop::to_string(core_diagnostic.level) == "warning", "shared severity should stringify");
+    require(ld::to_string(settings_diagnostic.level) == "warning", "settings severity alias should stringify");
+}
+
 void writes_absolute_settings_override()
 {
     const auto root = test_root() / "override";
@@ -345,6 +357,7 @@ int main()
 {
     const std::vector<std::pair<const char*, void (*)()>> tests = {
         {"exposes_cpp_version", exposes_cpp_version},
+        {"settings_diagnostics_use_shared_core_vocabulary", settings_diagnostics_use_shared_core_vocabulary},
         {"writes_absolute_settings_override", writes_absolute_settings_override},
         {"rejects_relative_settings_override", rejects_relative_settings_override},
         {"denies_portable_under_privileged_install_root", denies_portable_under_privileged_install_root},

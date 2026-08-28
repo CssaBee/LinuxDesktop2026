@@ -1,5 +1,7 @@
 #pragma once
 
+#include "linuxdesktop/core.hpp"
+
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -12,22 +14,125 @@ inline constexpr int version_major = 0;
 inline constexpr int version_minor = 1;
 inline constexpr int version_patch = 0;
 
-enum class severity {
-    info,
-    warning,
-    error
-};
-
-struct diagnostic {
-    severity level = severity::info;
-    std::string code;
-    std::string message;
-    std::filesystem::path path;
-};
+using ::linuxdesktop::diagnostic;
+using ::linuxdesktop::severity;
+using ::linuxdesktop::to_string;
 
 struct app_identity {
     std::string organization;
     std::string application;
+};
+
+enum class portable_level {
+    off,
+    settings_only,
+    profile,
+    clean
+};
+
+enum class root_purpose {
+    resources,
+    config,
+    data,
+    state,
+    cache,
+    runtime,
+    session,
+    plugin_config,
+    logs,
+    profiles,
+    backup,
+    temp,
+    component_config,
+    component_data,
+    component_state,
+    managed_config,
+    enforced_config,
+    custom
+};
+
+enum class persistence_class {
+    roaming,
+    machine_local,
+    portable,
+    ephemeral,
+    managed,
+    enforced
+};
+
+enum class component_kind {
+    plugin,
+    embedded_tool,
+    profile,
+    language_pack,
+    extension,
+    custom
+};
+
+enum class config_layer_kind {
+    defaults,
+    global,
+    user,
+    local,
+    portable,
+    managed,
+    enforced
+};
+
+enum class storage_backend {
+    file,
+    registry,
+    null_backend,
+    override_values,
+    app_callback
+};
+
+struct named_root_request {
+    std::string name;
+    root_purpose purpose = root_purpose::custom;
+    persistence_class persistence = persistence_class::roaming;
+    std::filesystem::path relative_path;
+    bool create = true;
+};
+
+struct named_root {
+    std::string name;
+    root_purpose purpose = root_purpose::custom;
+    persistence_class persistence = persistence_class::roaming;
+    std::filesystem::path path;
+    bool created = false;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct component_root_request {
+    std::string name;
+    component_kind kind = component_kind::custom;
+    std::vector<named_root_request> roots;
+};
+
+struct component_root_group {
+    std::string name;
+    component_kind kind = component_kind::custom;
+    std::vector<named_root> roots;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct config_layer {
+    config_layer_kind kind = config_layer_kind::user;
+    storage_backend backend = storage_backend::file;
+    std::string name;
+    std::filesystem::path path;
+    bool writable = false;
+    bool required = false;
+    bool enforced = false;
+    int precedence = 0;
+};
+
+struct layer_report {
+    std::vector<config_layer> candidates;
+    std::vector<config_layer> active_read_order;
+    std::optional<config_layer> active_write_layer;
+    std::vector<diagnostic> diagnostics;
 };
 
 struct root_options {
@@ -48,6 +153,9 @@ struct root_options {
     bool deny_portable_root_in_privileged_install = false;
     bool allow_sync_config_for_portable_root = false;
     bool create_directories = true;
+    portable_level portable = portable_level::settings_only;
+    std::vector<named_root_request> named_roots;
+    std::vector<component_root_request> component_roots;
 };
 
 struct app_roots {
@@ -67,6 +175,10 @@ struct root_report {
     bool portable_active = false;
     bool settings_override_active = false;
     bool sync_config_override_active = false;
+    portable_level portable = portable_level::off;
+    std::vector<named_root> named_roots;
+    std::vector<component_root_group> component_roots;
+    layer_report layers;
     std::vector<diagnostic> diagnostics;
 };
 
@@ -110,7 +222,5 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
 hydrate_report hydrate_config_bundle(const hydrate_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
-
-std::string to_string(severity value);
 
 } // namespace linuxdesktop::settings

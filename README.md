@@ -40,9 +40,11 @@ Status legend:
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
 | `✅` Done | `ld_settings` C ABI seed | Root resolution is exposed through a small C-compatible API for future Rust bindings and non-C++ consumers. |
 | `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 compatibility expectations. |
-| `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and the `ld_watch` library follow-up are guiding the next reusable seam. |
+| `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` exposes shared C++ diagnostics, with `ld_settings` aliases kept source-compatible. |
+| `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` must grow named roots, component roots, config layers, migration plans, Registry support, autostart, and managed/enforced policy before shipping. |
+| `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
 | `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan. |
-| `📌` Next | File watching (`ld_watch`) | Strongest follow-up candidate once `ld_settings` is ready; start with an ADR/API sketch that stays toolkit-neutral and honest about platform differences. |
+| `📌` Next | File watching (`ld_watch`) | Strongest follow-up candidate after shared diagnostics; use the broader audit and ADR/API sketch before code. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
 | `⬜` Later | Filesystem and path helpers | Candidate module for path normalization, probing, and other cross-platform filesystem seams. |
@@ -147,6 +149,7 @@ Future work candidates:
 - GUI toolkit dependencies stay isolated to UI-facing modules.
 - CMake consumption should support `FetchContent`, `add_subdirectory`, and installed package configuration.
 - Public GitHub publication should wait until there is at least one tiny working code sample.
+- A module is not shippable while major accepted scope is documentation-only; development milestones can be useful without being called a finished product.
 
 ## Documentation
 
@@ -155,6 +158,7 @@ Future work candidates:
 - [ld_settings Windows verification](docs/plan/ld-settings-windows-verification.md)
 - [ld_settings C ABI](docs/plan/ld-settings-c-abi.md)
 - [API and ABI stability](docs/plan/api-stability.md)
+- [Expanded ld_settings API plan](docs/plan/ld-settings-expanded-api.md)
 - [Notepad++ proof case plan](docs/plan/notepad-plus-plus-poc.md)
 - [Repository survey template](docs/survey/repositories.md)
 - [Windows feature matrix](docs/survey/windows-feature-matrix.md)
@@ -162,13 +166,18 @@ Future work candidates:
 - [Ecosystem audit](docs/survey/ecosystem-audit.md)
 - [Notepad++ settings/config audit](docs/survey/notepad-settings-config-audit.md)
 - [Settings/config library follow-up](docs/survey/settings-config-library-audit.md)
+- [Settings/Registry app audit](docs/survey/settings-registry-app-audit.md)
+- [Settings/Registry platform equivalents](docs/survey/settings-registry-platform-equivalents.md)
 - [File watcher focused audit](docs/survey/file-watcher-audit.md)
+- [File watcher application audit](docs/survey/file-watcher-application-audit.md)
 - [File watcher library follow-up](docs/survey/file-watcher-library-audit.md)
 - [Migration examples](docs/examples/migration-examples.md)
 - [Source search patterns](docs/survey/source-search-patterns.md)
 - [Open questions](docs/survey/open-questions.md)
 - [Architecture decisions](docs/adr)
 - [ADR 0008: start with settings/config module](docs/adr/0008-start-with-settings-config-module.md)
+- [ADR 0009: extract shared core diagnostics](docs/adr/0009-extract-shared-core-diagnostics.md)
+- [ADR 0010: design the file watcher module](docs/adr/0010-design-file-watcher-module.md)
 - [Original investigation context](docs/context/notepad-plus-plus-native-linux-port-context.md)
 
 ## License

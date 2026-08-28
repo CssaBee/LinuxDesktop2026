@@ -21,10 +21,15 @@ The project promises:
 C++ consumers can read:
 
 ```cpp
+linuxdesktop::severity
+linuxdesktop::diagnostic
+linuxdesktop::to_string(linuxdesktop::severity::warning)
 linuxdesktop::settings::version_major
 linuxdesktop::settings::version_minor
 linuxdesktop::settings::version_patch
 ```
+
+`linuxdesktop::settings::severity`, `linuxdesktop::settings::diagnostic`, and `linuxdesktop::settings::to_string` remain source-compatible aliases for the shared C++ diagnostic vocabulary.
 
 C and Rust FFI consumers can read:
 

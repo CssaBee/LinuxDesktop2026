@@ -10,6 +10,17 @@ option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
 
+add_library(ld_core INTERFACE)
+add_library(LinuxDesktop2026::ld_core ALIAS ld_core)
+
+target_compile_features(ld_core INTERFACE cxx_std_17)
+
+target_include_directories(ld_core
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
 add_library(ld_settings
     src/settings.cpp
     src/settings_c.cpp
@@ -25,11 +36,13 @@ target_include_directories(ld_settings
         $<INSTALL_INTERFACE:include>
 )
 
+target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core)
+
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
 endif()
 
-install(TARGETS ld_settings
+install(TARGETS ld_core ld_settings
     EXPORT LinuxDesktop2026Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

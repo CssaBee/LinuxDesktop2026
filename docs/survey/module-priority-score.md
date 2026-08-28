@@ -106,15 +106,21 @@ Why this subsystem first:
 
 **Tenth priority completed enough to continue**: Notepad++ integration prep. The POC plan now defines a narrow first fork patch that maps settings/config behavior to `ld_settings` while keeping XML parsing, UI, plugin ABI, and Windows compatibility app-owned.
 
-**Eighth priority started**: focused file watcher evidence pass and existing-library follow-up. The application audit in `docs/survey/file-watcher-audit.md` found a real migration seam: single-file and directory watching, save-by-replace behavior, debounce/settle workflows, overflow/rescan diagnostics, and recursive-policy honesty. The library follow-up in `docs/survey/file-watcher-library-audit.md` starts the build/wrap/recommend classification.
+**Eleventh priority completed enough to continue**: shared diagnostics extraction before watcher work. ADR 0009 captures the decision, and `LinuxDesktop2026::ld_core` now provides a tiny C++ diagnostic vocabulary while preserving `ld_settings` aliases.
 
-**Current watcher direction**: proceed to an ADR/API sketch for a tiny `ld_watch` facade, with native Linux `inotify` first, Windows `ReadDirectoryChangesW` shaped in the API, libuv as the strongest reference/optional-backend candidate, and toolkit watchers recommended through adapters rather than required in the neutral core.
+**Twelfth priority started**: focused and broader file watcher evidence pass. The application audits in `docs/survey/file-watcher-audit.md` and `docs/survey/file-watcher-application-audit.md` found a real migration seam: single-file and directory watching, save-by-replace behavior, debounce and settled-file workflows, dirty-path refresh pressure, overflow/rescan diagnostics, and recursive-policy honesty. The library follow-up in `docs/survey/file-watcher-library-audit.md` starts the build/wrap/recommend classification.
+
+**Current watcher direction**: use ADR 0010 as the `ld_watch` API sketch, with native Linux `inotify` first, Windows `ReadDirectoryChangesW` shaped in the API, libuv recommended for libuv-shaped apps and kept as the strongest reference/optional-backend candidate, and toolkit watchers recommended through adapters rather than required in the neutral core.
+
+**Thirteenth priority started**: expanded `ld_settings` settings/Registry survey. The expanded app and platform-equivalent audits show that `ld_settings` is not shippable yet. It must grow named roots, component roots, portable levels, all config layers, migration plans, Windows Registry support, Linux equivalents for relevant Registry effects, autostart, and managed/enforced policy before release.
+
+**Current `ld_settings` direction**: update examples and then implement expanded root/layer API before moving deeper into Registry execution. Keep file-watcher work parked until the user chooses to commit or resume it.
 
 ## Preliminary Evidence From Source Audit Round 1
 
 | Candidate module | Evidence strength | Seen in source audit | Preliminary direction |
 |---|---|---|---|
-| File watcher | Strong | Notepad++, ShareX, Files, libuv, Qt, GLib/GIO, wxWidgets, Watchman, efsw, e-dant/watcher, fswatch | Start ADR/API sketch for a tiny `ld_watch` facade |
+| File watcher | Strong | Notepad++, ShareX, Files, libuv, Qt, GLib/GIO, wxWidgets, .NET, Watchman, fswatch, efsw, e-dant/watcher, Panoptes | Finish broader audit, then prototype `ld_watch` |
 | Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv | First focused search candidate, but split spawn vs desktop-open |
 | Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets | First focused search candidate, excluding plugin ABI compatibility |
 | Single-instance IPC | Medium to strong | WinMerge, AutoHotkey, WinSCP, libuv; Notepad++ follow-up needed | First focused search candidate if scoped to activation/argument passing |
@@ -142,7 +148,7 @@ The scores are good enough to guide the next work item. They are not final proje
 | Candidate module | Frequency | Coupling | Linux complexity | Standalone usefulness | Notepad++ POC value | Total | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
 | Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample; consumption path in progress |
-| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Start ADR/API sketch after focused audit and library follow-up |
+| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | ADR/API sketch started; prototype after broader audit |
 | Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
 | Filesystem/path helpers | 5 | 3 | 3 | 4 | 5 | 20 | Keep scoped under settings/config first; avoid broad device/path semantics |
 | Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
@@ -157,6 +163,6 @@ The scores are good enough to guide the next work item. They are not final proje
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
-- `File watcher` is now the best next ADR/API sketch candidate after `ld_settings` reaches publication readiness; `process/shell` remains the next evidence pass after watcher direction is captured.
+- `File watcher` is now the best next module candidate after the broader watcher audit; `process/shell` remains the next evidence pass after watcher direction is captured.
 - `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
 - `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.
