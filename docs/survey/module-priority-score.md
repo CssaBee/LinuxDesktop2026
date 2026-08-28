@@ -50,6 +50,8 @@ Scores measure requirement pressure, not automatic build order. A UI-heavy featu
 - Advanced theming/DPI
 - Accessibility integration
 - Installer/package integration
+- Desktop integration effects
+- Service/daemon lifecycle
 
 ## Pre-Scoring Notes
 
@@ -110,22 +112,25 @@ Why this subsystem first:
 
 **Twelfth priority completed enough to continue**: focused and broader file watcher evidence pass. The application audits in `docs/survey/file-watcher-audit.md` and `docs/survey/file-watcher-application-audit.md` found a real migration seam: single-file and directory watching, save-by-replace behavior, debounce and settled-file workflows, dirty-path refresh pressure, overflow/rescan diagnostics, and recursive-policy honesty. The library follow-up in `docs/survey/file-watcher-library-audit.md` now completes the build/wrap/recommend classification.
 
-**Current watcher direction**: the broad `ld_watch` prototype now exists, with native Linux `inotify` first, Windows `ReadDirectoryChangesW` shaped in the API, libuv recommended for libuv-shaped apps, efsw kept as the strongest future wrap candidate, e-dant/watcher kept as the strongest compact API/source reference, and toolkit watchers recommended through adapters rather than required in the neutral core.
+**Current watcher direction**: the broad `ld_watch` prototype now exists, with native Linux `inotify` as the default Ubuntu backend, native Windows `ReadDirectoryChangesW` implemented behind the backend seam, and optional libuv verified as a preferred backend when selected through CMake. Recommend libuv directly for apps that already own a libuv loop and only need coarse change/rename notifications; keep `ld_watch` for migration-shaped paths, diagnostics, recursive-policy honesty, and settled-file behavior.
 
 **Thirteenth priority started**: expanded `ld_settings` settings/Registry survey. The expanded app and platform-equivalent audits show that `ld_settings` is not shippable yet. It must grow named roots, component roots, portable levels, all config layers, migration plans, Windows Registry support, Linux equivalents for relevant Registry effects, autostart, and managed/enforced policy before release.
 
 **Current `ld_settings` direction**: update examples and then implement expanded root/layer API before moving deeper into Registry execution. Keep file-watcher work parked until the user chooses to commit or resume it.
 
+**Fourteenth priority completed enough to continue**: extended watchlist fit audit. The pass sampled OpenRGB, sample-cpp-plugin, dylib, PrusaSlicer, OpenSCAD, FreeCAD, Carla, Project Island, NUT, and GTR_Framework. The audit keeps `ld_settings` and `ld_watch` pointed in the same broad direction, but promotes `ld_paths`, `ld_process`, and `ld_ipc` as separate planning lanes, and names desktop integration plus service/daemon lifecycle as future boundaries.
+
 ## Preliminary Evidence From Source Audit Round 1
 
 | Candidate module | Evidence strength | Seen in source audit | Preliminary direction |
 |---|---|---|---|
-| File watcher | Strong | Notepad++, ShareX, Files, libuv, Qt, GLib/GIO, wxWidgets, .NET, Watchman, fswatch, efsw, e-dant/watcher, Panoptes | Prototype implemented; harden next |
-| Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv | First focused search candidate, but split spawn vs desktop-open |
-| Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets | First focused search candidate, excluding plugin ABI compatibility |
-| Single-instance IPC | Medium to strong | WinMerge, AutoHotkey, WinSCP, libuv; Notepad++ follow-up needed | First focused search candidate if scoped to activation/argument passing |
-| Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample | First implementation candidate; finish consumption path |
-| Filesystem/path helpers | Medium | All audited apps touch it; Files/Rufus show complex non-path semantics | Candidate only with narrow scope |
+| File watcher | Strong | Notepad++, ShareX, Files, libuv, Qt, GLib/GIO, wxWidgets, .NET, Watchman, fswatch, efsw, e-dant/watcher, Panoptes, Project Island | Prototype implemented; libuv preferred-backend smoke verified, Windows backend still needs real Windows verification |
+| Process/shell | Strong | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, libuv, PrusaSlicer, NUT, OpenRGB | Focused planning candidate; split argv-safe spawn, shell command mode, desktop-open/default-app behavior, and daemon readiness handshakes |
+| Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets, sample-cpp-plugin, dylib, Project Island, Carla, PrusaSlicer, FreeCAD | First focused search candidate; decide adopt/wrap/recommend/reject for `dylib` before implementing |
+| Single-instance IPC | Strong | WinMerge, AutoHotkey, WinSCP, libuv, PrusaSlicer, FreeCAD, NUT; Notepad++ follow-up needed | Promote follow-up if scoped to lock ownership, stale recovery, local transport, and activation forwarding |
+| Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample, OpenRGB, PrusaSlicer, OpenSCAD, FreeCAD, NUT, Carla | First implementation candidate; add environment override, legacy fallback, and config-layer candidate diagnostics before ship |
+| Filesystem/path helpers | Strong | All audited apps touch it; Files/Rufus show complex non-path semantics; OpenSCAD, FreeCAD, Carla, OpenRGB, and PrusaSlicer show reusable path-root pressure | Promote to `ld_paths` planning with standard user dirs, executable/resource roots, path lists, and typed plugin path sets |
+| Desktop integration effects | Medium to strong | PrusaSlicer, OpenRGB, platform-equivalent survey | Future module/effects package for desktop entries, autostart files, icons, MIME types, URL protocols, and desktop database updates |
 | Clipboard | Strong but UI-coupled | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, wxWidgets | UI-adjacent; likely toolkit adapter |
 | Drag-and-drop | Medium to strong but UI-coupled | ShareX, Greenshot, Files, WinSCP, wxWidgets | UI-adjacent; likely toolkit adapter |
 | GUI/windowing | Strong but too broad | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, wxWidgets | Do not make first low-level module |
@@ -148,7 +153,7 @@ The scores are good enough to guide the next work item. They are not final proje
 | Candidate module | Frequency | Coupling | Linux complexity | Standalone usefulness | Notepad++ POC value | Total | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
 | Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample; consumption path in progress |
-| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Prototype implemented; harden next |
+| File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Prototype implemented; stabilize API and verify Windows next |
 | Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
 | Filesystem/path helpers | 5 | 3 | 3 | 4 | 5 | 20 | Keep scoped under settings/config first; avoid broad device/path semantics |
 | Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
@@ -158,11 +163,15 @@ The scores are good enough to guide the next work item. They are not final proje
 | Drag-and-drop | 4 | 4 | 5 | 3 | 2 | 18 | UI-adjacent; toolkit adapter |
 | Single-instance IPC | 3 | 4 | 3 | 4 | 3 | 17 | First-candidate follow-up if scoped to detect vs forward activation |
 | Printing | 2 | 3 | 4 | 2 | 1 | 12 | Future work unless Notepad++ POC or issue pass raises priority |
+| Desktop integration effects | 3 | 3 | 4 | 4 | 2 | 16 | Future effects/module; keep MIME/protocol/desktop entry behavior out of first `ld_settings` |
+| Service/daemon lifecycle | 2 | 4 | 4 | 3 | 1 | 14 | Future work after `ld_process` and `ld_ipc` mature |
 
 ## Score Consequences
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
 - `File watcher` is now the best next module candidate; `process/shell` remains the next evidence pass after watcher direction is implemented or deliberately paused.
-- `Filesystem/path helpers` should not become a broad standalone module yet; the safe slice lives inside `ld_settings`.
-- `Dynamic library loading` should emphasize plugin-loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives.
+- The extended watchlist keeps `File watcher` valid, but it raises `Filesystem/path helpers` from an internal helper to a likely `ld_paths` module because OpenSCAD, FreeCAD, Carla, OpenRGB, and PrusaSlicer all need reusable path-root or path-list behavior.
+- `Process/shell` and `Single-instance IPC` should receive focused design passes before implementation. PrusaSlicer, FreeCAD, and NUT show that spawn, shell command, readiness, lock ownership, stale recovery, and activation forwarding need separate concepts.
+- `Dynamic library loading` should emphasize loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives, and should classify `dylib` before any build decision.
+- Desktop integration and service/daemon lifecycle are real but should stay future work. They are too cross-cutting to absorb into `ld_settings`.

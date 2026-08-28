@@ -9,6 +9,7 @@ option(LD2026_BUILD_EXAMPLES "Build LinuxDesktop2026 examples" ON)
 option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
 option(LD2026_WATCH_ENABLE_LIBUV "Enable the optional libuv watcher backend when libuv is available" ON)
 option(LD2026_WATCH_PREFER_LIBUV "Prefer libuv over the native inotify backend for ld_watch" OFF)
+set(LD2026_CONFIG_HAS_LIBUV OFF)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
 
@@ -61,6 +62,14 @@ target_include_directories(ld_watch
 
 target_link_libraries(ld_watch PUBLIC LinuxDesktop2026::ld_core)
 
+if(WIN32)
+    target_sources(ld_watch PRIVATE src/watch_windows.cpp)
+endif()
+
+if(LD2026_WATCH_PREFER_LIBUV AND NOT LD2026_WATCH_ENABLE_LIBUV)
+    message(FATAL_ERROR "LD2026_WATCH_PREFER_LIBUV requires LD2026_WATCH_ENABLE_LIBUV=ON")
+endif()
+
 if(LD2026_WATCH_ENABLE_LIBUV)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
@@ -70,9 +79,12 @@ if(LD2026_WATCH_ENABLE_LIBUV)
         target_sources(ld_watch PRIVATE src/watch_libuv.cpp)
         target_link_libraries(ld_watch PRIVATE PkgConfig::LIBUV)
         target_compile_definitions(ld_watch PRIVATE LINUXDESKTOP2026_WATCH_HAS_LIBUV)
+        set(LD2026_CONFIG_HAS_LIBUV ON)
         if(LD2026_WATCH_PREFER_LIBUV)
             target_compile_definitions(ld_watch PRIVATE LINUXDESKTOP2026_WATCH_PREFER_LIBUV)
         endif()
+    elseif(LD2026_WATCH_PREFER_LIBUV)
+        message(FATAL_ERROR "LD2026_WATCH_PREFER_LIBUV requires libuv to be available through pkg-config")
     endif()
 endif()
 
@@ -140,12 +152,32 @@ if(LD2026_BUILD_TESTS)
 
     add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
 
-    add_executable(ld_watch_inotify_tests
-        tests/watch_inotify_tests.cpp
-    )
-    target_link_libraries(ld_watch_inotify_tests PRIVATE LinuxDesktop2026::ld_watch)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT LD2026_WATCH_PREFER_LIBUV)
+        add_executable(ld_watch_inotify_tests
+            tests/watch_inotify_tests.cpp
+        )
+        target_link_libraries(ld_watch_inotify_tests PRIVATE LinuxDesktop2026::ld_watch)
 
-    add_test(NAME ld_watch_inotify_tests COMMAND ld_watch_inotify_tests)
+        add_test(NAME ld_watch_inotify_tests COMMAND ld_watch_inotify_tests)
+    endif()
+
+    if(WIN32)
+        add_executable(ld_watch_windows_tests
+            tests/watch_windows_tests.cpp
+        )
+        target_link_libraries(ld_watch_windows_tests PRIVATE LinuxDesktop2026::ld_watch)
+
+        add_test(NAME ld_watch_windows_tests COMMAND ld_watch_windows_tests)
+    endif()
+
+    if(TARGET PkgConfig::LIBUV AND LD2026_WATCH_PREFER_LIBUV)
+        add_executable(ld_watch_libuv_tests
+            tests/watch_libuv_tests.cpp
+        )
+        target_link_libraries(ld_watch_libuv_tests PRIVATE LinuxDesktop2026::ld_watch)
+
+        add_test(NAME ld_watch_libuv_tests COMMAND ld_watch_libuv_tests)
+    endif()
 
     add_test(NAME ld_settings_install_tree_consumer
         COMMAND ${CMAKE_COMMAND}

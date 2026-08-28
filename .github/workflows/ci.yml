@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   cmake:
@@ -20,10 +21,36 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja
+        run: cmake -S . -B build -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON
 
       - name: Build
         run: cmake --build build
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Windows verification note
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "This job verifies Windows compile/test behavior for Known Folders, atomic replace, Registry, autostart, policy, and ReadDirectoryChangesW watcher backend shapes."
+
+  watcher-libuv:
+    name: Watcher libuv backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install libuv
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libuv1-dev
+
+      - name: Configure
+        run: cmake -S . -B build-libuv -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON -DLD2026_WATCH_PREFER_LIBUV=ON
+
+      - name: Build
+        run: cmake --build build-libuv
+
+      - name: Test
+        run: ctest --test-dir build-libuv --output-on-failure

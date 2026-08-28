@@ -335,3 +335,78 @@ The first source-level pass cloned the selected 10 repositories into `/tmp/linux
 - **Build system and language baseline**: CMake, C++/Qt.
 - **License**: GPL-2.0/GPL-3.0 family with bundled third-party licenses.
 - **Lessons for candidate modules**: Good reference for moving from a Windows-origin tool to a maintained cross-platform application.
+
+## Extended Survey Watchlist
+
+These products are not part of the first audited survey corpus yet. Add them to a focused module survey when their category can provide evidence for the module being designed.
+
+### High-Priority Future Targets
+
+| Repository | Category | Why survey it |
+| --- | --- | --- |
+| [jagenjo/GTR_Framework](https://github.com/jagenjo/GTR_Framework) | University graphics/C++ framework | Tests the Windows student machine to Linux university build-machine story around non-graphics OS plumbing. |
+| [caiorss/sample-cpp-plugin](https://github.com/caiorss/sample-cpp-plugin) | Small plugin architecture | Practical future target for `ld_dynlib` and `ld_plugin` experiments. |
+| [winscp/winscp](https://github.com/winscp/winscp) | Windows-heavy desktop app | Already in the first corpus, but should receive a deeper pass for process, shell, settings, drag/drop, and dynamic loading. |
+| [prusa3d/PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) | Scientific/engineering desktop | Mature cross-platform reference for configuration, paths, process orchestration, and desktop integration. |
+| [CalcProgrammer1/OpenRGB](https://github.com/CalcProgrammer1/OpenRGB) | Hardware companion app | Strong boundary test for settings, paths, profiles, file watching, helper processes, and hardware-specific code. |
+| [tgfrerer/island](https://github.com/tgfrerer/island) | Graphics/game tooling | Stress test for file watching, dynamic loading, plugin APIs, and hot reload workflows. |
+
+### Plugin Hosts And Plugin Architecture
+
+| Repository | Why survey it |
+| --- | --- |
+| [falkTX/Carla](https://github.com/falkTX/Carla) | Requirements source for plugin paths, dynamic loading, process isolation, bridging, and configuration. |
+| [juce-framework/JUCE](https://github.com/juce-framework/JUCE) | Major cross-platform framework to study for edge cases and for what LinuxDesktop2026 should avoid becoming. |
+| [martin-olivier/dylib](https://github.com/martin-olivier/dylib) | Direct design reference for a small `.dll`/`.so`/`.dylib` loader abstraction. |
+| Plugify | Design reference for plugin loading, ABI boundaries, compiler differences, and CMake integration; repository URL still needs verification before audit. |
+| OwnVST3 | Watchlist candidate for plugin path discovery, dynamic loading, and lightweight host behavior; repository URL still needs verification before audit. |
+
+### University And Educational C++ Targets
+
+| Repository | Why survey it |
+| --- | --- |
+| [UPB-Graphics/gfx-framework](https://github.com/UPB-Graphics/gfx-framework) | Compare against a small framework that already handles portability. |
+| [lukasmatena/cppgraphics](https://github.com/lukasmatena/cppgraphics) | Easier experimental integration target than a large production app. |
+| [edulinq/autograder-server](https://github.com/edulinq/autograder-server) | Boundary/reference case for the Linux grader side of the education story. |
+| [DBordeleau/cpp_autograder](https://github.com/DBordeleau/cpp_autograder) | Boundary/reference case for C++ assignment portability and grading workflows. |
+| [skyla15/TUM_23WS_CPP_Course](https://github.com/skyla15/TUM_23WS_CPP_Course) | Course example for Windows/Linux build expectations. |
+| [rdjondo/cplings](https://github.com/rdjondo/cplings) | Educational C/C++ practice project to classify against the challenge idea. |
+
+### Scientific And Engineering Desktop
+
+| Repository | Why survey it |
+| --- | --- |
+| [freecad/freecad](https://github.com/freecad/freecad) | Mature C++ engineering app with settings, paths, plugins/workbenches, and process behavior. |
+| [openscad/openscad](https://github.com/openscad/openscad) | Cross-platform CAD reference for desktop OS boundaries, configuration, filesystem/process behavior, and packaging. |
+
+### Audio And Video Plugin Applications
+
+| Repository | Why survey it |
+| --- | --- |
+| [BOBONA/Just-a-Sample](https://github.com/BOBONA/Just-a-Sample) | Cross-platform sampler/plugin project with settings and path concerns. |
+| [vvvar/PeakEater](https://github.com/vvvar/PeakEater) | Concrete Windows/Linux plugin installation and search-path problem. |
+| [essej/paulxstretch](https://github.com/essej/paulxstretch) | Exercises both ordinary desktop-app concerns and audio-plugin concerns. |
+
+### Graphics, Game Tooling, And Framework Boundaries
+
+| Repository | Why survey it |
+| --- | --- |
+| [amzeratul/halley](https://github.com/amzeratul/halley) | Mature game engine/editor reference for tooling and platform abstractions. |
+| [aseprite/laf](https://github.com/aseprite/laf) | Architectural reference for behavior abstraction with intentionally different native implementations. |
+| CrossWindow | Boundary comparison for avoiding uncontrolled growth into a complete windowing/application framework; repository URL still needs verification before audit. |
+
+### Codec Boundary Cases
+
+| Repository | Why survey it |
+| --- | --- |
+| [xiph/opus](https://github.com/xiph/opus) | Boundary case: computational codec cores are usually already portable and weak direct targets. |
+| [FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg) | Boundary case: applications and plugin hosts around codecs may benefit more than codec cores themselves. |
+
+### Hardware Companion And Driver-Adjacent Targets
+
+| Repository | Why survey it |
+| --- | --- |
+| [networkupstools/nut](https://github.com/networkupstools/nut) | User-space hardware management ecosystem with config, logging, daemons, process execution, and IPC concerns. |
+| [wiiznokes/fan-control](https://github.com/wiiznokes/fan-control) | Clean configuration/path handling use case around OS-specific hardware backends. |
+| [SasaKaranovic/OpenFanController](https://github.com/SasaKaranovic/OpenFanController) | Profiles, host software, firmware/update workflows, and helper-process concerns. |
+| [jarczakpawel/CHISP-Flasher](https://github.com/jarczakpawel/CHISP-Flasher) | Firmware flashing utility where paths, logs, and helper processes surround USB/serial access. |

@@ -299,6 +299,7 @@ private:
                 "watch.backend.error",
                 uv_strerror(init),
                 absolute));
+            delete record;
             return result;
         }
 

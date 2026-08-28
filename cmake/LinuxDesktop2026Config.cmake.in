@@ -1,3 +1,10 @@
 @PACKAGE_INIT@
 
+set(LinuxDesktop2026_HAS_LIBUV @LD2026_CONFIG_HAS_LIBUV@)
+if(LinuxDesktop2026_HAS_LIBUV)
+    include(CMakeFindDependencyMacro)
+    find_dependency(PkgConfig)
+    pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/LinuxDesktop2026Targets.cmake")

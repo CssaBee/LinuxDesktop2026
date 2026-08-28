@@ -742,6 +742,8 @@ std::shared_ptr<watch_backend> make_native_backend()
     return make_libuv_backend();
 #elif defined(__linux__)
     return std::make_shared<inotify_backend>();
+#elif defined(_WIN32)
+    return make_windows_backend();
 #elif defined(LINUXDESKTOP2026_WATCH_HAS_LIBUV)
     return make_libuv_backend();
 #else

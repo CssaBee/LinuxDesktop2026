@@ -19,6 +19,7 @@ The platform libraries are general-purpose, permissively licensed, and designed 
 - Avoid GUI toolkit dependencies outside UI-facing modules.
 - Use existing tools when they are healthy, small, permissively licensed, and fit the API.
 - Extract shared vocabulary only when at least two modules need it; start with diagnostics before file watching.
+- Split settings/config, paths, process launching, IPC, dynamic loading, and desktop integration into distinct public concepts even when a real application mixes them in one subsystem.
 
 ## Staged Execution
 
@@ -76,6 +77,7 @@ Expanded ship direction:
 - File associations and protocol handlers are explicitly unsupported in first `ld_settings`; users should open GitHub issues for those effects.
 - The expanded survey lives in `docs/survey/settings-registry-app-audit.md` and `docs/survey/settings-registry-platform-equivalents.md`.
 - The proposed API shape lives in `docs/plan/ld-settings-expanded-api.md`.
+- The extended watchlist fit audit lives in `docs/survey/extended-watchlist-fit-audit.md` and keeps broader desktop integration, process/IPC, dynamic loading, and service behavior out of the first `ld_settings` ship scope.
 
 Example documentation:
 
@@ -91,11 +93,15 @@ Example documentation:
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Grow the remaining C ABI before ship, including migration plans/execution and Registry snapshots/import/export.
 - Verify the Windows Registry/autostart/policy backend paths before claiming the expanded settings/effects API is ready to ship.
+- Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
+- Keep autostart effect support, but move desktop entries beyond autostart, icons, MIME registrations, URL protocols, and desktop database updates to future desktop integration work.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Next Candidate Module
 
 File watching remains the strongest follow-up after `ld_settings`. The focused application audit is captured in `docs/survey/file-watcher-audit.md`, the broader application audit is captured in `docs/survey/file-watcher-application-audit.md`, and the broader existing-library follow-up is captured in `docs/survey/file-watcher-library-audit.md`.
+
+The extended watchlist keeps `ld_watch` valid but raises three nearby planning lanes: first-class `ld_paths`, scoped `ld_process`, and scoped `ld_ipc`. These should be planned as separate modules rather than squeezed into settings or watcher APIs.
 
 Current direction:
 
@@ -111,4 +117,18 @@ Current direction:
 - raw events, settled-file trigger, and dirty-path refresh as named layers,
 - ADR 0010 as the implementation-ready API boundary,
 - public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, and inotify resource-limit diagnostics completed in the prototype hardening pass,
-- and next watcher work focused on Windows backend verification, libuv backend verification, and C/C++ API stabilization.
+- Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
+- and next watcher work focused on real Windows CI/local verification plus C/C++ API stabilization.
+
+## Extended Watchlist Consequences
+
+The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` sampled OpenRGB, sample-cpp-plugin, dylib, PrusaSlicer, OpenSCAD, FreeCAD, Carla, Project Island, NUT, and GTR_Framework.
+
+Near-term planning changes:
+
+- Promote `ld_paths` to a first-class planning target. It should cover standard user paths beyond settings roots, XDG user dirs, executable/resource/install roots, path-list parsing, environment override diagnostics, legacy fallbacks, Wine-prefix-aware defaults, and typed plugin path sets.
+- Promote `ld_process` to a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
+- Promote `ld_ipc` after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
+- Add future desktop integration work for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.
+- Add future service/daemon lifecycle work after `ld_process` and `ld_ipc` mature enough to support it cleanly.
+- Run an existing-tool decision for `dylib` before implementing a dynamic loader module.

@@ -23,6 +23,7 @@ public:
 
 std::shared_ptr<watch_backend> make_native_backend();
 std::shared_ptr<watch_backend> make_libuv_backend();
+std::shared_ptr<watch_backend> make_windows_backend();
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
 
 } // namespace linuxdesktop::watch::detail

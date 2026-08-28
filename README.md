@@ -46,11 +46,13 @@ Status legend:
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
 | `📌` Next | `ld_settings` C ABI expansion | Add C ABI coverage for migration and Registry concepts before calling `ld_settings` shippable. |
 | `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan once the settings surface is closer to shippable. |
-| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, native Linux `inotify`, optional libuv backend seam, simulated backend tests, Linux smoke coverage, demo, and install-tree consumer linkage. |
+| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
-| `⬜` Later | Filesystem and path helpers | Candidate module for path normalization, probing, and other cross-platform filesystem seams. |
-| `⬜` Later | Single-instance IPC | Candidate module for app-ownership checks, lock files, and cross-platform instance coordination. |
+| `⬜` Later | Filesystem and path helpers | Candidate module for standard user paths, executable/resource roots, path lists, and plugin path sets. |
+| `⬜` Later | Single-instance IPC | Candidate module for app-ownership checks, lock files, local transports, and activation forwarding. |
+| `⬜` Later | Desktop integration effects | Candidate module/effects package for desktop entries, icons, MIME types, URL protocols, and desktop database updates. |
+| `⬜` Later | Service and daemon lifecycle | Future module for background process supervision, command channels, and service integration. |
 | `⬜` Later | GUI / windowing | UI foundation for top-level windows, platform windows, and event plumbing. |
 | `⬜` Later | Clipboard | UI-adjacent module for copy/paste integration and capability reporting. |
 | `⬜` Later | Drag-and-drop | UI-adjacent module for drop targets, payload inspection, and platform differences. |
@@ -87,7 +89,13 @@ Optional file watcher backend flags:
 cmake -S . -B build -DLD2026_WATCH_ENABLE_LIBUV=ON -DLD2026_WATCH_PREFER_LIBUV=ON
 ```
 
-`ld_watch` uses native Linux `inotify` by default on Ubuntu. If libuv is available through `pkg-config`, the optional libuv backend can be built and preferred for libuv-shaped applications.
+`ld_watch` uses native Linux `inotify` by default on Ubuntu and native `ReadDirectoryChangesW` on Windows. If libuv is available through `pkg-config`, the optional libuv backend can be built, exported to installed CMake consumers, and preferred for libuv-shaped applications.
+
+Current backend posture:
+
+- Native backends remain the default because `ld_watch` exposes migration-shaped paths, diagnostics, recursive-policy honesty, and settled-file behavior above raw backend events.
+- libuv is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
+- The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests are present but still need a real Windows CI/local run before the Windows backend is called verified.
 
 ## Consume `ld_settings`
 
@@ -150,6 +158,8 @@ Future work candidates:
 - Advanced theming/DPI
 - Accessibility
 - Installer/package integration
+- Desktop integration effects
+- Service and daemon lifecycle
 
 ## Design Principles
 
@@ -179,6 +189,7 @@ Future work candidates:
 - [Settings/config library follow-up](docs/survey/settings-config-library-audit.md)
 - [Settings/Registry app audit](docs/survey/settings-registry-app-audit.md)
 - [Settings/Registry platform equivalents](docs/survey/settings-registry-platform-equivalents.md)
+- [Extended watchlist fit audit](docs/survey/extended-watchlist-fit-audit.md)
 - [File watcher focused audit](docs/survey/file-watcher-audit.md)
 - [File watcher application audit](docs/survey/file-watcher-application-audit.md)
 - [File watcher library follow-up](docs/survey/file-watcher-library-audit.md)
