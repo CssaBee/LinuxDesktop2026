@@ -479,11 +479,12 @@ void ensures_directory_from_resolver_family()
     identity.organization = "LinuxDesktop2026";
     identity.application = "paths-tests";
     const auto resolved = ld::resolve_app_paths(identity, deterministic_options());
+    const auto config = selected_path(resolved, ld::path_family::config);
 
     auto report = ld::ensure_directory(resolved, ld::path_family::config);
     require(report.action == ld::directory_action::would_create,
         "resolver-family directory ensure should use selected path");
-    require(report.path == fixture_path({"home", ".config", "LinuxDesktop2026", "paths-tests"}),
+    require(report.path == config,
         "resolver-family directory ensure should preserve selected path");
 
     ld::resolver_report empty;
