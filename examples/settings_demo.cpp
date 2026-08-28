@@ -109,6 +109,61 @@ void print_backup(const linuxdesktop::settings::write_report& report)
     }
 }
 
+void print_root_report(const linuxdesktop::settings::root_report& roots)
+{
+    namespace ld = linuxdesktop::settings;
+
+    std::cout << "roots\n";
+    std::cout << "  resources:     " << roots.roots.resources.string() << "\n";
+    std::cout << "  config:        " << roots.roots.config.string() << "\n";
+    std::cout << "  data:          " << roots.roots.data.string() << "\n";
+    std::cout << "  state:         " << roots.roots.state.string() << "\n";
+    std::cout << "  cache:         " << roots.roots.cache.string() << "\n";
+    std::cout << "  runtime:       " << roots.roots.runtime.string() << "\n";
+    std::cout << "  session:       " << roots.roots.session.string() << "\n";
+    std::cout << "  plugin_config: " << roots.roots.plugin_config.string() << "\n";
+    std::cout << "  portable:      " << ld::to_string(roots.portable)
+              << (roots.portable_active ? " active" : " inactive") << "\n";
+    std::cout << "  override:      " << (roots.settings_override_active ? "active" : "inactive") << "\n";
+    std::cout << "  sync config:   " << (roots.sync_config_override_active ? "active" : "inactive") << "\n";
+
+    std::cout << "\nnamed roots\n";
+    for (const auto& root : roots.named_roots) {
+        std::cout << "  " << root.name << " (" << ld::to_string(root.purpose)
+                  << ", " << ld::to_string(root.persistence) << "): "
+                  << root.path.string() << "\n";
+        print_diagnostics(root.diagnostics);
+    }
+
+    std::cout << "\ncomponent roots\n";
+    for (const auto& component : roots.component_roots) {
+        std::cout << "  " << component.name << " (" << ld::to_string(component.kind) << ")\n";
+        print_diagnostics(component.diagnostics);
+        for (const auto& root : component.roots) {
+            std::cout << "    " << root.name << ": " << root.path.string() << "\n";
+            print_diagnostics(root.diagnostics);
+        }
+    }
+
+    std::cout << "\nconfig layers\n";
+    for (const auto& layer : roots.layers.active_read_order) {
+        std::cout << "  read " << layer.precedence << " " << ld::to_string(layer.kind)
+                  << "/" << layer.name << " via " << ld::to_string(layer.backend)
+                  << ": " << layer.path.string();
+        if (layer.enforced) {
+            std::cout << " enforced";
+        }
+        std::cout << "\n";
+    }
+    if (roots.layers.active_write_layer) {
+        const auto& layer = *roots.layers.active_write_layer;
+        std::cout << "  write " << ld::to_string(layer.kind) << "/" << layer.name
+                  << ": " << layer.path.string() << "\n";
+    }
+    print_diagnostics(roots.layers.diagnostics);
+    print_diagnostics(roots.diagnostics);
+}
+
 bool validate_session_file(const std::filesystem::path& path, std::string& message)
 {
     std::error_code ec;
@@ -139,6 +194,20 @@ int main(int argc, char** argv)
         root_options.privileged_install_roots = cli.privileged_install_roots;
         root_options.deny_portable_root_in_privileged_install = cli.deny_portable_under_privileged_root;
         root_options.allow_sync_config_for_portable_root = cli.allow_sync_with_portable;
+        root_options.named_roots = {
+            {"logs", linuxdesktop::settings::root_purpose::logs, linuxdesktop::settings::persistence_class::machine_local, "logs", true},
+            {"profiles", linuxdesktop::settings::root_purpose::profiles, linuxdesktop::settings::persistence_class::roaming, "profiles", true},
+            {"backups", linuxdesktop::settings::root_purpose::backup, linuxdesktop::settings::persistence_class::machine_local, "backups", true},
+        };
+
+        linuxdesktop::settings::component_root_request example_plugin;
+        example_plugin.name = "sample-plugin";
+        example_plugin.kind = linuxdesktop::settings::component_kind::plugin;
+        example_plugin.roots = {
+            {"config", linuxdesktop::settings::root_purpose::component_config, linuxdesktop::settings::persistence_class::roaming, "Config", true},
+            {"state", linuxdesktop::settings::root_purpose::component_state, linuxdesktop::settings::persistence_class::machine_local, "State", true},
+        };
+        root_options.component_roots = {example_plugin};
 
         linuxdesktop::settings::app_identity identity;
         identity.organization = "LinuxDesktop2026";
@@ -146,19 +215,7 @@ int main(int argc, char** argv)
 
         const auto roots = linuxdesktop::settings::resolve_app_roots(identity, root_options);
 
-        std::cout << "roots\n";
-        std::cout << "  resources:     " << roots.roots.resources.string() << "\n";
-        std::cout << "  config:        " << roots.roots.config.string() << "\n";
-        std::cout << "  data:          " << roots.roots.data.string() << "\n";
-        std::cout << "  state:         " << roots.roots.state.string() << "\n";
-        std::cout << "  cache:         " << roots.roots.cache.string() << "\n";
-        std::cout << "  runtime:       " << roots.roots.runtime.string() << "\n";
-        std::cout << "  session:       " << roots.roots.session.string() << "\n";
-        std::cout << "  plugin_config: " << roots.roots.plugin_config.string() << "\n";
-        std::cout << "  portable:      " << (roots.portable_active ? "active" : "inactive") << "\n";
-        std::cout << "  override:      " << (roots.settings_override_active ? "active" : "inactive") << "\n";
-        std::cout << "  sync config:   " << (roots.sync_config_override_active ? "active" : "inactive") << "\n";
-        print_diagnostics(roots.diagnostics);
+        print_root_report(roots);
 
         linuxdesktop::settings::config_file shortcuts_file;
         shortcuts_file.name = "shortcuts.xml";

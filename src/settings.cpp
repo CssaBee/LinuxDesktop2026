@@ -554,6 +554,172 @@ std::string read_text(const std::filesystem::path& path, std::error_code& ec)
 
 } // namespace
 
+std::string_view to_string(portable_level value)
+{
+    switch (value) {
+    case portable_level::off:
+        return "off";
+    case portable_level::settings_only:
+        return "settings_only";
+    case portable_level::profile:
+        return "profile";
+    case portable_level::clean:
+        return "clean";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(root_purpose value)
+{
+    switch (value) {
+    case root_purpose::resources:
+        return "resources";
+    case root_purpose::config:
+        return "config";
+    case root_purpose::data:
+        return "data";
+    case root_purpose::state:
+        return "state";
+    case root_purpose::cache:
+        return "cache";
+    case root_purpose::runtime:
+        return "runtime";
+    case root_purpose::session:
+        return "session";
+    case root_purpose::plugin_config:
+        return "plugin_config";
+    case root_purpose::logs:
+        return "logs";
+    case root_purpose::profiles:
+        return "profiles";
+    case root_purpose::backup:
+        return "backup";
+    case root_purpose::temp:
+        return "temp";
+    case root_purpose::component_config:
+        return "component_config";
+    case root_purpose::component_data:
+        return "component_data";
+    case root_purpose::component_state:
+        return "component_state";
+    case root_purpose::managed_config:
+        return "managed_config";
+    case root_purpose::enforced_config:
+        return "enforced_config";
+    case root_purpose::custom:
+        return "custom";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(persistence_class value)
+{
+    switch (value) {
+    case persistence_class::roaming:
+        return "roaming";
+    case persistence_class::machine_local:
+        return "machine_local";
+    case persistence_class::portable:
+        return "portable";
+    case persistence_class::ephemeral:
+        return "ephemeral";
+    case persistence_class::managed:
+        return "managed";
+    case persistence_class::enforced:
+        return "enforced";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(component_kind value)
+{
+    switch (value) {
+    case component_kind::plugin:
+        return "plugin";
+    case component_kind::embedded_tool:
+        return "embedded_tool";
+    case component_kind::profile:
+        return "profile";
+    case component_kind::language_pack:
+        return "language_pack";
+    case component_kind::extension:
+        return "extension";
+    case component_kind::custom:
+        return "custom";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(config_layer_kind value)
+{
+    switch (value) {
+    case config_layer_kind::defaults:
+        return "defaults";
+    case config_layer_kind::global:
+        return "global";
+    case config_layer_kind::user:
+        return "user";
+    case config_layer_kind::local:
+        return "local";
+    case config_layer_kind::portable:
+        return "portable";
+    case config_layer_kind::managed:
+        return "managed";
+    case config_layer_kind::enforced:
+        return "enforced";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(storage_backend value)
+{
+    switch (value) {
+    case storage_backend::file:
+        return "file";
+    case storage_backend::registry:
+        return "registry";
+    case storage_backend::null_backend:
+        return "null";
+    case storage_backend::override_values:
+        return "override_values";
+    case storage_backend::app_callback:
+        return "app_callback";
+    }
+    return "unknown";
+}
+
+const named_root* find_named_root(const root_report& report, const std::string& name)
+{
+    const auto it = std::find_if(report.named_roots.begin(), report.named_roots.end(), [&](const auto& root) {
+        return root.name == name;
+    });
+    return it == report.named_roots.end() ? nullptr : &*it;
+}
+
+const component_root_group* find_component_roots(const root_report& report, const std::string& name)
+{
+    const auto it = std::find_if(report.component_roots.begin(), report.component_roots.end(), [&](const auto& component) {
+        return component.name == name;
+    });
+    return it == report.component_roots.end() ? nullptr : &*it;
+}
+
+const named_root* find_component_named_root(const component_root_group& component, const std::string& name)
+{
+    const auto it = std::find_if(component.roots.begin(), component.roots.end(), [&](const auto& root) {
+        return root.name == name;
+    });
+    return it == component.roots.end() ? nullptr : &*it;
+}
+
+const config_layer* find_config_layer(const layer_report& report, config_layer_kind kind, const std::string& name)
+{
+    const auto it = std::find_if(report.candidates.begin(), report.candidates.end(), [&](const auto& layer) {
+        return layer.kind == kind && (name.empty() || layer.name == name);
+    });
+    return it == report.candidates.end() ? nullptr : &*it;
+}
+
 root_report resolve_app_roots(const app_identity& identity, const root_options& options)
 {
     root_report report;

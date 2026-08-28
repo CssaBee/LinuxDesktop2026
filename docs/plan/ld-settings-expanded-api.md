@@ -450,4 +450,14 @@ Required examples before ship:
 
 `ld_settings` is a working first sample, not a shippable final module.
 
-The next code work should start with named roots, component roots, config layers, and portable levels. Registry implementation follows after the root/layer model is stable enough to attach storage backends cleanly.
+Implemented in the current C++ sample:
+
+- named roots,
+- component roots,
+- config layer candidates and active read/write ordering,
+- portable levels,
+- string names for public root/layer enums,
+- C++ lookup helpers for named roots, component roots, component-local roots, and config layers,
+- C ABI exposure for named roots, component roots, config layers, and portable levels.
+
+The next code work should start with migration plans as dry-run objects. Registry implementation follows after the migration-plan model is stable enough to represent dangerous operations, explicit execution, and rollback evidence.

@@ -207,10 +207,21 @@ void resolves_named_roots_and_layers()
     require(report.named_roots[0].name == "logs", "first named root should preserve name");
     require(report.named_roots[0].path == report.roots.state / "Logs", "machine-local logs should live under state");
     require(report.named_roots[1].path == report.roots.config / "Profiles", "roaming profiles should live under config");
+    const auto* logs = ld::find_named_root(report, "logs");
+    require(logs != nullptr, "C++ helper should find named roots by name");
+    require(logs->path == report.roots.state / "Logs", "C++ helper should return the resolved named root");
     require(report.layers.candidates.size() >= 6, "layer report should include default/user/local/managed/enforced candidates");
     require(report.layers.active_write_layer.has_value(), "layer report should include active write layer");
     require(report.layers.active_read_order.front().kind == ld::config_layer_kind::enforced,
         "enforced layer should have highest default precedence");
+    const auto* user_layer = ld::find_config_layer(report.layers, ld::config_layer_kind::user);
+    require(user_layer != nullptr, "C++ helper should find layer candidates by kind");
+    require(user_layer->backend == ld::storage_backend::file || user_layer->backend == ld::storage_backend::registry,
+        "user layer should expose its storage backend");
+    require(ld::to_string(report.portable) == "settings_only", "portable level should stringify for diagnostics");
+    require(ld::to_string(user_layer->kind) == "user", "layer kind should stringify for diagnostics");
+    require(ld::to_string(user_layer->backend) == "file" || ld::to_string(user_layer->backend) == "registry",
+        "storage backend should stringify for diagnostics");
 }
 
 void resolves_component_roots()
@@ -239,6 +250,12 @@ void resolves_component_roots()
         "component config should live below component namespace");
     require(report.component_roots[0].roots[1].path == root / "components" / "compare-plugin" / "State",
         "component state should live below component namespace");
+    const auto* plugin_roots = ld::find_component_roots(report, "compare-plugin");
+    require(plugin_roots != nullptr, "C++ helper should find component root groups");
+    const auto* plugin_state = ld::find_component_named_root(*plugin_roots, "state");
+    require(plugin_state != nullptr, "C++ helper should find roots inside component groups");
+    require(plugin_state->path == root / "components" / "compare-plugin" / "State",
+        "component root helper should return resolved component path");
 }
 
 #if defined(_WIN32)

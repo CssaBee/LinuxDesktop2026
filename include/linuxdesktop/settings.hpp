@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <optional>
+#include <string_view>
 #include <string>
 #include <vector>
 
@@ -216,6 +217,21 @@ struct write_report {
 };
 
 using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
+
+std::string_view to_string(portable_level value);
+std::string_view to_string(root_purpose value);
+std::string_view to_string(persistence_class value);
+std::string_view to_string(component_kind value);
+std::string_view to_string(config_layer_kind value);
+std::string_view to_string(storage_backend value);
+
+const named_root* find_named_root(const root_report& report, const std::string& name);
+const component_root_group* find_component_roots(const root_report& report, const std::string& name);
+const named_root* find_component_named_root(const component_root_group& component, const std::string& name);
+const config_layer* find_config_layer(
+    const layer_report& report,
+    config_layer_kind kind,
+    const std::string& name = {});
 
 root_report resolve_app_roots(const app_identity& identity, const root_options& options = {});
 
