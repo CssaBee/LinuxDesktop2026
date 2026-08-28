@@ -32,6 +32,27 @@ The requirement shape from the focused audit is migration-specific:
 | Panoptes | Study/defer | C++17 native-interface watcher with recursive ambitions; source and maintenance audit required before dependency decisions. |
 | fswatch/libfswatch | Defer | Broad monitor coverage and command-line utility focus; likely better as a reference for polling/backend taxonomy than a first dependency. |
 
+## Broader Source Audit
+
+Checked on 2026-08-28 against shallow upstream checkouts:
+
+| Candidate | Commit | Source-level finding | Revised decision |
+|---|---:|---|---|
+| libuv | `f87c8e4` | Public API exposes only `UV_RENAME` and `UV_CHANGE`; Linux adds one inotify watch for the requested path and Windows maps create/delete/rename to `UV_RENAME`. Recursive is documented as supported only where the backend supports it. | Recommend directly for libuv-loop apps; do not make it the mandatory first backend. |
+| efsw | `5df6a03` | Very close to the desired space: C++ API, C API wrapper, MIT license, recursive watches, inotify/IOCP/FSEvents/kqueue/polling, configurable Windows buffers, Linux synthetic events for recursive races, and best-effort cross-directory move reporting. | Strongest wrap candidate after prototype; also a source of test cases. |
+| e-dant/watcher | `06f84a1` | Dependency-minimal, MIT, C++17, single-header distribution, C wrapper/CLI, typed events with associated paths, inotify/fanotify selection on Linux, IOCP on Windows, and explicit warning events for overflow/partial association. | Strongest API-design reference; consider optional backend only after dependency and packaging ergonomics are tested. |
+| Panoptes | `9a4d63e` | C++17 and MIT with `std::filesystem`, relative event paths, recursive directory watching, buffer-overflow/failed flags, and native Linux/Windows/macOS code; README still lists rename/move support as wishlist and models many moves as add/remove. | Useful small-source reference, but not a wrap/recommend candidate for rename-sensitive migrations. |
+| fswatch/libfswatch | `40dfff9` | Mature backend taxonomy with inotify/fanotify/FSEvents/kqueue/Windows/polling, C/C++ API, overflow flag, recursive setting, latency, filters, and CMake package work; repository is GPL-3.0 while an Apache text is also present for some project material. | Keep as operational/reference material; avoid as a first dependency because license and tool scope do not match the small permissive module goal. |
+| Watchman | source checkout | Large daemon/service model with settle, recrawl/fresh-instance concepts, persistent indexes, ignore rules, and client protocol. | Study for large-tree posture only; do not embed for first `ld_watch`. |
+
+The broader audit does not overturn the earlier direction. Existing libraries are good, and two of them are especially close, but none is a clean replacement for the `ld_watch` shape we want:
+
+- libuv is enough for applications that already own a libuv loop and only need coarse change/rename events.
+- efsw is the strongest future wrap candidate if we decide native direct implementation costs too much.
+- e-dant/watcher is the best compact source reference for path/event modeling and warnings.
+- Panoptes shows a small C++17 shape, but its rename model is not yet strong enough for editor/file-manager migrations.
+- fswatch and Watchman validate the need for overflow, latency/settle, recrawl, and filters, but are too broad or operationally shaped for first dependency.
+
 ## Adopt
 
 ### Linux `inotify`
@@ -204,16 +225,18 @@ efsw is close to the desired small-library space and includes a C API wrapper.
 
 Fit:
 
-- **Study/defer** until we inspect source health, maintenance cadence, backend behavior, and CMake/install ergonomics.
-- It may become a wrap candidate if it reports enough diagnostics and keeps dependencies light.
+- **Strong wrap candidate after prototype**.
+- It reports familiar Add/Delete/Modified/Moved actions, exposes watch ids, and keeps a small C++ consumer shape.
+- Its source explicitly documents Linux recursive emulation with one inotify watch per directory and synthetic create events for newly watched directories.
+- Its optional cross-directory move reporting is best-effort and should reinforce, not replace, `ld_watch`'s `paired_rename` confidence flag.
+- Its C API and tests are useful references, but the listener inheritance model and UTF-8 string path API do not match the `ld_watch` path-value decision.
 
-Open checks:
+Remaining checks before wrapping:
 
-- license verification,
-- recursive behavior on Linux,
-- overflow/rescan reporting,
-- rename pairing behavior,
-- and whether the public API can preserve our capability-reporting model.
+- package/install behavior from CMake and vcpkg/conan,
+- what diagnostics are available beyond last-error logging,
+- whether overflow/lost-sync is surfaced strongly enough,
+- and whether a wrapper can preserve `ld_watch` capability reports without hiding backend differences.
 
 ### e-dant/watcher
 
@@ -221,15 +244,18 @@ e-dant/watcher is another close small-library candidate with a dependency-minima
 
 Fit:
 
-- **Study/defer** until a source audit confirms API stability, install shape, event model, and license fit.
-- Its CLI JSON output and C API may be useful references for agent-readable diagnostics.
+- **Strong API-design reference**.
+- The source has a compact typed event model with path type, effect type, timestamp, absolute paths, and optional associated event for rename-like relationships.
+- Linux source explicitly handles `IN_Q_OVERFLOW`, partial association, new-directory recursive marking, and fanotify-to-inotify fallback.
+- Windows source uses `ReadDirectoryChangesW` with IOCP and tracks old/new rename entries.
+- The warning-as-event approach is worth copying into `ld_watch`, but the normal event path is still a path/string-like value rather than our project-owned watch path value.
 
-Open checks:
+Remaining checks before optional backend use:
 
-- source and release maturity,
-- event-kind mapping across Linux and Windows,
-- overflow and unavailable-backend handling,
-- and whether its header-only design is desirable for this repo.
+- release/install stability,
+- whether the single-header amalgamation is friendly to our CMake install/export style,
+- how well its generic fallback should influence our later polling fallback,
+- and whether fanotify should remain a reference only for now.
 
 ### Panoptes
 
@@ -237,15 +263,17 @@ Panoptes is a C++17 native-interface watcher candidate.
 
 Fit:
 
-- **Study/defer** until source, packaging, license, and maintenance are inspected.
-- Useful as a comparison point because it uses `std::filesystem` and native APIs including `ReadDirectoryChangesW` and `inotify`.
+- **Study/defer** as a compact C++17 reference.
+- Its public event shape uses relative `std::filesystem::path` values plus bit flags for created, modified, deleted, renamed, buffer overflow, and failed.
+- Its README says recursive directory changes are detected and identifies `ReadDirectoryChangesW`, FSEvents, and inotify as native APIs.
+- Rename/move support is still listed as wishlist, with add/remove used instead, so it is not strong enough for Notepad++ or Files-style rename semantics.
 
-Open checks:
+Remaining checks:
 
-- whether recursive behavior is robust on Linux,
-- whether rename/move pairing is complete enough,
-- whether event buffering hides backend timing in ways that matter for desktop migrations,
-- and whether the project is active enough to wrap or recommend.
+- maintenance cadence,
+- install/package maturity,
+- whether buffer-overflow and failed events carry enough diagnostics,
+- and whether its buffering layer loses information that `ld_watch` should keep raw.
 
 ### fswatch/libfswatch
 
@@ -254,12 +282,13 @@ fswatch covers many monitor backends and has a mature command-line identity.
 Fit:
 
 - **Defer** as a dependency for the first module.
-- **Study** if we need polling, backend taxonomy, or broad Unix portability lessons later.
+- **Study** if we need polling, backend taxonomy, filters, latency, overflow, or broad Unix portability lessons later.
 
 Why not first:
 
 - the project is broader than the first `ld_watch` slice,
 - command-line utility behavior is not the same as an embedded migration library,
+- the repository is GPL-3.0 at the top level,
 - and we are targeting Ubuntu plus shaped Windows behavior before broad Unix monitor coverage.
 
 ## Design Consequences
@@ -307,9 +336,9 @@ The sample should not include:
 - UI thread dispatch,
 - or a guarantee of reliable network filesystem notifications.
 
-## Proposed Decision
+## Decision
 
-Proceed to a broader audit and then an ADR/API sketch for `ld_watch`.
+Proceed from the completed broader audit to implementation-ready ADR/API work for `ld_watch`.
 
 Working name: `ld_watch`.
 
@@ -317,7 +346,7 @@ Public shape: C++ convenience API first, callback-oriented and POD-friendly enou
 
 Implementation posture: native Linux first, shaped Windows backend next, no required event-loop dependency in the first sample.
 
-This is enough evidence to extract shared diagnostics first, complete the broader application/library audit, and then use ADR 0010 before writing watcher code.
+This is enough evidence to use ADR 0010 as the boundary and start the prototype plan.
 
 ## Source Links
 

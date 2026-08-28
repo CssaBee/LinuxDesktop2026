@@ -93,16 +93,18 @@ Example documentation:
 
 ## Next Candidate Module
 
-File watching remains the strongest follow-up after `ld_settings`. The focused application audit is captured in `docs/survey/file-watcher-audit.md`, the broader application audit is captured in `docs/survey/file-watcher-application-audit.md`, and the existing-library follow-up is tracked in `docs/survey/file-watcher-library-audit.md`.
+File watching remains the strongest follow-up after `ld_settings`. The focused application audit is captured in `docs/survey/file-watcher-audit.md`, the broader application audit is captured in `docs/survey/file-watcher-application-audit.md`, and the broader existing-library follow-up is captured in `docs/survey/file-watcher-library-audit.md`.
 
 Current direction:
 
 - working name `ld_watch`,
 - native Linux `inotify` first,
 - Windows `ReadDirectoryChangesW` shape in the public model,
-- libuv recommended for libuv-shaped apps and kept as the strongest reference/possible optional backend,
+- libuv recommended for libuv-shaped apps and kept as the strongest coarse-event-loop reference,
+- efsw kept as the strongest future wrap candidate if the prototype proves direct native implementation too costly,
+- e-dant/watcher kept as the strongest compact source/API reference,
 - Qt, GLib/GIO, wxWidgets, and .NET `FileSystemWatcher` as recommendations, adapters, or migration references,
-- Watchman, fswatch, efsw, e-dant/watcher, and Panoptes as study/defer candidates,
+- Watchman, fswatch, and Panoptes as study/defer references,
 - an `ld_watch` path value instead of bare strings for normal event paths,
 - raw events, settled-file trigger, and dirty-path refresh as named layers,
-- and ADR 0010 before watcher code.
+- and ADR 0010 as the implementation-ready API boundary before watcher code.

@@ -19,12 +19,14 @@ The module should provide:
 - shared diagnostics from `ld_core`,
 - and CMake consumption that mirrors `ld_settings`.
 
-The implementation order should be:
+The implementation order is now:
 
 1. Extract shared C++ diagnostics into `ld_core`.
 2. Complete the broader watcher audit.
-3. Finalize the `ld_watch` API sketch.
+3. Finalize the `ld_watch` API sketch into implementation-ready header/source/test work.
 4. Build a broad prototype with deterministic tests and real Linux smoke coverage.
+
+Steps 1 and 2 are complete as of 2026-08-28. The next work item is step 3.
 
 ## Public Model
 
@@ -121,11 +123,17 @@ Linux should start with native `inotify`.
 
 Windows should be shaped around `ReadDirectoryChangesW`.
 
-libuv should be recommended for applications that already want a libuv loop and only need coarse rename/change notifications. It should remain the strongest reference and possible optional backend, but it should not be a required first dependency because it does not provide the migration-facing shape by itself.
+libuv should be recommended for applications that already want a libuv loop and only need coarse rename/change notifications. It should remain the strongest reference and possible optional backend, but it should not be a required first dependency because its public watcher API intentionally reports only change/rename categories and brings event-loop ownership into the API.
 
 Qt, GLib/GIO, wxWidgets, and .NET `FileSystemWatcher` should be documented as ecosystem-native options or adapter targets, not required dependencies.
 
-Watchman, fswatch/libfswatch, efsw, e-dant/watcher, and Panoptes remain audit inputs for rescan posture, backend taxonomy, and small-library API lessons.
+efsw is the strongest future wrap candidate if the prototype shows that direct native implementation cost is not worth paying.
+
+e-dant/watcher is the strongest dependency-minimal API/source reference and should influence warning events, associated rename paths, and Linux overflow handling.
+
+Panoptes remains a compact C++17 reference but not a wrap candidate for rename-sensitive work because its README still treats rename/move pairing as wishlist territory.
+
+Watchman and fswatch/libfswatch remain audit inputs for rescan posture, backend taxonomy, latency/settle, filters, and large-tree operational behavior.
 
 ## Behavioral Promises
 
@@ -182,6 +190,14 @@ It should not include:
 ## Consequences
 
 `ld_watch` is justified even though libuv exists because the missing value is migration-shaped policy, not native backend access. The module should help porting work by making platform differences visible and testable instead of hiding them behind a false uniform event stream.
+
+The broader audit keeps `ld_watch` in the build column, with a deliberate escape hatch:
+
+- recommend libuv when an application already wants a libuv loop,
+- consider wrapping efsw after the prototype if it preserves capability reports and diagnostics,
+- borrow e-dant/watcher's warning-event and associated-event posture,
+- borrow fswatch/Watchman's overflow, settle, and recrawl language,
+- and keep the first implementation native-inotify-first so the public API is shaped by LinuxDesktop2026 needs rather than by an imported event loop or daemon contract.
 
 ## Related Docs
 
