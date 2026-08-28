@@ -25,9 +25,15 @@ char* duplicate_string(const std::string& value)
     return result;
 }
 
+std::string path_to_utf8_string(const std::filesystem::path& value)
+{
+    const auto text = value.u8string();
+    return std::string(reinterpret_cast<const char*>(text.data()), text.size());
+}
+
 char* duplicate_path(const std::filesystem::path& value)
 {
-    return duplicate_string(value.u8string());
+    return duplicate_string(path_to_utf8_string(value));
 }
 
 void free_diagnostic(ld_paths_diagnostic& diagnostic)
