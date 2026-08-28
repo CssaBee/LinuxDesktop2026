@@ -115,6 +115,7 @@ struct settle_options {
     std::chrono::milliseconds debounce_for = std::chrono::milliseconds{0};
     std::chrono::milliseconds stable_for = std::chrono::milliseconds{0};
     std::chrono::milliseconds poll_interval = std::chrono::milliseconds{100};
+    std::optional<std::chrono::milliseconds> timeout_after;
 };
 
 struct watch_options {

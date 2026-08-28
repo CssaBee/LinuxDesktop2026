@@ -97,8 +97,8 @@ Current backend posture:
 - Native backends remain the default because `ld_watch` exposes migration-shaped paths, diagnostics, recursive-policy honesty, and settled-file behavior above raw backend events.
 - libuv is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
 - The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI runs that target explicitly on Windows before the backend is called verified.
-- The first watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, and backend/resource-limit diagnostic preservation. Next watcher work is settled-file hardening, then final API decisions after Windows CI reports green.
-- The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, and `wait_for`; remaining stabilization is C ABI timing after native verification, Windows single-file root-relative wording, and richer capability fields only if stress tests prove they are needed.
+- The watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, backend/resource-limit diagnostic preservation, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches.
+- The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, `wait_for`, and optional settled-file timeout policy; remaining stabilization is C ABI timing after native verification, Windows single-file root-relative wording, and richer capability fields only if stress tests prove they are needed.
 - Windows compatibility work should happen at the LinuxDesktop2026 API layer. Tests and examples should use `ld_paths`, `ld_settings`, and `ld_watch` concepts instead of assuming XDG paths, slash-separated strings, or Registry/file-watcher backend details directly.
 
 ## `ld_paths`

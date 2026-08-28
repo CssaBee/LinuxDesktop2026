@@ -566,6 +566,94 @@ void settled_file_events_coalesce_by_source_and_path()
     require(watcher.poll() == std::nullopt, "stale settled-file event should not arrive later");
 }
 
+void settled_file_timeout_reports_diagnostic()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "timeout.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{250},
+        std::chrono::milliseconds{10},
+        std::chrono::milliseconds{30}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "timeout.txt"));
+
+    const auto received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "settled-file timeout event should arrive");
+    require(has_diagnostic(received->diagnostics, ld::diagnostic_code::settle_timeout),
+        "settled-file timeout should be visible");
+    require(!has_diagnostic(received->diagnostics, ld::diagnostic_code::settle_ready),
+        "timed-out settled-file event should not claim readiness");
+}
+
+void remove_watch_cancels_pending_settled_file_event()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "cancel.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{200}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "cancel.txt"));
+    require(watcher.remove_watch(report.id), "watch removal should succeed");
+
+    const auto received = watcher.wait_for(std::chrono::milliseconds{400});
+    require(!received.has_value(), "removed watch should cancel pending settled-file event");
+}
+
+void settled_file_large_batch_delivers_all_paths()
+{
+    const auto root = test_root();
+    constexpr int event_count = 64;
+    for (int i = 0; i < event_count; ++i) {
+        std::ofstream output(root / ("batch-" + std::to_string(i) + ".txt"), std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{0}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    for (int i = 0; i < event_count; ++i) {
+        backend->push(backend->event_for(report.id, ld::event_kind::modified, "batch-" + std::to_string(i) + ".txt"));
+    }
+
+    std::vector<std::filesystem::path> received_paths;
+    for (int i = 0; i < event_count; ++i) {
+        const auto received = watcher.wait_for(std::chrono::seconds{2});
+        require(received.has_value(), "settled-file batch event should arrive");
+        received_paths.push_back(*received->path.root_relative);
+    }
+
+    for (int i = 0; i < event_count; ++i) {
+        require(std::find(received_paths.begin(), received_paths.end(), std::filesystem::path("batch-" + std::to_string(i) + ".txt")) != received_paths.end(),
+            "settled-file batch should preserve every path");
+    }
+    require(watcher.poll() == std::nullopt, "settled-file batch should not leave extra events");
+}
+
 } // namespace
 
 int main()
@@ -582,6 +670,9 @@ int main()
         captures_settled_file_options_in_start_path();
         settled_file_wait_does_not_block_raw_delivery();
         settled_file_events_coalesce_by_source_and_path();
+        settled_file_timeout_reports_diagnostic();
+        remove_watch_cancels_pending_settled_file_event();
+        settled_file_large_batch_delivers_all_paths();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;

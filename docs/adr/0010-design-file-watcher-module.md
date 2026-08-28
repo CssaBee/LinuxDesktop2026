@@ -100,6 +100,7 @@ struct settle_options {
     std::chrono::milliseconds debounce_for = std::chrono::milliseconds{0};
     std::chrono::milliseconds stable_for = std::chrono::milliseconds{0};
     std::chrono::milliseconds poll_interval = std::chrono::milliseconds{100};
+    std::optional<std::chrono::milliseconds> timeout_after;
 };
 
 struct watch_options {
@@ -405,10 +406,10 @@ Still prototype-grade:
 - Windows is implemented behind the native backend seam, has a Windows-only smoke test target covering create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and is run explicitly by CI on Windows before it can be called verified.
 - The optional libuv backend has a preferred-backend smoke test and CI job when libuv is available and `LD2026_WATCH_PREFER_LIBUV=ON`; it has passed on this Ubuntu host with libuv 1.48.0. It is intentionally not the default Ubuntu backend while native inotify exposes richer Linux behavior.
 - Recursive emulation now expands dynamically when new subdirectories and deeper trees appear, skips duplicate directory watches inside one logical recursive watch, fans out shared native descriptor events to multiple logical watches, reports skipped symlinked directories, preserves remove/rename churn, and maps common inotify resource-limit failures into `watch.resource.limit` diagnostics.
-- Settled-file support now runs outside the raw backend delivery path and coalesces repeated events by source/path, but it still needs broader timeout, cancellation, and large-batch tests.
+- Settled-file support now runs outside the raw backend delivery path, coalesces repeated events by source/path, reports `watch.settle.timeout` when an optional timeout expires, cancels pending settled events when a watch is removed, and has larger-batch test coverage.
 - The deterministic test hook is private/internal through `src/watch_backend.hpp`; it is no longer exposed as a public `watcher` constructor in the installed header.
-- Public API stabilization has started: `capability_report` identifies `backend_kind`, diagnostic code names are public constants, `watch_id` has equality operators, `watch_path` keeps path values instead of bare strings, and pull delivery has timeout-capable `wait_for`.
-- Remaining public API stabilization work is verification-first: keep the explicit Windows CI/local watcher run green, finish settled-file timeout/cancellation/large-batch hardening, then decide whether to add a C ABI, finalize wording for root-relative path behavior on Windows single-file watches, and grow capability limit/cost fields only if stress tests prove they are needed.
+- Public API stabilization has started: `capability_report` identifies `backend_kind`, diagnostic code names are public constants, `watch_id` has equality operators, `watch_path` keeps path values instead of bare strings, pull delivery has timeout-capable `wait_for`, and settled-file readiness has optional timeout policy.
+- Remaining public API stabilization work is verification-first: keep the explicit Windows CI/local watcher run green, then decide whether to add a C ABI, finalize wording for root-relative path behavior on Windows single-file watches, and grow capability limit/cost fields only if stress tests prove they are needed.
 
 ## Consequences
 

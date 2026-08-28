@@ -1,10 +1,12 @@
 #include "watch_backend.hpp"
 
 #include <condition_variable>
+#include <chrono>
 #include <deque>
 #include <map>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -167,6 +169,7 @@ public:
         const auto removed = backend_->remove_watch(id);
         if (removed) {
             watches_.erase(id.value);
+            cancel_settle_tasks_for(id);
         }
         return removed;
     }
@@ -281,6 +284,9 @@ private:
                 }
                 continue;
             }
+            if (!watch_is_active(event->source)) {
+                continue;
+            }
             if (needs_settle(*event)) {
                 enqueue_for_settle(std::move(*event));
             } else {
@@ -297,6 +303,12 @@ private:
             return std::nullopt;
         }
         return it->second;
+    }
+
+    bool watch_is_active(watch_id id) const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return !stopped_ && watches_.find(id.value) != watches_.end();
     }
 
     bool is_stopped_for_settle() const
@@ -336,6 +348,18 @@ private:
     std::string settle_key(const watch_event& event) const
     {
         return std::to_string(event.source.value) + "\n" + event.path.absolute.string();
+    }
+
+    void cancel_settle_tasks_for(watch_id id)
+    {
+        const auto prefix = std::to_string(id.value) + "\n";
+        for (auto it = settle_generations_.begin(); it != settle_generations_.end();) {
+            if (it->first.rfind(prefix, 0) == 0) {
+                it = settle_generations_.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
     void enqueue_for_settle(watch_event event)
@@ -391,6 +415,7 @@ private:
         if (!wait_for_settle_delay(settle.debounce_for)) {
             return std::nullopt;
         }
+        const auto started_at = std::chrono::steady_clock::now();
         if (settle.stable_for.count() <= 0) {
             return event;
         }
@@ -419,6 +444,15 @@ private:
         const auto poll_interval =
             settle.poll_interval.count() > 0 ? settle.poll_interval : std::chrono::milliseconds{100};
         while (stable_for < settle.stable_for) {
+            if (settle.timeout_after.has_value() &&
+                std::chrono::steady_clock::now() - started_at >= *settle.timeout_after) {
+                event.diagnostics.push_back(make_diagnostic(
+                    severity::warning,
+                    std::string(diagnostic_code::settle_timeout),
+                    "File did not become stable before the settle timeout",
+                    event.path.absolute));
+                return event;
+            }
             if (!wait_for_settle_delay(poll_interval)) {
                 return std::nullopt;
             }
