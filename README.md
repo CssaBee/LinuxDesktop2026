@@ -19,7 +19,7 @@ Before writing production library code, we will:
 
 The first selected sample is `ld_settings`, a small C++17 settings/config module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, validation-before-commit, dry-run-first migration plans, raw Registry API shape, Registry JSON/`.reg` snapshot formats, autostart effect handling, and managed/enforced policy effects.
 
-The next planned module is `ld_paths`, a resolver-first path module shaped by the extended survey. It should grow into a community-facing prototype for standard user paths, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, and opt-in directory creation.
+The next module is `ld_paths`, a resolver-first path module shaped by the extended survey. Its public C++ skeleton is present with a CMake target, tests, demo, and install-tree consumer coverage. It should grow into a community-facing prototype for standard user paths, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, and opt-in directory creation.
 
 For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++, ShareX, WinSCP, KeePassXC, OpenRGB, FreeCAD, Carla, PortableApps-style startup/config code, and internal `ld_settings` extraction change when platform policy moves into LinuxDesktop2026 modules.
 
@@ -47,7 +47,7 @@ Status legend:
 | `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` still needs real Windows Registry/autostart/policy verification, rollback evidence, and a published Rust crate before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
 | `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. |
-| `📌` Next | Filesystem and path helpers (`ld_paths`) | Next planned module. Resolver-first, but broad enough for a community-facing prototype: standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, and a small C ABI before public prototype announcement. |
+| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ skeleton is present with `LinuxDesktop2026::ld_paths`, version constants, shared diagnostics, path family/source enums, resolver report types, tests, demo, and install-tree consumer coverage. Resolver behavior is next: standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, and a small C ABI before public prototype announcement. |
 | `📌` Next | `ld_settings` and `ld_paths` extraction | Keep the current `ld_settings` resolver until `ld_paths` has tests and install-tree consumer coverage, then refactor settings root placement through `ld_paths`. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -99,9 +99,18 @@ Current backend posture:
 - The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests are present but still need a real Windows CI/local run before the Windows backend is called verified.
 - The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, and `wait_for`; remaining stabilization is C ABI timing, Windows single-file root-relative wording, and richer capability fields if stress tests prove they are needed.
 
-## Planned `ld_paths`
+## `ld_paths`
 
-`ld_paths` is planned as the next module after the current `ld_settings` and `ld_watch` work.
+`ld_paths` is the current module after the `ld_settings` and `ld_watch` prototypes. The first committed slice is a public C++17 skeleton and build target:
+
+- `LinuxDesktop2026::ld_paths`
+- `linuxdesktop/paths.hpp`
+- shared `ld_core` diagnostics aliases
+- path family and candidate source enums
+- resolver options, candidates, and report structures
+- `ld_paths_tests`, `ld_paths_demo`, and install-tree consumer coverage
+
+The current resolver intentionally reports `paths.resolver.not_implemented` until the platform-specific resolver logic lands.
 
 The prototype should resolve and report:
 
@@ -112,6 +121,18 @@ The prototype should resolve and report:
 - and typed plugin path sets for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX.
 
 The first implementation should support Windows 10/11 and Ubuntu LTS, provide C++17 first, add a small C ABI before community announcement, and keep filesystem mutation opt-in.
+
+From a Git checkout or vendored checkout, consumers can already link the skeleton target:
+
+```cmake
+target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_paths)
+```
+
+The demo currently prints the unresolved placeholder report:
+
+```sh
+./build/ld_paths_demo --org LinuxDesktop2026 --app paths-demo
+```
 
 ## Consume `ld_settings`
 

@@ -45,6 +45,22 @@ if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
 endif()
 
+add_library(ld_paths
+    src/paths.cpp
+)
+
+add_library(LinuxDesktop2026::ld_paths ALIAS ld_paths)
+
+target_compile_features(ld_paths PUBLIC cxx_std_17)
+
+target_include_directories(ld_paths
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ld_paths PUBLIC LinuxDesktop2026::ld_core)
+
 add_library(ld_watch
     src/watch.cpp
     src/watch_inotify.cpp
@@ -92,7 +108,7 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(ld_watch PRIVATE pthread)
 endif()
 
-install(TARGETS ld_core ld_settings ld_watch
+install(TARGETS ld_core ld_settings ld_paths ld_watch
     EXPORT LinuxDesktop2026Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -144,6 +160,13 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_settings_c_tests PRIVATE LinuxDesktop2026::ld_settings)
 
     add_test(NAME ld_settings_c_tests COMMAND ld_settings_c_tests)
+
+    add_executable(ld_paths_tests
+        tests/paths_tests.cpp
+    )
+    target_link_libraries(ld_paths_tests PRIVATE LinuxDesktop2026::ld_paths)
+
+    add_test(NAME ld_paths_tests COMMAND ld_paths_tests)
 
     if(LD2026_RUSTC)
         set(LD2026_RUST_FFI_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/settings_rust_ffi_smoke${CMAKE_C_OUTPUT_EXTENSION}")
@@ -228,4 +251,9 @@ if(LD2026_BUILD_EXAMPLES)
         examples/watch_demo.cpp
     )
     target_link_libraries(ld_watch_demo PRIVATE LinuxDesktop2026::ld_watch)
+
+    add_executable(ld_paths_demo
+        examples/paths_demo.cpp
+    )
+    target_link_libraries(ld_paths_demo PRIVATE LinuxDesktop2026::ld_paths)
 endif()

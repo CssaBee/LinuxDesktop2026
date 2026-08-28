@@ -1,4 +1,5 @@
 #include "linuxdesktop/settings.hpp"
+#include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/watch.hpp"
 
 #include <cstdlib>
@@ -19,6 +20,9 @@ int main()
         return EXIT_FAILURE;
     }
     if (linuxdesktop::watch::to_string(linuxdesktop::watch::event_kind::created) != "created") {
+        return EXIT_FAILURE;
+    }
+    if (linuxdesktop::paths::to_string(linuxdesktop::paths::path_family::config) != "config") {
         return EXIT_FAILURE;
     }
 
