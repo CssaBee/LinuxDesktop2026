@@ -166,7 +166,7 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 
 Near-term planning changes:
 
-- Promote `ld_paths` to the next planned module. It should cover standard user paths beyond settings roots, XDG user dirs, executable/resource/install roots, path-list parsing, environment override diagnostics, legacy fallbacks, Wine-prefix-aware defaults, and typed plugin path sets.
+- Promote `ld_paths` to the next planned module. It now covers standard user paths beyond settings roots, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, and typed plugin path sets. XDG user-dir parsing, explicit legacy fallback chains, Windows verification, and the C ABI remain before public prototype announcement.
 - Promote `ld_process` to a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
 - Promote `ld_ipc` after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
 - Add future desktop integration work for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.

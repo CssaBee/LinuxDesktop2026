@@ -26,6 +26,12 @@ inline constexpr std::string_view environment_relative_ignored = "paths.environm
 inline constexpr std::string_view override_relative_ignored = "paths.override.relative_ignored";
 inline constexpr std::string_view executable_unavailable = "paths.executable.unavailable";
 inline constexpr std::string_view temp_directory_unavailable = "paths.temp.unavailable";
+inline constexpr std::string_view directory_exists_as_file = "paths.directory.exists_as_file";
+inline constexpr std::string_view directory_parent_missing = "paths.directory.parent_missing";
+inline constexpr std::string_view directory_create_failed = "paths.directory.create_failed";
+inline constexpr std::string_view path_list_relative_ignored = "paths.path_list.relative_ignored";
+inline constexpr std::string_view path_list_empty_entry_ignored = "paths.path_list.empty_entry_ignored";
+inline constexpr std::string_view path_list_duplicate_ignored = "paths.path_list.duplicate_ignored";
 } // namespace diagnostic_code
 
 struct app_identity {
@@ -96,7 +102,99 @@ struct resolver_report {
 
 resolver_report resolve_app_paths(const app_identity& identity, const resolver_options& options = {});
 
+enum class directory_action {
+    already_exists,
+    would_create,
+    created,
+    failed
+};
+
+struct ensure_directory_options {
+    bool dry_run = true;
+    bool create_parents = true;
+};
+
+struct ensure_directory_report {
+    std::filesystem::path path;
+    directory_action action = directory_action::failed;
+    std::vector<diagnostic> diagnostics;
+};
+
+ensure_directory_report ensure_directory(
+    const std::filesystem::path& path,
+    const ensure_directory_options& options = {});
+
+ensure_directory_report ensure_directory(
+    const resolver_report& report,
+    path_family family,
+    const ensure_directory_options& options = {});
+
+struct path_list_options {
+    bool require_absolute = true;
+    bool drop_duplicates = true;
+    std::optional<char> separator;
+};
+
+struct path_list_report {
+    std::vector<std::filesystem::path> paths;
+    std::vector<path_candidate> candidates;
+    std::vector<diagnostic> diagnostics;
+};
+
+path_list_report parse_path_list(
+    std::string_view value,
+    const path_list_options& options = {});
+
+std::string join_path_list(
+    const std::vector<std::filesystem::path>& paths,
+    const path_list_options& options = {});
+
+enum class plugin_path_kind {
+    ladspa,
+    dssi,
+    lv2,
+    vst2,
+    vst3,
+    clap,
+    sf2,
+    sfz,
+    jsfx
+};
+
+struct custom_plugin_path_set {
+    std::string name;
+    std::optional<std::string> environment_variable;
+    std::vector<std::filesystem::path> defaults;
+};
+
+struct plugin_path_options {
+    std::vector<plugin_path_kind> kinds;
+    std::vector<custom_plugin_path_set> custom_sets;
+    std::map<std::string, std::string> environment;
+    std::optional<std::filesystem::path> home_directory;
+    std::optional<std::filesystem::path> wine_prefix;
+    bool use_process_environment = true;
+    bool include_wine_prefix_defaults = false;
+    path_list_options list_options;
+};
+
+struct plugin_path_set {
+    std::string name;
+    std::optional<plugin_path_kind> kind;
+    std::vector<std::filesystem::path> paths;
+};
+
+struct plugin_path_report {
+    std::vector<plugin_path_set> sets;
+    std::vector<path_candidate> candidates;
+    std::vector<diagnostic> diagnostics;
+};
+
+plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options = {});
+
 std::string_view to_string(path_family value);
 std::string_view to_string(candidate_source value);
+std::string_view to_string(directory_action value);
+std::string_view to_string(plugin_path_kind value);
 
 } // namespace linuxdesktop::paths

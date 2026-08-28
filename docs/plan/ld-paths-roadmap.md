@@ -65,24 +65,24 @@ Exit bar:
 
 ### Milestone 2: Directory Creation And Path Lists
 
-Status: planned after resolver core.
+Status: implemented for the C++ prototype.
 
 Implement:
 
-- opt-in `ensure_directory` helpers that operate on resolved paths,
+- opt-in `ensure_directory` helpers that operate on explicit paths or resolved path families,
 - parent creation diagnostics,
 - dry-run directory creation preview,
 - platform path-list separator parsing,
 - path-list joining,
 - invalid/relative entry filtering policy,
 - duplicate normalization where possible,
-- and environment override reports.
+- and environment override reports through source-labeled path-list candidates.
 
 Exit bar:
 
 - no path is created unless the caller asks for creation,
 - path-list behavior is testable without mutating the real environment,
-- and diagnostics identify every rejected entry.
+- and diagnostics identify rejected relative, empty, duplicate, file-in-place, missing-parent, and creation-failure cases.
 
 ### Milestone 3: User Dirs And Legacy Fallbacks
 
@@ -105,7 +105,7 @@ Exit bar:
 
 ### Milestone 4: Typed Plugin Path Sets
 
-Status: planned for the broader prototype.
+Status: implemented for the C++ prototype; platform-default verification beyond Ubuntu-style paths is still pending.
 
 Implement:
 
@@ -114,7 +114,7 @@ Implement:
 - environment variable overrides,
 - Wine-prefix-aware defaults where relevant,
 - path-list diagnostics,
-- and an extension point for app-defined path-set kinds.
+- and custom named path sets for app-defined ecosystems.
 
 Exit bar:
 

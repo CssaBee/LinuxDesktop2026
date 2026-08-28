@@ -83,6 +83,30 @@ void print_report(const linuxdesktop::paths::resolver_report& report)
     }
 }
 
+void print_plugin_sets(const linuxdesktop::paths::plugin_path_report& report)
+{
+    namespace ld = linuxdesktop::paths;
+
+    std::cout << "plugin path sets: " << report.sets.size() << "\n";
+    for (const auto& set : report.sets) {
+        std::cout << "  " << set.name << ": " << set.paths.size() << " roots\n";
+        for (const auto& path : set.paths) {
+            std::cout << "    " << path.string() << "\n";
+        }
+    }
+
+    std::cout << "plugin candidates: " << report.candidates.size() << "\n";
+    for (const auto& candidate : report.candidates) {
+        std::cout << "  " << (candidate.selected ? "*" : "-")
+                  << " " << ld::to_string(candidate.source);
+        if (!candidate.path.empty()) {
+            std::cout << ": " << candidate.path.string();
+        }
+        std::cout << "\n";
+    }
+    print_diagnostics(report.diagnostics);
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -96,6 +120,12 @@ int main(int argc, char** argv)
                   << identity.organization << "/" << identity.application << "\n";
         print_report(report);
         print_diagnostics(report.diagnostics);
+
+        ld::plugin_path_options plugin_options;
+        plugin_options.kinds = {ld::plugin_path_kind::lv2, ld::plugin_path_kind::vst3, ld::plugin_path_kind::clap};
+        plugin_options.include_wine_prefix_defaults = true;
+        const auto plugins = ld::resolve_plugin_path_sets(plugin_options);
+        print_plugin_sets(plugins);
     } catch (const std::exception& error) {
         std::cerr << error.what() << "\n";
         return EXIT_FAILURE;
