@@ -33,27 +33,49 @@ if(NOT EXISTS "${LD2026_PACKAGE_DIR}/LinuxDesktop2026Config.cmake")
 endif()
 
 set(ld2026_package_dir_arg "-DLinuxDesktop2026_DIR=${LD2026_PACKAGE_DIR}")
+set(ld2026_configure_args
+    "${CMAKE_COMMAND}"
+    -S "${LD2026_CONSUMER_SOURCE_DIR}"
+    -B "${LD2026_CONSUMER_BINARY_DIR}"
+    "${ld2026_package_dir_arg}"
+)
+if(DEFINED LD2026_CONSUMER_GENERATOR AND NOT LD2026_CONSUMER_GENERATOR STREQUAL "")
+    list(APPEND ld2026_configure_args -G "${LD2026_CONSUMER_GENERATOR}")
+endif()
+if(DEFINED LD2026_CONSUMER_C_COMPILER AND NOT LD2026_CONSUMER_C_COMPILER STREQUAL "")
+    list(APPEND ld2026_configure_args "-DCMAKE_C_COMPILER=${LD2026_CONSUMER_C_COMPILER}")
+endif()
+if(DEFINED LD2026_CONSUMER_CXX_COMPILER AND NOT LD2026_CONSUMER_CXX_COMPILER STREQUAL "")
+    list(APPEND ld2026_configure_args "-DCMAKE_CXX_COMPILER=${LD2026_CONSUMER_CXX_COMPILER}")
+endif()
+
 execute_process(
-    COMMAND "${CMAKE_COMMAND}"
-        -S "${LD2026_CONSUMER_SOURCE_DIR}"
-        -B "${LD2026_CONSUMER_BINARY_DIR}"
-        "${ld2026_package_dir_arg}"
+    COMMAND ${ld2026_configure_args}
     RESULT_VARIABLE configure_result
 )
 if(NOT configure_result EQUAL 0)
     message(FATAL_ERROR "Configuring install-tree consumer failed with ${configure_result}")
 endif()
 
+set(ld2026_build_args "${CMAKE_COMMAND}" --build "${LD2026_CONSUMER_BINARY_DIR}")
+if(DEFINED LD2026_CONSUMER_BUILD_CONFIG AND NOT LD2026_CONSUMER_BUILD_CONFIG STREQUAL "")
+    list(APPEND ld2026_build_args --config "${LD2026_CONSUMER_BUILD_CONFIG}")
+endif()
 execute_process(
-    COMMAND "${CMAKE_COMMAND}" --build "${LD2026_CONSUMER_BINARY_DIR}"
+    COMMAND ${ld2026_build_args}
     RESULT_VARIABLE build_result
 )
 if(NOT build_result EQUAL 0)
     message(FATAL_ERROR "Building install-tree consumer failed with ${build_result}")
 endif()
 
+set(ld2026_consumer_runtime_dir "${LD2026_CONSUMER_BINARY_DIR}")
+if(DEFINED LD2026_CONSUMER_BUILD_CONFIG AND NOT LD2026_CONSUMER_BUILD_CONFIG STREQUAL "")
+    set(ld2026_consumer_runtime_dir "${LD2026_CONSUMER_BINARY_DIR}/${LD2026_CONSUMER_BUILD_CONFIG}")
+endif()
+
 execute_process(
-    COMMAND "${LD2026_CONSUMER_BINARY_DIR}/ld_settings_consumer"
+    COMMAND "${ld2026_consumer_runtime_dir}/ld_settings_consumer"
     RESULT_VARIABLE run_result
 )
 if(NOT run_result EQUAL 0)
@@ -61,7 +83,7 @@ if(NOT run_result EQUAL 0)
 endif()
 
 execute_process(
-    COMMAND "${LD2026_CONSUMER_BINARY_DIR}/ld_paths_c_consumer"
+    COMMAND "${ld2026_consumer_runtime_dir}/ld_paths_c_consumer"
     RESULT_VARIABLE run_paths_c_result
 )
 if(NOT run_paths_c_result EQUAL 0)

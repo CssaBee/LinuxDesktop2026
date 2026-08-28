@@ -1,8 +1,71 @@
 #include "linuxdesktop/settings_c.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(_WIN32)
+#include <direct.h>
+#define LD_SETTINGS_PATH_SEPARATOR '\\'
+#else
+#include <sys/stat.h>
+#define LD_SETTINGS_PATH_SEPARATOR '/'
+#endif
+
+static const char* temp_root(void)
+{
+#if defined(_WIN32)
+    const char* value = getenv("TEMP");
+    return value ? value : "C:\\Temp";
+#else
+    return "/tmp";
+#endif
+}
+
+static void make_path(char* buffer, size_t size, const char* leaf)
+{
+    size_t prefix_length;
+    snprintf(buffer, size, "%s%c%s%c", temp_root(), LD_SETTINGS_PATH_SEPARATOR, "linuxdesktop2026-c-smoke", LD_SETTINGS_PATH_SEPARATOR);
+    prefix_length = strlen(buffer);
+    while (*leaf && prefix_length + 1 < size) {
+        buffer[prefix_length++] = (*leaf == '/' || *leaf == '\\') ? LD_SETTINGS_PATH_SEPARATOR : *leaf;
+        ++leaf;
+    }
+    buffer[prefix_length] = '\0';
+}
+
+static int create_directory_if_missing(const char* path)
+{
+#if defined(_WIN32)
+    return _mkdir(path) == 0 || errno == EEXIST;
+#else
+    return mkdir(path, 0777) == 0 || errno == EEXIST;
+#endif
+}
+
+static int ensure_directory(const char* path)
+{
+    char buffer[1024];
+    size_t i;
+    size_t length;
+    if (strlen(path) >= sizeof(buffer)) {
+        return 0;
+    }
+    strcpy(buffer, path);
+    length = strlen(buffer);
+    for (i = 1; i < length; ++i) {
+        if (buffer[i] == '/' || buffer[i] == '\\') {
+            char saved = buffer[i];
+            buffer[i] = '\0';
+            if (strlen(buffer) > 0 && !(strlen(buffer) == 2 && buffer[1] == ':') && !create_directory_if_missing(buffer)) {
+                return 0;
+            }
+            buffer[i] = saved;
+        }
+    }
+    return create_directory_if_missing(buffer);
+}
 
 static int validate_contains_saved(const char* path, char* message, size_t message_size, void* user_data)
 {
@@ -42,13 +105,34 @@ int main(void)
 {
     struct ld_settings_root_options options;
     struct ld_settings_root_report report;
+    char settings_override[512];
+    char autostart_root[512];
+    char policy_root[512];
+    char model_root[512];
+    char hydrate_root[512];
+    char old_root[512];
+    char model_file[768];
+    char old_file[768];
+    char saved_file[768];
+    char migrated_file[768];
+
+    make_path(settings_override, sizeof(settings_override), "settings");
+    make_path(autostart_root, sizeof(autostart_root), "autostart");
+    make_path(policy_root, sizeof(policy_root), "policy/defaults");
+    make_path(model_root, sizeof(model_root), "models");
+    make_path(hydrate_root, sizeof(hydrate_root), "hydrated");
+    make_path(old_root, sizeof(old_root), "old");
+    make_path(model_file, sizeof(model_file), "models/config.model.xml");
+    make_path(old_file, sizeof(old_file), "old/config.xml");
+    make_path(saved_file, sizeof(saved_file), "hydrated/saved.xml");
+    make_path(migrated_file, sizeof(migrated_file), "hydrated/migrated.xml");
 
     memset(&report, 0, sizeof(report));
     ld_settings_root_options_init(&options);
 
     options.organization = "LinuxDesktop2026";
     options.application = "c-smoke";
-    options.settings_override = "/tmp/linuxdesktop2026-c-smoke";
+    options.settings_override = settings_override;
     options.portable_level = LD_SETTINGS_PORTABLE_PROFILE;
 
     struct ld_settings_named_root_request roots[1];
@@ -72,7 +156,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (!report.config || strcmp(report.config, "/tmp/linuxdesktop2026-c-smoke") != 0) {
+    if (!report.config || strcmp(report.config, settings_override) != 0) {
         ld_settings_free_root_report(&report);
         return EXIT_FAILURE;
     }
@@ -101,7 +185,7 @@ int main(void)
     struct ld_settings_effect_options effect_options;
     ld_settings_effect_options_init(&effect_options);
     effect_options.allow_desktop_integration_write = 1;
-    effect_options.autostart_directory_override = "/tmp/linuxdesktop2026-c-smoke-autostart";
+    effect_options.autostart_directory_override = autostart_root;
 
     const char* arguments[] = {"--profile", "Default"};
     struct ld_settings_autostart_entry autostart;
@@ -136,7 +220,7 @@ int main(void)
     policy.user_scope = 1;
 
     effect_options.allow_policy_write = 1;
-    effect_options.policy_defaults_directory_override = "/tmp/linuxdesktop2026-c-smoke-policy/defaults";
+    effect_options.policy_defaults_directory_override = policy_root;
 
     struct ld_settings_policy_report policy_report;
     memset(&policy_report, 0, sizeof(policy_report));
@@ -155,12 +239,12 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (system("mkdir -p /tmp/linuxdesktop2026-c-smoke-models /tmp/linuxdesktop2026-c-smoke-hydrated /tmp/linuxdesktop2026-c-smoke-old") != 0) {
+    if (!ensure_directory(model_root) || !ensure_directory(hydrate_root) || !ensure_directory(old_root)) {
         return EXIT_FAILURE;
     }
-    if (!write_text("/tmp/linuxdesktop2026-c-smoke-models/config.model.xml", "<Config model=\"true\" />\n") ||
-        !write_text("/tmp/linuxdesktop2026-c-smoke-old/config.xml", "<Config copied=\"true\" />\n") ||
-        !write_text("/tmp/linuxdesktop2026-c-smoke-hydrated/saved.xml", "<Config saved=\"old\" />\n")) {
+    if (!write_text(model_file, "<Config model=\"true\" />\n") ||
+        !write_text(old_file, "<Config copied=\"true\" />\n") ||
+        !write_text(saved_file, "<Config saved=\"old\" />\n")) {
         return EXIT_FAILURE;
     }
 
@@ -174,8 +258,8 @@ int main(void)
     struct ld_settings_hydrate_report hydrate_report;
     memset(&hydrate_report, 0, sizeof(hydrate_report));
     ld_settings_hydrate_options_init(&hydrate_options);
-    hydrate_options.model_root = "/tmp/linuxdesktop2026-c-smoke-models";
-    hydrate_options.target_root = "/tmp/linuxdesktop2026-c-smoke-hydrated";
+    hydrate_options.model_root = model_root;
+    hydrate_options.target_root = hydrate_root;
     hydrate_options.files = files;
     hydrate_options.file_count = 1;
     if (!ld_settings_hydrate_config_bundle(&hydrate_options, &hydrate_report) ||
@@ -190,7 +274,7 @@ int main(void)
     const char* write_content = "<Config saved=\"new\" />\n";
     memset(&write_report, 0, sizeof(write_report));
     ld_settings_write_options_init(&write_options);
-    write_options.target = "/tmp/linuxdesktop2026-c-smoke-hydrated/saved.xml";
+    write_options.target = saved_file;
     write_options.content = write_content;
     write_options.content_size = strlen(write_content);
     if (!ld_settings_write_with_backup(&write_options, validate_contains_saved, NULL, &write_report) ||
@@ -208,8 +292,8 @@ int main(void)
     memset(actions, 0, sizeof(actions));
     actions[0].kind = LD_SETTINGS_MIGRATION_COPY_FILE;
     actions[0].name = "copy legacy config";
-    actions[0].source_path = "/tmp/linuxdesktop2026-c-smoke-old/config.xml";
-    actions[0].target_path = "/tmp/linuxdesktop2026-c-smoke-hydrated/migrated.xml";
+    actions[0].source_path = old_file;
+    actions[0].target_path = migrated_file;
     ld_settings_migration_options_init(&migration_options);
     migration_options.overwrite_existing = 1;
     memset(&migration_report, 0, sizeof(migration_report));

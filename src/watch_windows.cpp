@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <map>
@@ -185,6 +186,7 @@ public:
         worker->thread = std::thread([worker] {
             worker->run();
         });
+        worker->wait_until_ready();
 
         report.ok = true;
         return report;
@@ -273,6 +275,17 @@ private:
         bool recursive = false;
         overflow_policy overflow = overflow_policy::request_rescan;
         std::optional<watch_path> pending_rename;
+        std::mutex ready_mutex;
+        std::condition_variable ready_cv;
+        bool ready = false;
+
+        void wait_until_ready()
+        {
+            std::unique_lock<std::mutex> lock(ready_mutex);
+            ready_cv.wait_for(lock, std::chrono::seconds(2), [this] {
+                return ready;
+            });
+        }
 
         void run()
         {
@@ -295,11 +308,13 @@ private:
 
                 if (!ok && GetLastError() != ERROR_IO_PENDING) {
                     const auto error = GetLastError();
+                    mark_ready();
                     if (!stopping.load() && error != ERROR_OPERATION_ABORTED) {
                         owner->push(error_event(windows_error_message(error)));
                     }
                     return;
                 }
+                mark_ready();
 
                 while (!stopping.load()) {
                     const auto wait = WaitForSingleObject(event, 100);
@@ -338,6 +353,15 @@ private:
                     offset += raw->NextEntryOffset;
                 }
             }
+        }
+
+        void mark_ready()
+        {
+            {
+                std::lock_guard<std::mutex> lock(ready_mutex);
+                ready = true;
+            }
+            ready_cv.notify_all();
         }
 
         void map_raw(const FILE_NOTIFY_INFORMATION& raw)

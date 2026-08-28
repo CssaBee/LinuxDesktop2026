@@ -3074,6 +3074,11 @@ registry::options registry_options_for(const autostart_entry& entry, const apply
     registry_options.allow_hklm_write = !entry.user_scope && options.allow_global_write;
     return registry_options;
 }
+
+std::filesystem::path registry_target_path(const registry::key& key, const std::string& value_name)
+{
+    return std::filesystem::path(std::string(registry::to_string(key.root)) + "\\" + key.subkey + "\\" + value_name);
+}
 #endif
 
 std::string sanitize_policy_file_id(std::string value)
@@ -3311,6 +3316,7 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
     }
 
 #if defined(_WIN32)
+    report.path = registry_target_path(run_key_for(entry), entry.id);
     registry::value value;
     value.name = entry.id;
     value.type = registry::value_type::string;
@@ -3382,6 +3388,7 @@ effect_report remove_autostart(const autostart_entry& entry, const apply_options
     }
 
 #if defined(_WIN32)
+    report.path = registry_target_path(run_key_for(entry), entry.id);
     const auto deleted = registry::delete_value(run_key_for(entry), entry.id, registry_options_for(entry, options));
     report.ok = deleted.ok;
     report.diagnostics.insert(report.diagnostics.end(), deleted.diagnostics.begin(), deleted.diagnostics.end());
@@ -3425,6 +3432,7 @@ effect_report query_autostart(const autostart_entry& entry, const apply_options&
     }
 
 #if defined(_WIN32)
+    report.path = registry_target_path(run_key_for(entry), entry.id);
     const auto value = registry::read_value(run_key_for(entry), entry.id);
     report.ok = value.ok;
     report.enabled = value.ok && value.item.has_value();
@@ -3481,6 +3489,7 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
     report.present = true;
 
 #if defined(_WIN32)
+    report.path = registry_target_path(policy_key_for(entry), entry.key);
     registry::value value;
     value.name = entry.key;
     value.type = registry::value_type::string;
@@ -3577,6 +3586,7 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
     }
 
 #if defined(_WIN32)
+    report.path = registry_target_path(policy_key_for(entry), entry.key);
     const auto deleted = registry::delete_value(policy_key_for(entry), entry.key, registry_options_for(entry, options));
     report.ok = deleted.ok;
     report.diagnostics.insert(report.diagnostics.end(), deleted.diagnostics.begin(), deleted.diagnostics.end());
