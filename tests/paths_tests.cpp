@@ -534,17 +534,26 @@ void resolves_typed_plugin_path_sets()
     const auto& vst3 = plugin_set(report, "vst3");
     require(vst3.kind && *vst3.kind == ld::plugin_path_kind::vst3,
         "typed plugin set should preserve its kind");
-    require(vst3.paths.size() == 4, "VST3 should include env path and Linux defaults");
+    require(vst3.paths.size() == 2 || vst3.paths.size() == 4,
+        "VST3 should include env path and platform defaults");
     require(vst3.paths[0] == fixture_path({"vendor", "vst3"}), "environment plugin path should win ordering");
+#if defined(_WIN32)
+    require(vst3.paths[1] == "C:/Program Files/Common Files/VST3", "VST3 should include Windows default");
+#else
     require(vst3.paths[1] == fixture_path({"home", ".vst3"}), "VST3 should include home default");
+#endif
     require(has_plugin_diagnostic(report, ld::diagnostic_code::path_list_relative_ignored),
         "relative plugin environment entries should be diagnosed");
     require(has_plugin_diagnostic(report, ld::diagnostic_code::path_list_duplicate_ignored),
         "duplicate plugin entries should be diagnosed");
 
     const auto& lv2 = plugin_set(report, "lv2");
+#if defined(_WIN32)
+    require(lv2.paths[0] == "C:/Program Files/Common Files/LV2", "LV2 should include Windows default");
+#else
     require(lv2.paths[0] == fixture_path({"home", ".lv2"}), "LV2 should include home default");
     require(lv2.paths[1] == "/usr/local/lib/lv2", "LV2 should include local system default");
+#endif
 }
 
 void resolves_wine_and_custom_plugin_path_sets()
