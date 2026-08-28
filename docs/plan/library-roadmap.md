@@ -1,6 +1,6 @@
 # Platform Library Roadmap
 
-The platform libraries are general-purpose, permissively licensed, and designed for both humans and AI coding agents.
+The platform libraries are general-purpose, permissively licensed, and designed for both humans and AI coding agents. The repository is currently a prototype hardening effort, not a production-ready platform framework.
 
 ## Initial Direction
 
@@ -50,7 +50,7 @@ Original implementation target:
 - Windows Known Folder behavior shaped in the API, implemented as soon as feasible.
 - Structured diagnostic output suitable for humans, tests, and AI agents.
 
-Current sample:
+Current prototype sample:
 
 - `ld_core` interface target.
 - `LinuxDesktop2026::ld_core` namespaced target.
@@ -61,11 +61,11 @@ Current sample:
 - Repeatable run with `--settings-dir /tmp/linuxdesktop2026-settings-demo`.
 - Config-only sync override for app-validated cloud/sync choices.
 - Portable-root denial under app-declared privileged install roots.
-- Atomic temp-write/replace before committing high-value config files.
+- Atomic namespace replacement before committing high-value config files; crash-durable writes are not claimed yet.
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
-- C ABI surface for root/layer reports, config hydration, atomic writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
+- Existing pre-RC C ABI surface for root/layer reports, config hydration, atomic replacement writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
 - Autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
 - Managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
@@ -73,7 +73,7 @@ Current sample:
 Expanded ship direction:
 
 - The current `ld_settings` code is a working first sample, not a finished module.
-- First public API scope now includes named roots, component roots, portable levels, all config layers, migration plans, full practical Windows Registry support, Linux equivalents for relevant Registry effects, autostart, and managed/enforced policy.
+- Current prototype API scope includes named roots, component roots, portable levels, all config layers, migration plans, Windows Registry-shaped support, Linux equivalents for relevant Registry effects, autostart, and managed/enforced policy. That surface must be narrowed or validated before a ship candidate.
 - File associations and protocol handlers are explicitly unsupported in first `ld_settings`; users should open GitHub issues for those effects.
 - The expanded survey lives in `docs/survey/settings-registry-app-audit.md` and `docs/survey/settings-registry-platform-equivalents.md`.
 - The proposed API shape lives in `docs/plan/ld-settings-expanded-api.md`.
@@ -88,11 +88,11 @@ Example documentation:
 
 - Keep `ld_settings` tiny and toolkit-neutral.
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
-- Keep atomic temp-write/replace as the default write behavior while preserving direct-write opt-out for legacy cases.
+- Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; add separate durable-write semantics before making durability claims.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving `linuxdesktop::settings` aliases.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
-- Keep the expanded C ABI covered by C tests and the conditional Rust FFI smoke test.
+- Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Verify the Windows Registry/autostart/policy backend paths before claiming the expanded settings/effects API is ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
 - Keep autostart effect support, but move desktop entries beyond autostart, icons, MIME registrations, URL protocols, and desktop database updates to future desktop integration work.
@@ -121,7 +121,7 @@ Current direction:
 - public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, timeout-capable pull delivery, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
 - Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, and `ld_settings` effect reports for Registry/autostart/policy targets,
-- and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to the release-preview pass, and adding richer capability fields only if stress tests prove they are needed.
+- and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, and adding richer capability fields only if stress tests prove they are needed.
 
 ## Next Planned Module: ld_paths
 
@@ -133,7 +133,7 @@ Current public prototype scope:
 
 - Windows 10/11 and Ubuntu LTS first.
 - C++17 API backed by shared `ld_core` diagnostics.
-- Small C ABI for root reports, candidate reports, path-list parsing, and typed plugin path sets.
+- Existing small C ABI for root reports, candidate reports, path-list parsing, and typed plugin path sets; broader C ABI work waits until release-candidate status.
 - Standard user paths beyond settings roots: config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public share.
 - Executable path, executable directory, resource root, and install prefix reporting.
 - Source-labeled candidate reports for explicit options, environment overrides, XDG base dirs, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks.
@@ -168,8 +168,8 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 Near-term planning changes:
 
 - Promote `ld_paths` to the next planned module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Real Windows verification remains before public prototype announcement.
-- Promote `ld_process` to a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
-- Promote `ld_ipc` after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
-- Add future desktop integration work for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.
-- Add future service/daemon lifecycle work after `ld_process` and `ld_ipc` mature enough to support it cleanly.
+- Keep `ld_process` as a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
+- Keep `ld_ipc` as later design work after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
+- Keep desktop integration work as future research for `.desktop` files, command escaping, icon installation, MIME types, URL protocols, AppImage executable discovery, and uninstall cleanup.
+- Keep service/daemon lifecycle work parked until `ld_process` and `ld_ipc` mature enough to support it cleanly.
 - Run an existing-tool decision for `dylib` before implementing a dynamic loader module.

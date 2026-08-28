@@ -178,7 +178,7 @@ std::string_view to_string(backend_kind value);
 
 The API should expose portable event kinds first. Backend masks, raw names, or platform-specific details belong in optional diagnostics/debug fields unless a later advanced API earns them.
 
-The first release should not expose a stable C ABI. `ld_watch` C ABI design is postponed until the release-preview pass, after the C++ event, ownership, callback, queue, and path models survive native backend verification.
+The first release should not expose a stable C ABI. `ld_watch` C ABI design is postponed until release-candidate status, after the C++ event, ownership, callback, queue, and path models survive native backend verification.
 
 ## Lifecycle And Delivery
 

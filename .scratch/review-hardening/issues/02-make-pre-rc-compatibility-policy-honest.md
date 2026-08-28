@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The stability policy explicitly says C++ binary ABI is not promised while public values expose standard-library types.
-- [ ] Existing C ABI behavior is kept compatible where practical, but C ABI expansion is postponed until release-candidate status.
-- [ ] Release notes or migration guidance are required for any pre-1.0 source break or existing C ABI break.
+- [x] The stability policy explicitly says C++ binary ABI is not promised while public values expose standard-library types.
+- [x] Existing C ABI behavior is kept compatible where practical, but C ABI expansion is postponed until release-candidate status.
+- [x] Release notes or migration guidance are required for any pre-1.0 source break or existing C ABI break.

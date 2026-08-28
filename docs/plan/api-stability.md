@@ -11,10 +11,11 @@ The project promises:
 - Public C++ headers live under `include/linuxdesktop/`.
 - Public C ABI headers use plain C types and avoid C++ standard library types.
 - C++ APIs are source-compatibility interfaces only; no stable C++ binary ABI is promised while public values expose standard-library types.
-- Existing C ABI entry points should remain easy to bind and deliberately versioned, but C ABI expansion and binary-stability design are postponed until release-candidate status.
+- Existing C ABI entry points should remain compatible where practical, easy to bind, and deliberately versioned, but C ABI expansion and binary-stability design are postponed until release-candidate status.
 - Breaking source changes or C ABI changes require a minor version bump while `major == 0`.
 - Patch releases should preserve source compatibility and C ABI compatibility for documented functions.
 - Removed or renamed public functions should be called out in release notes or migration docs.
+- Every pre-1.0 source break or existing C ABI break requires release notes or migration guidance that names the affected module and replacement path.
 - C ABI callers own no returned memory directly; they release reports through the matching free function.
 - Runtime version functions should match the version macros in the installed C header.
 
@@ -78,7 +79,12 @@ Avoid unless strongly justified:
 
 If one of those happens before `1.0`, document it as a breaking change.
 
-At release-candidate status, revisit whether the C ABI should use opaque handles or versioned/size-tagged structs for long-lived objects and large reports. Plain C structs are easier to bind than C++ values, but they can still freeze layout too early.
+At release-candidate status, revisit whether the C ABI should use opaque
+handles or versioned/size-tagged structs for long-lived objects and large
+reports. Plain C structs are easier to bind than C++ values, but they can
+still freeze layout too early. Until then, existing C ABI maintenance is a
+best-effort compatibility practice, not a promise to keep expanding binary
+interfaces during prototype work.
 
 ## Deferred
 

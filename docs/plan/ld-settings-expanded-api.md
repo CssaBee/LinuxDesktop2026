@@ -8,7 +8,7 @@ It still does not parse every application's settings payload. Applications keep 
 
 ## Shippable Scope
 
-`ld_settings` is shippable only when the following are implemented and verified:
+`ld_settings` can become a ship candidate only when the following are implemented and verified:
 
 - fixed standard roots,
 - named roots,
@@ -25,7 +25,7 @@ It still does not parse every application's settings payload. Applications keep 
 - `.reg` compatibility import/export,
 - autostart effect implementation on Windows and Linux,
 - managed/enforced policy implementation on Windows and Linux,
-- C ABI coverage for first-public concepts,
+- no new C ABI expansion before release-candidate status; existing C ABI entry points are kept compatible where practical,
 - examples from Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style workflows,
 - Windows CI or equivalent automated Windows verification for Registry, Known Folders, C ABI, and atomic writes,
 - manual Windows verification transcript before release.
@@ -431,11 +431,15 @@ Linux backend:
 - the initial implementation supports override directories for safe tests and staged package generation.
 - Return diagnostics when no schema/backend exists.
 
-## C ABI Requirements
+## C ABI Posture
 
-The C ABI must expose named roots and config-layer reports in the first public API.
+The existing C ABI exposes named roots and config-layer reports, plus the
+prototype surfaces already added for mutation, migration, Registry snapshot
+formats, autostart effects, and policy effects. Keep that surface compatible
+where practical, but do not add new C ABI families until release-candidate
+status.
 
-Shape:
+When C ABI design resumes, the shape should remain:
 
 - arrays with explicit counts,
 - UTF-8 strings owned by report objects,
@@ -444,7 +448,10 @@ Shape:
 - enum values fixed and documented,
 - runtime version functions must match header macros.
 
-Registry C ABI can lag behind C++ during development, but not for the first shippable release.
+Registry, migration, and future effect C ABI additions can lag behind C++
+during development. At release-candidate status, decide whether the existing
+plain-struct reports are still adequate or whether new long-lived surfaces need
+opaque handles or size-tagged structs.
 
 ## Example Targets
 
@@ -462,7 +469,7 @@ Required examples before ship:
 ## Implementation Order
 
 1. Update docs and examples to reflect the expanded API.
-2. Add named roots and component roots to C++ and C ABI.
+2. Add named roots and component roots to C++ and the existing C ABI. `(implemented)`
 3. Add config layers and precedence reports.
 4. Add portable levels.
 5. Add migration plans as dry-run objects. `(initial C++ API implemented)`
@@ -472,7 +479,7 @@ Required examples before ship:
 9. Implement autostart Windows and Linux backends. `(initial C++ API/backend implemented; Windows verification pending)`
 10. Implement managed/enforced policy Windows and Linux backends. `(initial C++ API/backend implemented; Windows verification pending)`
 11. Add Windows CI and manual verification transcript. `(CI exists; transcript remains pending after a real Windows run)`
-12. Expand the C ABI past roots/layers. `(autostart and policy effects implemented; migration and Registry remain pending)`
+12. Defer further C ABI expansion until release-candidate status. `(existing surface is maintained where practical)`
 
 ## Current Status
 
@@ -486,7 +493,7 @@ Implemented in the current C++ sample:
 - portable levels,
 - string names for public root/layer enums,
 - C++ lookup helpers for named roots, component roots, component-local roots, and config layers,
-- C ABI exposure for named roots, component roots, config layers, and portable levels,
+- existing C ABI exposure for named roots, component roots, config layers, and portable levels,
 - dry-run-first migration plans with file/directory copy and move execution,
 - raw `ld_settings::registry` C++ API for read, write, delete, and enumeration,
 - Windows Registry backend seed using Win32 Registry APIs,
@@ -501,4 +508,8 @@ Implemented in the current C++ sample:
 - Linux dconf/GSettings-compatible defaults and lock-file generation without GLib,
 - Windows `Software\Policies` backend shape over the raw Registry API.
 
-The next code work should start with C ABI coverage for migration and Registry concepts. Windows CI or a Windows container/manual run must verify the Registry backend, autostart backend, policy backend, and tree import/export before the module can be considered shippable.
+The next code work should harden module boundaries, write safety, and Windows
+verification before adding new C ABI families. Windows CI or a Windows
+container/manual run must verify the Registry backend, autostart backend,
+policy backend, and tree import/export before the module can be considered a
+ship candidate.

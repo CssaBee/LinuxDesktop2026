@@ -6,18 +6,28 @@ The project starts from a practical proof case: Notepad++ on Ubuntu. Notepad++ i
 
 ## Current Stage
 
-We are in the survey, design, and first-sample stage.
+We are in the prototype hardening stage. The repository has working sample
+libraries, tests, demos, and install-tree checks, but it is not claiming
+production-ready behavior yet.
 
-Before writing production library code, we will:
+The project direction is:
 
 1. Survey 15 to 20 repositories that use Windows desktop features.
 2. Include about five reference implementations that already abstracted or ported similar features.
 3. Include unported candidates where Linux support was frequently requested.
 4. Score candidate modules by real usage, coupling, Linux complexity, standalone usefulness, and proof-case value.
 5. Run a focused follow-up search for the strongest module candidates.
-6. Pick the first tiny working code sample only after the evidence supports it.
+6. Pick implementation work only after the evidence supports it.
 
-The first selected sample is `ld_settings`, a small C++17 settings/config module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, validation-before-commit, dry-run-first migration plans, raw Registry API shape, Registry JSON/`.reg` snapshot formats, autostart effect handling, and managed/enforced policy effects.
+The first selected sample is `ld_settings`, a C++17 settings/config prototype.
+It currently demonstrates root resolution, config-only sync overrides,
+privileged-install portable denial, config bundle hydration, ordered writes,
+atomic namespace replacement, backup files, validation-before-commit,
+dry-run-first migration plans, raw Registry API shape, Registry JSON/`.reg`
+snapshot formats, autostart effect handling, and managed/enforced policy
+effects. Some of that surface is evidence-gathering only and still needs
+durability, Windows, rollback, and real-consumer validation before it can be
+called shippable.
 
 The next module is `ld_paths`, a resolver-first path module shaped by the extended survey. Its public C++ and C prototype is present with a CMake target, tests, demos, and install-tree consumer coverage. It now covers standard user paths, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, opt-in directory creation, and C report ownership rules.
 
@@ -25,28 +35,29 @@ For migration shape examples, see [Migration examples](docs/examples/migration-e
 
 ## Roadmap
 
-This roadmap is meant to help both humans and AI agents quickly see what is implemented, what is underway, and what is next.
+This roadmap is meant to help both humans and AI agents quickly see what is
+implemented as prototype evidence, what is underway, and what remains research.
 
 Status legend:
 
-- `✅ Done`: implemented and documented.
+- `✅ Done`: implemented and documented as prototype behavior, not a shipping claim.
 - `🟡 In progress`: actively being explored or refined.
 - `📌 Next`: the next selected implementation target.
-- `⬜ Later`: useful follow-up work, but not the current focus.
+- `⬜ Later`: research/backlog candidates, not active delivery promises.
 
 | Status | Category | Current state |
 | --- | --- | --- |
-| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, and validation-before-commit. |
-| `✅` Done | `ld_settings_tests` | Test coverage for the current sample behavior through `ctest`. |
+| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic namespace replacement, backup files, and validation-before-commit. Crash-durable writes and broader failure-mode evidence are not claimed yet. |
+| `✅` Done | `ld_settings_tests` | Test coverage for current prototype behavior through `ctest`; not yet a durability, stress, or real-consumer validation suite. |
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
-| `✅` Done | `ld_settings` C ABI surface | Root resolution, root/layer reports, config hydration, atomic writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects are exposed through a small C-compatible API for future Rust bindings and non-C++ consumers. |
-| `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 compatibility expectations. |
+| `✅` Done | `ld_settings` C ABI surface | Existing pre-RC C entry points expose root resolution, root/layer reports, config hydration, atomic replacement writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects for future Rust bindings and non-C++ consumers. The project is not expanding C ABI coverage until release-candidate status. |
+| `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 source compatibility expectations. Stable C++ binary ABI is not promised. |
 | `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` exposes shared C++ diagnostics, with `ld_settings` aliases kept source-compatible. |
-| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, `.reg` snapshots, autostart effects, and managed/enforced policy effects are represented in the public C++ surface. |
+| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, `.reg` snapshots, autostart effects, and managed/enforced policy effects are represented in the public C++ prototype surface. This is not yet a final module boundary. |
 | `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` still needs real Windows Registry/autostart/policy verification, rollback evidence, and a published Rust crate before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and expanded settings/Registry survey are guiding reusable seams. The broader `ld_watch` application/library follow-up is complete enough to guide implementation. |
-| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. |
+| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. Callback lifecycle, bounded queues, recursive stress, and consumer validation still gate ship-candidate status. |
 | `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C prototype is present with `LinuxDesktop2026::ld_paths`, version constants/functions, shared diagnostics, path family/source enums, resolver reports, deterministic resolver hooks, Linux XDG Base Directory behavior, XDG user-dir parsing, user-directory fallbacks, executable/resource/install roots, legacy and site-default config candidates, opt-in directory creation, path-list parsing/joining, typed plugin path sets, Wine-prefix-aware defaults, tests, demos, and install-tree consumer coverage. Remaining prototype work: Windows verification before public prototype announcement. |
 | `📌` Next | `ld_settings` and `ld_paths` extraction | Keep the current `ld_settings` resolver until `ld_paths` has tests and install-tree consumer coverage, then refactor settings root placement through `ld_paths`. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
@@ -66,10 +77,10 @@ Status legend:
 
 Quick read:
 
-- `✅` shipped
+- `✅` implemented prototype
 - `🟡` active
 - `📌` queued next
-- `⬜` parked for later
+- `⬜` parked research
 
 ## Build The First Sample
 
@@ -98,7 +109,7 @@ Current backend posture:
 - libuv is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
 - The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI runs that target explicitly on Windows before the backend is called verified.
 - The watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, backend/resource-limit diagnostic preservation, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches.
-- The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, `wait_for`, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics; `ld_watch` C ABI design is postponed until release preview.
+- The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, `wait_for`, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics; `ld_watch` C ABI design is postponed until release-candidate status.
 - Windows compatibility work should happen at the LinuxDesktop2026 API layer. Tests and examples should use `ld_paths`, `ld_settings`, and `ld_watch` concepts instead of assuming XDG paths, slash-separated strings, or Registry/file-watcher backend details directly.
 
 ## `ld_paths`
@@ -216,7 +227,10 @@ find_package(LinuxDesktop2026 CONFIG REQUIRED)
 target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_settings)
 ```
 
-## Candidate Areas
+## Research Backlog
+
+These areas are survey and design candidates. They are not active delivery
+promises until at least two real integrations validate the need and boundary.
 
 First candidates:
 

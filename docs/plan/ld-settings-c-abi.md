@@ -1,6 +1,6 @@
 # ld_settings C ABI
 
-The C ABI exists to keep Rust bindings and non-C++ consumers plausible without exposing C++ ABI details.
+The C ABI exists to keep Rust bindings and non-C++ consumers plausible without exposing C++ ABI details. Before release-candidate status, this document describes the existing surface; it is not a mandate to expand the ABI.
 
 ## Current Scope
 
@@ -84,8 +84,11 @@ The repository includes `tests/settings_rust_ffi_smoke.rs`, a tiny conditional `
 
 ## Deferred
 
+- Further C ABI expansion until release-candidate status.
 - A published Rust crate.
 - Ownership helpers for individual strings or diagnostics.
 - Stable ABI/version negotiation.
 
-The next useful step is real Windows verification for Registry/autostart/policy behavior, followed by a small safe Rust crate wrapper once the ABI names settle.
+The next useful step is real Windows verification for Registry/autostart/policy
+behavior. A small safe Rust crate wrapper and any new ABI families should wait
+until the ABI names and module boundaries settle near release-candidate status.

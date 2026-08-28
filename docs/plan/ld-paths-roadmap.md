@@ -253,4 +253,5 @@ Future `ld_process`, `ld_ipc`, `ld_dynlib`, and desktop integration modules can 
 - Reuse `ld_core` diagnostics.
 - Add deterministic environment/executable/user-dir test seams.
 - Add install-tree consumer coverage.
-- Add C ABI header only after the C++ report model stabilizes enough to freeze field ownership.
+- Maintain the existing C ABI reports where practical, but defer further C ABI
+  expansion until release-candidate status.

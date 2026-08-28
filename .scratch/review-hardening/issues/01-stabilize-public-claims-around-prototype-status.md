@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] README and roadmap language no longer imply production readiness for behavior that has only prototype or smoke-test coverage.
-- [ ] "Done" status is reserved for implemented and tested prototype behavior, with ship-readiness caveats where durability, stress, or real-consumer validation is still missing.
-- [ ] Future desktop-framework topics are clearly described as research or later candidates, not active delivery promises.
+- [x] README and roadmap language no longer imply production readiness for behavior that has only prototype or smoke-test coverage.
+- [x] "Done" status is reserved for implemented and tested prototype behavior, with ship-readiness caveats where durability, stress, or real-consumer validation is still missing.
+- [x] Future desktop-framework topics are clearly described as research or later candidates, not active delivery promises.
