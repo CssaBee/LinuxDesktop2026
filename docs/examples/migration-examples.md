@@ -380,9 +380,23 @@ void Program::UpdatePersonalPath()
     if (!report.settings_override_active && !report.portable_active)
         MigratePersonalPathConfig(report.roots.config);
 
-    // DEFER: ld_settings migration plans will later represent this as a
-    // dry-run-first migration from registry/config source to resolved roots.
-    // For now the app still owns reading the old registry-backed setting.
+    // CHANGE: ld_settings can now represent the file migration as a dry-run
+    // plan. The app can show this before executing anything.
+    const ld::migration_plan path_migration = ld::plan_migration({
+        {
+            ld::migration_action_kind::copy_directory,
+            "copy legacy personal folder",
+            LegacyPersonalFolder,
+            report.roots.config,
+            false,
+            false
+        }
+    });
+    ShowMigrationPreview(path_migration);
+
+    // DEFER: reading the original registry-backed PersonalPath value through
+    // ld_settings::registry lands with the raw Registry backend. The migration
+    // planner already models the safe preview/execute boundary.
 
     // KEEP: ShareX decides which files live under the personal root.
     LoadApplicationConfig(report.roots.config / "ApplicationConfig.json");
@@ -459,7 +473,8 @@ ConfigStorage OpenConfigurationStorage()
     }
 
     // DEFER: raw Registry operations are planned for ld_settings::registry.
-    // Until then, Windows builds keep the existing RegistryStorage class.
+    // The C++ API surface exists now; Windows verification and C ABI coverage
+    // are still required before we call the registry backend shippable.
     // Linux builds can select file-backed layers instead of pretending HKCU exists.
     return OpenPlatformRegistryOrFileStorage(report.layers);
 }
@@ -519,13 +534,30 @@ void BootstrapConfigAndPortableState()
     if (const auto* thumbnails = ld::find_named_root(report, "thumbnails"))
         ThumbnailCache::SetRoot(thumbnails->path);
 
-    // DEFER: PortableApps-style registry snapshot/restore belongs in the
-    // upcoming dry-run migration plan and registry APIs:
+    // CHANGE: the dry-run migration API can already carry the dangerous
+    // operation as a plan, even though the registry executor is not complete.
+    const ld::migration_plan registry_plan = ld::plan_migration({
+        {
+            ld::migration_action_kind::export_registry,
+            "snapshot app registry before portable run",
+            {},
+            report.roots.state / "registry-snapshot.json",
+            true,
+            false
+        }
+    });
+    ShowMigrationPreview(registry_plan);
+
+    // CHANGE: JSON/.reg snapshot formats now exist, so the next step is wiring
+    // app-specific before/after-run policy around explicit execution:
     //
-    //   auto plan = ld::registry::plan_portable_snapshot(...);
-    //   showDryRunToUser(plan);
-    //   executeOnlyWhenExplicitlyApproved(plan);
+    //   ld::migration_options execute_options;
+    //   execute_options.dry_run = false;
+    //   execute_options.allow_dangerous = true;
+    //   auto executed = ld::execute_migration_plan(registry_plan, execute_options);
     //
+    // DEFER: Windows verification and rollback evidence are still required
+    // before PortableApps-style registry run wrappers are shippable.
     // The current API intentionally does not fake this with path roots.
 }
 ```

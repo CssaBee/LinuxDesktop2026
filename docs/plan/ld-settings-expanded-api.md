@@ -438,10 +438,10 @@ Required examples before ship:
 2. Add named roots and component roots to C++ and C ABI.
 3. Add config layers and precedence reports.
 4. Add portable levels.
-5. Add migration plans as dry-run objects.
-6. Implement Windows Registry raw operations.
-7. Add JSON Registry import/export.
-8. Add `.reg` compatibility import/export.
+5. Add migration plans as dry-run objects. `(initial C++ API implemented)`
+6. Implement Windows Registry raw operations. `(initial C++ API/backend implemented; Windows verification pending)`
+7. Add JSON Registry import/export. `(initial C++ snapshot format and tree wrappers implemented)`
+8. Add `.reg` compatibility import/export. `(initial C++ snapshot format and tree wrappers implemented)`
 9. Implement autostart Windows and Linux backends.
 10. Implement managed/enforced policy Windows and Linux backends.
 11. Add Windows CI and manual verification transcript.
@@ -458,6 +458,13 @@ Implemented in the current C++ sample:
 - portable levels,
 - string names for public root/layer enums,
 - C++ lookup helpers for named roots, component roots, component-local roots, and config layers,
-- C ABI exposure for named roots, component roots, config layers, and portable levels.
+- C ABI exposure for named roots, component roots, config layers, and portable levels,
+- dry-run-first migration plans with file/directory copy and move execution,
+- raw `ld_settings::registry` C++ API for read, write, delete, and enumeration,
+- Windows Registry backend seed using Win32 Registry APIs,
+- structured unsupported diagnostics for raw Registry calls on non-Windows platforms,
+- canonical JSON Registry snapshot serialization/parsing,
+- `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
+- Registry tree JSON/`.reg` import/export wrappers over the raw Registry API.
 
-The next code work should start with migration plans as dry-run objects. Registry implementation follows after the migration-plan model is stable enough to represent dangerous operations, explicit execution, and rollback evidence.
+The next code work should start with autostart, then managed/enforced policy, and C ABI coverage for migration/Registry concepts. Windows CI or a Windows container/manual run must verify the Registry backend and tree import/export before the module can be considered shippable.

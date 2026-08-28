@@ -273,6 +273,25 @@ int main(int argc, char** argv)
         print_backup(session_write);
         print_diagnostics(session_write.diagnostics);
 
+        linuxdesktop::settings::migration_action migrate_shortcuts;
+        migrate_shortcuts.kind = linuxdesktop::settings::migration_action_kind::copy_file;
+        migrate_shortcuts.name = "copy legacy shortcuts";
+        migrate_shortcuts.source_path = roots.roots.config / "shortcuts.xml";
+        migrate_shortcuts.target_path = roots.roots.config / "shortcuts.migrated.xml";
+
+        const auto migration_plan = linuxdesktop::settings::plan_migration({migrate_shortcuts});
+        const auto migration_preview = linuxdesktop::settings::execute_migration_plan(migration_plan);
+
+        std::cout << "\nmigration preview\n";
+        std::cout << "  dry_run: " << (migration_preview.dry_run ? "true" : "false") << "\n";
+        for (const auto& action : migration_preview.actions) {
+            std::cout << "  " << linuxdesktop::settings::to_string(action.action.kind)
+                      << " " << action.action.name
+                      << ": " << (action.executed ? "executed" : "planned") << "\n";
+            print_diagnostics(action.diagnostics);
+        }
+        print_diagnostics(migration_preview.diagnostics);
+
         return shortcuts_write.ok && config_write.ok && session_write.ok ? 0 : 1;
     } catch (const std::exception& ex) {
         std::cerr << "error: " << ex.what() << "\n";

@@ -2,6 +2,7 @@
 
 #include "linuxdesktop/core.hpp"
 
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -218,12 +219,64 @@ struct write_report {
 
 using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
 
+enum class migration_action_kind {
+    copy_file,
+    move_file,
+    copy_directory,
+    move_directory,
+    import_registry,
+    export_registry,
+    write_registry_value,
+    delete_registry_key,
+    write_autostart,
+    write_policy
+};
+
+struct migration_action {
+    migration_action_kind kind = migration_action_kind::copy_file;
+    std::string name;
+    std::filesystem::path source_path;
+    std::filesystem::path target_path;
+    bool dangerous = false;
+    bool requires_elevation = false;
+};
+
+struct migration_options {
+    bool dry_run = true;
+    bool allow_dangerous = false;
+    bool allow_elevation = false;
+    bool create_parent_directories = true;
+    bool overwrite_existing = false;
+};
+
+struct migration_plan {
+    std::vector<migration_action> actions;
+    bool dry_run = true;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct migration_action_result {
+    migration_action action;
+    bool planned = false;
+    bool executed = false;
+    bool skipped = false;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct migration_execution_report {
+    bool ok = false;
+    bool dry_run = true;
+    std::vector<migration_action_result> actions;
+    std::vector<diagnostic> diagnostics;
+};
+
 std::string_view to_string(portable_level value);
 std::string_view to_string(root_purpose value);
 std::string_view to_string(persistence_class value);
 std::string_view to_string(component_kind value);
 std::string_view to_string(config_layer_kind value);
 std::string_view to_string(storage_backend value);
+std::string_view to_string(migration_action_kind value);
 
 const named_root* find_named_root(const root_report& report, const std::string& name);
 const component_root_group* find_component_roots(const root_report& report, const std::string& name);
@@ -238,5 +291,125 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
 hydrate_report hydrate_config_bundle(const hydrate_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
+
+migration_plan plan_migration(std::vector<migration_action> actions, const migration_options& options = {});
+
+migration_execution_report execute_migration_plan(
+    const migration_plan& plan,
+    const migration_options& options = {});
+
+namespace registry {
+
+enum class hive {
+    current_user,
+    local_machine,
+    classes_root,
+    users,
+    current_config
+};
+
+enum class view {
+    native,
+    registry_32,
+    registry_64
+};
+
+enum class value_type {
+    none,
+    string,
+    expandable_string,
+    multi_string,
+    dword,
+    qword,
+    binary,
+    unknown
+};
+
+struct key {
+    hive root = hive::current_user;
+    std::string subkey;
+    view registry_view = view::native;
+};
+
+struct value {
+    std::string name;
+    value_type type = value_type::none;
+    std::vector<std::byte> bytes;
+};
+
+struct options {
+    bool allow_hklm_write = false;
+    bool allow_policy_write = false;
+    bool allow_recursive_delete = false;
+    bool allow_import = false;
+    bool dry_run = true;
+};
+
+struct operation_report {
+    bool ok = false;
+    bool dry_run = false;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct value_report {
+    bool ok = false;
+    std::optional<value> item;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct values_report {
+    bool ok = false;
+    std::vector<value> values;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct subkeys_report {
+    bool ok = false;
+    std::vector<std::string> names;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct snapshot_value {
+    std::string key_path;
+    value item;
+};
+
+struct snapshot {
+    key root;
+    std::vector<snapshot_value> values;
+};
+
+struct snapshot_report {
+    bool ok = false;
+    std::optional<snapshot> item;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct format_report {
+    bool ok = false;
+    std::string content;
+    std::vector<diagnostic> diagnostics;
+};
+
+std::string_view to_string(hive value);
+std::string_view to_string(view value);
+std::string_view to_string(value_type value);
+
+value_report read_value(const key& key, const std::string& name);
+operation_report write_value(const key& key, const value& value, const options& options = {});
+operation_report delete_value(const key& key, const std::string& name, const options& options = {});
+operation_report delete_key(const key& key, const options& options = {});
+values_report enumerate_values(const key& key);
+subkeys_report enumerate_subkeys(const key& key);
+format_report serialize_snapshot_json(const snapshot& snapshot);
+snapshot_report parse_snapshot_json(std::string_view content);
+format_report serialize_snapshot_reg(const snapshot& snapshot);
+snapshot_report parse_snapshot_reg(std::string_view content);
+format_report export_tree_json(const key& key);
+operation_report import_tree_json(const key& key, std::string_view content, const options& options = {});
+format_report export_tree_reg(const key& key);
+operation_report import_tree_reg(const key& key, std::string_view content, const options& options = {});
+
+} // namespace registry
 
 } // namespace linuxdesktop::settings

@@ -17,9 +17,9 @@ Before writing production library code, we will:
 5. Run a focused follow-up search for the strongest module candidates.
 6. Pick the first tiny working code sample only after the evidence supports it.
 
-The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, and validation-before-commit.
+The first selected sample is `ld_settings`, a small C++17 settings/config and standard-paths module. It currently demonstrates root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic temp-write/replace, backup files, validation-before-commit, dry-run-first migration plans, raw Registry API shape, and Registry JSON/`.reg` snapshot formats.
 
-For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++ and ShareX-style startup/config code changes when platform policy moves into `ld_settings`.
+For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style startup/config code changes when platform policy moves into `ld_settings`.
 
 ## Roadmap
 
@@ -41,9 +41,11 @@ Status legend:
 | `✅` Done | `ld_settings` C ABI seed | Root resolution is exposed through a small C-compatible API for future Rust bindings and non-C++ consumers. |
 | `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 compatibility expectations. |
 | `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` exposes shared C++ diagnostics, with `ld_settings` aliases kept source-compatible. |
-| `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` must grow named roots, component roots, config layers, migration plans, Registry support, autostart, and managed/enforced policy before shipping. |
+| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, and `.reg` snapshots are represented in the public C++ surface. |
+| `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` still needs Windows Registry verification, C ABI coverage for migration/Registry concepts, autostart, managed/enforced policy, and rollback evidence before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
-| `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan. |
+| `📌` Next | `ld_settings` autostart and policy | Add Windows/Linux autostart support, then managed/enforced policy support, while keeping Linux implementations dependency-light and non-GLib. |
+| `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan once the settings surface is closer to shippable. |
 | `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, native Linux `inotify`, simulated backend tests, Linux smoke coverage, demo, and install-tree consumer linkage. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -77,6 +79,7 @@ ctest --test-dir build --output-on-failure
 
 The demo uses a temporary settings override so it does not touch your normal application config directory.
 It can also simulate Notepad++-style policy seams with `--sync-config-dir`, `--resource-root`, and `--deny-portable-under-root`.
+It prints a dry-run migration preview so callers can inspect planned file moves before executing them.
 
 ## Consume `ld_settings`
 
