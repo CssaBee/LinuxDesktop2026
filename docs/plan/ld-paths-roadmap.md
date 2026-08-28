@@ -40,7 +40,7 @@ Exit bar:
 
 ### Milestone 1: Resolver Core
 
-Status: next implementation slice.
+Status: implemented for the Linux resolver core and deterministic test hooks; Windows verification remains pending.
 
 Implement:
 
@@ -59,9 +59,9 @@ Implement:
 
 Exit bar:
 
-- Linux unit tests cover XDG env variables, unset variables, relative invalid overrides, `$HOME` fallback, and missing home diagnostics.
-- Windows tests or verification checklist cover Known Folders, executable path, UTF-8 paths, and unavailable-folder diagnostics.
-- The demo can print a resolver report without touching real user config.
+- Linux unit tests cover XDG env variables, unset variables, relative invalid overrides, `$HOME` fallback, missing home diagnostics, executable roots, resource roots, install prefix derivation, temp roots, and source-labeled candidates.
+- Windows public model includes environment and Known Folder sources, but Windows tests or a verification checklist still need to cover Known Folders, executable path, UTF-8 paths, and unavailable-folder diagnostics.
+- The demo prints a resolver report without touching real user config.
 
 ### Milestone 2: Directory Creation And Path Lists
 

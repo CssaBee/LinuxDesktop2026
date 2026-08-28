@@ -20,7 +20,12 @@ using ::linuxdesktop::severity;
 using ::linuxdesktop::to_string;
 
 namespace diagnostic_code {
-inline constexpr std::string_view resolver_not_implemented = "paths.resolver.not_implemented";
+inline constexpr std::string_view application_missing = "paths.identity.application_missing";
+inline constexpr std::string_view home_missing = "paths.home.missing";
+inline constexpr std::string_view environment_relative_ignored = "paths.environment.relative_ignored";
+inline constexpr std::string_view override_relative_ignored = "paths.override.relative_ignored";
+inline constexpr std::string_view executable_unavailable = "paths.executable.unavailable";
+inline constexpr std::string_view temp_directory_unavailable = "paths.temp.unavailable";
 } // namespace diagnostic_code
 
 struct app_identity {
@@ -73,9 +78,14 @@ struct resolver_options {
     std::optional<std::filesystem::path> data_override;
     std::optional<std::filesystem::path> state_override;
     std::optional<std::filesystem::path> cache_override;
+    std::optional<std::filesystem::path> temp_override;
     std::optional<std::filesystem::path> resource_root;
     std::optional<std::filesystem::path> install_prefix;
+    std::optional<std::filesystem::path> executable_path;
+    std::optional<std::filesystem::path> home_directory;
+    std::map<std::string, std::string> environment;
     std::vector<std::filesystem::path> legacy_config_files;
+    bool use_process_environment = true;
 };
 
 struct resolver_report {

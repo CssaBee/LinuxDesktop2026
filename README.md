@@ -47,7 +47,7 @@ Status legend:
 | `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` still needs real Windows Registry/autostart/policy verification, rollback evidence, and a published Rust crate before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
 | `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. |
-| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ skeleton is present with `LinuxDesktop2026::ld_paths`, version constants, shared diagnostics, path family/source enums, resolver report types, tests, demo, and install-tree consumer coverage. Resolver behavior is next: standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, and a small C ABI before public prototype announcement. |
+| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ skeleton and resolver core are present with `LinuxDesktop2026::ld_paths`, version constants, shared diagnostics, path family/source enums, resolver report types, deterministic resolver hooks, Linux XDG Base Directory behavior, user-directory fallbacks, executable/resource/install roots, tests, demo, and install-tree consumer coverage. Remaining prototype work: directory creation helpers, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, Windows verification, and a small C ABI before public prototype announcement. |
 | `📌` Next | `ld_settings` and `ld_paths` extraction | Keep the current `ld_settings` resolver until `ld_paths` has tests and install-tree consumer coverage, then refactor settings root placement through `ld_paths`. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
@@ -101,16 +101,19 @@ Current backend posture:
 
 ## `ld_paths`
 
-`ld_paths` is the current module after the `ld_settings` and `ld_watch` prototypes. The first committed slice is a public C++17 skeleton and build target:
+`ld_paths` is the current module after the `ld_settings` and `ld_watch` prototypes. The first committed slices are a public C++17 skeleton and resolver core:
 
 - `LinuxDesktop2026::ld_paths`
 - `linuxdesktop/paths.hpp`
 - shared `ld_core` diagnostics aliases
 - path family and candidate source enums
 - resolver options, candidates, and report structures
+- deterministic environment, home, temp, and executable path hooks for tests and examples
+- Linux XDG Base Directory resolution with HOME fallbacks
+- executable path, executable directory, install prefix, resource root, temp, and standard user-directory fallback resolution
 - `ld_paths_tests`, `ld_paths_demo`, and install-tree consumer coverage
 
-The current resolver intentionally reports `paths.resolver.not_implemented` until the platform-specific resolver logic lands.
+The resolver does not create directories. Filesystem mutation remains a later opt-in milestone.
 
 The prototype should resolve and report:
 
