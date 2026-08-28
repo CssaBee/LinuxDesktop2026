@@ -761,6 +761,8 @@ std::string_view to_string(path_family value)
         return "resources";
     case path_family::plugin_search:
         return "plugin_search";
+    case path_family::runtime:
+        return "runtime";
     }
     return "unknown";
 }
@@ -851,6 +853,7 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_absolute_override(report, path_family::state, options.state_override);
     select_absolute_override(report, path_family::cache, options.cache_override);
     select_absolute_override(report, path_family::temp, options.temp_override);
+    select_absolute_override(report, path_family::runtime, options.runtime_override);
     select_absolute_override(report, path_family::resources, options.resource_root);
     select_absolute_override(report, path_family::install_prefix, options.install_prefix);
     select_absolute_override(report, path_family::executable, options.executable_path);
@@ -921,6 +924,12 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_base_directory(report, options, path_family::data, "XDG_DATA_HOME", home.empty() ? std::filesystem::path{} : home / ".local" / "share", app_leaf);
     select_base_directory(report, options, path_family::state, "XDG_STATE_HOME", home.empty() ? std::filesystem::path{} : home / ".local" / "state", app_leaf);
     select_base_directory(report, options, path_family::cache, "XDG_CACHE_HOME", home.empty() ? std::filesystem::path{} : home / ".cache", app_leaf);
+
+    if (report.selected.find(path_family::runtime) == report.selected.end()) {
+        if (auto runtime = absolute_environment_path(options, report, "XDG_RUNTIME_DIR", path_family::runtime)) {
+            add_candidate(report, path_family::runtime, candidate_source::xdg_base_dir, *runtime / application, true);
+        }
+    }
 
     append_site_directory_candidates(report, options, "XDG_CONFIG_DIRS", "/etc/xdg", path_family::config, app_leaf);
     append_site_directory_candidates(report, options, "XDG_DATA_DIRS", "/usr/local/share:/usr/share", path_family::data, app_leaf);

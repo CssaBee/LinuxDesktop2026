@@ -161,7 +161,7 @@ C callers use `linuxdesktop/paths_c.h`. Reports own their returned strings and a
 
 The prototype should resolve and report:
 
-- config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public-share paths,
+- config, data, state, cache, runtime, temp, documents, desktop, downloads, music, pictures, videos, templates, and public-share paths,
 - executable path, executable directory, resource root, and install prefix,
 - explicit options, environment overrides, XDG Base Directory values, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks,
 - path lists using platform separators,

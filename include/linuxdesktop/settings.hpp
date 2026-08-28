@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <optional>
 #include <string_view>
 #include <string>
@@ -139,6 +140,8 @@ struct layer_report {
 
 struct root_options {
     std::optional<std::filesystem::path> resource_root;
+    std::optional<std::filesystem::path> home_directory;
+    std::map<std::string, std::string> environment;
 
     // Highest priority: one absolute root for config, data, state, and cache.
     std::optional<std::filesystem::path> settings_override;
@@ -155,6 +158,7 @@ struct root_options {
     bool deny_portable_root_in_privileged_install = false;
     bool allow_sync_config_for_portable_root = false;
     bool create_directories = true;
+    bool use_process_environment = true;
     portable_level portable = portable_level::settings_only;
     std::vector<named_root_request> named_roots;
     std::vector<component_root_request> component_roots;

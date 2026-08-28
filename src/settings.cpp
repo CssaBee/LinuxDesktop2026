@@ -1,5 +1,7 @@
 #include "linuxdesktop/settings.hpp"
 
+#include "linuxdesktop/paths.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -22,6 +24,8 @@
 
 namespace linuxdesktop::settings {
 namespace {
+
+namespace ld_paths = linuxdesktop::paths;
 
 diagnostic make_diagnostic(severity level, std::string code, std::string message, std::filesystem::path path = {})
 {
@@ -235,6 +239,46 @@ bool create_directory_for_root(const std::filesystem::path& path, std::vector<di
         }
     }
     return !existed && !path.empty() && std::filesystem::is_directory(path);
+}
+
+void append_directory_diagnostics(const ld_paths::ensure_directory_report& source, std::vector<diagnostic>& diagnostics)
+{
+    diagnostics.insert(diagnostics.end(), source.diagnostics.begin(), source.diagnostics.end());
+}
+
+void ensure_root_directory(const std::filesystem::path& path, std::vector<diagnostic>& diagnostics)
+{
+    ld_paths::ensure_directory_options options;
+    options.dry_run = false;
+    append_directory_diagnostics(ld_paths::ensure_directory(path, options), diagnostics);
+}
+
+std::filesystem::path selected_path_or_empty(
+    const ld_paths::resolver_report& report,
+    ld_paths::path_family family)
+{
+    const auto item = report.selected.find(family);
+    return item == report.selected.end() ? std::filesystem::path{} : item->second;
+}
+
+ld_paths::resolver_options path_options_from_root_options(const root_options& options)
+{
+    ld_paths::resolver_options result;
+    result.resource_root = options.resource_root;
+    result.home_directory = options.home_directory;
+    result.environment = options.environment;
+    result.use_process_environment = options.use_process_environment;
+    return result;
+}
+
+void apply_default_roots_from_paths(root_report& report, const ld_paths::resolver_report& paths)
+{
+    report.roots.config = selected_path_or_empty(paths, ld_paths::path_family::config);
+    report.roots.data = selected_path_or_empty(paths, ld_paths::path_family::data);
+    report.roots.state = selected_path_or_empty(paths, ld_paths::path_family::state);
+    report.roots.cache = selected_path_or_empty(paths, ld_paths::path_family::cache);
+    report.roots.resources = selected_path_or_empty(paths, ld_paths::path_family::resources);
+    report.roots.runtime = selected_path_or_empty(paths, ld_paths::path_family::runtime);
 }
 
 bool has_error(const std::vector<diagnostic>& diagnostics)
@@ -1147,13 +1191,15 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
 root_report resolve_app_roots(const app_identity& identity, const root_options& options)
 {
     root_report report;
-    const auto organization = sanitize_segment(identity.organization);
-    const auto application = sanitize_segment(identity.application, "application");
-    const auto app_leaf = organization.empty() ? application : organization + "/" + application;
+
+    ld_paths::app_identity path_identity;
+    path_identity.organization = identity.organization;
+    path_identity.application = identity.application;
+    const auto path_report = ld_paths::resolve_app_paths(path_identity, path_options_from_root_options(options));
+    report.diagnostics.insert(report.diagnostics.end(), path_report.diagnostics.begin(), path_report.diagnostics.end());
+    report.roots.resources = selected_path_or_empty(path_report, ld_paths::path_family::resources);
 
     report.portable = options.portable;
-
-    report.roots.resources = options.resource_root.value_or(executable_resource_guess(report.diagnostics));
 
     if (options.settings_override) {
         if (options.settings_override->is_absolute()) {
@@ -1212,37 +1258,7 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
     }
 
     if (report.roots.config.empty() && !has_error(report.diagnostics)) {
-#if defined(_WIN32)
-        auto roaming = known_folder(FOLDERID_RoamingAppData, report.diagnostics, "known-folder-roaming-failed");
-        auto local = known_folder(FOLDERID_LocalAppData, report.diagnostics, "known-folder-local-failed");
-        const auto fallback_home = home_directory();
-
-        if (!roaming && !fallback_home.empty()) {
-            roaming = fallback_home / "AppData" / "Roaming";
-        }
-        if (!local && !fallback_home.empty()) {
-            local = fallback_home / "AppData" / "Local";
-        }
-
-        report.roots.config = roaming.value_or(current_directory(report.diagnostics)) / app_leaf;
-        report.roots.data = report.roots.config;
-        report.roots.state = local.value_or(report.roots.config) / app_leaf / "state";
-        report.roots.cache = local.value_or(report.roots.config) / app_leaf / "cache";
-        report.roots.runtime = std::filesystem::path{};
-#else
-        const auto home = home_directory();
-        auto config_home = absolute_env_path("XDG_CONFIG_HOME", report.diagnostics).value_or(home / ".config");
-        auto data_home = absolute_env_path("XDG_DATA_HOME", report.diagnostics).value_or(home / ".local" / "share");
-        auto state_home = absolute_env_path("XDG_STATE_HOME", report.diagnostics).value_or(home / ".local" / "state");
-        auto cache_home = absolute_env_path("XDG_CACHE_HOME", report.diagnostics).value_or(home / ".cache");
-        auto runtime_dir = absolute_env_path("XDG_RUNTIME_DIR", report.diagnostics).value_or(std::filesystem::path{});
-
-        report.roots.config = config_home / app_leaf;
-        report.roots.data = data_home / app_leaf;
-        report.roots.state = state_home / app_leaf;
-        report.roots.cache = cache_home / app_leaf;
-        report.roots.runtime = runtime_dir.empty() ? runtime_dir : runtime_dir / application;
-#endif
+        apply_default_roots_from_paths(report, path_report);
     }
 
     if (options.sync_config_override) {
@@ -1304,14 +1320,14 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
     report.layers = build_layer_report(identity, report);
 
     if (options.create_directories && !has_error(report.diagnostics)) {
-        create_directory_if_needed(report.roots.config, report.diagnostics);
-        create_directory_if_needed(report.roots.data, report.diagnostics);
-        create_directory_if_needed(report.roots.state, report.diagnostics);
-        create_directory_if_needed(report.roots.cache, report.diagnostics);
+        ensure_root_directory(report.roots.config, report.diagnostics);
+        ensure_root_directory(report.roots.data, report.diagnostics);
+        ensure_root_directory(report.roots.state, report.diagnostics);
+        ensure_root_directory(report.roots.cache, report.diagnostics);
         create_directory_if_needed(report.roots.session, report.diagnostics);
         create_directory_if_needed(report.roots.plugin_config, report.diagnostics);
         if (!report.roots.runtime.empty()) {
-            create_directory_if_needed(report.roots.runtime, report.diagnostics);
+            ensure_root_directory(report.roots.runtime, report.diagnostics);
         }
     }
 

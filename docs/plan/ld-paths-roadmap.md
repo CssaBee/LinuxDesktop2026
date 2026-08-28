@@ -179,7 +179,8 @@ enum class path_family {
     executable,
     install_prefix,
     resources,
-    plugin_search
+    plugin_search,
+    runtime
 };
 
 enum class candidate_source {
@@ -205,9 +206,17 @@ struct path_candidate {
 struct resolver_options {
     std::optional<std::filesystem::path> config_override;
     std::optional<std::filesystem::path> data_override;
+    std::optional<std::filesystem::path> state_override;
+    std::optional<std::filesystem::path> cache_override;
+    std::optional<std::filesystem::path> temp_override;
+    std::optional<std::filesystem::path> runtime_override;
     std::optional<std::filesystem::path> resource_root;
     std::optional<std::filesystem::path> install_prefix;
+    std::optional<std::filesystem::path> executable_path;
+    std::optional<std::filesystem::path> home_directory;
+    std::map<std::string, std::string> environment;
     std::vector<std::filesystem::path> legacy_config_files;
+    bool use_process_environment;
 };
 
 struct resolver_report {
@@ -225,9 +234,10 @@ The final API does not need to use these exact names. The important commitments 
 
 ## Relationship To Existing Modules
 
-`ld_settings` should keep its current internal root resolver until `ld_paths` has tests, examples, and install-tree consumer coverage. After that, plan a small extraction:
+`ld_settings` kept its internal root resolver until `ld_paths` had tests,
+examples, and install-tree consumer coverage. Task 04 performs the extraction:
 
-- `ld_paths` resolves config/data/state/cache/resource roots.
+- `ld_paths` resolves config/data/state/cache/resource/runtime roots.
 - `ld_settings` consumes those roots to hydrate config bundles and write settings safely. Migration planning moves to `ld_migration`.
 - `ld_settings` keeps autostart and policy effects until a later desktop integration split is planned.
 - shared diagnostics remain in `ld_core`.

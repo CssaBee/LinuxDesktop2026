@@ -44,7 +44,8 @@ enum ld_paths_path_family {
     LD_PATHS_FAMILY_EXECUTABLE_DIRECTORY = 14,
     LD_PATHS_FAMILY_INSTALL_PREFIX = 15,
     LD_PATHS_FAMILY_RESOURCES = 16,
-    LD_PATHS_FAMILY_PLUGIN_SEARCH = 17
+    LD_PATHS_FAMILY_PLUGIN_SEARCH = 17,
+    LD_PATHS_FAMILY_RUNTIME = 18
 };
 
 enum ld_paths_candidate_source {
@@ -112,6 +113,7 @@ struct ld_paths_resolver_options {
     const struct ld_paths_environment_entry* environment;
     size_t environment_count;
     int use_process_environment;
+    const char* runtime_override;
 };
 
 struct ld_paths_resolver_report {

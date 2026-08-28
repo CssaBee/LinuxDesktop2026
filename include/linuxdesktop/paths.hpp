@@ -61,7 +61,8 @@ enum class path_family {
     executable_directory,
     install_prefix,
     resources,
-    plugin_search
+    plugin_search,
+    runtime
 };
 
 enum class candidate_source {
@@ -90,6 +91,7 @@ struct resolver_options {
     std::optional<std::filesystem::path> state_override;
     std::optional<std::filesystem::path> cache_override;
     std::optional<std::filesystem::path> temp_override;
+    std::optional<std::filesystem::path> runtime_override;
     std::optional<std::filesystem::path> resource_root;
     std::optional<std::filesystem::path> install_prefix;
     std::optional<std::filesystem::path> executable_path;

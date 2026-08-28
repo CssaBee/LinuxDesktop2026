@@ -135,6 +135,7 @@ void stringifies_public_enums()
     require(ld::to_string(ld::path_family::config) == "config", "path family should stringify");
     require(ld::to_string(ld::path_family::public_share) == "public_share", "public share should stringify");
     require(ld::to_string(ld::path_family::templates) == "templates", "templates path family should stringify");
+    require(ld::to_string(ld::path_family::runtime) == "runtime", "runtime path family should stringify");
     require(ld::to_string(ld::candidate_source::known_folder) == "known_folder", "candidate source should stringify");
     require(ld::to_string(ld::candidate_source::xdg_base_dir) == "xdg_base_dir", "XDG base dir should stringify");
     require(ld::to_string(ld::directory_action::would_create) == "would_create", "directory action should stringify");
@@ -172,6 +173,7 @@ void resolves_linux_xdg_base_directories_from_injected_environment()
     options.environment["XDG_DATA_HOME"] = fixture_path({"xdg", "data"}).string();
     options.environment["XDG_STATE_HOME"] = fixture_path({"xdg", "state"}).string();
     options.environment["XDG_CACHE_HOME"] = fixture_path({"xdg", "cache"}).string();
+    options.environment["XDG_RUNTIME_DIR"] = fixture_path({"xdg", "runtime"}).string();
 
     const auto report = ld::resolve_app_paths(identity, options);
 
@@ -183,6 +185,8 @@ void resolves_linux_xdg_base_directories_from_injected_environment()
         "state path should use XDG_STATE_HOME");
     require(selected_path(report, ld::path_family::cache) == fixture_path({"xdg", "cache", "LinuxDesktop2026", "paths-tests"}),
         "cache path should use XDG_CACHE_HOME");
+    require(selected_path(report, ld::path_family::runtime) == fixture_path({"xdg", "runtime", "paths-tests"}),
+        "runtime path should use XDG_RUNTIME_DIR");
     require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::xdg_base_dir),
         "XDG config candidate should be source-labeled");
 #endif
@@ -415,6 +419,7 @@ void honors_absolute_explicit_options()
     identity.application = "paths-tests";
     auto options = deterministic_options();
     options.config_override = fixture_path({"override", "config"});
+    options.runtime_override = fixture_path({"override", "runtime"});
     options.resource_root = fixture_path({"override", "resources"});
     options.install_prefix = fixture_path({"override", "prefix"});
 
@@ -422,6 +427,8 @@ void honors_absolute_explicit_options()
 
     require(selected_path(report, ld::path_family::config) == fixture_path({"override", "config"}),
         "absolute config override should win");
+    require(selected_path(report, ld::path_family::runtime) == fixture_path({"override", "runtime"}),
+        "absolute runtime override should win");
     require(selected_path(report, ld::path_family::resources) == fixture_path({"override", "resources"}),
         "absolute resource root should win");
     require(selected_path(report, ld::path_family::install_prefix) == fixture_path({"override", "prefix"}),

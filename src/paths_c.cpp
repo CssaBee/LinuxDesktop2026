@@ -59,7 +59,7 @@ int severity_to_c(ld::severity value)
 
 ld::path_family family_from_c(int value)
 {
-    if (value < LD_PATHS_FAMILY_CONFIG || value > LD_PATHS_FAMILY_PLUGIN_SEARCH) {
+    if (value < LD_PATHS_FAMILY_CONFIG || value > LD_PATHS_FAMILY_RUNTIME) {
         return ld::path_family::config;
     }
     return static_cast<ld::path_family>(value);
@@ -319,6 +319,7 @@ int ld_paths_resolve_app_paths(
         resolver_options.state_override = optional_path(options->state_override);
         resolver_options.cache_override = optional_path(options->cache_override);
         resolver_options.temp_override = optional_path(options->temp_override);
+        resolver_options.runtime_override = optional_path(options->runtime_override);
         resolver_options.resource_root = optional_path(options->resource_root);
         resolver_options.install_prefix = optional_path(options->install_prefix);
         resolver_options.executable_path = optional_path(options->executable_path);

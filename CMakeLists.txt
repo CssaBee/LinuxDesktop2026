@@ -62,6 +62,8 @@ target_include_directories(ld_paths
 
 target_link_libraries(ld_paths PUBLIC LinuxDesktop2026::ld_core)
 
+target_link_libraries(ld_settings PRIVATE LinuxDesktop2026::ld_paths)
+
 add_library(ld_watch
     src/watch.cpp
     src/watch_inotify.cpp

@@ -20,8 +20,9 @@ project should preserve.
 
 Generic path/root policy belongs to `ld_paths`:
 
-- config, data, state, cache, temp, resource, install, executable, document,
-  desktop, download, media, template, public-share, and plugin search roots,
+- config, data, state, cache, runtime, temp, resource, install, executable,
+  document, desktop, download, media, template, public-share, and plugin search
+  roots,
 - platform root discovery through XDG, Windows Known Folders, environment
   variables, executable-relative paths, legacy candidates, and site defaults,
 - path-list parsing, joining, and diagnostics,
@@ -82,9 +83,9 @@ and future documentation increasingly misleading.
 Task 03 is a documentation and architecture boundary decision. It does not move
 code by itself.
 
-Follow-up work must route generic root resolution through `ld_paths`, then
-extract the current `ld_settings` desktop effects and migration behavior into
-`ld_desktop` and `ld_migration`.
+Task 04 routes generic root resolution, including runtime, through `ld_paths`.
+Follow-up work must extract the current `ld_settings` desktop effects and
+migration behavior into `ld_desktop` and `ld_migration`.
 
 `ld_settings` can keep forwarding or compatibility helpers only when they make
 the transition easier. Since the project is still pre-1.0, source-breaking C++

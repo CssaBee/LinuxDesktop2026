@@ -180,6 +180,11 @@ struct ld_settings_config_layer {
     int precedence;
 };
 
+struct ld_settings_environment_entry {
+    const char* name;
+    const char* value;
+};
+
 struct ld_settings_root_options {
     const char* organization;
     const char* application;
@@ -198,6 +203,10 @@ struct ld_settings_root_options {
     size_t named_root_count;
     const struct ld_settings_component_root_request* component_roots;
     size_t component_root_count;
+    const char* home_directory;
+    const struct ld_settings_environment_entry* environment;
+    size_t environment_count;
+    int use_process_environment;
 };
 
 struct ld_settings_root_report {

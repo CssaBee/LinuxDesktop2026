@@ -74,6 +74,7 @@ int main(void)
         strcmp(ld_paths_severity_name(LD_PATHS_SEVERITY_WARNING), "warning") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG), "config") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES), "templates") != 0 ||
+        strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_RUNTIME), "runtime") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR), "xdg_base_dir") != 0 ||
         strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0) {
         fprintf(stderr,

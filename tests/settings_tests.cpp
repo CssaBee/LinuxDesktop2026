@@ -206,6 +206,56 @@ void settings_override_wins_over_sync_override()
         "ignored sync override should report a diagnostic");
 }
 
+void delegates_generic_roots_to_paths_with_injected_environment()
+{
+    const auto root = test_root();
+
+    ld::root_options options;
+    options.create_directories = false;
+    options.use_process_environment = false;
+    options.home_directory = root / "home";
+    options.environment["XDG_CONFIG_HOME"] = "relative-config";
+    options.environment["XDG_DATA_HOME"] = (root / "xdg-data").string();
+    options.environment["XDG_STATE_HOME"] = (root / "xdg-state").string();
+    options.environment["XDG_CACHE_HOME"] = (root / "xdg-cache").string();
+    options.environment["XDG_RUNTIME_DIR"] = (root / "xdg-runtime").string();
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(has_diagnostic(report.diagnostics, "paths.environment.relative_ignored"),
+        "settings root resolution should expose ld_paths diagnostics");
+    require(report.roots.config == root / "home" / ".config" / "LinuxDesktop2026" / "settings-tests",
+        "settings config root should fall back through ld_paths");
+    require(report.roots.data == root / "xdg-data" / "LinuxDesktop2026" / "settings-tests",
+        "settings data root should use ld_paths XDG data selection");
+    require(report.roots.state == root / "xdg-state" / "LinuxDesktop2026" / "settings-tests",
+        "settings state root should use ld_paths XDG state selection");
+    require(report.roots.cache == root / "xdg-cache" / "LinuxDesktop2026" / "settings-tests",
+        "settings cache root should use ld_paths XDG cache selection");
+    require(report.roots.runtime == root / "xdg-runtime" / "settings-tests",
+        "settings runtime root should use ld_paths XDG runtime selection");
+}
+
+void reports_path_directory_failure_for_generic_root_creation()
+{
+    const auto root = test_root();
+    const auto file_root = root / "not-a-directory";
+    {
+        std::ofstream file(file_root);
+        file << "not a directory\n";
+    }
+
+    ld::root_options options;
+    options.settings_override = file_root;
+    options.use_process_environment = false;
+    options.home_directory = root / "home";
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(has_diagnostic(report.diagnostics, "paths.directory.exists_as_file"),
+        "generic root creation failures should come from ld_paths diagnostics");
+}
+
 void resolves_named_roots_and_layers()
 {
     const auto root = test_root() / "settings";
@@ -861,6 +911,39 @@ void c_abi_resolves_settings_override()
     require(report.diagnostic_count == 0, "C ABI free should clear diagnostics");
 }
 
+void c_abi_root_resolution_accepts_injected_environment()
+{
+    const auto root = test_root();
+    const auto home = root / "home";
+    const auto config = root / "xdg-config";
+    const auto config_text = path_to_utf8_string(config);
+    const auto home_text = path_to_utf8_string(home);
+
+    ld_settings_environment_entry environment[1] = {};
+    environment[0].name = "XDG_CONFIG_HOME";
+    environment[0].value = config_text.c_str();
+
+    ld_settings_root_options options = {};
+    ld_settings_root_options_init(&options);
+    options.organization = "LinuxDesktop2026";
+    options.application = "c-settings-tests";
+    options.home_directory = home_text.c_str();
+    options.environment = environment;
+    options.environment_count = 1;
+    options.use_process_environment = 0;
+    options.create_directories = 0;
+
+    ld_settings_root_report report = {};
+    const int ok = ld_settings_resolve_app_roots(&options, &report);
+
+    require(ok == 1, "C ABI injected environment root resolution should succeed");
+    require(report.config != nullptr, "C ABI injected environment should allocate config path");
+    require(std::filesystem::path(report.config) == config / "LinuxDesktop2026" / "c-settings-tests",
+        "C ABI config path should use injected XDG_CONFIG_HOME");
+
+    ld_settings_free_root_report(&report);
+}
+
 } // namespace
 
 int main()
@@ -874,6 +957,8 @@ int main()
         {"sync_config_override_keeps_state_local", sync_config_override_keeps_state_local},
         {"rejects_relative_sync_config_override", rejects_relative_sync_config_override},
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
+        {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
+        {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
         {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
         {"resolves_component_roots", resolves_component_roots},
 #if defined(_WIN32)
@@ -898,6 +983,7 @@ int main()
         {"policy_dry_run_does_not_write", policy_dry_run_does_not_write},
         {"policy_linux_writes_queries_and_removes_dconf_files", policy_linux_writes_queries_and_removes_dconf_files},
         {"c_abi_resolves_settings_override", c_abi_resolves_settings_override},
+        {"c_abi_root_resolution_accepts_injected_environment", c_abi_root_resolution_accepts_injected_environment},
     };
 
     int failures = 0;

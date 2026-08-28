@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <new>
 #include <optional>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -870,6 +871,24 @@ std::optional<std::filesystem::path> optional_path(const char* value)
     return std::filesystem::path(value);
 }
 
+std::map<std::string, std::string> environment_from_c(
+    const ld_settings_environment_entry* entries,
+    size_t count)
+{
+    std::map<std::string, std::string> environment;
+    if (!entries) {
+        return environment;
+    }
+    for (size_t index = 0; index != count; ++index) {
+        const auto& entry = entries[index];
+        if (!entry.name || !entry.name[0]) {
+            continue;
+        }
+        environment[entry.name] = entry.value ? entry.value : "";
+    }
+    return environment;
+}
+
 ld::effects::apply_options effect_options_from_c(const ld_settings_effect_options* source)
 {
     ld::effects::apply_options options;
@@ -934,6 +953,7 @@ void ld_settings_root_options_init(ld_settings_root_options* options)
     *options = {};
     options->allow_portable_root = 1;
     options->create_directories = 1;
+    options->use_process_environment = 1;
     options->portable_level = LD_SETTINGS_PORTABLE_SETTINGS_ONLY;
 }
 
@@ -998,6 +1018,8 @@ int ld_settings_resolve_app_roots(const ld_settings_root_options* options, ld_se
 
         ld::root_options root_options;
         root_options.resource_root = optional_path(options->resource_root);
+        root_options.home_directory = optional_path(options->home_directory);
+        root_options.environment = environment_from_c(options->environment, options->environment_count);
         root_options.settings_override = optional_path(options->settings_override);
         root_options.sync_config_override = optional_path(options->sync_config_override);
         root_options.portable_marker = optional_path(options->portable_marker);
@@ -1007,6 +1029,7 @@ int ld_settings_resolve_app_roots(const ld_settings_root_options* options, ld_se
         root_options.allow_sync_config_for_portable_root =
             options->allow_sync_config_for_portable_root != 0;
         root_options.create_directories = options->create_directories != 0;
+        root_options.use_process_environment = options->use_process_environment != 0;
         root_options.portable = portable_level_from_c(options->portable_level);
 
         for (size_t index = 0; index != options->privileged_install_root_count; ++index) {
