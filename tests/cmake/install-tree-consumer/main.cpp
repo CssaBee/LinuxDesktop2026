@@ -1,4 +1,5 @@
 #include "linuxdesktop/settings.hpp"
+#include "linuxdesktop/watch.hpp"
 
 #include <cstdlib>
 #include <string>
@@ -15,6 +16,9 @@ int main()
     linuxdesktop::diagnostic diagnostic;
     diagnostic.level = linuxdesktop::severity::warning;
     if (linuxdesktop::to_string(diagnostic.level) != "warning") {
+        return EXIT_FAILURE;
+    }
+    if (linuxdesktop::watch::to_string(linuxdesktop::watch::event_kind::created) != "created") {
         return EXIT_FAILURE;
     }
 

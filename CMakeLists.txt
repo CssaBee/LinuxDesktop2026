@@ -42,7 +42,28 @@ if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
 endif()
 
-install(TARGETS ld_core ld_settings
+add_library(ld_watch
+    src/watch.cpp
+    src/watch_inotify.cpp
+)
+
+add_library(LinuxDesktop2026::ld_watch ALIAS ld_watch)
+
+target_compile_features(ld_watch PUBLIC cxx_std_17)
+
+target_include_directories(ld_watch
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ld_watch PUBLIC LinuxDesktop2026::ld_core)
+
+if(UNIX AND NOT APPLE)
+    target_link_libraries(ld_watch PRIVATE pthread)
+endif()
+
+install(TARGETS ld_core ld_settings ld_watch
     EXPORT LinuxDesktop2026Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -94,6 +115,21 @@ if(LD2026_BUILD_TESTS)
 
     add_test(NAME ld_settings_c_tests COMMAND ld_settings_c_tests)
 
+    add_executable(ld_watch_tests
+        tests/watch_tests.cpp
+    )
+    target_include_directories(ld_watch_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(ld_watch_tests PRIVATE LinuxDesktop2026::ld_watch)
+
+    add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
+
+    add_executable(ld_watch_inotify_tests
+        tests/watch_inotify_tests.cpp
+    )
+    target_link_libraries(ld_watch_inotify_tests PRIVATE LinuxDesktop2026::ld_watch)
+
+    add_test(NAME ld_watch_inotify_tests COMMAND ld_watch_inotify_tests)
+
     add_test(NAME ld_settings_install_tree_consumer
         COMMAND ${CMAKE_COMMAND}
             -DLD2026_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
@@ -115,4 +151,9 @@ if(LD2026_BUILD_EXAMPLES)
         PRIVATE
             LD2026_EXAMPLE_MODEL_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/examples/settings-models"
     )
+
+    add_executable(ld_watch_demo
+        examples/watch_demo.cpp
+    )
+    target_link_libraries(ld_watch_demo PRIVATE LinuxDesktop2026::ld_watch)
 endif()

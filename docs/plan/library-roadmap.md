@@ -98,7 +98,7 @@ File watching remains the strongest follow-up after `ld_settings`. The focused a
 Current direction:
 
 - working name `ld_watch`,
-- native Linux `inotify` first,
+- broad prototype implemented with native Linux `inotify` first,
 - Windows `ReadDirectoryChangesW` shape in the public model,
 - libuv recommended for libuv-shaped apps and kept as the strongest coarse-event-loop reference,
 - efsw kept as the strongest future wrap candidate if the prototype proves direct native implementation too costly,
@@ -107,4 +107,5 @@ Current direction:
 - Watchman, fswatch, and Panoptes as study/defer references,
 - an `ld_watch` path value instead of bare strings for normal event paths,
 - raw events, settled-file trigger, and dirty-path refresh as named layers,
-- and ADR 0010 as the implementation-ready API boundary before watcher code.
+- ADR 0010 as the implementation-ready API boundary,
+- and next watcher work focused on hardening recursive emulation, settled-file scheduling, Windows backend verification, and public API cleanup.

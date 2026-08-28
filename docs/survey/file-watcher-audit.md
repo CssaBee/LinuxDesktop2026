@@ -224,8 +224,10 @@ File watching remains a strong next implementation candidate after `ld_settings`
 
 1. Extract shared C++ diagnostics into a tiny `ld_core` surface.
 2. Complete the broader application and library audit.
-3. Use ADR 0010 as the `ld_watch` API sketch before code.
+3. Use ADR 0010 as the implementation-ready `ld_watch` boundary before code.
 4. Build a broad prototype rather than a tiny one-event demo.
+
+Those steps are now complete as of 2026-08-28; the next watcher work is prototype hardening.
 
 The recommended first API should prioritize:
 

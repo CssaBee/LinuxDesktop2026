@@ -338,7 +338,7 @@ The sample should not include:
 
 ## Decision
 
-Proceed from the completed broader audit to implementation-ready ADR/API work for `ld_watch`.
+Proceed from the completed broader audit and implementation-ready ADR/API work to hardening the first broad `ld_watch` prototype.
 
 Working name: `ld_watch`.
 
@@ -346,7 +346,7 @@ Public shape: C++ convenience API first, callback-oriented and POD-friendly enou
 
 Implementation posture: native Linux first, shaped Windows backend next, no required event-loop dependency in the first sample.
 
-This is enough evidence to use ADR 0010 as the boundary and start the prototype plan.
+This is enough evidence to keep ADR 0010 as the boundary and use the first broad prototype as the next learning artifact.
 
 ## Source Links
 

@@ -6,7 +6,7 @@ This ADR follows the focused watcher audit, the application audit, the existing-
 
 ## Decision
 
-Design `ld_watch` as a small migration-facing C++17 module before writing watcher code.
+Design `ld_watch` as a small migration-facing C++17 module and treat this ADR as the implementation boundary for the first code pass.
 
 The module should provide:
 
@@ -26,14 +26,20 @@ The implementation order is now:
 3. Finalize the `ld_watch` API sketch into implementation-ready header/source/test work.
 4. Build a broad prototype with deterministic tests and real Linux smoke coverage.
 
-Steps 1 and 2 are complete as of 2026-08-28. The next work item is step 3.
+Steps 1 through 4 are complete as of 2026-08-28. The broad prototype exists and remains explicitly pre-ship code.
 
 ## Public Model
 
-Names are provisional, but the first API should orbit these concepts:
+The first C++ API should live in `include/linuxdesktop/watch.hpp`, use namespace `linuxdesktop::watch`, and expose version constants/functions mirroring `ld_settings`.
+
+The first implementation should use these public concepts:
 
 ```cpp
 namespace linuxdesktop::watch {
+
+inline constexpr int version_major = 0;
+inline constexpr int version_minor = 1;
+inline constexpr int version_patch = 0;
 
 enum class event_kind {
     created,
@@ -46,10 +52,22 @@ enum class event_kind {
     error
 };
 
+enum class path_type {
+    file,
+    directory,
+    other,
+    unknown
+};
+
 enum class recursive_policy {
-    no,
-    yes_if_supported,
-    emulate_with_subdirectory_watches
+    none,
+    native_if_supported,
+    emulate
+};
+
+enum class overflow_policy {
+    report_only,
+    request_rescan
 };
 
 enum class stream_state {
@@ -66,7 +84,14 @@ struct watch_path {
     std::filesystem::path absolute;
     std::optional<std::filesystem::path> root_relative;
     watch_id root;
+    path_type type = path_type::unknown;
     std::string backend_debug_name;
+};
+
+struct settle_options {
+    std::chrono::milliseconds debounce_for = std::chrono::milliseconds{0};
+    std::chrono::milliseconds stable_for = std::chrono::milliseconds{0};
+    std::chrono::milliseconds poll_interval = std::chrono::milliseconds{100};
 };
 
 struct watch_options {
@@ -74,12 +99,9 @@ struct watch_options {
     std::string caller_tag;
     bool watch_files = true;
     bool watch_directories = true;
-    recursive_policy recursive = recursive_policy::no;
-};
-
-struct settle_options {
-    std::chrono::milliseconds debounce = std::chrono::milliseconds{0};
-    std::chrono::milliseconds stable_for = std::chrono::milliseconds{0};
+    recursive_policy recursive = recursive_policy::none;
+    overflow_policy overflow = overflow_policy::request_rescan;
+    std::optional<settle_options> settle;
 };
 
 struct watch_event {
@@ -94,6 +116,8 @@ struct watch_event {
     std::vector<linuxdesktop::diagnostic> diagnostics;
 };
 
+using event_callback = std::function<void(const watch_event&)>;
+
 struct capability_report {
     bool native_recursive = false;
     bool emulated_recursive = false;
@@ -102,10 +126,79 @@ struct capability_report {
     std::vector<linuxdesktop::diagnostic> diagnostics;
 };
 
+struct start_report {
+    bool ok = false;
+    watch_id id;
+    capability_report capabilities;
+    std::vector<linuxdesktop::diagnostic> diagnostics;
+};
+
+class watcher {
+public:
+    watcher();
+    ~watcher();
+
+    watcher(const watcher&) = delete;
+    watcher& operator=(const watcher&) = delete;
+    watcher(watcher&&) noexcept;
+    watcher& operator=(watcher&&) noexcept;
+
+    start_report add_watch(const watch_options& options);
+    bool remove_watch(watch_id id);
+    void stop();
+
+    void set_callback(event_callback callback);
+    std::optional<watch_event> poll();
+    std::optional<watch_event> wait();
+
+    capability_report capabilities() const;
+    stream_state state() const;
+};
+
+std::string_view to_string(event_kind value);
+std::string_view to_string(path_type value);
+std::string_view to_string(recursive_policy value);
+std::string_view to_string(overflow_policy value);
+std::string_view to_string(stream_state value);
+
 } // namespace linuxdesktop::watch
 ```
 
 The API should expose portable event kinds first. Backend masks, raw names, or platform-specific details belong in optional diagnostics/debug fields unless a later advanced API earns them.
+
+The first release should not expose a stable C ABI. C ABI work belongs after the C++ event and ownership model survive prototype tests.
+
+## Lifecycle And Delivery
+
+The first `watcher` object owns backend resources and an internal event queue.
+
+- `add_watch` starts a watch immediately and returns a `start_report`.
+- A failed `add_watch` returns `ok = false`, `id.value = 0`, and diagnostics.
+- `remove_watch` is idempotent and returns whether a live watch was removed.
+- `stop` closes backend resources, wakes any blocking `wait`, and moves the stream to `stopped`.
+- `poll` returns the next queued event or `std::nullopt` without blocking.
+- `wait` blocks until an event is available or the watcher is stopped; stopped watchers return `std::nullopt`.
+- `set_callback` installs process-local callback delivery; passing an empty callback returns future events to `poll`/`wait` delivery.
+- Callbacks are invoked from the watcher delivery thread or caller-pumped backend thread, never promised on a UI thread.
+- Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
+
+The prototype can use one delivery thread on Linux. A later toolkit adapter may marshal events onto Qt, GLib, wxWidgets, .NET, or application-specific dispatchers.
+
+## Source Layout
+
+The first code pass should add these files:
+
+- `include/linuxdesktop/watch.hpp`: public C++ API from this ADR.
+- `src/watch.cpp`: portable watcher object, queue, lifecycle, event normalization, settle helper glue, and backend selection.
+- `src/watch_inotify.cpp`: Linux `inotify` backend.
+- `src/watch_backend.hpp`: private backend interface used by simulated and native implementations.
+- `tests/watch_tests.cpp`: deterministic simulated-backend tests.
+- `tests/watch_inotify_tests.cpp`: Linux-only smoke tests guarded by platform checks.
+- `examples/watch_demo.cpp`: small directory/file watch example with structured diagnostics.
+
+CMake should add `ld_watch`, `LinuxDesktop2026::ld_watch`, tests, example, install/export inclusion, and a package-consumer smoke path mirroring `ld_settings`.
+
+`ld_watch` must link `LinuxDesktop2026::ld_core`. It must not link `ld_settings`.
 
 ## Layering
 
@@ -116,6 +209,8 @@ The API should expose portable event kinds first. Backend masks, raw names, or p
 - Dirty-path refresh: a future convenience layer that turns noisy raw events into view-refresh signals.
 
 The first prototype should cover raw events and settled-file trigger behavior. Dirty-path refresh should remain documented unless a tiny helper falls out naturally.
+
+The first header should expose raw events directly. Settled-file behavior should be exposed as options and normalized events, not as a ShareX-specific upload/task abstraction. Dirty-path refresh should not enter the first public API.
 
 ## Backend Posture
 
@@ -135,6 +230,16 @@ Panoptes remains a compact C++17 reference but not a wrap candidate for rename-s
 
 Watchman and fswatch/libfswatch remain audit inputs for rescan posture, backend taxonomy, latency/settle, filters, and large-tree operational behavior.
 
+The private backend interface should be narrow:
+
+- start one root watch from `watch_options`,
+- stop one root watch,
+- read or push raw backend events,
+- report capabilities and diagnostics,
+- surface overflow/lost-sync explicitly.
+
+Backends must not return public events with bare path strings. They should construct `watch_path` values or provide enough raw information for `src/watch.cpp` to construct them.
+
 ## Behavioral Promises
 
 - File and directory targets are public concepts.
@@ -145,6 +250,10 @@ Watchman and fswatch/libfswatch remain audit inputs for rescan posture, backend 
 - Debounce and settled-file readiness are separate concepts.
 - Network and pseudo-filesystem reliability is not guaranteed.
 - UI thread dispatch belongs in future toolkit adapters.
+- Event order is per watcher queue best-effort; cross-watch ordering is not promised.
+- Duplicate and coalesced events are allowed, but overflow and lost-sync cannot be silently swallowed.
+- `caller_tag` is echoed unchanged so apps can route events without adding their own side table.
+- `watch_id` is process-local, monotonically assigned, and not persisted.
 
 ## Path And Diagnostics
 
@@ -158,6 +267,19 @@ Watcher events should not return bare strings as the normal path model. They sho
 This keeps application code in LinuxDesktop2026 vocabulary while preserving enough detail for debugging Windows/Linux backend differences.
 
 Diagnostics should use the shared C++ vocabulary from `ld_core`, introduced by ADR 0009.
+
+The first diagnostic codes should include:
+
+- `watch.backend.unavailable`
+- `watch.path.not_found`
+- `watch.path.unsupported_type`
+- `watch.recursive.unsupported`
+- `watch.recursive.emulated`
+- `watch.overflow`
+- `watch.rescan_recommended`
+- `watch.rename.unpaired`
+- `watch.settle.timeout`
+- `watch.backend.error`
 
 ## Prototype Boundary
 
@@ -186,6 +308,71 @@ It should not include:
 - desktop portals,
 - a full directory snapshot/diff cache,
 - or a stable C ABI in the first version.
+
+## Test Checklist
+
+Deterministic tests should use the private simulated backend and cover:
+
+- create, modify, remove, metadata, and rename event mapping,
+- paired and unpaired rename events,
+- event queue `poll` and `wait` behavior,
+- callback delivery ownership,
+- `caller_tag` round trips,
+- `watch_path` absolute/root-relative/root identity fields,
+- single-file filtering over parent-directory events,
+- recursive unsupported and recursive emulated diagnostics,
+- overflow changing stream state to `degraded`,
+- rescan recommendation when requested by `overflow_policy`,
+- debounce coalescing as distinct from settled-file readiness,
+- settled-file readiness after stable size/mtime,
+- settled-file timeout diagnostics,
+- idempotent `remove_watch`,
+- and `stop` waking blocked delivery.
+
+Linux smoke tests should create a temporary directory and cover:
+
+- directory create/modify/remove,
+- rename within one watched directory,
+- single-file watch behavior across save-by-replace,
+- and an unsupported recursive-native request producing an honest diagnostic on `inotify`.
+
+Smoke tests should avoid forcing a real kernel queue overflow in normal CI.
+
+## Definition Of Done For The Prototype
+
+The broad prototype is complete when:
+
+- `cmake -S . -B build` succeeds,
+- `cmake --build build` succeeds,
+- `ctest --test-dir build --output-on-failure` succeeds on Linux,
+- `git diff --check` is clean,
+- a consumer can link `LinuxDesktop2026::ld_watch`,
+- the example can watch both a directory and a file,
+- overflow/rescan behavior is tested through the simulated backend,
+- and the public docs clearly state that Windows is API-shaped but not yet smoke-verified unless a Windows run has actually passed.
+
+## Prototype Status
+
+The first broad prototype is implemented as of 2026-08-28.
+
+Implemented:
+
+- `LinuxDesktop2026::ld_watch` CMake target,
+- public C++ API in `include/linuxdesktop/watch.hpp`,
+- private backend interface in `src/watch_backend.hpp`,
+- watcher lifecycle, event queue, callback delivery, blocking pull delivery, and state tracking in `src/watch.cpp`,
+- native Linux `inotify` backend in `src/watch_inotify.cpp`,
+- simulated-backend tests in `tests/watch_tests.cpp`,
+- Linux `inotify` smoke tests in `tests/watch_inotify_tests.cpp`,
+- install/export consumer coverage for `LinuxDesktop2026::ld_watch`,
+- and `ld_watch_demo` in `examples/watch_demo.cpp`.
+
+Still prototype-grade:
+
+- Windows is API-shaped but not implemented or smoke-verified.
+- Recursive emulation covers initial directory trees but not dynamic subdirectory expansion yet.
+- Settled-file support provides a blocking debounce/stable size/mtime helper in the delivery path; it is not yet a coalescing scheduler.
+- The backend injection constructor is exposed through `detail` so deterministic tests can drive the prototype; this should be revisited before a stable public API.
 
 ## Consequences
 

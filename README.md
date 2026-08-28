@@ -44,7 +44,7 @@ Status legend:
 | `🟡` In progress | `ld_settings` ship design | Expanded survey shows `ld_settings` must grow named roots, component roots, config layers, migration plans, Registry support, autostart, and managed/enforced policy before shipping. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, expanded settings/Registry survey, and broader `ld_watch` application/library follow-up are guiding reusable seams. |
 | `📌` Next | Notepad++ integration prep | Start mapping the standalone `ld_settings` surface into a small Notepad++ fork patch plan. |
-| `📌` Next | File watching (`ld_watch`) | Broader audit is complete; finalize ADR 0010 into implementation-ready API/header/test work before prototype code. |
+| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, native Linux `inotify`, simulated backend tests, Linux smoke coverage, demo, and install-tree consumer linkage. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
 | `⬜` Later | Filesystem and path helpers | Candidate module for path normalization, probing, and other cross-platform filesystem seams. |
