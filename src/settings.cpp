@@ -121,6 +121,13 @@ bool flush_parent_directory(const std::filesystem::path& path, std::error_code& 
         ec = system_error_code();
     }
     CloseHandle(handle);
+    if (!flushed && ec.value() == ERROR_INVALID_FUNCTION) {
+        // Some Windows filesystems reject FlushFileBuffers for directory handles.
+        // The file handle was already flushed before the atomic replacement, so
+        // treat the directory flush as an unavailable extra durability step.
+        ec.clear();
+        return true;
+    }
     return flushed;
 #else
     const auto parent_text = parent.c_str();

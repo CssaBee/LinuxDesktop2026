@@ -149,6 +149,9 @@ bool ResourceManager::SetupConfigurationDirectory(const RuntimeEnvironment& envi
     options.home_directory = environment.home_directory;
     options.environment = environment.variables;
     options.use_process_environment = false;
+    if (const auto config_home = environment.variables.find("XDG_CONFIG_HOME"); config_home != environment.variables.end()) {
+        options.config_override = std::filesystem::path(config_home->second) / "OpenRGB" / "OpenRGB";
+    }
 
     report_ = ldp::resolve_app_paths(identity, options);
     paths_.resources_dir = report_.selected.at(ldp::path_family::resources);
