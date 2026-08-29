@@ -6,11 +6,10 @@ list below.
 
 ## Current Order
 
-1. `14` — Add Adversarial Parser And Filesystem Tests
-2. `15` — Validate APIs With One Maintained Consumer Branch
-3. `18` — Expand CI Into Portability Evidence
-4. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-5. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `15` — Validate APIs With One Maintained Consumer Branch
+2. `18` — Expand CI Into Portability Evidence
+3. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+4. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 

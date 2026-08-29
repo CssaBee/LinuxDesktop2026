@@ -769,6 +769,143 @@ void registry_import_requires_explicit_permission()
         "Registry JSON import should require allow_import");
 }
 
+void registry_json_rejects_hostile_import_shapes()
+{
+    namespace reg = mig::registry;
+
+    const std::string root =
+        "\"root\":{\"hive\":\"current_user\",\"subkey\":\"Software\\\\LinuxDesktop2026\\\\settings-tests\",\"view\":\"native\"}";
+
+    const auto missing_format = reg::parse_snapshot_json("{" + root + ",\"values\":[]}");
+    require(!missing_format.ok, "Registry JSON parser should reject missing format markers");
+    require(has_diagnostic(missing_format.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose missing format markers");
+
+    const auto malformed_values = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root + ",\"values\":{}}");
+    require(!malformed_values.ok, "Registry JSON parser should reject non-array values");
+    require(has_diagnostic(malformed_values.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON parser should diagnose malformed values arrays");
+
+    const auto truncated_values = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\"}");
+    require(!truncated_values.ok, "Registry JSON parser should reject truncated values arrays");
+    require(has_diagnostic(truncated_values.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON parser should diagnose truncated values arrays");
+
+    const auto invalid_hex = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"type\":\"string\",\"data_hex\":\"abc\"}]}");
+    require(!invalid_hex.ok, "Registry JSON parser should reject odd-length hex payloads");
+    require(has_diagnostic(invalid_hex.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose invalid value payloads");
+
+    reg::key destination;
+    destination.subkey = "Software\\LinuxDesktop2026\\settings-tests";
+    const auto imported = reg::import_tree_json(destination,
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root + ",\"values\":{}}");
+    require(!imported.ok, "Registry JSON import should reject malformed snapshots before permission checks");
+    require(has_diagnostic(imported.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON import should propagate parse diagnostics");
+}
+
+void registry_reg_rejects_hostile_import_shapes()
+{
+    namespace reg = mig::registry;
+
+    const auto value_before_key = reg::parse_snapshot_reg("\"Name\"=\"Alice\"\n");
+    require(!value_before_key.ok, ".reg parser should reject values before a key");
+    require(has_diagnostic(value_before_key.diagnostics, "registry-reg-value-invalid"),
+        ".reg parser should diagnose values before a key");
+
+    const auto unknown_hive = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n[HKEY_NOT_REAL\\Software\\LinuxDesktop2026]\n");
+    require(!unknown_hive.ok, ".reg parser should reject unknown hives");
+    require(has_diagnostic(unknown_hive.diagnostics, "registry-reg-hive-invalid"),
+        ".reg parser should diagnose unknown hives");
+
+    const auto multiple_hives = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Alice\"\n\n"
+        "[HKEY_LOCAL_MACHINE\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Bob\"\n");
+    require(!multiple_hives.ok, ".reg parser should reject multiple hive snapshots");
+    require(has_diagnostic(multiple_hives.diagnostics, "registry-reg-multiple-hives"),
+        ".reg parser should diagnose multiple hives");
+
+    const auto outside_root = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Alice\"\n\n"
+        "[HKEY_CURRENT_USER\\Software\\OtherProduct]\n"
+        "\"Name\"=\"Mallory\"\n");
+    require(!outside_root.ok, ".reg parser should reject keys outside the first root");
+    require(has_diagnostic(outside_root.diagnostics, "registry-reg-outside-root"),
+        ".reg parser should diagnose keys outside the first root");
+
+    const auto invalid_dword = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Flags\"=dword:zzzzzzzz\n");
+    require(!invalid_dword.ok, ".reg parser should reject malformed DWORD data");
+    require(has_diagnostic(invalid_dword.diagnostics, "registry-reg-value-data-invalid"),
+        ".reg parser should diagnose malformed DWORD data");
+
+    reg::key destination;
+    destination.subkey = "Software\\LinuxDesktop2026";
+    const auto imported = reg::import_tree_reg(destination,
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Flags\"=dword:zzzzzzzz\n");
+    require(!imported.ok, ".reg import should reject malformed snapshots before permission checks");
+    require(has_diagnostic(imported.diagnostics, "registry-reg-value-data-invalid"),
+        ".reg import should propagate parse diagnostics");
+}
+
+void common_config_write_rejects_parent_that_is_file()
+{
+    const auto root = test_root();
+    const auto parent = root / "not-a-directory";
+    {
+        std::ofstream file(parent);
+        file << "not a directory\n";
+    }
+
+    const auto report = ld::write_common_config({parent / "config.xml", "<Config />\n", true});
+
+    require(!report.ok, "common config write should fail when parent exists as a file");
+    require(has_diagnostic(report.diagnostics, "path-not-directory"),
+        "common config write should diagnose file-as-directory parents");
+}
+
+void common_config_write_cleans_temp_after_backup_copy_failure()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+    std::filesystem::create_directories(target.string() + ".bak");
+
+    const auto report = ld::write_common_config({target, "<Config saved=\"new\" />\n", true},
+        [](const std::filesystem::path& path, std::string&) {
+            return read_file(path).find("new") != std::string::npos;
+        });
+
+    require(!report.ok, "common config write should fail when backup path cannot be replaced");
+    require(report.temp_path.has_value(), "backup-copy failure should report the temp path");
+    require(has_diagnostic(report.diagnostics, "backup-copy-failed"),
+        "common config write should diagnose backup-copy failures");
+    require(!std::filesystem::exists(*report.temp_path),
+        "common config write should clean temporary files after backup-copy failures");
+    require(read_file(target).find("old") != std::string::npos,
+        "backup-copy failure should keep the original target content");
+}
+
 desk::autostart_entry autostart_entry_for_tests()
 {
     desk::autostart_entry entry;
@@ -1089,6 +1226,10 @@ int main()
         {"registry_json_snapshot_round_trips", registry_json_snapshot_round_trips},
         {"registry_reg_snapshot_round_trips", registry_reg_snapshot_round_trips},
         {"registry_import_requires_explicit_permission", registry_import_requires_explicit_permission},
+        {"registry_json_rejects_hostile_import_shapes", registry_json_rejects_hostile_import_shapes},
+        {"registry_reg_rejects_hostile_import_shapes", registry_reg_rejects_hostile_import_shapes},
+        {"common_config_write_rejects_parent_that_is_file", common_config_write_rejects_parent_that_is_file},
+        {"common_config_write_cleans_temp_after_backup_copy_failure", common_config_write_cleans_temp_after_backup_copy_failure},
         {"autostart_dry_run_does_not_write", autostart_dry_run_does_not_write},
         {"autostart_linux_writes_queries_and_removes_desktop_file", autostart_linux_writes_queries_and_removes_desktop_file},
         {"autostart_global_write_requires_permission", autostart_global_write_requires_permission},

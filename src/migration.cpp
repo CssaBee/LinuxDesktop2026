@@ -780,23 +780,33 @@ std::optional<std::string_view> json_object_field(std::string_view object, std::
     return std::nullopt;
 }
 
-std::vector<std::string_view> json_array_objects(std::string_view object, std::string_view field)
-{
+struct json_array_objects_result {
+    bool found = false;
+    bool malformed = false;
     std::vector<std::string_view> objects;
+};
+
+json_array_objects_result json_array_objects(std::string_view object, std::string_view field)
+{
+    json_array_objects_result result;
     const auto needle = "\"" + std::string(field) + "\"";
     auto pos = object.find(needle);
     if (pos == std::string_view::npos) {
-        return objects;
+        return result;
     }
     pos = object.find('[', pos + needle.size());
     if (pos == std::string_view::npos) {
-        return objects;
+        result.found = true;
+        result.malformed = true;
+        return result;
     }
+    result.found = true;
 
     size_t depth = 0;
     size_t object_begin = std::string_view::npos;
     bool in_string = false;
     bool escaped = false;
+    bool closed = false;
     for (size_t index = pos + 1; index != object.size(); ++index) {
         const char ch = object[index];
         if (escaped) {
@@ -820,16 +830,22 @@ std::vector<std::string_view> json_array_objects(std::string_view object, std::s
             }
             ++depth;
         } else if (ch == '}') {
+            if (depth == 0) {
+                result.malformed = true;
+                return result;
+            }
             --depth;
             if (depth == 0 && object_begin != std::string_view::npos) {
-                objects.push_back(object.substr(object_begin, index - object_begin + 1));
+                result.objects.push_back(object.substr(object_begin, index - object_begin + 1));
                 object_begin = std::string_view::npos;
             }
         } else if (ch == ']' && depth == 0) {
+            closed = true;
             break;
         }
     }
-    return objects;
+    result.malformed = !closed || depth != 0 || in_string || object_begin != std::string_view::npos;
+    return result;
 }
 
 std::optional<hive> hive_from_string(std::string_view value)
@@ -1140,6 +1156,15 @@ format_report serialize_snapshot_json(const snapshot& snapshot)
 snapshot_report parse_snapshot_json(std::string_view content)
 {
     snapshot_report report;
+    const auto format = json_string_field(content, "format");
+    if (!format || *format != "linuxdesktop.settings.registry.snapshot.v1") {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-json-format-invalid",
+            "Registry JSON snapshot has an unknown or missing format marker"));
+        return report;
+    }
+
     const auto root_object = json_object_field(content, "root");
     if (!root_object) {
         report.diagnostics.push_back(make_diagnostic(
@@ -1175,7 +1200,16 @@ snapshot_report parse_snapshot_json(std::string_view content)
     parsed.root.subkey = *subkey;
     parsed.root.registry_view = *parsed_view;
 
-    for (const auto value_object : json_array_objects(content, "values")) {
+    const auto value_objects = json_array_objects(content, "values");
+    if (!value_objects.found || value_objects.malformed) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-json-values-invalid",
+            "Registry JSON snapshot requires a well-formed values array"));
+        return report;
+    }
+
+    for (const auto value_object : value_objects.objects) {
         const auto key_path = json_string_field(value_object, "key_path");
         const auto name = json_string_field(value_object, "name");
         const auto type_text = json_string_field(value_object, "type");
