@@ -479,10 +479,6 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
-    return report;
-#else
     report.path = autostart_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -497,6 +493,10 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
+    return report;
+#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -527,10 +527,6 @@ effect_report remove_autostart(const autostart_entry& entry, const apply_options
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
-    return report;
-#else
     report.path = autostart_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -541,6 +537,10 @@ effect_report remove_autostart(const autostart_entry& entry, const apply_options
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
+    return report;
+#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -603,10 +603,6 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
     }
     report.present = true;
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
-    return report;
-#else
     report.path = policy_defaults_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -618,6 +614,10 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
+    return report;
+#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -664,10 +664,6 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
-    return report;
-#else
     report.path = policy_defaults_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -678,6 +674,10 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
+    return report;
+#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {

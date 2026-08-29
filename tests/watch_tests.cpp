@@ -397,8 +397,10 @@ void callback_stop_and_remove_are_safe()
         cv.notify_all();
     });
 
-    backend->push(backend->event_for(report.id, ld::event_kind::modified, "first.txt"));
-    backend->push(backend->event_for(report.id, ld::event_kind::modified, "second.txt"));
+    auto first = backend->event_for(report.id, ld::event_kind::modified, "first.txt");
+    auto second = backend->event_for(report.id, ld::event_kind::modified, "second.txt");
+    backend->push(std::move(first));
+    backend->push(std::move(second));
 
     std::unique_lock<std::mutex> lock(mutex);
     require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return stopped && removed; }),
