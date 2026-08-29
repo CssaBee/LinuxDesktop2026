@@ -57,13 +57,12 @@ policy C++ implementation lives in `ld_desktop`; migration
 planning/execution and app-settings Registry snapshot/import/export
 compatibility live in `ld_migration`. `ld_settings` does not expose namespace
 bridges for those areas. None of those responsibilities are stable
-`ld_settings` responsibilities. Any remaining transitive dependency from
-`ld_settings` to those owning modules is a bounded transition that expires at
-release-candidate cleanup.
+`ld_settings` responsibilities.
 
 The C ABI follows the same ownership split: `ld_settings` keeps roots,
-hydration, writes, migration, and Registry helpers, while `ld_desktop`
-owns autostart and managed/enforced policy entry points.
+hydration, and writes, while `ld_desktop` owns autostart and
+managed/enforced policy entry points and `ld_migration` owns migration and
+Registry compatibility directly.
 
 Before `1.0`, C++ APIs may break when needed to correct module boundaries.
 Those breaks must be documented with replacement paths. Existing C ABI entry
@@ -97,9 +96,10 @@ Task 05 records the split between settings, paths, desktop effects, and
 migration, and reduces public claims where the current prototype lacks
 hostile-input, rollback, permissions, Windows, or real-consumer evidence.
 Task 19 introduces `ld_desktop`, moving the current C++ autostart and
-managed/enforced policy implementation there. Task 20 introduces `ld_migration`,
-moving the current C++ migration planning/execution and app-settings Registry
-compatibility implementation there.
+managed/enforced policy implementation there. Task 20 introduces
+`ld_migration`, moving the current C++ migration planning/execution and
+app-settings Registry compatibility implementation there. Task 29 removes the
+old `ld_settings` migration facade entirely.
 
 `ld_settings` does not keep a standing compatibility layer for those areas.
 Since the project is still pre-1.0, source-breaking C++ cleanup is allowed when

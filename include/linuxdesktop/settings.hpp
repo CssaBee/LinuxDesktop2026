@@ -1,8 +1,6 @@
 #pragma once
 
 #include "linuxdesktop/core.hpp"
-#include "linuxdesktop/migration.hpp"
-
 #include <cstddef>
 #include <filesystem>
 #include <functional>
@@ -227,22 +225,12 @@ struct write_report {
 
 using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
 
-// Pre-1.0 compatibility aliases. New C++ callers should use
-// linuxdesktop::migration; ld_settings no longer owns migration execution.
-using migration_action_kind = linuxdesktop::migration::migration_action_kind;
-using migration_action = linuxdesktop::migration::migration_action;
-using migration_options = linuxdesktop::migration::options;
-using migration_plan = linuxdesktop::migration::migration_plan;
-using migration_action_result = linuxdesktop::migration::migration_action_result;
-using migration_execution_report = linuxdesktop::migration::migration_execution_report;
-
 std::string_view to_string(portable_level value);
 std::string_view to_string(root_purpose value);
 std::string_view to_string(persistence_class value);
 std::string_view to_string(component_kind value);
 std::string_view to_string(config_layer_kind value);
 std::string_view to_string(storage_backend value);
-using linuxdesktop::migration::to_string;
 
 const named_root* find_named_root(const root_report& report, const std::string& name);
 const component_root_group* find_component_roots(const root_report& report, const std::string& name);
@@ -257,17 +245,5 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
 hydrate_report hydrate_config_bundle(const hydrate_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
-
-inline migration_plan plan_migration(std::vector<migration_action> actions, const migration_options& options = {})
-{
-    return linuxdesktop::migration::plan_migration(std::move(actions), options);
-}
-
-inline migration_execution_report execute_migration_plan(
-    const migration_plan& plan,
-    const migration_options& options = {})
-{
-    return linuxdesktop::migration::execute_migration_plan(plan, options);
-}
 
 } // namespace linuxdesktop::settings

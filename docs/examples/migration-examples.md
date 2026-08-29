@@ -471,41 +471,9 @@ void Program::UpdatePersonalPath()
 
 This is why the first module keeps diagnostics as first-class output. A migrated app needs to explain whether a path came from CLI, a portable marker, a legacy settings file, XDG defaults, Windows Known Folders, or an ignored invalid override.
 
-C ABI shape for the same ShareX-style migration preview and explicit execution:
-
-```c
-#include "linuxdesktop/settings_c.h"
-
-void preview_or_apply_personal_path_migration(const char* legacy_root, const char* new_root, int user_confirmed)
-{
-    struct ld_settings_migration_action actions[1] = {0};
-    actions[0].kind = LD_SETTINGS_MIGRATION_COPY_DIRECTORY;
-    actions[0].name = "copy legacy personal folder";
-    actions[0].source_path = legacy_root;
-    actions[0].target_path = new_root;
-
-    struct ld_settings_migration_options options;
-    struct ld_settings_migration_report report = {0};
-    ld_settings_migration_options_init(&options);
-
-    /* CHANGE: first call is a dry-run plan for UI/CLI review. */
-    ld_settings_plan_migration(actions, 1, &options, &report);
-    sharex_show_migration_preview(&report);
-    ld_settings_free_migration_report(&report);
-
-    if (!user_confirmed) {
-        return;
-    }
-
-    /* KEEP: ShareX decides when user confirmation is enough. */
-    /* CHANGE: execution uses the same action list and reports per-action state. */
-    options.dry_run = 0;
-    report = (struct ld_settings_migration_report){0};
-    ld_settings_execute_migration_plan(actions, 1, NULL, &options, &report);
-    sharex_log_migration_execution(&report);
-    ld_settings_free_migration_report(&report);
-}
-```
+The C ABI example that used to live here has been retired. Use
+`linuxdesktop/migration.hpp` directly for ShareX-style migration previews and
+execution.
 
 ## Example 4: WinSCP-Style Storage Selection
 
@@ -580,30 +548,9 @@ ConfigStorage OpenConfigurationStorage()
 
 This example keeps us honest: `ld_settings` should model storage layers and precedence, but it should not force every app into one universal config parser.
 
-C ABI shape for the same WinSCP-style Registry snapshot/export seam:
-
-```c
-#include "linuxdesktop/settings_c.h"
-
-void export_winscp_style_registry_snapshot(void)
-{
-    struct ld_settings_registry_key root = {
-        LD_SETTINGS_REGISTRY_CURRENT_USER,
-        "Software\\Vendor\\App",
-        LD_SETTINGS_REGISTRY_VIEW_NATIVE,
-    };
-    struct ld_settings_registry_format_report exported = {0};
-
-    /* CHANGE: the C ABI exposes JSON and .reg snapshot entry points.
-       KEEP: the app still decides when Registry storage is active. */
-    if (ld_settings_registry_export_tree_json(&root, &exported) && exported.ok) {
-        write_portable_snapshot_file(exported.content);
-    } else {
-        log_registry_snapshot_diagnostics(&exported);
-    }
-    ld_settings_free_registry_format_report(&exported);
-}
-```
+The C ABI example that used to live here has been retired. Use
+`linuxdesktop/migration.hpp` for Registry snapshot compatibility and keep the
+storage choice app-owned.
 
 ## Example 5: KeePassXC And PortableApps-Style Roots
 
@@ -671,8 +618,8 @@ void BootstrapConfigAndPortableState()
     });
     ShowMigrationPreview(registry_plan);
 
-    // CHANGE: JSON/.reg snapshot formats and C ABI entry points now exist, so
-    // app-specific before/after-run policy can be wired around explicit execution:
+    // CHANGE: JSON/.reg snapshot formats now exist, so app-specific
+    // before/after-run policy can be wired around explicit execution:
     //
     //   ldm::options execute_options;
     //   execute_options.dry_run = false;

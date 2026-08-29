@@ -82,7 +82,7 @@ target_include_directories(ld_settings
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop LinuxDesktop2026::ld_migration)
+target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop)
 
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
@@ -198,7 +198,7 @@ if(LD2026_BUILD_TESTS)
     add_executable(ld_settings_tests
         tests/settings_tests.cpp
     )
-    target_link_libraries(ld_settings_tests PRIVATE LinuxDesktop2026::ld_settings)
+    target_link_libraries(ld_settings_tests PRIVATE LinuxDesktop2026::ld_settings LinuxDesktop2026::ld_migration)
 
     add_test(NAME ld_settings_tests COMMAND ld_settings_tests)
 
@@ -322,7 +322,7 @@ if(LD2026_BUILD_EXAMPLES)
     add_executable(ld_settings_demo
         examples/settings_demo.cpp
     )
-    target_link_libraries(ld_settings_demo PRIVATE LinuxDesktop2026::ld_settings)
+    target_link_libraries(ld_settings_demo PRIVATE LinuxDesktop2026::ld_settings LinuxDesktop2026::ld_migration)
     target_compile_definitions(ld_settings_demo
         PRIVATE
             LD2026_EXAMPLE_MODEL_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/examples/settings-models"

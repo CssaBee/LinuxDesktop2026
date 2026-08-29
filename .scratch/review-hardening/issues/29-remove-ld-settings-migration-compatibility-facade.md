@@ -8,12 +8,12 @@ and Registry-shaped migration compatibility.
 
 **Expiry:** release-candidate cleanup. After that point, any remaining `ld_settings -> ld_migration` compatibility link is a defect, not a supported transition.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `ld_settings` no longer PUBLIC-links `ld_migration` for compatibility.
-- [ ] Callers that need migration behavior link `LinuxDesktop2026::ld_migration`
+- [x] `ld_settings` no longer PUBLIC-links `ld_migration` for compatibility.
+- [x] Callers that need migration behavior link `LinuxDesktop2026::ld_migration`
   directly.
-- [ ] No `ld_settings` header or helper presents migration as a
+- [x] No `ld_settings` header or helper presents migration as a
   settings-owned surface.
-- [ ] README, ADR 0012, and `docs/plan/ld-migration-extraction.md` describe
+- [x] README, ADR 0012, and `docs/plan/ld-migration-extraction.md` describe
   migration ownership as direct `ld_migration` ownership only.

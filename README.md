@@ -8,10 +8,10 @@ We are in the prototype hardening and flavor-review stage.
 
 `ld_settings` is the current C++17 settings/config sample. It covers root
 resolution, config hydration, ordered writes, backup files, validation before
-commit, and opt-in durable writes. Autostart and managed/enforced policy live
-in `ld_desktop`; migration execution and Registry-shaped compatibility live in
-`ld_migration`. `ld_settings` stays on settings/config only, with no planned
-compatibility layer retained in the module.
+commit, and opt-in durable writes. `ld_desktop` owns autostart and
+managed/enforced policy. `ld_migration` owns migration execution and
+Registry-shaped compatibility. `ld_settings` stays on settings/config only and
+no longer carries migration or Registry helpers.
 
 `ld_paths` is the next module. Its public C++ and C prototype includes a
 CMake target, tests, demos, install-tree consumer coverage, standard user

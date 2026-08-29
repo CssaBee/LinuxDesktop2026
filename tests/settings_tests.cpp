@@ -1,6 +1,7 @@
 #include "linuxdesktop/settings.hpp"
 #include "linuxdesktop/settings_c.h"
 #include "linuxdesktop/desktop.hpp"
+#include "linuxdesktop/migration.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -533,20 +534,20 @@ void migration_plan_is_dry_run_first()
         file << "<Config />\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_file;
+    mig::migration_action action;
+    action.kind = mig::migration_action_kind::copy_file;
     action.name = "copy config";
     action.source_path = source;
     action.target_path = target;
 
-    ld::migration_options options;
-    const auto plan = ld::plan_migration({action}, options);
+    mig::options options;
+    const auto plan = mig::plan_migration({action}, options);
     require(plan.dry_run, "migration plans should be dry-run objects");
     require(plan.actions.size() == 1, "migration plan should keep actions");
     require(!has_error_diagnostic(plan.diagnostics), "valid migration plan should not have errors");
-    require(ld::to_string(plan.actions[0].kind) == "copy_file", "migration action kind should stringify");
+    require(mig::to_string(plan.actions[0].kind) == "copy_file", "migration action kind should stringify");
 
-    const auto dry_run = ld::execute_migration_plan(plan, options);
+    const auto dry_run = mig::execute_migration_plan(plan, options);
     require(dry_run.ok, "dry-run execution should succeed for valid file action");
     require(dry_run.dry_run, "dry-run execution should report dry_run");
     require(dry_run.actions.size() == 1, "dry-run execution should report each action");
@@ -566,18 +567,18 @@ void migration_execute_copies_file()
         file << "<Config copied=\"true\" />\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_file;
+    mig::migration_action action;
+    action.kind = mig::migration_action_kind::copy_file;
     action.name = "copy config";
     action.source_path = source;
     action.target_path = target;
 
-    ld::migration_options plan_options;
-    const auto plan = ld::plan_migration({action}, plan_options);
+    mig::options plan_options;
+    const auto plan = mig::plan_migration({action}, plan_options);
 
-    ld::migration_options execute_options;
+    mig::options execute_options;
     execute_options.dry_run = false;
-    const auto report = ld::execute_migration_plan(plan, execute_options);
+    const auto report = mig::execute_migration_plan(plan, execute_options);
 
     require(report.ok, "migration execution should succeed");
     require(!report.dry_run, "migration execution should report non-dry-run");
@@ -587,12 +588,12 @@ void migration_execute_copies_file()
 
 void migration_blocks_dangerous_without_permission()
 {
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::delete_registry_key;
+    mig::migration_action action;
+    action.kind = mig::migration_action_kind::delete_registry_key;
     action.name = "delete legacy key";
     action.dangerous = true;
 
-    const auto plan = ld::plan_migration({action});
+    const auto plan = mig::plan_migration({action});
     require(has_diagnostic(plan.diagnostics, "migration-dangerous-action-denied"),
         "dangerous migration action should require explicit permission");
 }

@@ -112,7 +112,6 @@ int main(void)
     char model_file[768];
     char old_file[768];
     char saved_file[768];
-    char migrated_file[768];
 
     make_path(settings_override, sizeof(settings_override), "settings");
     make_path(model_root, sizeof(model_root), "models");
@@ -121,7 +120,6 @@ int main(void)
     make_path(model_file, sizeof(model_file), "models/config.model.xml");
     make_path(old_file, sizeof(old_file), "old/config.xml");
     make_path(saved_file, sizeof(saved_file), "hydrated/saved.xml");
-    make_path(migrated_file, sizeof(migrated_file), "hydrated/migrated.xml");
 
     memset(&report, 0, sizeof(report));
     ld_settings_root_options_init(&options);
@@ -226,102 +224,6 @@ int main(void)
         return EXIT_FAILURE;
     }
     ld_settings_free_write_report(&write_report);
-
-    struct ld_settings_migration_action actions[1];
-    struct ld_settings_migration_options migration_options;
-    struct ld_settings_migration_report migration_report;
-    memset(actions, 0, sizeof(actions));
-    actions[0].kind = LD_SETTINGS_MIGRATION_COPY_FILE;
-    actions[0].name = "copy legacy config";
-    actions[0].source_path = old_file;
-    actions[0].target_path = migrated_file;
-    ld_settings_migration_options_init(&migration_options);
-    migration_options.overwrite_existing = 1;
-    memset(&migration_report, 0, sizeof(migration_report));
-    if (!ld_settings_plan_migration(actions, 1, &migration_options, &migration_report) ||
-        migration_report.dry_run != 1 ||
-        migration_report.action_count != 1 ||
-        migration_report.actions == NULL ||
-        strcmp(migration_report.actions[0].name, "copy legacy config") != 0) {
-        ld_settings_free_migration_report(&migration_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_migration_report(&migration_report);
-
-    migration_options.dry_run = 0;
-    memset(&migration_report, 0, sizeof(migration_report));
-    if (!ld_settings_execute_migration_plan(actions, 1, &migration_options, &migration_options, &migration_report) ||
-        migration_report.ok != 1 ||
-        migration_report.dry_run != 0 ||
-        migration_report.result_count != 1 ||
-        migration_report.results == NULL ||
-        migration_report.results[0].executed != 1) {
-        ld_settings_free_migration_report(&migration_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_migration_report(&migration_report);
-
-    unsigned char value_bytes[] = {'A', 'l', 'i', 'c', 'e'};
-    struct ld_settings_registry_key registry_key;
-    struct ld_settings_registry_value registry_values[1];
-    struct ld_settings_registry_format_report format_report;
-    memset(&registry_key, 0, sizeof(registry_key));
-    registry_key.hive = LD_SETTINGS_REGISTRY_CURRENT_USER;
-    registry_key.subkey = "Software\\LinuxDesktop2026\\c-smoke";
-    registry_key.view = LD_SETTINGS_REGISTRY_VIEW_NATIVE;
-    memset(registry_values, 0, sizeof(registry_values));
-    registry_values[0].key_path = "Profiles";
-    registry_values[0].name = "Name";
-    registry_values[0].type = LD_SETTINGS_REGISTRY_VALUE_STRING;
-    registry_values[0].bytes = value_bytes;
-    registry_values[0].byte_count = sizeof(value_bytes);
-
-    memset(&format_report, 0, sizeof(format_report));
-    if (!ld_settings_registry_serialize_json(&registry_key, registry_values, 1, &format_report) ||
-        format_report.ok != 1 ||
-        format_report.content == NULL ||
-        strstr(format_report.content, "linuxdesktop.settings.registry.snapshot.v1") == NULL) {
-        ld_settings_free_registry_format_report(&format_report);
-        return EXIT_FAILURE;
-    }
-
-    struct ld_settings_registry_format_report parsed_json;
-    memset(&parsed_json, 0, sizeof(parsed_json));
-    if (!ld_settings_registry_parse_json(format_report.content, &parsed_json) ||
-        parsed_json.ok != 1 ||
-        parsed_json.content == NULL ||
-        strstr(parsed_json.content, "Profiles") == NULL) {
-        ld_settings_free_registry_format_report(&format_report);
-        ld_settings_free_registry_format_report(&parsed_json);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_registry_format_report(&format_report);
-    ld_settings_free_registry_format_report(&parsed_json);
-
-    memset(&format_report, 0, sizeof(format_report));
-    if (!ld_settings_registry_serialize_reg(&registry_key, registry_values, 1, &format_report) ||
-        format_report.ok != 1 ||
-        format_report.content == NULL ||
-        strstr(format_report.content, "Windows Registry Editor Version 5.00") == NULL) {
-        ld_settings_free_registry_format_report(&format_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_registry_format_report(&format_report);
-
-    struct ld_settings_registry_options registry_options;
-    struct ld_settings_registry_operation_report operation_report;
-    ld_settings_registry_options_init(&registry_options);
-    memset(&operation_report, 0, sizeof(operation_report));
-    if (!ld_settings_registry_import_tree_json(&registry_key,
-            "{ \"root\": { \"hive\": \"current_user\", \"subkey\": \"Software\\\\LinuxDesktop2026\\\\c-smoke\", \"view\": \"native\" }, \"values\": [] }",
-            &registry_options,
-            &operation_report) ||
-        operation_report.ok != 0 ||
-        operation_report.diagnostic_count == 0) {
-        ld_settings_free_registry_operation_report(&operation_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_registry_operation_report(&operation_report);
 
     return EXIT_SUCCESS;
 }

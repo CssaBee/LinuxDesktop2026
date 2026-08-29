@@ -27,8 +27,10 @@ The current surface also wraps first-scope mutation and migration helpers:
 - and one matching free function per report family.
 
 Desktop effects now live in the separate `ld_desktop` C ABI and C++ module.
-`ld_settings` does not carry autostart or managed/enforced policy entry points
-any more.
+`ld_settings` does not carry autostart, managed/enforced policy, migration, or
+Registry compatibility entry points any more.
+
+Those responsibilities live in `ld_desktop` and `ld_migration` directly.
 
 This avoids exposing:
 

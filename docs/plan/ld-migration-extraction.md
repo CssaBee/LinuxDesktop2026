@@ -7,8 +7,7 @@ before ship-candidate status.
 state moves. `linuxdesktop::settings` keeps only the settings-specific API; the
 owning implementation and Registry snapshot/import/export compatibility data
 live in `ld_migration`.
-Any `ld_settings` dependency on `ld_migration` exists only as a bounded
-transition surface and must be removed by release-candidate cleanup.
+The old `ld_settings` migration and Registry facade has been removed.
 
 ## Scope
 
@@ -65,9 +64,9 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 
 ## Extraction Rule
 
-`linuxdesktop::settings::plan_migration`,
-`linuxdesktop::settings::execute_migration_plan`, and the registry helpers in
+`linuxdesktop::migration::plan_migration`,
+`linuxdesktop::migration::execute_migration_plan`, and the registry helpers in
 `linuxdesktop/migration.hpp` are the current pre-1.0 migration entry points.
 New C++ callers should include `linuxdesktop/migration.hpp` and use
-`linuxdesktop::migration` directly. Matching C ABI entry points should not be
-treated as a permanent `ld_settings` compatibility layer.
+`linuxdesktop::migration` directly. There is no `ld_settings` migration
+compatibility layer.

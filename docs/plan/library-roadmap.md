@@ -78,10 +78,9 @@ Current prototype sample:
 - `ld_migration` C++ extraction started with dry-run-first migration planning,
   file/directory copy and move execution, and app-settings Registry
   snapshot/import/export compatibility.
-- Temporary `ld_settings` compatibility wrappers still expose autostart and
-  policy effects, migration helpers, and Registry compatibility aliases for
-  existing pre-1.0 C++ callers; the C ABI stays unchanged until
-  release-candidate cleanup.
+- Temporary `ld_settings` compatibility wrappers no longer expose migration or
+  Registry helpers. Autostart and policy moved to `ld_desktop`; migration
+  callers use `ld_migration` directly.
 
 Expanded ship direction:
 
