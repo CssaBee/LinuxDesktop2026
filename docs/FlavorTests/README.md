@@ -95,6 +95,29 @@ Seam rule:
   samples exist to feed later critique and defense review rounds against the
   original code shape.
 
+API exposure budget:
+
+- LinuxDesktop2026 vocabulary is acceptable at mechanism seams: calls that
+  directly ask a platform library to resolve paths, seed default config files,
+  write validated payloads, plan migration actions, or apply desktop effects.
+- Product-shaped seams should expose application vocabulary unless the product
+  deliberately adopts LinuxDesktop2026 as part of its public platform layer.
+  Returning or storing `ld_*` reports, option objects, dense enum combinations,
+  or LinuxDesktop2026-specific names from product methods needs an explicit
+  justification in the flavor note or a narrower helper API.
+- Repeated setup of option objects, unlabeled boolean choices, copied enum
+  combinations, direct propagation of rich reports, and adapter code that is
+  harder to read than the upstream control flow are warning signs that the
+  public API is charging too much framework tax.
+- The budget is not a line-count rule. A verbose call site can be acceptable
+  when it describes uncommon platform behavior; a short call site can still fail
+  if it moves file formats, prompt policy, profile names, or UI decisions out of
+  the application.
+- Future helper APIs should reduce common product-facing friction without
+  hiding mechanism distinctions such as backup versus atomic replacement,
+  dry-run versus execution, durable writes, dangerous migration actions, or
+  capability diagnostics.
+
 Layout:
 
 - `<product>/src/` contains the refactored production-shaped code.

@@ -32,7 +32,8 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
 9. Use FlavorTests as an ergonomics gate. When product-shaped seams repeatedly
    expose LinuxDesktop2026 option objects, report types, enum combinations, or
    repository-specific vocabulary for common behavior, add a narrower helper or
-   reconsider the abstraction before expanding scope.
+   reconsider the abstraction before expanding scope. The exposure budget in
+   `docs/FlavorTests/README.md` is the checklist for making that judgment.
 
 ## Rationale
 
