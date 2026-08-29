@@ -223,6 +223,15 @@ struct write_report {
     std::vector<diagnostic> diagnostics;
 };
 
+// Narrow helper for the common validated config write path.
+// It always keeps the backup + atomic replacement behavior explicit and lets
+// callers opt into durable flushing without rebuilding write_options.
+struct common_config_write_request {
+    std::filesystem::path target;
+    std::string content;
+    bool durable_write = false;
+};
+
 using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
 
 std::string_view to_string(portable_level value);
@@ -245,5 +254,6 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
 hydrate_report hydrate_config_bundle(const hydrate_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
+write_report write_common_config(common_config_write_request request, validation_callback validate = {});
 
 } // namespace linuxdesktop::settings

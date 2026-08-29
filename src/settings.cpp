@@ -1477,4 +1477,15 @@ write_report write_with_backup(const write_options& options, validation_callback
     return report;
 }
 
+write_report write_common_config(common_config_write_request request, validation_callback validate)
+{
+    write_options options;
+    options.target = std::move(request.target);
+    options.content = std::move(request.content);
+    options.keep_backup = true;
+    options.atomic_replace = true;
+    options.durable_write = request.durable_write;
+    return write_with_backup(options, std::move(validate));
+}
+
 } // namespace linuxdesktop::settings

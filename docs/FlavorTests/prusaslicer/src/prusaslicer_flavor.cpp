@@ -120,26 +120,13 @@ SaveResult PrusaConfigSnapshot::save_snapshot(
     const Snapshot& snapshot,
     ld::validation_callback validate) const
 {
-    ld::write_options write;
-    write.target = snapshot.path;
-    write.content = snapshot.xml;
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    return to_save_result(ld::write_with_backup(write, std::move(validate)));
+    return to_save_result(ld::write_common_config({snapshot.path, snapshot.xml, true}, std::move(validate)));
 }
 
 SaveResult PrusaConfigSnapshot::save_app_config(const AppConfigStore& config) const
 {
-    ld::write_options write;
-    write.target = config.path;
-    write.content = config.ini;
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    return to_save_result(ld::write_with_backup(write, [](const std::filesystem::path& path, std::string& message) {
+    return to_save_result(ld::write_common_config({config.path, config.ini, true},
+        [](const std::filesystem::path& path, std::string& message) {
         const std::string bytes = read_text(path);
         const bool ok = bytes.find("[app]") != std::string::npos || bytes.find("[recent_projects]") != std::string::npos;
         if (!ok) {

@@ -242,14 +242,8 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
 
 SaveResult NppParameters::saveSession(const std::string& session_xml)
 {
-    ld::write_options write;
-    write.target = state_.session_path / "session.xml";
-    write.content = session_xml;
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    const auto report = ld::write_with_backup(write, [this](const std::filesystem::path& path, std::string&) {
+    const auto report = ld::write_common_config({state_.session_path / "session.xml", session_xml, true},
+        [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);
     });
@@ -262,20 +256,14 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
         return {true, std::nullopt};
     }
 
-    ld::write_options write;
-    write.target = state_.shortcuts_path;
-    write.content = render_shortcuts_xml(store);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    auto report = ld::write_with_backup(write, [this](const std::filesystem::path& path, std::string& message) {
+    auto report = ld::write_common_config({state_.shortcuts_path, render_shortcuts_xml(store), true},
+        [this](const std::filesystem::path& path, std::string& message) {
         return validateShortcutXml(path, message);
     });
 
     if (report.ok) {
-        state_.shortcuts_on_disk_hmac_source = write.content;
-        state_.shortcuts_xml_hmac_source_in_config = write.content;
+        state_.shortcuts_on_disk_hmac_source = read_text(state_.shortcuts_path);
+        state_.shortcuts_xml_hmac_source_in_config = state_.shortcuts_on_disk_hmac_source;
         loadXml(shortcuts_xml_, state_.shortcuts_path);
     }
     return to_save_result(report);
@@ -283,14 +271,8 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
 
 SaveResult NppParameters::writeFindHistory(const find_history& history)
 {
-    ld::write_options write;
-    write.target = state_.config_path;
-    write.content = render_find_history_xml(history);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    auto report = ld::write_with_backup(write, [this](const std::filesystem::path& path, std::string&) {
+    auto report = ld::write_common_config({state_.config_path, render_find_history_xml(history), true},
+        [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);
     });

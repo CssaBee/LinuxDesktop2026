@@ -49,14 +49,7 @@ bool FileConfig::Init()
 
 FlushResult FileConfig::Flush(std::string content)
 {
-    ld::write_options write;
-    write.target = local_filename_;
-    write.content = std::move(content);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    auto report = ld::write_with_backup(write, config_stream_is_readable);
+    auto report = ld::write_common_config({local_filename_, std::move(content), true}, config_stream_is_readable);
     if (report.ok) {
         dirty_ = false;
     }

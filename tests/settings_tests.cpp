@@ -383,7 +383,7 @@ void hydration_copies_missing_models()
     require(std::filesystem::exists(target / "config.xml"), "hydration target should exist");
 }
 
-void atomic_write_replaces_target_with_backup()
+void common_config_write_replaces_target_with_backup()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -393,26 +393,21 @@ void atomic_write_replaces_target_with_backup()
         existing << "<Config saved=\"old\" />\n";
     }
 
-    ld::write_options options;
-    options.target = target;
-    options.content = "<Config saved=\"new\" />\n";
-    options.keep_backup = true;
-    options.durable_write = true;
-
-    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+    const auto report = ld::write_common_config({target, "<Config saved=\"new\" />\n", true},
+        [](const std::filesystem::path& path, std::string&) {
         return read_file(path).find("new") != std::string::npos;
     });
 
-    require(report.ok, "valid atomic write should succeed");
-    require(report.backup_path.has_value(), "valid atomic write should keep old target as backup");
-    require(report.temp_path.has_value(), "atomic write should report temp path");
-    require(report.durable_write, "atomic write should report durable mode when enabled");
-    require(!std::filesystem::exists(*report.temp_path), "atomic temp file should be replaced away");
+    require(report.ok, "valid common config write should succeed");
+    require(report.backup_path.has_value(), "valid common config write should keep old target as backup");
+    require(report.temp_path.has_value(), "common config write should report temp path");
+    require(report.durable_write, "common config write should report durable mode when enabled");
+    require(!std::filesystem::exists(*report.temp_path), "common config temp file should be replaced away");
     require(read_file(target).find("new") != std::string::npos, "target should contain new content");
     require(read_file(*report.backup_path).find("old") != std::string::npos, "backup should contain old content");
 }
 
-void atomic_validation_keeps_original_target()
+void common_config_write_validation_keeps_original_target()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -422,21 +417,16 @@ void atomic_validation_keeps_original_target()
         existing << "<Config saved=\"old\" />\n";
     }
 
-    ld::write_options options;
-    options.target = target;
-    options.content = "";
-    options.keep_backup = true;
-
-    const auto report = ld::write_with_backup(options, [](const std::filesystem::path&, std::string& message) {
+    const auto report = ld::write_common_config({target, "", false}, [](const std::filesystem::path&, std::string& message) {
         message = "empty writes are invalid in this test";
         return false;
     });
 
-    require(!report.ok, "invalid atomic write should fail");
-    require(!report.backup_path.has_value(), "invalid atomic write should not need a backup");
-    require(report.temp_path.has_value(), "invalid atomic write should report temp path");
-    require(!std::filesystem::exists(*report.temp_path), "invalid atomic temp file should be cleaned");
-    require(has_diagnostic(report.diagnostics, "temp-cleaned"), "invalid atomic write should report temp cleanup");
+    require(!report.ok, "invalid common config write should fail");
+    require(!report.backup_path.has_value(), "invalid common config write should not need a backup");
+    require(report.temp_path.has_value(), "invalid common config write should report temp path");
+    require(!std::filesystem::exists(*report.temp_path), "invalid common config temp file should be cleaned");
+    require(has_diagnostic(report.diagnostics, "temp-cleaned"), "invalid common config write should report temp cleanup");
     require(read_file(target).find("old") != std::string::npos, "original target should stay untouched");
 }
 
@@ -467,7 +457,7 @@ void direct_write_validation_restores_backup()
     require(std::filesystem::file_size(target) > 0, "restored target should not be empty");
 }
 
-void direct_durable_write_reports_mode_and_keeps_backup()
+void common_config_write_reports_durable_mode_and_keeps_backup()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -477,25 +467,19 @@ void direct_durable_write_reports_mode_and_keeps_backup()
         existing << "<Config saved=\"old\" />\n";
     }
 
-    ld::write_options options;
-    options.target = target;
-    options.content = "<Config saved=\"new\" />\n";
-    options.keep_backup = true;
-    options.atomic_replace = false;
-    options.durable_write = true;
-
-    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+    const auto report = ld::write_common_config({target, "<Config saved=\"new\" />\n", true},
+        [](const std::filesystem::path& path, std::string&) {
         return read_file(path).find("new") != std::string::npos;
     });
 
-    require(report.ok, "durable direct write should succeed");
-    require(report.durable_write, "durable direct write should report durable mode");
-    require(report.backup_path.has_value(), "durable direct write should keep backup when requested");
-    require(read_file(target).find("new") != std::string::npos, "durable direct write should update target");
-    require(read_file(*report.backup_path).find("old") != std::string::npos, "durable direct write backup should contain old content");
+    require(report.ok, "durable common config write should succeed");
+    require(report.durable_write, "durable common config write should report durable mode");
+    require(report.backup_path.has_value(), "durable common config write should keep backup when requested");
+    require(read_file(target).find("new") != std::string::npos, "durable common config write should update target");
+    require(read_file(*report.backup_path).find("old") != std::string::npos, "durable common config write backup should contain old content");
 }
 
-void readback_failure_restores_backup_when_available()
+void common_config_write_restores_backup_after_readback_failure()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -505,19 +489,15 @@ void readback_failure_restores_backup_when_available()
         existing << "<Config saved=\"old\" />\n";
     }
 
-    ld::write_options options;
-    options.target = target;
-    options.content = "<Config saved=\"new\" />\n";
-    options.keep_backup = true;
-    options.atomic_replace = false;
-
-    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+    const auto report = ld::write_common_config({target, "<Config saved=\"new\" />\n", true},
+        [](const std::filesystem::path& path, std::string&) {
         std::error_code ec;
         std::filesystem::permissions(path, std::filesystem::perms::owner_write, std::filesystem::perm_options::replace, ec);
         return true;
     });
 
-    require(!report.ok, "readback failure should fail the write");
+    require(!report.ok, "readback failure should fail the common config write");
+    require(report.durable_write, "readback failure should still report durable mode");
     require(has_diagnostic(report.diagnostics, "write-readback-failed"), "readback failure should be reported");
     require(has_diagnostic(report.diagnostics, "backup-restored-after-readback-failure"), "backup should be restored after readback failure");
     require(read_file(target).find("old") != std::string::npos, "readback failure should restore original target content");
@@ -1047,9 +1027,11 @@ int main()
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif
         {"hydration_copies_missing_models", hydration_copies_missing_models},
-        {"atomic_write_replaces_target_with_backup", atomic_write_replaces_target_with_backup},
-        {"atomic_validation_keeps_original_target", atomic_validation_keeps_original_target},
+        {"common_config_write_replaces_target_with_backup", common_config_write_replaces_target_with_backup},
+        {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
+        {"common_config_write_reports_durable_mode_and_keeps_backup", common_config_write_reports_durable_mode_and_keeps_backup},
+        {"common_config_write_restores_backup_after_readback_failure", common_config_write_restores_backup_after_readback_failure},
         {"migration_plan_is_dry_run_first", migration_plan_is_dry_run_first},
         {"migration_execute_copies_file", migration_execute_copies_file},
         {"migration_blocks_dangerous_without_permission", migration_blocks_dangerous_without_permission},

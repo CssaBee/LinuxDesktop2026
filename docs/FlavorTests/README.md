@@ -15,7 +15,8 @@ Selected upstream subprojects:
   settings, session location, plugin config roots, shortcuts XML, find-history
   XML, and session backup recovery while replacing Win32 path discovery,
   directory setup, model-file hydration, and validated backup writes with
-  `ld_settings` calls.
+  `ld_settings` calls, including `ld_settings::write_common_config` for the
+  common save path.
   - See the survey notes in `docs/examples/migration-examples.md` and
     `docs/survey/notepad-settings-config-audit.md`.
 - `prusaslicer/`: refactors production-style config hydration and snapshot
@@ -24,7 +25,8 @@ Selected upstream subprojects:
   PrusaSlicer in charge of profile names, XML/INI content, prompt policy, and
   validation while replacing repeated copy/migration/backup/temp-write
   mechanics with `ld_settings::hydrate_config_bundle`,
-  `ld_migration::plan_migration`, and `ld_settings::write_with_backup`.
+  `ld_migration::plan_migration`, `ld_settings::write_with_backup`, and
+  `ld_settings::write_common_config` for the repeated save path.
   - Source anchors: `src/slic3r/Config/Snapshot.cpp`,
     `src/slic3r/Config/Snapshot.hpp`, and config/resource initialization around
     `src/slic3r/GUI/GUI_App.cpp`.
@@ -59,9 +61,8 @@ Selected upstream subprojects:
   disambiguation are likely to reveal integration problems that simpler config
   roots miss.
 - `audacity/`: refactors Audacity-style file-config probing and save/backup
-  behavior. It is focused on the repeated safe-write call shape so later review
-  rounds can critique whether `write_with_backup` needs a smaller ergonomic
-  facade for common config writes.
+  behavior. It is focused on the repeated safe-write call shape and now routes
+  the common validated backup write through `ld_settings::write_common_config`.
 - `freecad/`: refactors FreeCAD-style startup configuration set construction,
   including `FREECAD_USER_HOME`, `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`,
   `--user-cfg`, `--system-cfg`, module paths, deprecated-path migration, and

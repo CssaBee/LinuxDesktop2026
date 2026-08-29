@@ -102,10 +102,9 @@ Example documentation:
 - Keep `ld_settings` tiny and toolkit-neutral.
 - Reduce framework tax exposed by FlavorTests before broadening the public
   surface: the API exposure budget in `docs/FlavorTests/README.md`,
-  product-boundary report translation, a common config-write facade, root
-  request builders, migration planning helpers, clear config-default naming, and
-  per-flavor friction notes now precede adversarial hardening and
-  maintained-branch validation.
+  product-boundary report translation, root request builders, migration
+  planning helpers, clear config-default naming, and per-flavor friction notes
+  now precede adversarial hardening and maintained-branch validation.
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
 - Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; keep durable-write semantics explicit and opt-in rather than implied by replacement alone.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
