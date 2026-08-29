@@ -2,7 +2,7 @@
 
 **What to build:** Future modules beyond the ADR 0012 extraction work should move from research notes to active roadmap items only when real integrations prove repeated demand and a sustainable abstraction boundary.
 
-**Blocked by:** 15 — Validate APIs With Two Real Consumer Integrations.
+**Blocked by:** 15 — Validate APIs With One Maintained Consumer Branch; 16 — Decide Keep, Wrap, Or Retire Native Watch Backends.
 
 **Status:** ready-for-agent
 

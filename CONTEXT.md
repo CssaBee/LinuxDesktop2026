@@ -112,6 +112,10 @@ _Avoid_: Toy example, mock-only compatibility test, benchmark suite
 A later critique/defense pass over completed flavor tests that judges how well the refactor blends into the original product shape.
 _Avoid_: Unit test result, implementation gate, pass/fail criterion
 
+**Framework tax budget**:
+The tolerated amount of LinuxDesktop2026-specific vocabulary that a product-shaped seam may expose before the API needs a narrower convenience layer or the abstraction should be rejected.
+_Avoid_: Boilerplate count, style preference, mandatory metric
+
 **Desktop integration effect**:
 A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
 _Avoid_: Settings file, GUI toolkit feature, installer only

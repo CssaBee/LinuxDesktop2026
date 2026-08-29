@@ -8,8 +8,12 @@ Freeze new broad platform modules until `ld_paths`, a narrowed `ld_settings`, an
 
 Near-term work should prioritize:
 
+- reducing the framework tax exposed by FlavorTests before treating the current
+  APIs as integration-ready,
 - a small Notepad++ proof patch using the current libraries,
-- a second Windows-heavy consumer with different settings/path/watch needs,
+- at least one maintained consumer branch before more broad module work, with a
+  second Windows-heavy consumer still required before release-candidate
+  confidence,
 - hardening existing modules before adding new module families,
 - and removing or downgrading public claims that imply production readiness before that evidence exists.
 
@@ -25,6 +29,10 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
 6. Add adversarial tests for filesystem and watcher behavior: permissions, full/error paths where practical, rename/remove churn, large event bursts, and callback lifecycle tests.
 7. Stop adding public enums and structs until at least two real integrations exercise the same concept.
 8. Keep capability reporting honest. If a capability matrix becomes the primary explanation for how to use a feature, revisit whether the common abstraction should exist.
+9. Use FlavorTests as an ergonomics gate. When product-shaped seams repeatedly
+   expose LinuxDesktop2026 option objects, report types, enum combinations, or
+   repository-specific vocabulary for common behavior, add a narrower helper or
+   reconsider the abstraction before expanding scope.
 
 ## Rationale
 
@@ -39,6 +47,12 @@ The expensive mistakes would be public vocabulary and ABI/API contracts that app
 This decision deliberately slows visible feature expansion.
 
 The project should look less ambitious in the short term and more credible over time. New work is accepted when it either hardens an existing promise or comes from concrete consumer pressure. Documentation-only module plans remain useful research, but they should not be described as committed delivery.
+
+The expanded FlavorTests are useful consumer-derived evidence, but they are not
+equivalent to maintained upstream forks. They should first drive API ergonomics
+work around root requests, config-default seeding, safe writes, migration
+planning, and report translation; then a maintained consumer branch should test
+whether those APIs survive normal development and rebasing.
 
 ## Review Classification
 

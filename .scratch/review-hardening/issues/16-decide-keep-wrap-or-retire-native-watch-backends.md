@@ -2,7 +2,7 @@
 
 **What to build:** The project should make an evidence-based decision about owning native watcher backends versus wrapping or recommending existing watcher libraries.
 
-**Blocked by:** 12 — Stress Recursive Watch Behavior; 15 — Validate APIs With Two Real Consumer Integrations.
+**Blocked by:** 12 — Stress Recursive Watch Behavior; 18 — Expand CI Into Portability Evidence.
 
 **Status:** ready-for-agent
 
