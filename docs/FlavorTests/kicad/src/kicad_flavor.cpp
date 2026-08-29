@@ -42,9 +42,10 @@ SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
         options.settings_override = std::filesystem::path(config_home->second) / "KiCad" / "kicad";
     }
     options.named_roots = {
-        {"colors", ld::root_purpose::component_config, ld::persistence_class::roaming, "colors", true},
-        {"toolbars", ld::root_purpose::component_config, ld::persistence_class::roaming, "toolbars", true},
-        {"project-backups", ld::root_purpose::backup, ld::persistence_class::roaming, "project-backups", true},
+        ld::make_component_config_root_request("colors", ld::persistence_class::roaming, "colors"),
+        ld::make_component_config_root_request("toolbars", ld::persistence_class::roaming, "toolbars"),
+        ld::make_named_root_request("project-backups", ld::root_purpose::backup, ld::persistence_class::roaming,
+            "project-backups"),
     };
     const auto report = ld::resolve_app_roots(identity, options);
     user_settings_root_ = report.roots.config;

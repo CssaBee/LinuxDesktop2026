@@ -88,7 +88,7 @@ bool Config::open(const RuntimeEnvironment& environment)
         options.settings_override = *environment.portable_config_dir;
     }
     options.named_roots = {
-        {"local-settings", ld::root_purpose::state, ld::persistence_class::machine_local, {}, true},
+        ld::make_state_root_request("local-settings", ld::persistence_class::machine_local),
     };
 
     const auto roots = ld::resolve_app_roots(identity, options);

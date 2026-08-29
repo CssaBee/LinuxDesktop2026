@@ -279,8 +279,8 @@ void resolves_named_roots_and_layers()
     ld::root_options options;
     options.settings_override = root;
     options.named_roots = {
-        {"logs", ld::root_purpose::logs, ld::persistence_class::machine_local, "Logs", true},
-        {"profiles", ld::root_purpose::profiles, ld::persistence_class::roaming, "Profiles", true},
+        ld::make_log_root_request("logs", ld::persistence_class::machine_local, "Logs"),
+        ld::make_profiles_root_request("profiles", ld::persistence_class::roaming, "Profiles"),
     };
 
     const auto report = ld::resolve_app_roots(identity(), options);
@@ -310,13 +310,13 @@ void resolves_component_roots()
 {
     const auto root = test_root() / "settings";
 
-    ld::component_root_request plugin;
-    plugin.name = "compare-plugin";
-    plugin.kind = ld::component_kind::plugin;
-    plugin.roots = {
-        {"config", ld::root_purpose::component_config, ld::persistence_class::roaming, "Config", true},
-        {"state", ld::root_purpose::component_state, ld::persistence_class::machine_local, "State", true},
-    };
+    const auto plugin = ld::make_component_root_request(
+        "compare-plugin",
+        ld::component_kind::plugin,
+        {
+            ld::make_component_config_root_request("config", ld::persistence_class::roaming, "Config"),
+            ld::make_component_state_root_request("state", ld::persistence_class::machine_local, "State"),
+        });
 
     ld::root_options options;
     options.settings_override = root;
@@ -338,6 +338,44 @@ void resolves_component_roots()
     require(plugin_state != nullptr, "C++ helper should find roots inside component groups");
     require(plugin_state->path == root / "components" / "compare-plugin" / "State",
         "component root helper should return resolved component path");
+}
+
+void helper_factories_match_explicit_request_shapes()
+{
+    const auto config = ld::make_config_root_request("config", ld::persistence_class::roaming, "Config");
+    require(config.name == "config", "config helper should preserve name");
+    require(config.purpose == ld::root_purpose::config, "config helper should set config purpose");
+    require(config.persistence == ld::persistence_class::roaming, "config helper should preserve persistence");
+    require(config.relative_path == "Config", "config helper should preserve relative path");
+    require(config.create, "config helper should keep create enabled by default");
+
+    const auto cache = ld::make_cache_root_request("cache", ld::persistence_class::ephemeral);
+    require(cache.purpose == ld::root_purpose::cache, "cache helper should set cache purpose");
+    require(cache.persistence == ld::persistence_class::ephemeral, "cache helper should preserve persistence");
+
+    const auto session = ld::make_session_root_request("session", ld::persistence_class::machine_local, "Sessions");
+    require(session.purpose == ld::root_purpose::session, "session helper should set session purpose");
+    require(session.relative_path == "Sessions", "session helper should preserve relative path");
+
+    const auto profile_data = ld::make_profile_data_root_request(
+        "profiles", ld::persistence_class::roaming, "Profiles");
+    require(profile_data.purpose == ld::root_purpose::profiles,
+        "profile-data helper should map to the profiles purpose");
+
+    const auto component = ld::make_component_root_request(
+        "compare-plugin",
+        ld::component_kind::plugin,
+        {
+            ld::make_component_config_root_request("config", ld::persistence_class::roaming, "Config"),
+            ld::make_component_state_root_request("state", ld::persistence_class::machine_local, "State"),
+        });
+    require(component.name == "compare-plugin", "component helper should preserve component name");
+    require(component.kind == ld::component_kind::plugin, "component helper should preserve component kind");
+    require(component.roots.size() == 2, "component helper should preserve root count");
+    require(component.roots[0].purpose == ld::root_purpose::component_config,
+        "component helper should preserve child root purpose");
+    require(component.roots[1].persistence == ld::persistence_class::machine_local,
+        "component helper should preserve child root persistence");
 }
 
 #if defined(_WIN32)
@@ -1023,6 +1061,7 @@ int main()
         {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
         {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
         {"resolves_component_roots", resolves_component_roots},
+        {"helper_factories_match_explicit_request_shapes", helper_factories_match_explicit_request_shapes},
 #if defined(_WIN32)
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif

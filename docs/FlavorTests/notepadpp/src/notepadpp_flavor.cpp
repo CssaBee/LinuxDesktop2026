@@ -135,7 +135,7 @@ bool NppParameters::load(const startup_environment& environment)
     roots.deny_portable_root_in_privileged_install = true;
     roots.privileged_install_roots = environment.privileged_install_roots;
     roots.named_roots = {
-        {"plugin-config", ld::root_purpose::plugin_config, ld::persistence_class::roaming, "plugins/Config", true},
+        ld::make_plugin_config_root_request("plugin-config", ld::persistence_class::roaming, "plugins/Config"),
     };
 
     const ld::root_report report = ld::resolve_app_roots(identity, roots);

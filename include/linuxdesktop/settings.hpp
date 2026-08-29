@@ -120,6 +120,123 @@ struct component_root_group {
     std::vector<diagnostic> diagnostics;
 };
 
+inline named_root_request make_named_root_request(
+    std::string name,
+    root_purpose purpose,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return {std::move(name), purpose, persistence, std::move(relative_path), create};
+}
+
+inline named_root_request make_config_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::config, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_state_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::state, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_cache_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::cache, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_session_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::session, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_log_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::logs, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_profile_data_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::profiles, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_profiles_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_profile_data_root_request(std::move(name), persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_plugin_config_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::plugin_config, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_component_config_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::component_config, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_component_data_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::component_data, persistence, std::move(relative_path), create);
+}
+
+inline named_root_request make_component_state_root_request(
+    std::string name,
+    persistence_class persistence = persistence_class::roaming,
+    std::filesystem::path relative_path = {},
+    bool create = true)
+{
+    return make_named_root_request(std::move(name), root_purpose::component_state, persistence, std::move(relative_path), create);
+}
+
+inline component_root_request make_component_root_request(
+    std::string name,
+    component_kind kind = component_kind::custom,
+    std::vector<named_root_request> roots = {})
+{
+    return {std::move(name), kind, std::move(roots)};
+}
+
 struct config_layer {
     config_layer_kind kind = config_layer_kind::user;
     storage_backend backend = storage_backend::file;

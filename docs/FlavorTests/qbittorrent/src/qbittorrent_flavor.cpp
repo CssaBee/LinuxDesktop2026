@@ -42,7 +42,7 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
         options.settings_override = portable_profile_path;
     }
     options.named_roots = {
-        {"logs", ld::root_purpose::logs, ld::persistence_class::machine_local, "logs", true},
+        ld::make_log_root_request("logs", ld::persistence_class::machine_local, "logs"),
     };
 
     const auto report = ld::resolve_app_roots(identity, options);
