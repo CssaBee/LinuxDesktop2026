@@ -706,6 +706,7 @@ bool fill_write_report(const ld::write_report& source, ld_settings_write_report&
 {
     target = {};
     target.ok = source.ok ? 1 : 0;
+    target.durable_write = source.durable_write ? 1 : 0;
     if (source.backup_path && !assign_path(target.backup_path, *source.backup_path)) {
         free_write_report_fields(target);
         return false;
@@ -984,6 +985,7 @@ void ld_settings_write_options_init(ld_settings_write_options* options)
     *options = {};
     options->keep_backup = 1;
     options->atomic_replace = 1;
+    options->durable_write = 0;
 }
 
 void ld_settings_migration_options_init(ld_settings_migration_options* options)
@@ -1330,6 +1332,7 @@ int ld_settings_write_with_backup(
         }
         write.keep_backup = options->keep_backup != 0;
         write.atomic_replace = options->atomic_replace != 0;
+        write.durable_write = options->durable_write != 0;
 
         ld::validation_callback callback;
         if (validate) {

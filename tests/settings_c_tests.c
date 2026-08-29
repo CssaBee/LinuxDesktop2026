@@ -277,8 +277,10 @@ int main(void)
     write_options.target = saved_file;
     write_options.content = write_content;
     write_options.content_size = strlen(write_content);
+    write_options.durable_write = 1;
     if (!ld_settings_write_with_backup(&write_options, validate_contains_saved, NULL, &write_report) ||
         write_report.ok != 1 ||
+        write_report.durable_write != 1 ||
         write_report.backup_path == NULL ||
         write_report.temp_path == NULL) {
         ld_settings_free_write_report(&write_report);

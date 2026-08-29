@@ -10,7 +10,7 @@ Verify the first `ld_settings` slice on Windows:
 - `ld_settings_tests` runs successfully.
 - `ld_settings_install_tree_consumer` installs the package and consumes `LinuxDesktop2026::ld_settings` from a separate CMake project.
 - Known Folder lookup returns non-empty config/data/state/cache roots.
-- `write_with_backup` uses temp-write/replace through the Windows backend.
+- `write_with_backup` uses temp-write/replace through the Windows backend and can opt into durable flushing.
 - Atomic validation failures leave the previous target untouched.
 - Raw Registry operations compile and pass safe HKCU read/write/delete checks.
 - Autostart effect APIs compile and pass dry-run plus HKCU `CurrentVersion\Run` checks.

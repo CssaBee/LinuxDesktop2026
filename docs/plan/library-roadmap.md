@@ -61,7 +61,7 @@ Current prototype sample:
 - Repeatable run with `--settings-dir /tmp/linuxdesktop2026-settings-demo`.
 - Config-only sync override for app-validated cloud/sync choices.
 - Portable-root denial under app-declared privileged install roots.
-- Atomic namespace replacement before committing high-value config files; crash-durable writes are not claimed yet.
+- Atomic namespace replacement before committing high-value config files, with opt-in durable writes where the platform supports them.
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
@@ -89,7 +89,7 @@ Example documentation:
 
 - Keep `ld_settings` tiny and toolkit-neutral.
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
-- Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; add separate durable-write semantics before making durability claims.
+- Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; keep durable-write semantics explicit and opt-in rather than implied by replacement alone.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving `linuxdesktop::settings` aliases.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.

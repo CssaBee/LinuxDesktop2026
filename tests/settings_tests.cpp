@@ -393,6 +393,7 @@ void atomic_write_replaces_target_with_backup()
     options.target = target;
     options.content = "<Config saved=\"new\" />\n";
     options.keep_backup = true;
+    options.durable_write = true;
 
     const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
         return read_file(path).find("new") != std::string::npos;
@@ -401,6 +402,7 @@ void atomic_write_replaces_target_with_backup()
     require(report.ok, "valid atomic write should succeed");
     require(report.backup_path.has_value(), "valid atomic write should keep old target as backup");
     require(report.temp_path.has_value(), "atomic write should report temp path");
+    require(report.durable_write, "atomic write should report durable mode when enabled");
     require(!std::filesystem::exists(*report.temp_path), "atomic temp file should be replaced away");
     require(read_file(target).find("new") != std::string::npos, "target should contain new content");
     require(read_file(*report.backup_path).find("old") != std::string::npos, "backup should contain old content");
@@ -459,6 +461,62 @@ void direct_write_validation_restores_backup()
     require(report.backup_path.has_value(), "invalid direct write should have backup");
     require(has_diagnostic(report.diagnostics, "backup-restored"), "invalid direct write should restore backup");
     require(std::filesystem::file_size(target) > 0, "restored target should not be empty");
+}
+
+void direct_durable_write_reports_mode_and_keeps_backup()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+
+    ld::write_options options;
+    options.target = target;
+    options.content = "<Config saved=\"new\" />\n";
+    options.keep_backup = true;
+    options.atomic_replace = false;
+    options.durable_write = true;
+
+    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+        return read_file(path).find("new") != std::string::npos;
+    });
+
+    require(report.ok, "durable direct write should succeed");
+    require(report.durable_write, "durable direct write should report durable mode");
+    require(report.backup_path.has_value(), "durable direct write should keep backup when requested");
+    require(read_file(target).find("new") != std::string::npos, "durable direct write should update target");
+    require(read_file(*report.backup_path).find("old") != std::string::npos, "durable direct write backup should contain old content");
+}
+
+void readback_failure_restores_backup_when_available()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+
+    ld::write_options options;
+    options.target = target;
+    options.content = "<Config saved=\"new\" />\n";
+    options.keep_backup = true;
+    options.atomic_replace = false;
+
+    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+        std::error_code ec;
+        std::filesystem::permissions(path, std::filesystem::perms::owner_write, std::filesystem::perm_options::replace, ec);
+        return true;
+    });
+
+    require(!report.ok, "readback failure should fail the write");
+    require(has_diagnostic(report.diagnostics, "write-readback-failed"), "readback failure should be reported");
+    require(has_diagnostic(report.diagnostics, "backup-restored-after-readback-failure"), "backup should be restored after readback failure");
+    require(read_file(target).find("old") != std::string::npos, "readback failure should restore original target content");
 }
 
 void migration_plan_is_dry_run_first()

@@ -4,8 +4,8 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Documentation distinguishes atomic replacement from crash-durable commit.
-- [ ] Write reports and diagnostics use language that does not overpromise durability.
-- [ ] Tests verify the documented behavior for direct writes, replacement writes, validation failure, backup creation, and readback failure.
+- [x] Documentation distinguishes atomic replacement from crash-durable commit.
+- [x] Write reports and diagnostics use language that does not overpromise durability.
+- [x] Tests verify the documented behavior for direct writes, replacement writes, validation failure, backup creation, and readback failure.

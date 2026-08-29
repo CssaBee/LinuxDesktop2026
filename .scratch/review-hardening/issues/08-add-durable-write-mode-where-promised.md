@@ -4,8 +4,8 @@
 
 **Blocked by:** 06 — Correct Write-Safety Semantics; 07 — Implement Secure Temporary Writes.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Durable write behavior is opt-in or clearly documented as the default only where implemented.
-- [ ] POSIX durable replacement flushes the temporary file before rename and the parent directory after rename where supported.
-- [ ] Unsupported durability guarantees produce diagnostics rather than silent overpromising.
+- [x] Durable write behavior is opt-in or clearly documented as the default only where implemented.
+- [x] POSIX durable replacement flushes the temporary file before rename and the parent directory after rename where supported.
+- [x] Unsupported durability guarantees produce diagnostics rather than silent overpromising.

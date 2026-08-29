@@ -31,11 +31,11 @@ effects, and migration items are extraction inventory for `ld_desktop` and
 - all config layers: `defaults`, `global`, `user`, `local`, `portable`, `managed`, `enforced`,
 - default precedence with enforced values non-overridable,
 - hydration of default/model config files,
-- atomic file writes with validation and backups,
+- atomic file writes with validation, backups, and opt-in durable flushing,
 - Windows Known Folder resolution,
 - no new C ABI expansion before release-candidate status; existing C ABI entry points are kept compatible where practical,
 - examples from Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style workflows,
-- Windows CI or equivalent automated Windows verification for Known Folders, C ABI, and atomic writes,
+- Windows CI or equivalent automated Windows verification for Known Folders, C ABI, atomic writes, and durable flushing,
 - manual Windows verification transcript before release.
 
 Extraction inventory:

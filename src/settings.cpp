@@ -3,8 +3,11 @@
 #include "linuxdesktop/paths.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <cctype>
 #include <cstdlib>
+#include <cstdio>
+#include <fcntl.h>
 #include <fstream>
 #include <sstream>
 #include <system_error>
@@ -19,6 +22,8 @@
 #include <objbase.h>
 #include <windows.h>
 #else
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #endif
 
@@ -51,18 +56,306 @@ unsigned long current_process_id()
 #endif
 }
 
-std::filesystem::path unique_temp_path_for(const std::filesystem::path& target)
+std::error_code system_error_code()
 {
+#if defined(_WIN32)
+    return std::error_code(static_cast<int>(GetLastError()), std::system_category());
+#else
+    return std::error_code(errno, std::generic_category());
+#endif
+}
+
+bool close_file_handle(
+#if defined(_WIN32)
+    HANDLE handle
+#else
+    int handle
+#endif
+)
+{
+#if defined(_WIN32)
+    return CloseHandle(handle) != 0;
+#else
+    return ::close(handle) == 0;
+#endif
+}
+
+bool flush_file_handle(
+#if defined(_WIN32)
+    HANDLE handle
+#else
+    int handle
+#endif
+)
+{
+#if defined(_WIN32)
+    return FlushFileBuffers(handle) != 0;
+#else
+    return ::fsync(handle) == 0;
+#endif
+}
+
+bool flush_parent_directory(const std::filesystem::path& path, std::error_code& ec)
+{
+    ec.clear();
+    const auto parent = path.parent_path();
+    if (parent.empty()) {
+        return true;
+    }
+#if defined(_WIN32)
+    const auto parent_text = parent.wstring();
+    HANDLE handle = CreateFileW(
+        parent_text.c_str(),
+        FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        ec = system_error_code();
+        return false;
+    }
+    const bool flushed = FlushFileBuffers(handle) != 0;
+    if (!flushed) {
+        ec = system_error_code();
+    }
+    CloseHandle(handle);
+    return flushed;
+#else
+    const auto parent_text = parent.c_str();
+    const int handle = ::open(parent_text, O_RDONLY | O_DIRECTORY);
+    if (handle == -1) {
+        ec = system_error_code();
+        return false;
+    }
+    const bool flushed = ::fsync(handle) == 0;
+    if (!flushed) {
+        ec = system_error_code();
+    }
+    ::close(handle);
+    return flushed;
+#endif
+}
+
+bool write_all_bytes(
+#if defined(_WIN32)
+    HANDLE handle,
+#else
+    int handle,
+#endif
+    const std::string& content)
+{
+    std::size_t offset = 0;
+    while (offset < content.size()) {
+#if defined(_WIN32)
+        DWORD written = 0;
+        const DWORD chunk = static_cast<DWORD>(std::min<std::size_t>(content.size() - offset, 1u << 20));
+        if (WriteFile(handle, content.data() + offset, chunk, &written, nullptr) == 0) {
+            return false;
+        }
+        offset += written;
+#else
+        const auto written = ::write(handle, content.data() + offset, content.size() - offset);
+        if (written < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return false;
+        }
+        offset += static_cast<std::size_t>(written);
+#endif
+    }
+    return true;
+}
+
+bool create_secure_temp_file(
+    const std::filesystem::path& target,
+    std::filesystem::path& temp_path,
+#if defined(_WIN32)
+    HANDLE& handle,
+#else
+    int& handle,
+#endif
+    std::error_code& ec)
+{
+    ec.clear();
     const auto parent = target.parent_path();
     const auto stem = target.filename().string();
-    for (int attempt = 0; attempt != 100; ++attempt) {
-        auto candidate = parent / (stem + ".tmp." + std::to_string(current_process_id()) + "." + std::to_string(attempt));
-        std::error_code ec;
-        if (!std::filesystem::exists(candidate, ec)) {
-            return candidate;
+#if defined(_WIN32)
+    for (int attempt = 0; attempt != 128; ++attempt) {
+        const auto candidate = parent / (stem + ".tmp." + std::to_string(current_process_id()) + "." + std::to_string(attempt));
+        const auto candidate_text = candidate.wstring();
+        handle = CreateFileW(
+            candidate_text.c_str(),
+            GENERIC_WRITE,
+            FILE_SHARE_READ,
+            nullptr,
+            CREATE_NEW,
+            FILE_ATTRIBUTE_TEMPORARY | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED,
+            nullptr);
+        if (handle != INVALID_HANDLE_VALUE) {
+            temp_path = candidate;
+            return true;
+        }
+        const auto last_error = GetLastError();
+        if (last_error != ERROR_FILE_EXISTS && last_error != ERROR_ALREADY_EXISTS) {
+            ec = std::error_code(static_cast<int>(last_error), std::system_category());
+            return false;
         }
     }
-    return parent / (stem + ".tmp." + std::to_string(current_process_id()) + ".fallback");
+    ec = std::make_error_code(std::errc::file_exists);
+    return false;
+#else
+    const auto pattern_text = (parent / (stem + ".tmp.XXXXXX")).string();
+    std::vector<char> pattern(pattern_text.begin(), pattern_text.end());
+    pattern.push_back('\0');
+    handle = ::mkstemp(pattern.data());
+    if (handle == -1) {
+        ec = system_error_code();
+        return false;
+    }
+    temp_path = pattern.data();
+    return true;
+#endif
+}
+
+bool write_direct_file(
+    const std::filesystem::path& target,
+    const std::string& content,
+    bool durable_write,
+    std::vector<diagnostic>& diagnostics)
+{
+    std::error_code exists_ec;
+    const bool target_existed = std::filesystem::exists(target, exists_ec);
+#if defined(_WIN32)
+    const auto target_text = target.wstring();
+    const DWORD flags = durable_write ? FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH : FILE_ATTRIBUTE_NORMAL;
+    HANDLE handle = CreateFileW(
+        target_text.c_str(),
+        GENERIC_WRITE,
+        FILE_SHARE_READ,
+        nullptr,
+        CREATE_ALWAYS,
+        flags,
+        nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        diagnostics.push_back(make_diagnostic(severity::error, "write-failed", "Could not open target content", target));
+        return false;
+    }
+    const bool wrote = write_all_bytes(handle, content);
+    if (!wrote) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "write-failed",
+            "Could not write target content",
+            target));
+        if (!close_file_handle(handle)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "close-failed",
+                system_error_code().message(),
+                target));
+            return false;
+        }
+        return false;
+    }
+    if (durable_write && !flush_file_handle(handle)) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "durable-flush-failed",
+            "Could not flush target content to disk",
+            target));
+        if (!close_file_handle(handle)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "close-failed",
+                system_error_code().message(),
+                target));
+            return false;
+        }
+        return false;
+    }
+    if (!close_file_handle(handle)) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "close-failed",
+            system_error_code().message(),
+            target));
+        return false;
+    }
+    if (durable_write && !target_existed) {
+        std::error_code flush_ec;
+        if (!flush_parent_directory(target, flush_ec)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "parent-flush-failed",
+                flush_ec.message(),
+                target.parent_path()));
+            return false;
+        }
+    }
+    return true;
+#else
+    const auto flags = O_WRONLY | O_CREAT | O_TRUNC;
+    const auto mode = static_cast<mode_t>(0600);
+    const int handle = ::open(target.c_str(), flags, mode);
+    if (handle == -1) {
+        diagnostics.push_back(make_diagnostic(severity::error, "write-failed", "Could not open target content", target));
+        return false;
+    }
+    const bool wrote = write_all_bytes(handle, content);
+    if (!wrote) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "write-failed",
+            "Could not write target content",
+            target));
+        if (!close_file_handle(handle)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "close-failed",
+                system_error_code().message(),
+                target));
+        }
+        return false;
+    }
+    if (durable_write && !flush_file_handle(handle)) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "durable-flush-failed",
+            "Could not flush target content to disk",
+            target));
+        if (!close_file_handle(handle)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "close-failed",
+                system_error_code().message(),
+                target));
+        }
+        return false;
+    }
+    if (!close_file_handle(handle)) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "close-failed",
+            system_error_code().message(),
+            target));
+        return false;
+    }
+    if (durable_write && !target_existed) {
+        std::error_code flush_ec;
+        if (!flush_parent_directory(target, flush_ec)) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "parent-flush-failed",
+                flush_ec.message(),
+                target.parent_path()));
+            return false;
+        }
+    }
+    return true;
+#endif
 }
 
 bool replace_file(const std::filesystem::path& from, const std::filesystem::path& to, std::error_code& ec)
@@ -1388,16 +1681,14 @@ hydrate_report hydrate_config_bundle(const hydrate_options& options)
 write_report write_with_backup(const write_options& options, validation_callback validate)
 {
     write_report report;
+    report.durable_write = options.durable_write;
     create_directory_if_needed(options.target.parent_path(), report.diagnostics);
     if (has_error(report.diagnostics)) {
         return report;
     }
 
     std::error_code ec;
-    const auto write_target = options.atomic_replace ? unique_temp_path_for(options.target) : options.target;
-    if (options.atomic_replace) {
-        report.temp_path = write_target;
-    }
+    std::filesystem::path write_target = options.target;
 
     const auto backup = options.target.string() + ".bak";
     if (!options.atomic_replace && options.keep_backup && std::filesystem::exists(options.target, ec)) {
@@ -1413,15 +1704,76 @@ write_report write_with_backup(const write_options& options, validation_callback
         report.backup_path = backup;
     }
 
-    if (!write_file_content(write_target, options.content)) {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            options.atomic_replace ? "temp-write-failed" : "write-failed",
-            options.atomic_replace ? "Could not write temporary target content" : "Could not write target content",
-            write_target));
-        if (options.atomic_replace) {
-            std::filesystem::remove(write_target, ec);
+    if (options.atomic_replace) {
+        report.temp_path = {};
+#if defined(_WIN32)
+        HANDLE temp_handle = INVALID_HANDLE_VALUE;
+#else
+        int temp_handle = -1;
+#endif
+        if (!create_secure_temp_file(options.target, write_target, temp_handle, ec)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "temp-open-failed",
+                ec.message(),
+                options.target));
+            return report;
         }
+        report.temp_path = write_target;
+        if (!write_all_bytes(temp_handle, options.content)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "temp-write-failed",
+                "Could not write temporary target content",
+                write_target));
+            if (!close_file_handle(temp_handle)) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "temp-close-failed",
+                    system_error_code().message(),
+                    write_target));
+            }
+            std::error_code cleanup_ec;
+            std::filesystem::remove(write_target, cleanup_ec);
+            return report;
+        }
+        if (options.durable_write && !flush_file_handle(temp_handle)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "durable-flush-failed",
+                "Could not flush temporary target content to disk",
+                write_target));
+            if (!close_file_handle(temp_handle)) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "temp-close-failed",
+                    system_error_code().message(),
+                    write_target));
+            }
+            std::error_code cleanup_ec;
+            std::filesystem::remove(write_target, cleanup_ec);
+            return report;
+        }
+        if (!close_file_handle(temp_handle)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "temp-close-failed",
+                system_error_code().message(),
+                write_target));
+            std::error_code cleanup_ec;
+            std::filesystem::remove(write_target, cleanup_ec);
+            return report;
+        }
+    } else if (!options.durable_write) {
+        if (!write_file_content(write_target, options.content)) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "write-failed",
+                "Could not write target content",
+                write_target));
+            return report;
+        }
+    } else if (!write_direct_file(write_target, options.content, options.durable_write, report.diagnostics)) {
         return report;
     }
 
@@ -1495,6 +1847,17 @@ write_report write_with_backup(const write_options& options, validation_callback
             std::filesystem::remove(write_target, ec);
             return report;
         }
+        if (options.durable_write) {
+            std::error_code flush_ec;
+            if (!flush_parent_directory(options.target, flush_ec)) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "parent-flush-failed",
+                    flush_ec.message(),
+                    options.target.parent_path()));
+                return report;
+            }
+        }
     }
 
     std::error_code read_ec;
@@ -1505,14 +1868,31 @@ write_report write_with_backup(const write_options& options, validation_callback
             "write-readback-failed",
             read_ec.message(),
             options.target));
+        if (report.backup_path) {
+            std::error_code restore_ec;
+            std::filesystem::copy_file(*report.backup_path, options.target, std::filesystem::copy_options::overwrite_existing, restore_ec);
+            if (restore_ec) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "backup-restore-failed",
+                    restore_ec.message(),
+                    options.target));
+            } else {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::warning,
+                    "backup-restored-after-readback-failure",
+                    "Restored previous target after readback failure",
+                    options.target));
+            }
+        }
         return report;
     }
 
     report.ok = true;
     report.diagnostics.push_back(make_diagnostic(
         severity::info,
-        "write-ok",
-        "Wrote target file",
+        options.durable_write ? "write-ok-durable" : "write-ok",
+        options.durable_write ? "Wrote target file with durability enabled" : "Wrote target file",
         options.target));
     return report;
 }

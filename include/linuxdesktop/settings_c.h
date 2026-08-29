@@ -335,12 +335,14 @@ struct ld_settings_write_options {
     size_t content_size;
     int keep_backup;
     int atomic_replace;
+    int durable_write;
 };
 
 struct ld_settings_write_report {
     int ok;
     char* backup_path;
     char* temp_path;
+    int durable_write;
     struct ld_settings_diagnostic* diagnostics;
     size_t diagnostic_count;
 };

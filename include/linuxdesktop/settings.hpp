@@ -212,12 +212,14 @@ struct write_options {
     std::string content;
     bool keep_backup = true;
     bool atomic_replace = true;
+    bool durable_write = false;
 };
 
 struct write_report {
     bool ok = false;
     std::optional<std::filesystem::path> backup_path;
     std::optional<std::filesystem::path> temp_path;
+    bool durable_write = false;
     std::vector<diagnostic> diagnostics;
 };
 

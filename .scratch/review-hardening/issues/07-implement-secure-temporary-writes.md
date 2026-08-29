@@ -4,8 +4,8 @@
 
 **Blocked by:** 06 — Correct Write-Safety Semantics.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Temporary file creation uses exclusive creation semantics on each supported platform.
-- [ ] Predictable temp-name races are removed from the write path.
-- [ ] Tests cover existing temp files, hostile collisions where practical, cleanup after failure, and preservation of the original target on validation failure.
+- [x] Temporary file creation uses exclusive creation semantics on each supported platform.
+- [x] Predictable temp-name races are removed from the write path.
+- [x] Tests cover existing temp files, hostile collisions where practical, cleanup after failure, and preservation of the original target on validation failure.

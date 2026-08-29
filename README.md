@@ -23,9 +23,10 @@ The first selected sample is `ld_settings`, a C++17 settings/config prototype.
 It currently demonstrates root resolution, config-only sync overrides,
 privileged-install portable denial, config bundle hydration, ordered writes,
 atomic namespace replacement, backup files, validation-before-commit,
-dry-run-first migration plans, raw Registry API shape, Registry JSON/`.reg`
-snapshot formats, autostart effect handling, and managed/enforced policy
-effects. Registry, autostart, policy, and migration execution are temporary
+opt-in durable writes where the platform supports them, dry-run-first
+migration plans, raw Registry API shape, Registry JSON/`.reg` snapshot
+formats, autostart effect handling, and managed/enforced policy effects.
+Registry, autostart, policy, and migration execution are temporary
 `ld_settings` implementation locations and must move to `ld_desktop` or
 `ld_migration` before ship-candidate status. Some of that surface is
 evidence-gathering only and still needs hostile-input coverage, durability,
@@ -50,7 +51,7 @@ Status legend:
 
 | Status | Category | Current state |
 | --- | --- | --- |
-| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic namespace replacement, backup files, and validation-before-commit. Crash-durable writes and broader failure-mode evidence are not claimed yet. |
+| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic namespace replacement, backup files, validation-before-commit, and opt-in durable writes. Crash-durable guarantees remain explicit and platform-limited. |
 | `✅` Done | `ld_settings_tests` | Test coverage for current prototype behavior through `ctest`; not yet a durability, stress, or real-consumer validation suite. |
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
 | `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
