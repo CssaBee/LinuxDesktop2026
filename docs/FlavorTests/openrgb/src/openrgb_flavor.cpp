@@ -11,6 +11,7 @@ namespace flavor_tests::openrgb {
 
 namespace ldp = linuxdesktop::paths;
 namespace lds = linuxdesktop::settings;
+namespace ldd = linuxdesktop::desktop;
 
 namespace {
 
@@ -101,8 +102,8 @@ SaveResult to_save_result(const lds::write_report& report)
 }
 
 AutostartUpdate to_autostart_update(
-    const lds::effects::effect_report& report,
-    const lds::effects::autostart_entry& entry,
+    const ldd::effect_report& report,
+    const ldd::autostart_entry& entry,
     const std::filesystem::path& override_directory)
 {
     return {
@@ -206,7 +207,7 @@ AutostartUpdate set_autostart_enabled(
     const std::filesystem::path& override_directory,
     bool enabled)
 {
-    lds::effects::autostart_entry entry;
+    ldd::autostart_entry entry;
     entry.id = "OpenRGB";
     entry.display_name = "OpenRGB";
     entry.executable = executable;
@@ -215,12 +216,12 @@ AutostartUpdate set_autostart_enabled(
     entry.enabled = enabled;
     entry.user_scope = true;
 
-    lds::effects::apply_options options;
+    ldd::apply_options options;
     options.dry_run = true;
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = override_directory;
 
-    const auto report = lds::effects::apply_autostart(entry, options);
+    const auto report = ldd::apply_autostart(entry, options);
     return to_autostart_update(report, entry, override_directory);
 }
 
