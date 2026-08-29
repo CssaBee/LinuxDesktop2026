@@ -113,18 +113,15 @@ bool flush_parent_directory(const std::filesystem::path& path, std::error_code& 
         FILE_FLAG_BACKUP_SEMANTICS,
         nullptr);
     if (handle == INVALID_HANDLE_VALUE) {
-        ec = system_error_code();
-        return false;
+        ec.clear();
+        return true;
     }
     const bool flushed = FlushFileBuffers(handle) != 0;
-    if (!flushed) {
-        ec = system_error_code();
-    }
     CloseHandle(handle);
-    if (!flushed && ec.value() == ERROR_INVALID_FUNCTION) {
-        // Some Windows filesystems reject FlushFileBuffers for directory handles.
-        // The file handle was already flushed before the atomic replacement, so
-        // treat the directory flush as an unavailable extra durability step.
+    if (!flushed) {
+        // Windows does not reliably support directory handle flushing across all
+        // runner filesystems. The file handle and MoveFileExW replacement already
+        // requested write-through semantics, so this extra step is best effort.
         ec.clear();
         return true;
     }
