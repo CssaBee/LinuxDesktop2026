@@ -8,12 +8,12 @@ managed/enforced policy behavior.
 
 **Expiry:** release-candidate cleanup. After that point, any remaining `ld_settings -> ld_desktop` compatibility link is a defect, not a supported transition.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `ld_settings` no longer PUBLIC-links `ld_desktop` for compatibility.
-- [ ] Callers that need desktop effects link `LinuxDesktop2026::ld_desktop`
+- [x] `ld_settings` no longer PUBLIC-links `ld_desktop` for compatibility.
+- [x] Callers that need desktop effects link `LinuxDesktop2026::ld_desktop`
   directly.
-- [ ] No `ld_settings` header or helper presents desktop effects as a
+- [x] No `ld_settings` header or helper presents desktop effects as a
   settings-owned surface.
-- [ ] README, ADR 0012, and `docs/plan/ld-desktop-extraction.md` describe
+- [x] README, ADR 0012, and `docs/plan/ld-desktop-extraction.md` describe
   desktop effects as direct `ld_desktop` ownership only.
