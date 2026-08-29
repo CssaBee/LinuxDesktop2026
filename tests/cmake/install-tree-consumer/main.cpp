@@ -1,4 +1,5 @@
 #include "linuxdesktop/settings.hpp"
+#include "linuxdesktop/desktop.hpp"
 #include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/watch.hpp"
 
@@ -23,6 +24,9 @@ int main()
         return EXIT_FAILURE;
     }
     if (linuxdesktop::paths::to_string(linuxdesktop::paths::path_family::config) != "config") {
+        return EXIT_FAILURE;
+    }
+    if (linuxdesktop::desktop::to_string(linuxdesktop::desktop::effect_kind::autostart) != "autostart") {
         return EXIT_FAILURE;
     }
 

@@ -25,10 +25,11 @@ privileged-install portable denial, config bundle hydration, ordered writes,
 atomic namespace replacement, backup files, validation-before-commit,
 opt-in durable writes where the platform supports them, dry-run-first
 migration plans, raw Registry API shape, Registry JSON/`.reg` snapshot
-formats, autostart effect handling, and managed/enforced policy effects.
-Registry, autostart, policy, and migration execution are temporary
-`ld_settings` implementation locations and must move to `ld_desktop` or
-`ld_migration` before ship-candidate status. Some of that surface is
+formats, and compatibility facades for older desktop-effect callers.
+Autostart and managed/enforced policy C++ behavior now lives in `ld_desktop`.
+Registry-shaped compatibility and migration execution remain temporary
+`ld_settings` implementation locations and must move to their owning modules
+before ship-candidate status. Some of that surface is
 evidence-gathering only and still needs hostile-input coverage, durability,
 Windows verification, rollback reporting, permissions testing, and
 real-consumer validation before it can be called shippable.
@@ -58,16 +59,17 @@ Status legend:
 | `✅` Done | `ld_settings` C ABI surface | Existing pre-RC C entry points expose root resolution, root/layer reports, config hydration, atomic replacement writes, and the current temporary migration/Registry/autostart/policy prototype surface for future Rust bindings and non-C++ consumers. The project is not expanding C ABI coverage until release-candidate status. |
 | `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 source compatibility expectations. Stable C++ binary ABI is not promised. |
 | `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` exposes shared C++ diagnostics, with `ld_settings` aliases kept source-compatible. |
-| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, `.reg` snapshots, autostart effects, and managed/enforced policy effects are represented in the public C++ prototype surface. This is not yet a final module boundary. |
-| `🟡` In progress | `ld_settings` ship design | ADR 0012 narrows `ld_settings` to settings/config behavior. Registry-equivalent desktop effects, autostart, policy, and migration behavior must be extracted to `ld_desktop` and `ld_migration` before ship-candidate status. |
+| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, `.reg` snapshots, and compatibility effect facades are represented in the public C++ prototype surface. This is not yet a final module boundary. |
+| `🟡` In progress | `ld_desktop` extraction | C++ autostart and managed/enforced policy implementation moved to `ld_desktop`; capability reports cover the full desktop-effect extraction scope. Desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and Windows mutation backends still need implementation or verified diagnostics. |
+| `🟡` In progress | `ld_settings` ship design | ADR 0012 narrows `ld_settings` to settings/config behavior. Registry-equivalent desktop effects and migration behavior must still be extracted to `ld_desktop` and `ld_migration` before ship-candidate status. |
 | `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and expanded settings/Registry survey are guiding reusable seams. The broader `ld_watch` application/library follow-up is complete enough to guide implementation. |
 | `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. Callback lifecycle, bounded queues, recursive stress, and consumer validation still gate ship-candidate status. |
 | `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C prototype is present with `LinuxDesktop2026::ld_paths`, version constants/functions, shared diagnostics, path family/source enums, resolver reports, deterministic resolver hooks, Linux XDG Base Directory behavior, XDG user-dir parsing, user-directory fallbacks, executable/resource/install roots, legacy and site-default config candidates, opt-in directory creation, path-list parsing/joining, typed plugin path sets, Wine-prefix-aware defaults, tests, demos, and install-tree consumer coverage. Remaining prototype work: Windows verification before public prototype announcement. |
-| `📌` Next | `ld_settings` effect extraction prep | Keep settings/config behavior in `ld_settings` while preparing Registry-equivalent desktop effects, autostart, policy, and migration execution for extraction to `ld_desktop` and `ld_migration`. |
+| `📌` Next | `ld_settings` migration extraction prep | Keep settings/config behavior in `ld_settings` while preparing Registry-equivalent desktop effects and migration execution for extraction to `ld_desktop` and `ld_migration`. |
 | `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
 | `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
 | `⬜` Later | Single-instance IPC | Candidate module for app-ownership checks, lock files, local transports, and activation forwarding. |
-| `⬜` Later | `ld_desktop` extraction | Required module for desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, autostart, managed/enforced policy, and Registry-equivalent desktop/system behavior. |
+| `⬜` Later | `ld_desktop` completion | Required completion work for desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, Windows autostart/policy mutation, and Registry-equivalent desktop/system behavior. |
 | `⬜` Later | `ld_migration` extraction | Required module for migration planning/execution, file and directory moves, rollback reporting, app-settings Registry snapshot/import/export compatibility, and later cross-module orchestration. |
 | `⬜` Later | Service and daemon lifecycle | Future module for background process supervision, command channels, and service integration. |
 | `⬜` Later | GUI / windowing | UI foundation for top-level windows, platform windows, and event plumbing. |
@@ -260,7 +262,7 @@ Future work candidates:
 - Advanced theming/DPI
 - Accessibility
 - Installer/package integration
-- Desktop integration effects through the planned `ld_desktop` extraction
+- Desktop integration completion through `ld_desktop`
 - Migration execution through the planned `ld_migration` extraction
 - Service and daemon lifecycle
 

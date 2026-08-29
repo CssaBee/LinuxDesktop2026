@@ -9,7 +9,7 @@ expanded `ld_settings` beyond a standard-path resolver.
 
 ADR 0012 narrows `ld_settings` to toolkit-neutral settings/config behavior.
 Generic path policy moves to `ld_paths`; desktop integration effects move to
-the planned `ld_desktop`; migration planning/execution and app-settings Registry
+`ld_desktop`; migration planning/execution and app-settings Registry
 migration compatibility move to the planned `ld_migration`.
 
 Even in that broader prototype, `ld_settings` did not parse every
@@ -64,8 +64,8 @@ Rationale:
 - raw Registry operations were kept out of the root API during the prototype,
 - effect APIs modeled autostart and policy during the prototype.
 
-ADR 0012 changes the target ownership: future stable desktop-effect APIs belong
-under `ld_desktop`, and future stable migration APIs belong under
+ADR 0012 changes the target ownership: stable desktop-effect APIs belong under
+`ld_desktop`, and future stable migration APIs belong under
 `ld_migration`.
 
 ## Core Types
@@ -374,9 +374,9 @@ Safety rules while this remains in `ld_settings`:
 
 ## Effects API Prototype
 
-ADR 0012 moves desktop integration effects to the planned `ld_desktop` module.
-The current `linuxdesktop::settings::effects` implementation is temporary
-prototype evidence.
+ADR 0012 moves desktop integration effects to the `ld_desktop` module.
+The current `linuxdesktop::settings::effects` surface is a temporary pre-1.0
+compatibility facade over `ld_desktop`, not a stable settings responsibility.
 
 Only these effects are first-scope:
 
@@ -530,10 +530,12 @@ Required examples before the affected modules ship:
 ## Current Status
 
 `ld_settings` is a working first sample, not a shippable final module. The
-current Registry, autostart, policy, and migration APIs are temporary
-implementation locations. See `docs/plan/ld-desktop-extraction.md` and
-`docs/plan/ld-migration-extraction.md` for the extraction requirements that
-must be satisfied before ship-candidate status.
+current Registry and migration APIs are temporary implementation locations.
+Autostart and managed/enforced policy C++ behavior now lives in `ld_desktop`;
+`settings::effects` remains only as a pre-1.0 compatibility facade. See
+`docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md`
+for the extraction requirements that must be satisfied before ship-candidate
+status.
 
 Implemented in the current C++ sample:
 
@@ -551,15 +553,15 @@ Implemented in the current C++ sample:
 - canonical JSON Registry snapshot serialization/parsing,
 - `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
 - Registry tree JSON/`.reg` import/export wrappers over the raw Registry API,
-- autostart effect API with dry-run-first writes,
+- `ld_desktop` autostart effect API with dry-run-first writes,
 - Linux XDG Autostart `.desktop` write/query/remove support,
 - Windows `CurrentVersion\Run` autostart backend shape over the raw Registry API,
-- managed/enforced policy effect API with dry-run-first writes,
+- `ld_desktop` managed/enforced policy effect API with dry-run-first writes,
 - Linux dconf/GSettings-compatible defaults and lock-file generation without GLib,
 - Windows `Software\Policies` backend shape over the raw Registry API.
 
 The next code work should harden module boundaries, write safety, and Windows
-verification before adding new C ABI families. Per ADR 0012, the Registry,
-autostart, policy, and migration behavior listed here must be extracted to
-`ld_desktop` and `ld_migration` before those APIs can be considered ship
-candidates.
+verification before adding new C ABI families. Per ADR 0012, the remaining
+Registry-equivalent desktop/system behavior and migration behavior listed here
+must be extracted to `ld_desktop` and `ld_migration` before those APIs can be
+considered ship candidates.

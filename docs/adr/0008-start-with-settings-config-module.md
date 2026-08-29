@@ -108,7 +108,7 @@ The current implementation has grown past the original "small settings/config mo
 Before `ld_settings` can be called stable or production-ready:
 
 - Move generic path discovery and root reporting through `ld_paths`.
-- Extract policy/effect domains that are not settings-specific. Desktop integration effects, including autostart, file associations, protocol handlers, desktop entries, shell-equivalent behavior, and managed/enforced policy, belong to the planned `ld_desktop` module.
+- Extract policy/effect domains that are not settings-specific. Desktop integration effects, including autostart, file associations, protocol handlers, desktop entries, shell-equivalent behavior, and managed/enforced policy, belong to `ld_desktop`.
 - Extract migration behavior that is not direct config-bundle hydration. File/directory migration planning and execution, rollback reporting, and app-settings Registry snapshot/import/export compatibility belong to the planned `ld_migration` module.
 - Define the write guarantee precisely. "Atomic replace" means namespace replacement only; crash durability requires explicit durable-write support and the implementation has to say when it actually flushes file and directory metadata on the platform.
 - Replace predictable check-then-open temporary-file creation with platform-safe exclusive creation.

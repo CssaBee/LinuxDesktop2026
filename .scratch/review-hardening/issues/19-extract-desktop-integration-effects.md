@@ -4,7 +4,7 @@
 
 **Blocked by:** None - task 05 prepared the extraction inventory.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `ld_desktop` owns autostart, desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and managed/enforced policy.
 - [ ] Existing `ld_settings::effects` behavior is removed, moved, or replaced with documented pre-1.0 migration guidance.

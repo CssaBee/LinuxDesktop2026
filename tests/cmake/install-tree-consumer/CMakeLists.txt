@@ -8,6 +8,7 @@ add_executable(ld_settings_consumer main.cpp)
 target_link_libraries(ld_settings_consumer
     PRIVATE
         LinuxDesktop2026::ld_core
+        LinuxDesktop2026::ld_desktop
         LinuxDesktop2026::ld_settings
         LinuxDesktop2026::ld_paths
         LinuxDesktop2026::ld_watch

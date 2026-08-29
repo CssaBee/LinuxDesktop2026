@@ -65,11 +65,13 @@ pre-1.0 C and C++ surface changes made to correct the ADR 0012 module boundary;
 existing C enum values are preserved and new C option fields are appended.
 
 Task 05 marks the current `ld_settings` migration, Registry, autostart, and
-policy APIs as temporary pre-1.0 implementation locations. Stable ownership for
-those responsibilities is `ld_migration` and `ld_desktop`; tasks 19 and 20 may
-therefore remove, move, or rename the current C++ APIs before `1.0` with
-documented replacement guidance. Existing C ABI entry points remain
-best-effort-compatible where practical until release-candidate status.
+policy APIs as temporary pre-1.0 surfaces. Task 19 moves C++ autostart and
+managed/enforced policy implementation to `ld_desktop`; `settings::effects`
+remains only a compatibility facade. Stable ownership for these responsibilities
+is `ld_migration` and `ld_desktop`; tasks 19 and 20 may therefore remove, move,
+or rename the current C++ APIs before `1.0` with documented replacement
+guidance. Existing C ABI entry points remain best-effort-compatible where
+practical until release-candidate status.
 
 `ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until release-candidate status so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
 

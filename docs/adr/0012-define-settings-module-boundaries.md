@@ -28,7 +28,7 @@ Generic path/root policy belongs to `ld_paths`:
 - path-list parsing, joining, and diagnostics,
 - opt-in directory creation after resolution.
 
-Desktop integration effects belong to a real future `ld_desktop` extraction:
+Desktop integration effects belong to the real `ld_desktop` extraction:
 
 - autostart,
 - desktop entries,
@@ -51,10 +51,12 @@ Migration behavior belongs to a real future `ld_migration` extraction:
   application state rather than apply a desktop integration effect,
 - cross-module migration orchestration once `ld_desktop` exists.
 
-The current Registry, autostart, policy, and migration APIs inside
-`ld_settings` are temporary implementation locations. They are not stable
-`ld_settings` responsibilities and must be extracted before ship-candidate
-status.
+The current Registry and migration APIs inside `ld_settings` are temporary
+implementation locations. Autostart and managed/enforced policy C++
+implementation now lives in `ld_desktop`; `linuxdesktop::settings::effects`
+is only a pre-1.0 compatibility facade. None of those responsibilities are
+stable `ld_settings` responsibilities, and the remaining migration/Registry
+extraction must be completed before ship-candidate status.
 
 Before `1.0`, C++ APIs may break when needed to correct module boundaries.
 Those breaks must be documented with replacement paths. Existing C ABI entry
@@ -88,15 +90,17 @@ Task 05 marks current Registry, autostart, policy, and migration APIs as
 temporary implementation locations, adds extraction requirements for
 `ld_desktop` and `ld_migration`, and reduces public claims where the current
 prototype lacks hostile-input, rollback, permissions, Windows, or
-real-consumer evidence. Follow-up work must extract the current `ld_settings`
-desktop effects and migration behavior into `ld_desktop` and `ld_migration`.
+real-consumer evidence. Task 19 introduces `ld_desktop`, moves the current C++
+autostart and managed/enforced policy implementation there, and leaves
+`settings::effects` as a compatibility facade. Follow-up work must finish the
+remaining desktop surface and extract migration behavior into `ld_migration`.
 
 `ld_settings` can keep forwarding or compatibility helpers only when they make
 the transition easier. Since the project is still pre-1.0, source-breaking C++
 cleanup is allowed when a wrapper would preserve the wrong mental model.
 
-The roadmap changes are real. `ld_desktop` and `ld_migration` are planned
-extraction modules, not merely speculative homes.
+The roadmap changes are real. `ld_desktop` exists as an extraction module;
+`ld_migration` remains planned and is not a speculative home.
 
 ## Supersedes
 

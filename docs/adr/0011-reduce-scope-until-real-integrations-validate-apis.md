@@ -18,7 +18,7 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
 ## Required Changes
 
 1. Treat C++ APIs as source-compatible only. Keep existing C ABI entry points compatible where practical, but postpone C ABI expansion and binary-stability design until release-candidate status.
-2. Split `ld_settings` by responsibility. Keep settings root/config-bundle behavior; route general path discovery through `ld_paths`; extract desktop integration effects to the planned `ld_desktop` module; extract migration planning/execution and app-settings Registry migration compatibility to the planned `ld_migration` module.
+2. Split `ld_settings` by responsibility. Keep settings root/config-bundle behavior; route general path discovery through `ld_paths`; extract desktop integration effects to `ld_desktop`; extract migration planning/execution and app-settings Registry migration compatibility to the planned `ld_migration` module.
 3. Correct write-safety semantics. Distinguish atomic namespace replacement from crash-durable writes, use secure exclusive temporary-file creation, and keep durable mode explicit instead of implied by replacement.
 4. Harden `ld_watch` before expanding it. Define callback threading/reentrancy, keep internal queues bounded, handle callback exceptions, and stress recursive watching.
 5. Upgrade CI from smoke coverage to portability evidence: GCC and Clang on Linux, MSVC on Windows, Debug and Release, shared-library builds, sanitizer jobs, and older supported Ubuntu coverage where practical.

@@ -1,11 +1,14 @@
 # `ld_desktop` Extraction Requirements
 
-Status: required extraction before ship-candidate status.
+Status: initial C++ extraction in progress; full ship-candidate coverage still
+required.
 
 `ld_desktop` owns platform actions that register an application with the
-desktop, shell, session, or managed-policy environment. The current
-`linuxdesktop::settings::effects` APIs and Registry-equivalent desktop/system
-behavior are temporary pre-1.0 implementation locations in `ld_settings`.
+desktop, shell, session, or managed-policy environment. The current C++
+autostart and managed/enforced policy implementation has moved to
+`linuxdesktop::desktop`; `linuxdesktop::settings::effects` is a pre-1.0
+compatibility facade. Registry-equivalent desktop/system behavior that still
+lives in `ld_settings` remains a temporary pre-1.0 implementation location.
 
 ## Scope
 
@@ -37,6 +40,21 @@ The extracted module must cover these responsibility groups before the current
 - Treat Windows `CurrentVersion\Run`, `Software\Policies`, shell classes, and
   protocol handler equivalents as desktop/system effects, not settings storage.
 
+## Current Implementation
+
+- `include/linuxdesktop/desktop.hpp` exposes the C++ `ld_desktop` API.
+- `ld_desktop` reports capabilities for autostart, desktop entries, icons,
+  MIME/file associations, default applications, URL protocol handlers,
+  shell-equivalent integration, desktop database updates, and managed policy.
+- Linux autostart and managed/enforced policy use the same dry-run-first file
+  behavior proven by the former `ld_settings::effects` prototype.
+- Windows autostart and policy currently report backend-missing capability
+  diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
+  before those writes should move into this module.
+- `linuxdesktop::settings::effects` forwards to `linuxdesktop::desktop` for
+  pre-1.0 source compatibility. New C++ callers should include
+  `linuxdesktop/desktop.hpp` and link `LinuxDesktop2026::ld_desktop`.
+
 ## Validation Required
 
 Before `ld_desktop` is a ship candidate, tests and examples must cover:
@@ -61,3 +79,7 @@ When this module is introduced, remove, move, or provide documented pre-1.0
 migration guidance for `linuxdesktop::settings::effects` and matching C ABI
 entry points. Do not leave stable callers believing that `ld_settings` owns
 desktop integration.
+
+The C ABI remains intentionally unchanged until release-candidate status. Its
+existing `ld_settings_*` desktop-effect entry points are compatibility shims,
+not stable ownership claims.

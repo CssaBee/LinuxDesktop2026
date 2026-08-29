@@ -1,6 +1,7 @@
 #pragma once
 
 #include "linuxdesktop/core.hpp"
+#include "linuxdesktop/desktop.hpp"
 
 #include <cstddef>
 #include <filesystem>
@@ -309,7 +310,7 @@ migration_execution_report execute_migration_plan(
 // Temporary pre-1.0 Registry compatibility prototype surface.
 // App-settings Registry snapshot/import/export compatibility belongs to
 // ld_migration. Registry-equivalent shell, startup, policy, and session
-// integration belongs to the planned ld_desktop module.
+// integration belongs to ld_desktop.
 namespace registry {
 
 enum class hive {
@@ -424,59 +425,17 @@ operation_report import_tree_reg(const key& key, std::string_view content, const
 
 } // namespace registry
 
-// Temporary pre-1.0 desktop integration prototype surface.
-// Stable autostart, desktop entry, icon, MIME/default-app/protocol, shell
-// integration, desktop database, and managed/enforced policy APIs belong to the
-// planned ld_desktop module.
+// Pre-1.0 compatibility facade for desktop integration effects.
+// New C++ callers should use linuxdesktop::desktop. This namespace is retained
+// only to avoid breaking existing prototype consumers before release-candidate
+// cleanup.
 namespace effects {
 
-struct autostart_entry {
-    std::string id;
-    std::string display_name;
-    std::filesystem::path executable;
-    std::vector<std::string> arguments;
-    std::filesystem::path working_directory;
-    bool enabled = true;
-    bool user_scope = true;
-};
-
-struct apply_options {
-    bool dry_run = true;
-    bool allow_global_write = false;
-    bool allow_desktop_integration_write = false;
-    bool allow_policy_write = false;
-    std::optional<std::filesystem::path> autostart_directory_override;
-    std::optional<std::filesystem::path> policy_defaults_directory_override;
-    std::optional<std::filesystem::path> policy_locks_directory_override;
-};
-
-struct effect_report {
-    bool ok = false;
-    bool dry_run = false;
-    bool enabled = false;
-    std::optional<std::filesystem::path> path;
-    std::vector<diagnostic> diagnostics;
-};
-
-struct policy_entry {
-    std::string id;
-    std::string schema_id;
-    std::string group;
-    std::string key;
-    std::string value;
-    bool enforced = false;
-    bool user_scope = false;
-};
-
-struct policy_report {
-    bool ok = false;
-    bool dry_run = false;
-    bool present = false;
-    bool enforced = false;
-    std::optional<std::filesystem::path> path;
-    std::optional<std::string> value;
-    std::vector<diagnostic> diagnostics;
-};
+using autostart_entry = linuxdesktop::desktop::autostart_entry;
+using apply_options = linuxdesktop::desktop::apply_options;
+using effect_report = linuxdesktop::desktop::effect_report;
+using policy_entry = linuxdesktop::desktop::policy_entry;
+using policy_report = linuxdesktop::desktop::policy_report;
 
 effect_report apply_autostart(const autostart_entry& entry, const apply_options& options = {});
 effect_report remove_autostart(const autostart_entry& entry, const apply_options& options = {});

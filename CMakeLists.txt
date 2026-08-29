@@ -24,6 +24,22 @@ target_include_directories(ld_core
         $<INSTALL_INTERFACE:include>
 )
 
+add_library(ld_desktop
+    src/desktop.cpp
+)
+
+add_library(LinuxDesktop2026::ld_desktop ALIAS ld_desktop)
+
+target_compile_features(ld_desktop PUBLIC cxx_std_17)
+
+target_include_directories(ld_desktop
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ld_desktop PUBLIC LinuxDesktop2026::ld_core)
+
 add_library(ld_settings
     src/settings.cpp
     src/settings_c.cpp
@@ -39,7 +55,7 @@ target_include_directories(ld_settings
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core)
+target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop)
 
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
@@ -62,6 +78,7 @@ target_include_directories(ld_paths
 
 target_link_libraries(ld_paths PUBLIC LinuxDesktop2026::ld_core)
 
+target_link_libraries(ld_desktop PRIVATE LinuxDesktop2026::ld_paths)
 target_link_libraries(ld_settings PRIVATE LinuxDesktop2026::ld_paths)
 
 add_library(ld_watch
@@ -111,7 +128,7 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(ld_watch PRIVATE pthread)
 endif()
 
-install(TARGETS ld_core ld_settings ld_paths ld_watch
+install(TARGETS ld_core ld_desktop ld_settings ld_paths ld_watch
     EXPORT LinuxDesktop2026Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -177,6 +194,13 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_paths_c_tests PRIVATE LinuxDesktop2026::ld_paths)
 
     add_test(NAME ld_paths_c_tests COMMAND ld_paths_c_tests)
+
+    add_executable(ld_desktop_tests
+        tests/desktop_tests.cpp
+    )
+    target_link_libraries(ld_desktop_tests PRIVATE LinuxDesktop2026::ld_desktop)
+
+    add_test(NAME ld_desktop_tests COMMAND ld_desktop_tests)
 
     if(LD2026_RUSTC)
         set(LD2026_RUST_FFI_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/settings_rust_ffi_smoke${CMAKE_C_OUTPUT_EXTENSION}")

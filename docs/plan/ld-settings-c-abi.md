@@ -26,7 +26,9 @@ The current surface also wraps first-scope mutation and migration helpers:
 - report-owned UTF-8 paths/content/diagnostics,
 - and one matching free function per report family.
 
-It also wraps first-scope desktop effects:
+It also wraps first-scope desktop effects as pre-1.0 compatibility shims. The
+C++ implementation now lives in `ld_desktop`; C ABI renaming or expansion waits
+until release-candidate status.
 
 - autostart apply/remove/query,
 - managed/enforced policy apply/remove/query,

@@ -67,8 +67,12 @@ Current prototype sample:
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
 - Existing pre-RC C ABI surface for root/layer reports, config hydration, atomic replacement writes, and the current temporary migration/Registry/autostart/policy prototype surface, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
-- Temporary autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
-- Temporary managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
+- `ld_desktop` C++ extraction started with Linux XDG Autostart files,
+  Linux dconf-compatible managed/enforced policy files, and capability reports
+  for the full desktop-effect scope.
+- Temporary `ld_settings` compatibility wrappers still expose autostart and
+  policy effects for existing pre-1.0 C++ callers; the C ABI stays unchanged
+  until release-candidate cleanup.
 
 Expanded ship direction:
 
@@ -95,12 +99,13 @@ Example documentation:
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
-- Extract desktop integration effects to `ld_desktop`, including autostart, desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and managed/enforced policy.
+- Complete desktop integration effects in `ld_desktop`, including desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, Windows autostart/policy mutation, and Registry-equivalent desktop/system behavior.
 - Extract migration planning/execution to `ld_migration`, including file/directory copy and move, rollback reporting, cross-module orchestration, and app-settings Registry snapshot/import/export compatibility.
 - Use `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md` as the extraction requirement inventories for tasks 19 and 20.
 - Verify the Windows Registry/autostart/policy backend paths as part of the `ld_desktop` and `ld_migration` extraction work before claiming those modules are ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
-- Treat current `ld_settings` autostart support as temporary prototype evidence for `ld_desktop`.
+- Treat current `ld_settings::effects` autostart and policy symbols as
+  compatibility wrappers over `ld_desktop`, not as settings ownership.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Current Follow-Up Prototype
@@ -125,7 +130,7 @@ Current direction:
 - public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, inotify resource-limit diagnostics, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches completed in the prototype hardening pass,
 - public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, timeout-capable pull delivery, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
-- Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, and future `ld_desktop`/`ld_migration` reports for Registry/autostart/policy/migration targets,
+- Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, `ld_desktop` reports for desktop effects, and future `ld_migration` reports for migration targets,
 - and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, and adding richer capability fields only if stress tests prove they are needed.
 
 ## Next Planned Module: ld_paths
@@ -165,7 +170,8 @@ Extraction plan:
 - Keep `ld_settings` on its current internal root resolver until `ld_paths` has resolver tests and install-tree consumer coverage.
 - Then refactor `ld_settings` to consume `ld_paths` for config/data/state/cache/resource placement.
 - Keep bundle hydration and ordered writes inside `ld_settings`.
-- Move desktop integration effects to `ld_desktop`.
+- Finish the `ld_desktop` extraction and remove the remaining desktop-effect
+  ownership claims from `ld_settings`.
 - Move migration planning/execution and app-settings Registry migration compatibility to `ld_migration`.
 
 ## Extended Watchlist Consequences
