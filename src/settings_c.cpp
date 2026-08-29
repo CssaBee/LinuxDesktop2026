@@ -16,7 +16,6 @@
 namespace {
 
 namespace ld = linuxdesktop::settings;
-namespace desktop = linuxdesktop::desktop;
 namespace registry = linuxdesktop::migration::registry;
 
 char* duplicate_string(const std::string& value)
@@ -191,31 +190,6 @@ void free_config_layer(ld_settings_config_layer& layer)
     std::free(layer.name);
     std::free(layer.path);
     layer = {};
-}
-
-void free_effect_report_fields(ld_settings_effect_report& report)
-{
-    std::free(report.path);
-    if (report.diagnostics) {
-        for (size_t index = 0; index != report.diagnostic_count; ++index) {
-            free_diagnostic(report.diagnostics[index]);
-        }
-        std::free(report.diagnostics);
-    }
-    report = {};
-}
-
-void free_policy_report_fields(ld_settings_policy_report& report)
-{
-    std::free(report.path);
-    std::free(report.value);
-    if (report.diagnostics) {
-        for (size_t index = 0; index != report.diagnostic_count; ++index) {
-            free_diagnostic(report.diagnostics[index]);
-        }
-        std::free(report.diagnostics);
-    }
-    report = {};
 }
 
 void free_string_array(char** values, size_t count)
@@ -518,45 +492,6 @@ bool fill_report(const ld::root_report& source, ld_settings_root_report& target)
         }
     }
 
-    return true;
-}
-
-bool fill_effect_report(const desktop::effect_report& source, ld_settings_effect_report& target)
-{
-    target = {};
-    target.ok = source.ok ? 1 : 0;
-    target.dry_run = source.dry_run ? 1 : 0;
-    target.enabled = source.enabled ? 1 : 0;
-    if (source.path && !assign_path(target.path, *source.path)) {
-        free_effect_report_fields(target);
-        return false;
-    }
-    if (!fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
-        free_effect_report_fields(target);
-        return false;
-    }
-    return true;
-}
-
-bool fill_policy_report(const desktop::policy_report& source, ld_settings_policy_report& target)
-{
-    target = {};
-    target.ok = source.ok ? 1 : 0;
-    target.dry_run = source.dry_run ? 1 : 0;
-    target.present = source.present ? 1 : 0;
-    target.enforced = source.enforced ? 1 : 0;
-    if (source.path && !assign_path(target.path, *source.path)) {
-        free_policy_report_fields(target);
-        return false;
-    }
-    if (source.value && !assign_string(target.value, *source.value)) {
-        free_policy_report_fields(target);
-        return false;
-    }
-    if (!fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
-        free_policy_report_fields(target);
-        return false;
-    }
     return true;
 }
 
@@ -892,57 +827,6 @@ std::map<std::string, std::string> environment_from_c(
     return environment;
 }
 
-desktop::apply_options effect_options_from_c(const ld_settings_effect_options* source)
-{
-    desktop::apply_options options;
-    if (!source) {
-        return options;
-    }
-    options.dry_run = source->dry_run != 0;
-    options.allow_global_write = source->allow_global_write != 0;
-    options.allow_desktop_integration_write = source->allow_desktop_integration_write != 0;
-    options.allow_policy_write = source->allow_policy_write != 0;
-    options.autostart_directory_override = optional_path(source->autostart_directory_override);
-    options.policy_defaults_directory_override = optional_path(source->policy_defaults_directory_override);
-    options.policy_locks_directory_override = optional_path(source->policy_locks_directory_override);
-    return options;
-}
-
-desktop::autostart_entry autostart_entry_from_c(const ld_settings_autostart_entry* source)
-{
-    desktop::autostart_entry entry;
-    if (!source) {
-        return entry;
-    }
-    entry.id = source->id ? source->id : "";
-    entry.display_name = source->display_name ? source->display_name : "";
-    entry.executable = optional_path(source->executable).value_or(std::filesystem::path{});
-    for (size_t index = 0; index != source->argument_count; ++index) {
-        const char* argument = source->arguments ? source->arguments[index] : nullptr;
-        entry.arguments.emplace_back(argument ? argument : "");
-    }
-    entry.working_directory = optional_path(source->working_directory).value_or(std::filesystem::path{});
-    entry.enabled = source->enabled != 0;
-    entry.user_scope = source->user_scope != 0;
-    return entry;
-}
-
-desktop::policy_entry policy_entry_from_c(const ld_settings_policy_entry* source)
-{
-    desktop::policy_entry entry;
-    if (!source) {
-        return entry;
-    }
-    entry.id = source->id ? source->id : "";
-    entry.schema_id = source->schema_id ? source->schema_id : "";
-    entry.group = source->group ? source->group : "";
-    entry.key = source->key ? source->key : "";
-    entry.value = source->value ? source->value : "";
-    entry.enforced = source->enforced != 0;
-    entry.user_scope = source->user_scope != 0;
-    return entry;
-}
-
 } // namespace
 
 extern "C" {
@@ -958,16 +842,6 @@ void ld_settings_root_options_init(ld_settings_root_options* options)
     options->create_directories = 1;
     options->use_process_environment = 1;
     options->portable_level = LD_SETTINGS_PORTABLE_SETTINGS_ONLY;
-}
-
-void ld_settings_effect_options_init(ld_settings_effect_options* options)
-{
-    if (!options) {
-        return;
-    }
-
-    *options = {};
-    options->dry_run = 1;
 }
 
 void ld_settings_hydrate_options_init(ld_settings_hydrate_options* options)
@@ -1136,148 +1010,6 @@ void ld_settings_free_root_report(ld_settings_root_report* report)
     }
 
     *report = {};
-}
-
-int ld_settings_apply_autostart(
-    const ld_settings_autostart_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_effect_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_effect_report(
-            desktop::apply_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-int ld_settings_remove_autostart(
-    const ld_settings_autostart_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_effect_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_effect_report(
-            desktop::remove_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-int ld_settings_query_autostart(
-    const ld_settings_autostart_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_effect_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_effect_report(
-            desktop::query_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-void ld_settings_free_effect_report(ld_settings_effect_report* report)
-{
-    if (!report) {
-        return;
-    }
-    free_effect_report_fields(*report);
-}
-
-int ld_settings_apply_policy(
-    const ld_settings_policy_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_policy_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_policy_report(
-            desktop::apply_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-int ld_settings_remove_policy(
-    const ld_settings_policy_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_policy_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_policy_report(
-            desktop::remove_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-int ld_settings_query_policy(
-    const ld_settings_policy_entry* entry,
-    const ld_settings_effect_options* options,
-    ld_settings_policy_report* report)
-{
-    if (!entry || !report) {
-        return 0;
-    }
-    try {
-        return fill_policy_report(
-            desktop::query_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
-            *report)
-            ? 1
-            : 0;
-    } catch (const std::bad_alloc&) {
-        return 0;
-    } catch (const std::exception&) {
-        return 0;
-    }
-}
-
-void ld_settings_free_policy_report(ld_settings_policy_report* report)
-{
-    if (!report) {
-        return;
-    }
-    free_policy_report_fields(*report);
 }
 
 int ld_settings_hydrate_config_bundle(

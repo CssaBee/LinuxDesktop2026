@@ -61,6 +61,10 @@ bridges for those areas. None of those responsibilities are stable
 `ld_settings` to those owning modules is a bounded transition that expires at
 release-candidate cleanup.
 
+The C ABI follows the same ownership split: `ld_settings` keeps roots,
+hydration, writes, migration, and Registry helpers, while `ld_desktop`
+owns autostart and managed/enforced policy entry points.
+
 Before `1.0`, C++ APIs may break when needed to correct module boundaries.
 Those breaks must be documented with replacement paths. Existing C ABI entry
 points remain best-effort compatible where practical, and C ABI expansion waits

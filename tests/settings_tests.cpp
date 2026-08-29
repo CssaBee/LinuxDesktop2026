@@ -1,5 +1,6 @@
 #include "linuxdesktop/settings.hpp"
 #include "linuxdesktop/settings_c.h"
+#include "linuxdesktop/desktop.hpp"
 
 #include <cstdlib>
 #include <filesystem>

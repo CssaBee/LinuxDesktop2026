@@ -1,7 +1,6 @@
 #pragma once
 
 #include "linuxdesktop/core.hpp"
-#include "linuxdesktop/desktop.hpp"
 #include "linuxdesktop/migration.hpp"
 
 #include <cstddef>

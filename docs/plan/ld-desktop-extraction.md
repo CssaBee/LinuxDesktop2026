@@ -8,8 +8,10 @@ desktop, shell, session, or managed-policy environment. The current C++
 autostart and managed/enforced policy implementation lives in
 `linuxdesktop::desktop`; callers should use `ld_desktop` directly for those
 effects. Registry-equivalent desktop/system behavior belongs in `ld_desktop`.
-Any `ld_settings` dependency on `ld_desktop` exists only as a bounded transition
-surface and must be removed by release-candidate cleanup.
+The matching C ABI lives in `linuxdesktop/desktop_c.h` and the
+`ld_desktop` C library surface. Any `ld_settings` dependency on `ld_desktop`
+exists only as a bounded transition surface and must be removed by
+release-candidate cleanup.
 
 ## Scope
 
@@ -44,6 +46,7 @@ The extracted module must cover these responsibility groups before the current
 ## Current Implementation
 
 - `include/linuxdesktop/desktop.hpp` exposes the C++ `ld_desktop` API.
+- `include/linuxdesktop/desktop_c.h` exposes the C ABI `ld_desktop` surface.
 - `ld_desktop` reports capabilities for autostart, desktop entries, icons,
   MIME/file associations, default applications, URL protocol handlers,
   shell-equivalent integration, desktop database updates, and managed policy.
@@ -53,6 +56,8 @@ The extracted module must cover these responsibility groups before the current
   diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
   before those writes should move into this module.
 - New C++ callers should include `linuxdesktop/desktop.hpp` and link
+  `LinuxDesktop2026::ld_desktop`.
+- New C callers should include `linuxdesktop/desktop_c.h` and link
   `LinuxDesktop2026::ld_desktop`.
 
 ## Validation Required

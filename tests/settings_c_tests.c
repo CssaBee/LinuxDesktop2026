@@ -106,8 +106,6 @@ int main(void)
     struct ld_settings_root_options options;
     struct ld_settings_root_report report;
     char settings_override[512];
-    char autostart_root[512];
-    char policy_root[512];
     char model_root[512];
     char hydrate_root[512];
     char old_root[512];
@@ -117,8 +115,6 @@ int main(void)
     char migrated_file[768];
 
     make_path(settings_override, sizeof(settings_override), "settings");
-    make_path(autostart_root, sizeof(autostart_root), "autostart");
-    make_path(policy_root, sizeof(policy_root), "policy/defaults");
     make_path(model_root, sizeof(model_root), "models");
     make_path(hydrate_root, sizeof(hydrate_root), "hydrated");
     make_path(old_root, sizeof(old_root), "old");
@@ -179,63 +175,6 @@ int main(void)
 
     ld_settings_free_root_report(&report);
     if (report.config != NULL) {
-        return EXIT_FAILURE;
-    }
-
-    struct ld_settings_effect_options effect_options;
-    ld_settings_effect_options_init(&effect_options);
-    effect_options.allow_desktop_integration_write = 1;
-    effect_options.autostart_directory_override = autostart_root;
-
-    const char* arguments[] = {"--profile", "Default"};
-    struct ld_settings_autostart_entry autostart;
-    memset(&autostart, 0, sizeof(autostart));
-    autostart.id = "linuxdesktop2026-c-smoke";
-    autostart.display_name = "LinuxDesktop2026 C Smoke";
-    autostart.executable = "/usr/bin/ld-settings-c-smoke";
-    autostart.arguments = arguments;
-    autostart.argument_count = 2;
-    autostart.enabled = 1;
-    autostart.user_scope = 1;
-
-    struct ld_settings_effect_report effect_report;
-    memset(&effect_report, 0, sizeof(effect_report));
-    if (!ld_settings_apply_autostart(&autostart, &effect_options, &effect_report) ||
-        effect_report.ok != 1 ||
-        effect_report.dry_run != 1) {
-        ld_settings_free_effect_report(&effect_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_effect_report(&effect_report);
-    if (effect_report.path != NULL) {
-        return EXIT_FAILURE;
-    }
-
-    struct ld_settings_policy_entry policy;
-    memset(&policy, 0, sizeof(policy));
-    policy.id = "linuxdesktop2026-c-policy";
-    policy.schema_id = "org.linuxdesktop2026.c-smoke";
-    policy.key = "theme";
-    policy.value = "'dark'";
-    policy.user_scope = 1;
-
-    effect_options.allow_policy_write = 1;
-    effect_options.policy_defaults_directory_override = policy_root;
-
-    struct ld_settings_policy_report policy_report;
-    memset(&policy_report, 0, sizeof(policy_report));
-    if (!ld_settings_apply_policy(&policy, &effect_options, &policy_report) ||
-        policy_report.ok != 1 ||
-        policy_report.dry_run != 1 ||
-        policy_report.present != 1 ||
-        !policy_report.value ||
-        strcmp(policy_report.value, "'dark'") != 0) {
-        ld_settings_free_policy_report(&policy_report);
-        return EXIT_FAILURE;
-    }
-    ld_settings_free_policy_report(&policy_report);
-
-    if (policy_report.value != NULL) {
         return EXIT_FAILURE;
     }
 

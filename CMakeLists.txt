@@ -32,6 +32,7 @@ target_include_directories(ld_core
 
 add_library(ld_desktop
     src/desktop.cpp
+    src/desktop_c.cpp
 )
 
 add_library(LinuxDesktop2026::ld_desktop ALIAS ld_desktop)
@@ -228,6 +229,13 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_desktop_tests PRIVATE LinuxDesktop2026::ld_desktop)
 
     add_test(NAME ld_desktop_tests COMMAND ld_desktop_tests)
+
+    add_executable(ld_desktop_c_tests
+        tests/desktop_c_tests.c
+    )
+    target_link_libraries(ld_desktop_c_tests PRIVATE LinuxDesktop2026::ld_desktop)
+
+    add_test(NAME ld_desktop_c_tests COMMAND ld_desktop_c_tests)
 
     add_executable(ld_migration_tests
         tests/migration_tests.cpp
