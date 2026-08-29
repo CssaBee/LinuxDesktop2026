@@ -103,6 +103,13 @@ enum ld_settings_migration_action_kind {
     LD_SETTINGS_MIGRATION_WRITE_POLICY = 9
 };
 
+/*
+ * Temporary pre-1.0 Registry compatibility prototype surface.
+ * App-settings Registry migration compatibility moves to ld_migration.
+ * Registry-equivalent desktop, startup, shell, session, and policy behavior
+ * moves to ld_desktop. Existing entries are kept best-effort compatible until
+ * release-candidate status.
+ */
 enum ld_settings_registry_hive {
     LD_SETTINGS_REGISTRY_CURRENT_USER = 0,
     LD_SETTINGS_REGISTRY_LOCAL_MACHINE = 1,
@@ -236,6 +243,12 @@ struct ld_settings_root_report {
     size_t diagnostic_count;
 };
 
+/*
+ * Temporary pre-1.0 desktop integration prototype surface.
+ * Stable autostart and policy APIs move to ld_desktop before ship-candidate
+ * status. Existing entries are kept best-effort compatible until
+ * release-candidate status.
+ */
 struct ld_settings_effect_options {
     int dry_run;
     int allow_global_write;
@@ -332,6 +345,12 @@ struct ld_settings_write_report {
     size_t diagnostic_count;
 };
 
+/*
+ * Temporary pre-1.0 migration prototype surface.
+ * Stable migration planning/execution moves to ld_migration before
+ * ship-candidate status. Existing entries are kept best-effort compatible until
+ * release-candidate status.
+ */
 struct ld_settings_migration_action {
     int kind;
     const char* name;

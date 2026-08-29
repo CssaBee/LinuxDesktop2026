@@ -65,10 +65,10 @@ Current prototype sample:
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
-- Existing pre-RC C ABI surface for root/layer reports, config hydration, atomic replacement writes, migration plans/execution, Registry snapshot/import/export helpers, autostart effects, and managed policy effects, with explicit ownership and matching free functions.
+- Existing pre-RC C ABI surface for root/layer reports, config hydration, atomic replacement writes, and the current temporary migration/Registry/autostart/policy prototype surface, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
-- Autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
-- Managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
+- Temporary autostart effect support with Linux XDG Autostart files and Windows `CurrentVersion\Run` backend shape.
+- Temporary managed/enforced policy effect support with Linux dconf-compatible defaults/locks and Windows `Software\Policies` backend shape.
 
 Expanded ship direction:
 
@@ -97,6 +97,7 @@ Example documentation:
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
 - Extract desktop integration effects to `ld_desktop`, including autostart, desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and managed/enforced policy.
 - Extract migration planning/execution to `ld_migration`, including file/directory copy and move, rollback reporting, cross-module orchestration, and app-settings Registry snapshot/import/export compatibility.
+- Use `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md` as the extraction requirement inventories for tasks 19 and 20.
 - Verify the Windows Registry/autostart/policy backend paths as part of the `ld_desktop` and `ld_migration` extraction work before claiming those modules are ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
 - Treat current `ld_settings` autostart support as temporary prototype evidence for `ld_desktop`.

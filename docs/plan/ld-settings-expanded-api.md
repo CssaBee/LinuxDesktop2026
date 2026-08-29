@@ -31,18 +31,22 @@ effects, and migration items are extraction inventory for `ld_desktop` and
 - all config layers: `defaults`, `global`, `user`, `local`, `portable`, `managed`, `enforced`,
 - default precedence with enforced values non-overridable,
 - hydration of default/model config files,
-- migration plans with dry-run default and explicit execution,
 - atomic file writes with validation and backups,
 - Windows Known Folder resolution,
-- full practical Windows Registry support,
-- JSON canonical Registry import/export,
-- `.reg` compatibility import/export,
-- autostart effect implementation on Windows and Linux,
-- managed/enforced policy implementation on Windows and Linux,
 - no new C ABI expansion before release-candidate status; existing C ABI entry points are kept compatible where practical,
 - examples from Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style workflows,
-- Windows CI or equivalent automated Windows verification for Registry, Known Folders, C ABI, and atomic writes,
+- Windows CI or equivalent automated Windows verification for Known Folders, C ABI, and atomic writes,
 - manual Windows verification transcript before release.
+
+Extraction inventory:
+
+- migration plans with dry-run default and explicit execution move to `ld_migration`,
+- file/directory copy and move execution moves to `ld_migration`,
+- rollback and before/after reporting moves to `ld_migration`,
+- app-settings Registry JSON and `.reg` snapshot/import/export compatibility moves to `ld_migration`,
+- full practical Registry-equivalent desktop/system behavior moves to `ld_desktop`,
+- autostart effect implementation on Windows and Linux moves to `ld_desktop`,
+- desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and managed/enforced policy move to `ld_desktop`.
 
 No half-finished product: documentation-only placeholders are acceptable during development, but not for the first declared shippable release.
 
@@ -346,7 +350,7 @@ struct options {
 
 ### Registry Operations
 
-First shippable API should include:
+The prototype inventory includes:
 
 - `read_value`,
 - `write_value`,
@@ -359,7 +363,7 @@ First shippable API should include:
 - `export_tree_reg`,
 - `import_tree_reg`.
 
-Safety rules:
+Safety rules while this remains in `ld_settings`:
 
 - default access is read-only,
 - writes to HKLM require explicit permission and real platform capability,
@@ -488,14 +492,23 @@ opaque handles or size-tagged structs.
 
 ## Example Targets
 
-Required examples before ship:
+Required examples before the affected modules ship:
+
+`ld_settings`:
 
 - Notepad++ settings root resolution with named plugin/session/log roots.
 - Notepad++ model XML hydration and ordered writes.
-- ShareX personal path resolution with portable marker, registry source, migration from old path, and named roots.
+
+`ld_migration`:
+
+- ShareX personal path resolution with portable marker, registry source,
+  migration from old path, and named roots.
 - WinSCP-style Registry/INI/null/override storage selection.
 - KeePassXC-style roaming/local split and Linux state migration.
 - PortableApps-style registry snapshot/restore dry-run.
+
+`ld_desktop`:
+
 - Autostart enable/disable on Windows and Linux.
 - Managed/enforced policy plan on Windows and Linux.
 
@@ -516,7 +529,11 @@ Required examples before ship:
 
 ## Current Status
 
-`ld_settings` is a working first sample, not a shippable final module.
+`ld_settings` is a working first sample, not a shippable final module. The
+current Registry, autostart, policy, and migration APIs are temporary
+implementation locations. See `docs/plan/ld-desktop-extraction.md` and
+`docs/plan/ld-migration-extraction.md` for the extraction requirements that
+must be satisfied before ship-candidate status.
 
 Implemented in the current C++ sample:
 

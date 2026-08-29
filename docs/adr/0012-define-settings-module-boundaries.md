@@ -84,8 +84,12 @@ Task 03 is a documentation and architecture boundary decision. It does not move
 code by itself.
 
 Task 04 routes generic root resolution, including runtime, through `ld_paths`.
-Follow-up work must extract the current `ld_settings` desktop effects and
-migration behavior into `ld_desktop` and `ld_migration`.
+Task 05 marks current Registry, autostart, policy, and migration APIs as
+temporary implementation locations, adds extraction requirements for
+`ld_desktop` and `ld_migration`, and reduces public claims where the current
+prototype lacks hostile-input, rollback, permissions, Windows, or
+real-consumer evidence. Follow-up work must extract the current `ld_settings`
+desktop effects and migration behavior into `ld_desktop` and `ld_migration`.
 
 `ld_settings` can keep forwarding or compatibility helpers only when they make
 the transition easier. Since the project is still pre-1.0, source-breaking C++

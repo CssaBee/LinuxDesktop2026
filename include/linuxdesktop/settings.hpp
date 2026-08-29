@@ -223,6 +223,8 @@ struct write_report {
 
 using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
 
+// Temporary pre-1.0 migration prototype surface.
+// Stable migration planning/execution belongs to the planned ld_migration module.
 enum class migration_action_kind {
     copy_file,
     move_file,
@@ -302,6 +304,10 @@ migration_execution_report execute_migration_plan(
     const migration_plan& plan,
     const migration_options& options = {});
 
+// Temporary pre-1.0 Registry compatibility prototype surface.
+// App-settings Registry snapshot/import/export compatibility belongs to
+// ld_migration. Registry-equivalent shell, startup, policy, and session
+// integration belongs to the planned ld_desktop module.
 namespace registry {
 
 enum class hive {
@@ -416,6 +422,10 @@ operation_report import_tree_reg(const key& key, std::string_view content, const
 
 } // namespace registry
 
+// Temporary pre-1.0 desktop integration prototype surface.
+// Stable autostart, desktop entry, icon, MIME/default-app/protocol, shell
+// integration, desktop database, and managed/enforced policy APIs belong to the
+// planned ld_desktop module.
 namespace effects {
 
 struct autostart_entry {
