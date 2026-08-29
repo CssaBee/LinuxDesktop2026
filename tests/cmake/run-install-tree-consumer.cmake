@@ -80,8 +80,10 @@ if(DEFINED LD2026_CONSUMER_BUILD_CONFIG AND NOT LD2026_CONSUMER_BUILD_CONFIG STR
     endif()
 endif()
 
+set(ld2026_executable_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
+
 execute_process(
-    COMMAND "${ld2026_consumer_runtime_dir}/ld_settings_consumer"
+    COMMAND "${ld2026_consumer_runtime_dir}/ld_settings_consumer${ld2026_executable_suffix}"
     RESULT_VARIABLE run_result
 )
 if(NOT run_result EQUAL 0)
@@ -89,7 +91,7 @@ if(NOT run_result EQUAL 0)
 endif()
 
 execute_process(
-    COMMAND "${ld2026_consumer_runtime_dir}/ld_paths_c_consumer"
+    COMMAND "${ld2026_consumer_runtime_dir}/ld_paths_c_consumer${ld2026_executable_suffix}"
     RESULT_VARIABLE run_paths_c_result
 )
 if(NOT run_paths_c_result EQUAL 0)
