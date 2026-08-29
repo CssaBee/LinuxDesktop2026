@@ -1,16 +1,17 @@
 # `ld_migration` Extraction Requirements
 
-Status: required extraction before ship-candidate status.
+Status: initial C++ extraction complete; additional hardening remains required
+before ship-candidate status.
 
 `ld_migration` owns planning, explaining, executing, and reporting application
-state moves. The current `linuxdesktop::settings` migration APIs and
-app-settings Registry snapshot/import/export compatibility are temporary pre-1.0
-implementation locations in `ld_settings`.
+state moves. `linuxdesktop::settings` keeps pre-1.0 compatibility aliases and
+forwarding helpers for existing C++ callers; the owning implementation and
+Registry snapshot/import/export compatibility data now live in `ld_migration`.
 
 ## Scope
 
-The extracted module must cover these responsibility groups before the current
-`ld_settings` migration surface can be treated as resolved:
+The extracted module covers these responsibility groups at the C++ ownership
+boundary:
 
 - migration planning,
 - file copy and move execution,
@@ -22,9 +23,10 @@ The extracted module must cover these responsibility groups before the current
 - compatibility imports from `.reg` and JSON snapshot formats,
 - cross-module orchestration once `ld_desktop` exists.
 
-`ld_settings` may keep config-bundle hydration, layer reports, and settings root
-metadata. It may provide inputs to migration plans, but it should not own the
-stable migration engine.
+`ld_settings` keeps config-bundle hydration, layer reports, and settings root
+metadata. It may provide inputs to migration plans, but it does not own the
+stable migration engine. Existing C ABI entry points remain under `ld_settings`
+until release-candidate cleanup.
 
 ## Required API Posture
 
@@ -60,8 +62,10 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 
 ## Extraction Rule
 
-When this module is introduced, remove, move, or provide documented pre-1.0
-migration guidance for `linuxdesktop::settings::plan_migration`,
-`linuxdesktop::settings::execute_migration_plan`, Registry snapshot/import/export
-helpers, and matching C ABI entry points. Do not leave stable callers believing
-that `ld_settings` owns migration execution.
+`linuxdesktop::settings::plan_migration`,
+`linuxdesktop::settings::execute_migration_plan`, and
+`linuxdesktop::settings::registry` are pre-1.0 compatibility facades over
+`linuxdesktop::migration`. New C++ callers should include
+`linuxdesktop/migration.hpp` and use `linuxdesktop::migration` directly.
+Matching C ABI entry points stay under `ld_settings` until release-candidate
+cleanup, but they must continue delegating through the new C++ owner.

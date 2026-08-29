@@ -5,6 +5,7 @@
 namespace flavor_tests::freecad {
 
 namespace ldp = linuxdesktop::paths;
+namespace ldm = linuxdesktop::migration;
 namespace lds = linuxdesktop::settings;
 
 namespace {
@@ -64,12 +65,12 @@ ConfigurationSet ApplicationConfig::build(
 
     const auto deprecated = config.user_home_path / ".FreeCAD";
     if (!command_line.keep_deprecated_paths && deprecated != config.user_app_data && std::filesystem::exists(deprecated)) {
-        lds::migration_action action;
-        action.kind = lds::migration_action_kind::copy_directory;
+        ldm::migration_action action;
+        action.kind = ldm::migration_action_kind::copy_directory;
         action.name = "Copy deprecated FreeCAD user data into configured user data";
         action.source_path = deprecated;
         action.target_path = config.user_app_data;
-        config.deprecated_path_migration = lds::plan_migration({action}, {});
+        config.deprecated_path_migration = ldm::plan_migration({action}, {});
     }
 
     return config;

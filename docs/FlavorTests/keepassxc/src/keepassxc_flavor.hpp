@@ -1,5 +1,6 @@
 #pragma once
 
+#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <filesystem>
@@ -28,7 +29,7 @@ public:
     bool open(const RuntimeEnvironment& environment);
     bool importSettings(const std::filesystem::path& file_name);
     linuxdesktop::settings::write_report exportSettings(const std::filesystem::path& file_name) const;
-    linuxdesktop::settings::migration_plan migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
+    linuxdesktop::migration::migration_plan migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
 
     void set(std::string key, std::string value, bool local = false);
     std::optional<std::string> get(const std::string& key) const;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/settings.hpp"
 
@@ -32,7 +33,7 @@ struct ConfigurationSet {
     std::filesystem::path system_parameter;
     std::vector<std::filesystem::path> python_search_path;
     linuxdesktop::paths::resolver_report path_report;
-    linuxdesktop::settings::migration_plan deprecated_path_migration;
+    linuxdesktop::migration::migration_plan deprecated_path_migration;
 };
 
 class ApplicationConfig {

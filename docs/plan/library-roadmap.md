@@ -70,9 +70,13 @@ Current prototype sample:
 - `ld_desktop` C++ extraction started with Linux XDG Autostart files,
   Linux dconf-compatible managed/enforced policy files, and capability reports
   for the full desktop-effect scope.
+- `ld_migration` C++ extraction started with dry-run-first migration planning,
+  file/directory copy and move execution, and app-settings Registry
+  snapshot/import/export compatibility.
 - Temporary `ld_settings` compatibility wrappers still expose autostart and
-  policy effects for existing pre-1.0 C++ callers; the C ABI stays unchanged
-  until release-candidate cleanup.
+  policy effects, migration helpers, and Registry compatibility aliases for
+  existing pre-1.0 C++ callers; the C ABI stays unchanged until
+  release-candidate cleanup.
 
 Expanded ship direction:
 
@@ -83,7 +87,7 @@ Expanded ship direction:
 - The expanded survey lives in `docs/survey/settings-registry-app-audit.md` and `docs/survey/settings-registry-platform-equivalents.md`.
 - The earlier expanded API inventory lives in `docs/plan/ld-settings-expanded-api.md`; it is prototype evidence, not the final `ld_settings` ownership plan.
 - The extended watchlist fit audit lives in `docs/survey/extended-watchlist-fit-audit.md` and keeps broader desktop integration, process/IPC, dynamic loading, and service behavior out of the first `ld_settings` ship scope.
-- Path resolution that is not settings-specific is moving to the next planned module, `ld_paths`.
+- Path resolution that is not settings-specific lives in `ld_paths`.
 
 Example documentation:
 
@@ -100,7 +104,7 @@ Example documentation:
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
 - Complete desktop integration effects in `ld_desktop`, including desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, Windows autostart/policy mutation, and Registry-equivalent desktop/system behavior.
-- Extract migration planning/execution to `ld_migration`, including file/directory copy and move, rollback reporting, cross-module orchestration, and app-settings Registry snapshot/import/export compatibility.
+- Continue hardening `ld_migration`, including rollback reporting, cross-module orchestration, adversarial path tests, Windows Registry verification, and release-candidate C ABI cleanup.
 - Use `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md` as the extraction requirement inventories for tasks 19 and 20.
 - Verify the Windows Registry/autostart/policy backend paths as part of the `ld_desktop` and `ld_migration` extraction work before claiming those modules are ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.

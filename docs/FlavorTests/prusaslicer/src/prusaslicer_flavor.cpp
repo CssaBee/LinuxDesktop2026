@@ -8,6 +8,7 @@
 namespace flavor_tests::prusaslicer {
 
 namespace ld = linuxdesktop::settings;
+namespace ldm = linuxdesktop::migration;
 
 namespace {
 
@@ -79,16 +80,16 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
         return check;
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_directory;
+    ldm::migration_action action;
+    action.kind = ldm::migration_action_kind::copy_directory;
     action.name = "Copy legacy PrusaSlicer datadir into the XDG datadir";
     action.source_path = config.old_linux_datadir;
     action.target_path = config.config_dir;
 
-    ld::migration_options options;
+    ldm::options options;
     options.dry_run = true;
     options.overwrite_existing = false;
-    check.migration = ld::plan_migration({action}, options);
+    check.migration = ldm::plan_migration({action}, options);
     return check;
 }
 

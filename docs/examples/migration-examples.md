@@ -208,6 +208,7 @@ After, the same task hydrates the config bundle, loads the app-owned XML documen
 
 ```cpp
 namespace ld = linuxdesktop::settings;
+namespace ldm = linuxdesktop::migration;
 
 bool NppParameters::loadConfigFiles()
 {
@@ -385,6 +386,7 @@ After, the same startup task keeps ShareX-style policy decisions visible while m
 
 ```cpp
 namespace ld = linuxdesktop::settings;
+namespace ldm = linuxdesktop::migration;
 
 void Program::UpdatePersonalPath()
 {
@@ -437,11 +439,11 @@ void Program::UpdatePersonalPath()
     if (!report.settings_override_active && !report.portable_active)
         MigratePersonalPathConfig(report.roots.config);
 
-    // CHANGE: ld_settings can now represent the file migration as a dry-run
+    // CHANGE: ld_migration can now represent the file migration as a dry-run
     // plan. The app can show this before executing anything.
-    const ld::migration_plan path_migration = ld::plan_migration({
+    const ldm::migration_plan path_migration = ldm::plan_migration({
         {
-            ld::migration_action_kind::copy_directory,
+            ldm::migration_action_kind::copy_directory,
             "copy legacy personal folder",
             LegacyPersonalFolder,
             report.roots.config,
@@ -451,8 +453,9 @@ void Program::UpdatePersonalPath()
     });
     ShowMigrationPreview(path_migration);
 
-    // CHANGE: ld_settings::registry can represent Registry snapshots/imports
-    // through C++ and C ABI calls.
+    // CHANGE: ld_migration::registry can represent Registry snapshots/imports
+    // through C++ calls. The pre-1.0 C ABI remains under ld_settings until
+    // release-candidate cleanup.
     // DEFER: real Windows verification decides when this is safe to advertise
     // as shippable Registry migration behavior.
 
@@ -656,9 +659,9 @@ void BootstrapConfigAndPortableState()
 
     // CHANGE: the dry-run migration API can carry the dangerous operation as
     // an inspectable plan instead of running Registry movement implicitly.
-    const ld::migration_plan registry_plan = ld::plan_migration({
+    const ldm::migration_plan registry_plan = ldm::plan_migration({
         {
-            ld::migration_action_kind::export_registry,
+            ldm::migration_action_kind::export_registry,
             "snapshot app registry before portable run",
             {},
             report.roots.state / "registry-snapshot.json",
@@ -671,10 +674,10 @@ void BootstrapConfigAndPortableState()
     // CHANGE: JSON/.reg snapshot formats and C ABI entry points now exist, so
     // app-specific before/after-run policy can be wired around explicit execution:
     //
-    //   ld::migration_options execute_options;
+    //   ldm::options execute_options;
     //   execute_options.dry_run = false;
     //   execute_options.allow_dangerous = true;
-    //   auto executed = ld::execute_migration_plan(registry_plan, execute_options);
+    //   auto executed = ldm::execute_migration_plan(registry_plan, execute_options);
     //
     // DEFER: Windows verification and rollback evidence are still required
     // before PortableApps-style registry run wrappers are shippable.
@@ -791,6 +794,7 @@ After, `ld_paths` resolves user roots while desktop registration stays a separat
 
 ```cpp
 namespace ldp = linuxdesktop::paths;
+namespace ldm = linuxdesktop::migration;
 namespace lds = linuxdesktop::settings;
 
 void StartOpenRGB()
@@ -864,7 +868,7 @@ void InitializeFreeCADDirectories()
     App::SetResourceRoot(resolved.selected.at(ldp::path_family::resources));
 
     // KEEP: versioned migration rules stay with settings/app code.
-    const auto migration = lds::plan_migration(BuildFreeCADMigration(resolved));
+    const auto migration = ldm::plan_migration(BuildFreeCADMigration(resolved));
     ShowMigrationPreview(migration);
 }
 ```

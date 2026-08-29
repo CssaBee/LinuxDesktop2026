@@ -1,5 +1,6 @@
 #pragma once
 
+#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <filesystem>
@@ -39,7 +40,7 @@ struct PresetBundle {
 
 struct OldDatadirCheck {
     bool should_prompt_user = false;
-    linuxdesktop::settings::migration_plan migration;
+    linuxdesktop::migration::migration_plan migration;
 };
 
 class PrusaConfigSnapshot {

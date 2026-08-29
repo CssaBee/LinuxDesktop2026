@@ -8,6 +8,7 @@
 namespace flavor_tests::keepassxc {
 
 namespace ld = linuxdesktop::settings;
+namespace ldm = linuxdesktop::migration;
 
 namespace {
 
@@ -126,19 +127,19 @@ ld::write_report Config::exportSettings(const std::filesystem::path& file_name) 
     return ld::write_with_backup(write, looks_like_ini);
 }
 
-ld::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
+ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
 {
     if (!environment.old_cache_config_file || std::filesystem::exists(files_.local) ||
         !std::filesystem::exists(*environment.old_cache_config_file)) {
         return {};
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::move_file;
+    ldm::migration_action action;
+    action.kind = ldm::migration_action_kind::move_file;
     action.name = "Move legacy KeePassXC local settings from cache to state";
     action.source_path = *environment.old_cache_config_file;
     action.target_path = files_.local;
-    return ld::plan_migration({action}, {});
+    return ldm::plan_migration({action}, {});
 }
 
 void Config::set(std::string key, std::string value, bool local)
