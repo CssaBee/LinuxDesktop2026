@@ -1,5 +1,7 @@
 #include "prusaslicer_flavor.hpp"
 
+#include "linuxdesktop/migration.hpp"
+
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -54,6 +56,21 @@ SaveResult to_save_result(const ld::write_report& report)
     return {report.ok, report.backup_path, report.temp_path, report.durable_write};
 }
 
+OldDatadirMigration to_old_datadir_migration(const ldm::migration_plan& plan)
+{
+    OldDatadirMigration migration;
+    migration.dry_run = plan.dry_run;
+    migration.blocked = !plan.diagnostics.empty() && plan.actions.empty();
+    migration.available = !plan.actions.empty();
+    if (!plan.actions.empty()) {
+        const auto& action = plan.actions.front();
+        migration.old_datadir = action.source_path;
+        migration.config_dir = action.target_path;
+        migration.action = "copy_old_linux_datadir_to_config_dir";
+    }
+    return migration;
+}
+
 } // namespace
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
@@ -94,7 +111,8 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
     ldm::options options;
     options.dry_run = true;
     options.overwrite_existing = false;
-    check.migration = ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options);
+    check.migration = to_old_datadir_migration(
+        ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options));
     return check;
 }
 

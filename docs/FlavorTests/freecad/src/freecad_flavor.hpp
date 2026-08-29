@@ -1,6 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/settings.hpp"
 
@@ -25,6 +24,16 @@ struct RuntimeEnvironment {
     std::map<std::string, std::string> variables;
 };
 
+struct DeprecatedPathMigration {
+    bool available = false;
+    bool blocked = false;
+    bool should_prompt_user = false;
+    bool dry_run = true;
+    std::filesystem::path deprecated_user_data;
+    std::filesystem::path user_app_data;
+    std::string action;
+};
+
 struct ConfigurationSet {
     std::filesystem::path user_home_path;
     std::filesystem::path user_app_data;
@@ -32,7 +41,7 @@ struct ConfigurationSet {
     std::filesystem::path user_parameter;
     std::filesystem::path system_parameter;
     std::vector<std::filesystem::path> python_search_path;
-    linuxdesktop::migration::migration_plan deprecated_path_migration;
+    DeprecatedPathMigration deprecated_path_migration;
 };
 
 struct SaveResult {

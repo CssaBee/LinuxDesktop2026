@@ -7,15 +7,15 @@ before those values leave adapter code.
 **Blocked by:** 20 - Extract Migration Module; 27 - Record FlavorTest API
 Friction Notes.
 
-**Status:** proposed
+**Status:** done
 
-- [ ] KeePassXC, FreeCAD, and PrusaSlicer public headers no longer expose
+- [x] KeePassXC, FreeCAD, and PrusaSlicer public headers no longer expose
   `linuxdesktop::migration::migration_plan`.
-- [ ] Each flavor still exposes source path, target path, dry-run state,
+- [x] Each flavor still exposes source path, target path, dry-run state,
   availability or blocked state, and prompt/action intent in product vocabulary.
-- [ ] Tests assert the product-facing result shape rather than the raw
+- [x] Tests assert the product-facing result shape rather than the raw
   LinuxDesktop2026 plan object.
-- [ ] `docs/FlavorTests/API_FRICTION.md` records the before/after judgment for
+- [x] `docs/FlavorTests/API_FRICTION.md` records the before/after judgment for
   each translated seam.
 
 ## Problem Statement

@@ -115,10 +115,14 @@ void legacy_cache_local_settings_are_planned_as_migration()
     require(config.open(environment), "config should open");
     const auto migration = config.migrateOldLocalConfig(environment);
 
+    require(migration.available, "legacy local settings migration should be available");
+    require(!migration.blocked, "legacy local settings migration should not be blocked");
+    require(migration.should_prompt_user, "legacy local settings migration should prompt before moving");
     require(migration.dry_run, "legacy local settings migration should be planned first");
-    require(migration.actions.size() == 1, "one local settings move should be planned");
-    require(migration.actions.front().source_path == old_file, "migration should source old cache file");
-    require(migration.actions.front().target_path == config.files().local, "migration should target local state file");
+    require(migration.old_cache_file == old_file, "migration should source old cache file");
+    require(migration.local_config_file == config.files().local, "migration should target local state file");
+    require(migration.action == "move_old_cache_config_to_local_config",
+        "migration should expose KeePassXC action intent");
 }
 
 } // namespace

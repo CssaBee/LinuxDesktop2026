@@ -1,6 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <filesystem>
@@ -51,9 +50,18 @@ struct PresetBundle {
     std::vector<std::string> loaded_files;
 };
 
+struct OldDatadirMigration {
+    bool available = false;
+    bool blocked = false;
+    bool dry_run = true;
+    std::filesystem::path old_datadir;
+    std::filesystem::path config_dir;
+    std::string action;
+};
+
 struct OldDatadirCheck {
     bool should_prompt_user = false;
-    linuxdesktop::migration::migration_plan migration;
+    OldDatadirMigration migration;
 };
 
 class PrusaConfigSnapshot {

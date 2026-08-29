@@ -89,12 +89,24 @@ void deprecated_path_migration_is_planned_unless_kept()
     environment.variables["FREECAD_USER_DATA"] = (root / "xdg" / "FreeCAD").string();
 
     const auto config = app_config.build(environment, {});
-    require(config.deprecated_path_migration.actions.size() == 1,
-        "deprecated FreeCAD path should be planned as a migration");
+    require(config.deprecated_path_migration.available,
+        "deprecated FreeCAD path should be available as a migration");
+    require(!config.deprecated_path_migration.blocked,
+        "deprecated FreeCAD path migration should not be blocked");
+    require(config.deprecated_path_migration.should_prompt_user,
+        "deprecated FreeCAD path migration should prompt before copying");
+    require(config.deprecated_path_migration.dry_run,
+        "deprecated FreeCAD path migration should be planned first");
+    require(config.deprecated_path_migration.deprecated_user_data == deprecated,
+        "deprecated FreeCAD path migration should source the old user data");
+    require(config.deprecated_path_migration.user_app_data == root / "xdg" / "FreeCAD",
+        "deprecated FreeCAD path migration should target the current user data");
+    require(config.deprecated_path_migration.action == "copy_deprecated_user_data_to_current_user_data",
+        "deprecated FreeCAD path migration should expose FreeCAD action intent");
 
     flavor_tests::freecad::CommandLineOptions keep;
     keep.keep_deprecated_paths = true;
-    require(app_config.build(environment, keep).deprecated_path_migration.actions.empty(),
+    require(!app_config.build(environment, keep).deprecated_path_migration.available,
         "--keep-deprecated-paths should suppress migration planning");
 }
 

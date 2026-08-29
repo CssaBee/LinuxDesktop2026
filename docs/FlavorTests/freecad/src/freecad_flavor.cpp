@@ -32,6 +32,22 @@ bool xml_like(const std::filesystem::path&, std::string& message)
     return true;
 }
 
+DeprecatedPathMigration to_deprecated_path_migration(const ldm::migration_plan& plan)
+{
+    DeprecatedPathMigration migration;
+    migration.dry_run = plan.dry_run;
+    migration.blocked = !plan.diagnostics.empty() && plan.actions.empty();
+    migration.available = !plan.actions.empty();
+    migration.should_prompt_user = migration.available;
+    if (!plan.actions.empty()) {
+        const auto& action = plan.actions.front();
+        migration.deprecated_user_data = action.source_path;
+        migration.user_app_data = action.target_path;
+        migration.action = "copy_deprecated_user_data_to_current_user_data";
+    }
+    return migration;
+}
+
 } // namespace
 
 ConfigurationSet ApplicationConfig::build(
@@ -69,7 +85,8 @@ ConfigurationSet ApplicationConfig::build(
 
     const auto deprecated = config.user_home_path / ".FreeCAD";
     if (!command_line.keep_deprecated_paths && deprecated != config.user_app_data && std::filesystem::exists(deprecated)) {
-        config.deprecated_path_migration = ldm::plan_copy_directory(deprecated, config.user_app_data);
+        config.deprecated_path_migration =
+            to_deprecated_path_migration(ldm::plan_copy_directory(deprecated, config.user_app_data));
     }
 
     return config;

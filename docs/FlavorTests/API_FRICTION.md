@@ -115,8 +115,8 @@ Remaining visible concepts:
   overrides, and a machine-local named root.
 - `exportSettings()` still uses `write_with_backup()` directly for a common
   durable validated export.
-- `migrateOldLocalConfig()` returns `linuxdesktop::migration::migration_plan`
-  from a product method.
+- `migrateOldLocalConfig()` still combines old cache detection with migration
+  planning, but it now returns a KeePassXC-shaped result.
 
 Acceptable mechanism vocabulary:
 
@@ -127,14 +127,15 @@ Acceptable mechanism vocabulary:
 
 Product-boundary leakage:
 
-- Returning `migration_plan` is leakage. A product-shaped result should say
-  whether a local-config migration is available, whether it is dry-run only, and
-  what source/target the UI or caller needs.
+- Fixed in the follow-up pass. `migrateOldLocalConfig()` now returns
+  `LocalConfigMigration`, carrying availability, blocked state, prompt intent,
+  dry-run state, source/target paths, and a KeePassXC action name. The raw
+  `migration_plan` stays inside the adapter implementation.
 
 Helper assessment:
 
-- `plan_move_file()` removes mechanical action construction, but it does not
-  improve the public seam while the method still returns `migration_plan`.
+- `plan_move_file()` removes mechanical action construction, but it only
+  improves the product seam after the adapter translates the raw plan.
 - Root helpers help the local-settings declaration; they do not resolve the
   deeper roaming/local naming mismatch between KeePassXC and LinuxDesktop2026.
 
@@ -174,8 +175,8 @@ Remaining visible concepts:
 - `ApplicationConfig::build()` still calls `ld_paths::resolve_app_paths()` only
   to validate or exercise the path layer after FreeCAD-specific environment
   variables have already selected paths.
-- `ConfigurationSet` stores
-  `linuxdesktop::migration::migration_plan deprecated_path_migration`.
+- `ConfigurationSet` stores a FreeCAD-shaped deprecated-path migration decision
+  instead of a raw LinuxDesktop2026 plan.
 - `saveUserParameter()` still uses `write_with_backup()` directly for a common
   durable XML-shaped user-parameter save.
 
@@ -188,14 +189,16 @@ Acceptable mechanism vocabulary:
 
 Product-boundary leakage:
 
-- Storing `migration_plan` in `ConfigurationSet` is leakage. The product seam
-  should carry a FreeCAD-shaped deprecated-path migration decision with source,
-  target, dry-run status, and prompt/action intent.
+- Fixed in the follow-up pass. `ConfigurationSet` now carries
+  `DeprecatedPathMigration`, with availability, blocked state, prompt intent,
+  dry-run status, source/target paths, and a FreeCAD action name. The raw
+  `migration_plan` stays inside the adapter implementation.
 
 Helper assessment:
 
-- `plan_copy_directory()` removed action setup but did not fix local reasoning
-  because callers still see a LinuxDesktop2026 migration plan.
+- `plan_copy_directory()` removes action setup; the public seam is now clearer
+  because callers see a FreeCAD migration decision instead of a
+  LinuxDesktop2026 migration plan.
 - The path resolver call currently feels like harness coverage more than a
   natural FreeCAD refactor. A future helper should either earn its place in
   FreeCAD's environment map flow or this slice should document why it is only
@@ -207,8 +210,8 @@ Remaining visible concepts:
 
 - `load_config_bundle()` still constructs `hydrate_options` because the app
   owns model roots, target roots, and vendor-profile metadata.
-- `OldDatadirCheck` returns
-  `linuxdesktop::migration::migration_plan migration`.
+- `OldDatadirCheck` returns a PrusaSlicer-shaped old-datadir migration
+  decision.
 - Save methods use `write_common_config()` and keep PrusaSlicer-owned
   validation callbacks.
 
@@ -221,9 +224,10 @@ Acceptable mechanism vocabulary:
 
 Product-boundary leakage:
 
-- Returning `migration_plan` from `OldDatadirCheck` is leakage. The caller needs
-  a prompt decision and source/target paths, not the full LinuxDesktop2026 plan
-  object.
+- Fixed in the follow-up pass. `OldDatadirCheck` now keeps the prompt decision
+  and returns `OldDatadirMigration`, carrying availability, blocked state,
+  dry-run status, source/target paths, and a PrusaSlicer action name. The raw
+  `migration_plan` stays inside the adapter implementation.
 
 Helper assessment:
 
@@ -231,8 +235,8 @@ Helper assessment:
 - `ensure_config_defaults()` improved naming, but the hydration option object is
   still not especially product-shaped. That may be acceptable because vendor
   profile metadata is unusually explicit.
-- The migration helper shortened setup but did not improve the product boundary
-  while `migration_plan` is still visible.
+- The migration helper shortened setup; the product boundary improved once the
+  adapter translated the raw plan into `OldDatadirMigration`.
 
 ## OpenRGB
 
@@ -294,8 +298,9 @@ Helper assessment:
 
 ## Cross-Flavor Follow-Up
 
-- Translate remaining public `migration_plan` exposure in KeePassXC, FreeCAD,
-  and PrusaSlicer before treating migration helpers as adoption-ready.
+- Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
+  PrusaSlicer now translate raw migration plans into product-shaped migration
+  results before callers see them.
 - Revisit durable config writes in qBittorrent, KeePassXC, KiCad, FreeCAD,
   OpenRGB, and OBS. Either adopt `write_common_config()` where it improves local
   reasoning or document why the lower-level `write_with_backup()` call is the

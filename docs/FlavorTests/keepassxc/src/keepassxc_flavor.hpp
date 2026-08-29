@@ -1,6 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/migration.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <filesystem>
@@ -29,12 +28,22 @@ struct ExportResult {
     std::optional<std::filesystem::path> backup_file;
 };
 
+struct LocalConfigMigration {
+    bool available = false;
+    bool blocked = false;
+    bool should_prompt_user = false;
+    bool dry_run = true;
+    std::filesystem::path old_cache_file;
+    std::filesystem::path local_config_file;
+    std::string action;
+};
+
 class Config {
 public:
     bool open(const RuntimeEnvironment& environment);
     bool importSettings(const std::filesystem::path& file_name);
     ExportResult exportSettings(const std::filesystem::path& file_name) const;
-    linuxdesktop::migration::migration_plan migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
+    LocalConfigMigration migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
 
     void set(std::string key, std::string value, bool local = false);
     std::optional<std::string> get(const std::string& key) const;

@@ -1,5 +1,7 @@
 #include "keepassxc_flavor.hpp"
 
+#include "linuxdesktop/migration.hpp"
+
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -56,6 +58,22 @@ bool looks_like_ini(const std::filesystem::path& path, std::string& message)
 ExportResult to_export_result(const ld::write_report& report)
 {
     return {report.ok, report.backup_path};
+}
+
+LocalConfigMigration to_local_config_migration(const ldm::migration_plan& plan)
+{
+    LocalConfigMigration migration;
+    migration.dry_run = plan.dry_run;
+    migration.blocked = !plan.diagnostics.empty() && plan.actions.empty();
+    migration.available = !plan.actions.empty();
+    migration.should_prompt_user = migration.available;
+    if (!plan.actions.empty()) {
+        const auto& action = plan.actions.front();
+        migration.old_cache_file = action.source_path;
+        migration.local_config_file = action.target_path;
+        migration.action = "move_old_cache_config_to_local_config";
+    }
+    return migration;
 }
 
 } // namespace
@@ -132,7 +150,7 @@ ExportResult Config::exportSettings(const std::filesystem::path& file_name) cons
     return to_export_result(ld::write_with_backup(write, looks_like_ini));
 }
 
-ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
+LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
 {
     if (!environment.old_cache_config_file || std::filesystem::exists(files_.local) ||
         !std::filesystem::exists(*environment.old_cache_config_file)) {
@@ -141,7 +159,7 @@ ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& envi
 
     ldm::options options;
     options.allow_dangerous = true;
-    return ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options);
+    return to_local_config_migration(ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options));
 }
 
 void Config::set(std::string key, std::string value, bool local)
