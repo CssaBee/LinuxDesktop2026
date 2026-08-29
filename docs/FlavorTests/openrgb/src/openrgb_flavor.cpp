@@ -1,5 +1,6 @@
 #include "openrgb_flavor.hpp"
 
+#include "linuxdesktop/desktop.hpp"
 #include "linuxdesktop/paths.hpp"
 
 #include <fstream>
