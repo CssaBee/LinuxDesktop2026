@@ -104,6 +104,10 @@ _Avoid_: Giant report, research notes pile
 A recurring set of module-sized portability projects that can serve as university assignments, contributor onboarding, API validation, and future implementation experiments.
 _Avoid_: Toy exercises, tutorial-only examples, unrelated coding katas
 
+**Flavor test**:
+A small adapter-and-test harness that rewrites a real upstream seam against LinuxDesktop2026 APIs and measures how little glue is needed to integrate it.
+_Avoid_: Toy example, mock-only compatibility test, benchmark suite
+
 **Desktop integration effect**:
 A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
 _Avoid_: Settings file, GUI toolkit feature, installer only
