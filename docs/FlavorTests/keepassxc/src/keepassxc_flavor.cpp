@@ -58,18 +58,6 @@ ExportResult to_export_result(const ld::write_report& report)
     return {report.ok, report.backup_path};
 }
 
-LocalConfigMigration to_local_config_migration(const ldm::migration_plan& plan)
-{
-    LocalConfigMigration result;
-    result.dry_run = plan.dry_run;
-    if (!plan.actions.empty()) {
-        result.planned = true;
-        result.source = plan.actions.front().source_path;
-        result.target = plan.actions.front().target_path;
-    }
-    return result;
-}
-
 } // namespace
 
 bool Config::open(const RuntimeEnvironment& environment)
@@ -144,7 +132,7 @@ ExportResult Config::exportSettings(const std::filesystem::path& file_name) cons
     return to_export_result(ld::write_with_backup(write, looks_like_ini));
 }
 
-LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
+ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
 {
     if (!environment.old_cache_config_file || std::filesystem::exists(files_.local) ||
         !std::filesystem::exists(*environment.old_cache_config_file)) {
@@ -153,7 +141,7 @@ LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& env
 
     ldm::options options;
     options.allow_dangerous = true;
-    return to_local_config_migration(ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options));
+    return ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options);
 }
 
 void Config::set(std::string key, std::string value, bool local)

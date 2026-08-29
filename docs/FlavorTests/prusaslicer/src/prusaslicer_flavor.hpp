@@ -51,16 +51,9 @@ struct PresetBundle {
     std::vector<std::string> loaded_files;
 };
 
-struct PlannedDirectoryCopy {
-    bool planned = false;
-    bool dry_run = true;
-    std::filesystem::path source;
-    std::filesystem::path target;
-};
-
 struct OldDatadirCheck {
     bool should_prompt_user = false;
-    PlannedDirectoryCopy migration;
+    linuxdesktop::migration::migration_plan migration;
 };
 
 class PrusaConfigSnapshot {

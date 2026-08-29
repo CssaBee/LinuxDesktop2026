@@ -29,19 +29,12 @@ struct ExportResult {
     std::optional<std::filesystem::path> backup_file;
 };
 
-struct LocalConfigMigration {
-    bool planned = false;
-    bool dry_run = true;
-    std::filesystem::path source;
-    std::filesystem::path target;
-};
-
 class Config {
 public:
     bool open(const RuntimeEnvironment& environment);
     bool importSettings(const std::filesystem::path& file_name);
     ExportResult exportSettings(const std::filesystem::path& file_name) const;
-    LocalConfigMigration migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
+    linuxdesktop::migration::migration_plan migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
 
     void set(std::string key, std::string value, bool local = false);
     std::optional<std::string> get(const std::string& key) const;

@@ -122,10 +122,10 @@ void old_linux_datadir_plans_migration_when_new_datadir_is_empty()
 
     require(check.should_prompt_user, "legacy datadir check should ask before silently ignoring old data");
     require(check.migration.dry_run, "legacy datadir migration should be planned as a dry run");
-    require(check.migration.planned, "one directory copy should be planned");
-    require(check.migration.source == old_config,
+    require(check.migration.actions.size() == 1, "one directory copy should be planned");
+    require(check.migration.actions.front().source_path == old_config,
         "migration should copy from the legacy wx datadir");
-    require(check.migration.target == config,
+    require(check.migration.actions.front().target_path == config,
         "migration should target the XDG datadir");
 }
 
@@ -150,7 +150,7 @@ void old_linux_datadir_check_stays_silent_when_new_datadir_has_content()
     const auto check = snapshot.check_old_linux_datadir(app_config);
 
     require(!check.should_prompt_user, "pop-up should stay silent once the new datadir has user content");
-    require(!check.migration.planned, "no migration action should be planned");
+    require(check.migration.actions.empty(), "no migration action should be planned");
 }
 
 void app_config_save_uses_backup_write_and_validates_sections()

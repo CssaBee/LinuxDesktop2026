@@ -116,9 +116,9 @@ void legacy_cache_local_settings_are_planned_as_migration()
     const auto migration = config.migrateOldLocalConfig(environment);
 
     require(migration.dry_run, "legacy local settings migration should be planned first");
-    require(migration.planned, "one local settings move should be planned");
-    require(migration.source == old_file, "migration should source old cache file");
-    require(migration.target == config.files().local, "migration should target local state file");
+    require(migration.actions.size() == 1, "one local settings move should be planned");
+    require(migration.actions.front().source_path == old_file, "migration should source old cache file");
+    require(migration.actions.front().target_path == config.files().local, "migration should target local state file");
 }
 
 } // namespace

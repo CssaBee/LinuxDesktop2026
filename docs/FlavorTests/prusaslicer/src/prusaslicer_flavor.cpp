@@ -54,18 +54,6 @@ SaveResult to_save_result(const ld::write_report& report)
     return {report.ok, report.backup_path, report.temp_path, report.durable_write};
 }
 
-PlannedDirectoryCopy to_planned_directory_copy(const ldm::migration_plan& plan)
-{
-    PlannedDirectoryCopy result;
-    result.dry_run = plan.dry_run;
-    if (!plan.actions.empty()) {
-        result.planned = true;
-        result.source = plan.actions.front().source_path;
-        result.target = plan.actions.front().target_path;
-    }
-    return result;
-}
-
 } // namespace
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
@@ -106,8 +94,7 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
     ldm::options options;
     options.dry_run = true;
     options.overwrite_existing = false;
-    check.migration = to_planned_directory_copy(
-        ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options));
+    check.migration = ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options);
     return check;
 }
 
