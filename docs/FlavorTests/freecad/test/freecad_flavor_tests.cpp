@@ -110,7 +110,7 @@ void deprecated_path_migration_is_planned_unless_kept()
         "--keep-deprecated-paths should suppress migration planning");
 }
 
-void user_parameter_save_uses_backup_write()
+void user_parameter_save_uses_common_config_write()
 {
     const auto root = test_root();
     flavor_tests::freecad::ApplicationConfig app_config;
@@ -138,7 +138,7 @@ int main()
         freecad_environment_overrides_home_data_and_temp();
         command_line_cfg_paths_win_over_defaults();
         deprecated_path_migration_is_planned_unless_kept();
-        user_parameter_save_uses_backup_write();
+        user_parameter_save_uses_common_config_write();
     } catch (const std::exception& failure) {
         std::cerr << failure.what() << '\n';
         return 1;

@@ -96,13 +96,7 @@ SaveResult ApplicationConfig::saveUserParameter(
     const ConfigurationSet& config,
     std::string xml) const
 {
-    lds::write_options write;
-    write.target = config.user_parameter;
-    write.content = std::move(xml);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-    const auto report = lds::write_with_backup(write, xml_like);
+    const auto report = lds::write_common_config({config.user_parameter, std::move(xml), true}, xml_like);
     return {report.ok, report.backup_path};
 }
 

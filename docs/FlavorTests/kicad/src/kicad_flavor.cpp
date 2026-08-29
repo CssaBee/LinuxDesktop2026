@@ -100,13 +100,8 @@ std::filesystem::path SETTINGS_MANAGER::GetBackupRootForProject(const Project* p
 
 SaveResult SETTINGS_MANAGER::Save(const JsonSettings& settings) const
 {
-    ld::write_options write;
-    write.target = GetPathForSettingsFile(settings);
-    write.content = settings.json;
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-    const auto report = ld::write_with_backup(write, json_object_shape);
+    const auto report = ld::write_common_config({GetPathForSettingsFile(settings), settings.json, true},
+        json_object_shape);
     return {report.ok, report.backup_path};
 }
 

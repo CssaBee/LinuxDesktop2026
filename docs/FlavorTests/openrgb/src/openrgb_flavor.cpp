@@ -81,20 +81,14 @@ std::string sanitize_desktop_id(std::string value)
 
 lds::write_report write_json_file(const std::filesystem::path& path, std::string content)
 {
-    lds::write_options write;
-    write.target = path;
-    write.content = std::move(content);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-
-    return lds::write_with_backup(write, [](const std::filesystem::path& candidate, std::string& message) {
-        if (looks_like_json_object(read_text(candidate))) {
-            return true;
-        }
-        message = "OpenRGB JSON did not round-trip as an object";
-        return false;
-    });
+    return lds::write_common_config({path, std::move(content), true},
+        [](const std::filesystem::path& candidate, std::string& message) {
+            if (looks_like_json_object(read_text(candidate))) {
+                return true;
+            }
+            message = "OpenRGB JSON did not round-trip as an object";
+            return false;
+        });
 }
 
 SaveResult to_save_result(const lds::write_report& report)

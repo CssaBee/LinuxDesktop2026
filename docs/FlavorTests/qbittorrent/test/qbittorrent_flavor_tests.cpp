@@ -95,7 +95,7 @@ void configuration_name_separates_default_profiles()
     require(app_profile.relativeFastresumePaths(), "command line relative-fastresume should be preserved");
 }
 
-void file_logger_settings_use_backup_write()
+void file_logger_settings_use_common_config_write()
 {
     const auto root = test_root();
     const auto profile = root / "profile";
@@ -122,7 +122,7 @@ int main()
         explicit_profile_dir_wins_over_default_roots();
         profile_marker_enables_portable_mode_and_relative_fastresume();
         configuration_name_separates_default_profiles();
-        file_logger_settings_use_backup_write();
+        file_logger_settings_use_common_config_write();
     } catch (const std::exception& failure) {
         std::cerr << failure.what() << '\n';
         return 1;

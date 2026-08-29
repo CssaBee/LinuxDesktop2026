@@ -6,25 +6,22 @@ list below.
 
 ## Current Order
 
-1. `30` — Translate Migration Plans At Product Boundaries
-2. `31` — Finish Common Config Write Audit
-3. `32` — Prototype Root Request Builder
-4. `33` — Add Walnut FlavorTest Candidate
-5. `34` — Add OpenIPC Dashboard FlavorTest Candidate
-6. `35` — Record OpenIPC Dashboard As Reference Case
-7. `36` — Add OBS Cross-Port Flavor Review
-8. `15` — Validate APIs With One Maintained Consumer Branch
-9. `18` — Expand CI Into Portability Evidence
-10. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-11. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `32` — Prototype Root Request Builder
+2. `33` — Add Walnut FlavorTest Candidate
+3. `34` — Add OpenIPC Dashboard FlavorTest Candidate
+4. `35` — Record OpenIPC Dashboard As Reference Case
+5. `36` — Add OBS Cross-Port Flavor Review
+6. `15` — Validate APIs With One Maintained Consumer Branch
+7. `18` — Expand CI Into Portability Evidence
+8. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+9. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 
-The next pass resolves FlavorTest product-boundary leaks before treating the
-current APIs as ready for maintained consumer validation. Migration result
-translation comes first because it is the clearest public seam leak. The common
-write audit and root-request builder follow because they decide whether current
-helpers are good enough or still charge too much framework tax.
+The next pass resolves remaining FlavorTest product-boundary leaks before
+treating the current APIs as ready for maintained consumer validation. Migration
+result translation and the common write audit are complete, so the root-request
+builder is the remaining helper question before adding new candidate evidence.
 
 Walnut and OpenIPC Dashboard now stay concrete without a separate intake
 template gate: each candidate ticket must name its own source-anchored seam

@@ -84,8 +84,8 @@ Remaining visible concepts:
 - `Profile::init()` still builds a root request for profile overrides,
   executable-adjacent portable mode, home/environment injection, and log root
   placement.
-- `saveFileLoggerSettings()` still uses `write_with_backup()` directly even
-  though it follows the common durable config-write pattern.
+- `saveFileLoggerSettings()` now uses `write_common_config()` for the ordinary
+  durable settings save.
 
 Acceptable mechanism vocabulary:
 
@@ -104,8 +104,8 @@ Helper assessment:
 - Root helpers reduce the named-root boilerplate but do not make the portable
   profile decision easier to reason about; qBittorrent's profile model is still
   inherently application-specific.
-- The write facade should be adopted for file logger settings if the desired
-  durable behavior is the same as other config writes.
+- The write facade is a good fit for file logger settings because qBittorrent
+  only contributes the product path, INI content, and validation callback.
 
 ## KeePassXC
 
@@ -113,8 +113,8 @@ Remaining visible concepts:
 
 - `Config::open()` still combines portable config, roaming/local split, XDG
   overrides, and a machine-local named root.
-- `exportSettings()` still uses `write_with_backup()` directly for a common
-  durable validated export.
+- `exportSettings()` now uses `write_common_config()` for a common durable
+  validated export.
 - `migrateOldLocalConfig()` still combines old cache detection with migration
   planning, but it now returns a KeePassXC-shaped result.
 
@@ -136,6 +136,8 @@ Helper assessment:
 
 - `plan_move_file()` removes mechanical action construction, but it only
   improves the product seam after the adapter translates the raw plan.
+- `write_common_config()` removes low-level backup/replace setup from settings
+  export without hiding KeePassXC's roaming/local filtering.
 - Root helpers help the local-settings declaration; they do not resolve the
   deeper roaming/local naming mismatch between KeePassXC and LinuxDesktop2026.
 
@@ -145,8 +147,8 @@ Remaining visible concepts:
 
 - `SETTINGS_MANAGER` still builds named roots for colors, toolbars, and
   project-backups.
-- `Save()` still uses `write_with_backup()` directly for a common durable JSON
-  settings write.
+- `Save()` now uses `write_common_config()` for common durable JSON settings
+  writes.
 
 Acceptable mechanism vocabulary:
 
@@ -165,8 +167,8 @@ Helper assessment:
 - Root helpers made the named roots easier to scan, but KiCad still needs a
   more fluent way to express "component config below this app config root" and
   "backup root keyed by project" without manual fallback paths.
-- The write facade should be considered for `Save()` if it can keep the durable
-  JSON validation choice obvious.
+- The write facade is a good fit for `Save()` because KiCad still owns the
+  settings target and JSON validation choice.
 
 ## FreeCAD
 
@@ -177,8 +179,8 @@ Remaining visible concepts:
   variables have already selected paths.
 - `ConfigurationSet` stores a FreeCAD-shaped deprecated-path migration decision
   instead of a raw LinuxDesktop2026 plan.
-- `saveUserParameter()` still uses `write_with_backup()` directly for a common
-  durable XML-shaped user-parameter save.
+- `saveUserParameter()` now uses `write_common_config()` for a common durable
+  XML-shaped user-parameter save.
 
 Acceptable mechanism vocabulary:
 
@@ -203,6 +205,9 @@ Helper assessment:
   natural FreeCAD refactor. A future helper should either earn its place in
   FreeCAD's environment map flow or this slice should document why it is only
   compatibility evidence.
+- `write_common_config()` is a good fit for user-parameter saves because FreeCAD
+  still controls the XML path and validation while the platform helper owns the
+  backup/replace mechanics.
 
 ## PrusaSlicer
 
@@ -244,8 +249,8 @@ Remaining visible concepts:
 
 - `ResourceManager::SetupConfigurationDirectory()` uses the path resolver
   directly for resources/config/profile roots.
-- JSON save helpers still use lower-level `write_with_backup()` behind a local
-  `write_json_file()` wrapper.
+- JSON save helpers use a local `write_json_file()` wrapper over
+  `write_common_config()`.
 - Autostart methods translate `ld_desktop::effect_report` into
   `AutostartUpdate`.
 
@@ -262,9 +267,11 @@ Product-boundary leakage:
 
 Helper assessment:
 
-- The local `write_json_file()` wrapper is clear, but it is also evidence that
-  `write_common_config()` may not be sufficiently discoverable or expressive for
-  JSON config saves outside the first three migrated flavors.
+- The local `write_json_file()` wrapper is useful product glue: it names
+  OpenRGB's JSON-object expectation, keeps rejected JSON from replacing the
+  target, and still delegates common backup/replace mechanics to
+  `write_common_config()`. If more JSON saves repeat this pattern, add a
+  JSON-oriented convenience helper instead of returning to low-level options.
 - Autostart remains fairly verbose; that verbosity is acceptable because it
   keeps executable, arguments, working directory, enabled state, dry-run, and
   write permission explicit.
@@ -291,20 +298,20 @@ Product-boundary leakage:
 
 Helper assessment:
 
-- The common write facade is not used here. That is acceptable for now because
-  OBS is deliberately testing whether low-level C-style behavior stays possible,
-  but it should be revisited if the helper claims to cover all common safe
-  config saves.
+- The lower-level write call remains intentional here. OBS is deliberately
+  testing whether C-shaped callers can keep pointer/buffer and integer return
+  conventions while delegating platform mechanics privately; switching this
+  slice to the convenience facade would weaken that coverage.
 
 ## Cross-Flavor Follow-Up
 
 - Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
   PrusaSlicer now translate raw migration plans into product-shaped migration
   results before callers see them.
-- Revisit durable config writes in qBittorrent, KeePassXC, KiCad, FreeCAD,
-  OpenRGB, and OBS. Either adopt `write_common_config()` where it improves local
-  reasoning or document why the lower-level `write_with_backup()` call is the
-  clearer product fit.
+- Keep ordinary durable config saves on `write_common_config()` in qBittorrent,
+  KeePassXC, KiCad, FreeCAD, OpenRGB, Audacity, Notepad++, and PrusaSlicer.
+  Preserve direct `write_with_backup()` only where the product seam is testing a
+  lower-level behavior, such as Notepad++ backup restore or OBS C-style saves.
 - Consider a root-request builder only if it makes Notepad++, qBittorrent,
   KeePassXC, KiCad, and FreeCAD easier to read without inventing a second
   application-profile model.

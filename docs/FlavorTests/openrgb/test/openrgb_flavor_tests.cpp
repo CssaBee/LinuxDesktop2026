@@ -99,7 +99,7 @@ void resource_manager_can_switch_configuration_directory_after_startup()
         "profile manager should create the profile directory");
 }
 
-void settings_save_uses_validated_backup_write()
+void settings_save_uses_validated_common_config_write()
 {
     const auto root = test_root();
     const auto resources = root / "share" / "OpenRGB";
@@ -124,6 +124,31 @@ void settings_save_uses_validated_backup_write()
         "OpenRGB.json should contain the new settings");
     require(read_file(*result.backup_file).find("old") != std::string::npos,
         "backup should contain the previous settings JSON");
+}
+
+void invalid_settings_json_preserves_previous_target()
+{
+    const auto root = test_root();
+    const auto resources = root / "share" / "OpenRGB";
+    const auto config_home = root / "xdg-config";
+    std::filesystem::create_directories(resources);
+
+    flavor_tests::openrgb::RuntimeEnvironment environment;
+    environment.resource_root = resources;
+    environment.variables["XDG_CONFIG_HOME"] = config_home.string();
+
+    flavor_tests::openrgb::ResourceManager manager;
+    require(manager.InitializeResources(environment), "resource manager start should succeed");
+    std::ofstream(manager.paths().config_dir / "OpenRGB.json") << "{\"old\": true}\n";
+
+    const auto result = manager.SaveSettings("[not an object]\n");
+
+    require(!result.saved, "invalid settings JSON should fail validation");
+    require(!result.backup_file.has_value(), "invalid settings JSON should not replace the target");
+    require(manager.settingsManager().settings_json == "{}",
+        "settings manager should not retain rejected JSON");
+    require(read_file(manager.paths().config_dir / "OpenRGB.json").find("old") != std::string::npos,
+        "invalid settings JSON should preserve the previous target");
 }
 
 void controller_configuration_is_saved_under_profile_manager_root()
@@ -199,7 +224,8 @@ int main()
     try {
         resource_manager_uses_xdg_config_for_settings_and_profiles();
         resource_manager_can_switch_configuration_directory_after_startup();
-        settings_save_uses_validated_backup_write();
+        settings_save_uses_validated_common_config_write();
+        invalid_settings_json_preserves_previous_target();
         controller_configuration_is_saved_under_profile_manager_root();
         linux_autostart_is_planned_as_a_desktop_effect();
         linux_autostart_disable_is_the_same_product_seam();

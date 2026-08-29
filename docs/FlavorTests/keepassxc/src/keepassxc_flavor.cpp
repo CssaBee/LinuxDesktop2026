@@ -141,13 +141,8 @@ bool Config::importSettings(const std::filesystem::path& file_name)
 
 ExportResult Config::exportSettings(const std::filesystem::path& file_name) const
 {
-    ld::write_options write;
-    write.target = file_name;
-    write.content = render_ini(roaming_values_);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-    return to_export_result(ld::write_with_backup(write, looks_like_ini));
+    return to_export_result(ld::write_common_config({file_name, render_ini(roaming_values_), true},
+        looks_like_ini));
 }
 
 LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const

@@ -7,20 +7,20 @@ document why the lower-level call is clearer for that product seam.
 **Blocked by:** 23 - Add Common Config Write Facade; 27 - Record FlavorTest API
 Friction Notes.
 
-**Status:** proposed
+**Status:** done
 
-- [ ] qBittorrent file logger settings are either migrated to
+- [x] qBittorrent file logger settings are either migrated to
   `write_common_config()` or explicitly justified.
-- [ ] KeePassXC settings export is either migrated to `write_common_config()` or
+- [x] KeePassXC settings export is either migrated to `write_common_config()` or
   explicitly justified.
-- [ ] KiCad JSON settings saves are either migrated to `write_common_config()`
+- [x] KiCad JSON settings saves are either migrated to `write_common_config()`
   or explicitly justified.
-- [ ] FreeCAD user-parameter saves are either migrated to `write_common_config()`
+- [x] FreeCAD user-parameter saves are either migrated to `write_common_config()`
   or explicitly justified.
-- [ ] OpenRGB's local JSON wrapper is classified as useful product glue or
+- [x] OpenRGB's local JSON wrapper is classified as useful product glue or
   evidence for a JSON-oriented convenience helper.
-- [ ] OBS keeps its C-shaped lower-level save only if the reason is documented.
-- [ ] Tests still cover validation-before-commit, backup behavior, target
+- [x] OBS keeps its C-shaped lower-level save only if the reason is documented.
+- [x] Tests still cover validation-before-commit, backup behavior, target
   preservation on failure, and product-shaped return values.
 
 ## Problem Statement

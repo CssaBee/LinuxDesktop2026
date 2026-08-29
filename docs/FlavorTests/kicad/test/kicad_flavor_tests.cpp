@@ -95,7 +95,7 @@ void backup_root_honors_user_dir_policy_with_project_disambiguation()
         "user-dir backup policy should disambiguate same-named projects");
 }
 
-void save_settings_uses_backup_write_without_changing_product_api()
+void save_settings_uses_common_config_write_without_changing_product_api()
 {
     const auto root = test_root();
     auto manager = make_manager(root);
@@ -119,7 +119,7 @@ int main()
         project_settings_resolve_beside_the_project();
         backup_root_honors_project_dir_policy();
         backup_root_honors_user_dir_policy_with_project_disambiguation();
-        save_settings_uses_backup_write_without_changing_product_api();
+        save_settings_uses_common_config_write_without_changing_product_api();
     } catch (const std::exception& failure) {
         std::cerr << failure.what() << '\n';
         return 1;

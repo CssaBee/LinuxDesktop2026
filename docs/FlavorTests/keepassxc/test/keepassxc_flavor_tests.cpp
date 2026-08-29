@@ -74,7 +74,7 @@ void portable_config_collapses_local_and_roaming_files()
     require(config.files().local == portable / "keepassxc_local.ini", "local settings should be portable");
 }
 
-void import_exports_only_roaming_settings_with_backup_write()
+void import_exports_only_roaming_settings_with_common_config_write()
 {
     const auto root = test_root();
     const auto portable = root / "portable";
@@ -132,7 +132,7 @@ int main()
     try {
         default_config_splits_roaming_and_local_state();
         portable_config_collapses_local_and_roaming_files();
-        import_exports_only_roaming_settings_with_backup_write();
+        import_exports_only_roaming_settings_with_common_config_write();
         legacy_cache_local_settings_are_planned_as_migration();
     } catch (const std::exception& failure) {
         std::cerr << failure.what() << '\n';

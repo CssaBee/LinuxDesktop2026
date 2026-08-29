@@ -73,13 +73,8 @@ std::filesystem::path Profile::location(SpecialFolder folder) const
 
 SaveResult Profile::saveFileLoggerSettings(std::string content) const
 {
-    ld::write_options write;
-    write.target = profile_root_ / "qBittorrent.ini";
-    write.content = std::move(content);
-    write.keep_backup = true;
-    write.atomic_replace = true;
-    write.durable_write = true;
-    const auto report = ld::write_with_backup(write, validate_ini);
+    const auto report = ld::write_common_config({profile_root_ / "qBittorrent.ini", std::move(content), true},
+        validate_ini);
     return {report.ok, report.backup_path};
 }
 
