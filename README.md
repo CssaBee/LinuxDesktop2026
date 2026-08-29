@@ -39,7 +39,7 @@ Status legend:
 - `✅ Done`: implemented prototype behavior.
 - `🟡 In progress`: active work.
 - `📌 Next`: next target.
-- `⬜ Later`: parked research.
+- `⬜ ideas to inspect`: parked research.
 
 | Status | Category | Current state |
 | --- | --- | --- |
@@ -58,21 +58,21 @@ Status legend:
 | `✅` Done | File watching (`ld_watch`) prototype | Public watcher prototype with native Linux and Windows backends, tests, demos, and install-tree linkage. |
 | `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C path prototype with tests, demos, typed plugin path sets, and install-tree coverage. |
 | `🟡` In progress | `ld_migration` hardening | Migration planning and execution now live in `ld_migration`; hardening continues. |
-| `⬜` Later | Process and shell integration | Launching commands, shell helpers, and process lifecycle seams. |
-| `⬜` Later | Dynamic library loading | Loading shared libraries and resolving symbols. |
-| `⬜` Later | Single-instance IPC | App-ownership checks, lock files, local transports, and activation forwarding. |
-| `⬜` Later | `ld_desktop` completion | Desktop entries, icons, MIME/file associations, protocols, and system behavior. |
-| `⬜` Later | Cross-module migration orchestration | Coordinating path, desktop, and settings migrations. |
-| `⬜` Later | Service and daemon lifecycle | Background supervision, command channels, and service integration. |
-| `⬜` Later | GUI / windowing | Top-level windows, platform windows, and event plumbing. |
-| `⬜` Later | Clipboard | Copy/paste integration and capability reporting. |
-| `⬜` Later | Drag-and-drop | Drop targets, payload inspection, and platform differences. |
-| `⬜` Later | Common dialogs and resources | File pickers, message dialogs, icons, and resource access. |
-| `⬜` Later | Printing | Print pipeline and page setup integration. |
-| `⬜` Later | Plugin ABI | Binary compatibility, plugin discovery, and host/plugin boundaries. |
-| `⬜` Later | Advanced theming and DPI | Theme, scaling, and high-DPI adaptation. |
-| `⬜` Later | Accessibility | Screen reader, focus, and assistive-technology support. |
-| `⬜` Later | Installer and package integration | Packaging, install-time behavior, and distribution integration. |
+| `⬜` ideas to inspect | Process and shell integration | Launching commands, shell helpers, and process lifecycle seams. |
+| `⬜` ideas to inspect | Dynamic library loading | Loading shared libraries and resolving symbols. |
+| `⬜` ideas to inspect | Single-instance IPC | App-ownership checks, lock files, local transports, and activation forwarding. |
+| `⬜` ideas to inspect | `ld_desktop` completion | Desktop entries, icons, MIME/file associations, protocols, and system behavior. |
+| `⬜` ideas to inspect | Cross-module migration orchestration | Coordinating path, desktop, and settings migrations. |
+| `⬜` ideas to inspect | Service and daemon lifecycle | Background supervision, command channels, and service integration. |
+| `⬜` ideas to inspect | GUI / windowing | Top-level windows, platform windows, and event plumbing. |
+| `⬜` ideas to inspect | Clipboard | Copy/paste integration and capability reporting. |
+| `⬜` ideas to inspect | Drag-and-drop | Drop targets, payload inspection, and platform differences. |
+| `⬜` ideas to inspect | Common dialogs and resources | File pickers, message dialogs, icons, and resource access. |
+| `⬜` ideas to inspect | Printing | Print pipeline and page setup integration. |
+| `⬜` ideas to inspect | Plugin ABI | Binary compatibility, plugin discovery, and host/plugin boundaries. |
+| `⬜` ideas to inspect | Advanced theming and DPI | Theme, scaling, and high-DPI adaptation. |
+| `⬜` ideas to inspect | Accessibility | Screen reader, focus, and assistive-technology support. |
+| `⬜` ideas to inspect | Installer and package integration | Packaging, install-time behavior, and distribution integration. |
 
 Quick read:
 
