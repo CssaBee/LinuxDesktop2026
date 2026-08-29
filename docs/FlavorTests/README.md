@@ -10,10 +10,12 @@ backup-write, and desktop-effect portions through `ld_*` APIs.
 
 Selected upstream subprojects:
 
-- `notepadpp/`: refactors the settings-root part of `NppParameters::load()`.
+- `notepadpp/`: refactors several `NppParameters` seams from `Parameters.cpp`.
   It preserves Notepad++ policy around `doLocalConf.xml`, `-settingsDir`, cloud
-  settings, session location, and plugin config roots while replacing Win32 path
-  discovery and directory setup with `ld_settings::resolve_app_roots`.
+  settings, session location, plugin config roots, shortcuts XML, find-history
+  XML, and session backup recovery while replacing Win32 path discovery,
+  directory setup, model-file hydration, and validated backup writes with
+  `ld_settings` calls.
   - See the survey notes in `docs/examples/migration-examples.md` and
     `docs/survey/notepad-settings-config-audit.md`.
 - `prusaslicer/`: refactors production-style config hydration and snapshot

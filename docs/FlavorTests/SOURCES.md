@@ -15,13 +15,17 @@ path, directory, hydration, backup-write, and desktop-effect mechanics move to
 
 - Upstream file: `PowerEditor/src/Parameters.cpp`
 - Anchors: `NppParameters::load()`, `getSettingsFolder()`, XML config-family
-  hydration, and session backup behavior.
+  hydration, shortcuts XML loading/saving, find-history serialization, and
+  session backup behavior.
 - Refactored files: `notepadpp/src/notepadpp_flavor.*`
 - Tests: `notepadpp/test/notepadpp_flavor_tests.cpp`
 
 The extracted slice keeps `NppParameters` member assignment, the
 `doLocalConf.xml` portable marker, `-settingsDir` priority, cloud-config
-priority, per-user XML files, plugin config roots, and session save validation.
+priority, per-user XML files, plugin config roots, shortcut HMAC bookkeeping
+inputs, find-history XML ownership, session save validation, and session backup
+recovery. The LinuxDesktop2026 seams are intentionally small: resolve the app
+roots, hydrate missing model XML, and perform durable validated writes.
 
 ## PrusaSlicer
 

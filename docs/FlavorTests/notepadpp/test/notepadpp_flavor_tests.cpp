@@ -124,6 +124,90 @@ void save_session_uses_backup_write_and_app_validation()
         "backup should contain the old XML");
 }
 
+void corrupt_session_is_restored_from_backup()
+{
+    const auto root = test_root();
+    const auto install_root = root / "npp-install";
+    const auto settings_root = root / "npp-settings";
+    std::filesystem::create_directories(install_root);
+    std::filesystem::create_directories(settings_root);
+    write_models(install_root);
+    std::ofstream(settings_root / "session.xml") << "<broken>\n";
+    std::ofstream(settings_root / "session.xml.bak") << "<Session restored=\"1\" />\n";
+
+    flavor_tests::notepadpp::NppParameters parameters;
+    require(parameters.load({install_root, settings_root, {}, {}, false}), "load should recover session");
+
+    require(parameters.session().loaded, "restored session should parse");
+    require(read_file(settings_root / "session.xml").find("restored=\"1\"") != std::string::npos,
+        "session.xml should be restored from the backup file");
+}
+
+void write_shortcuts_uses_backup_write_and_refreshes_hmac_source()
+{
+    const auto root = test_root();
+    const auto install_root = root / "npp-install";
+    const auto settings_root = root / "npp-settings";
+    std::filesystem::create_directories(install_root);
+    std::filesystem::create_directories(settings_root);
+    write_models(install_root);
+    std::ofstream(settings_root / "shortcuts.xml")
+        << "<NotepadPlus><InternalCommands /><ScintillaKeys /></NotepadPlus>\n";
+
+    flavor_tests::notepadpp::NppParameters parameters;
+    require(parameters.load({install_root, settings_root, {}, {}, false}), "load should succeed");
+    const auto original_hmac_source = parameters.state().shortcuts_on_disk_hmac_source;
+
+    flavor_tests::notepadpp::shortcut_store store;
+    store.any_shortcut_modified = true;
+    store.customized_shortcuts.push_back({41002, "Open", "Ctrl+O"});
+    store.macros.push_back({"Trim trailing space", "Text cleanup"});
+    store.user_commands.push_back({42001, "Run linter", "Ctrl+Alt+L"});
+    store.plugin_commands.push_back({43001, "Plugin action", "Ctrl+Shift+P"});
+    store.scintilla_keys.push_back({2400, "SCI_LINEDELETE", "Ctrl+Shift+L"});
+
+    const auto report = parameters.writeShortcuts(store);
+
+    require(report.ok, "shortcut write should succeed");
+    require(report.backup_path.has_value(), "shortcut write should keep a backup");
+    require(parameters.shortcuts().loaded, "shortcut XML should reload after save");
+    require(parameters.state().shortcuts_on_disk_hmac_source != original_hmac_source,
+        "shortcut HMAC source should be recomputed from the new file content");
+    require(parameters.state().shortcuts_xml_hmac_source_in_config == parameters.state().shortcuts_on_disk_hmac_source,
+        "config HMAC source should follow a successful shortcut save");
+    require(read_file(settings_root / "shortcuts.xml").find("SCI_LINEDELETE") != std::string::npos,
+        "shortcut file should contain the rendered Scintilla shortcut");
+}
+
+void write_find_history_uses_config_backup_write()
+{
+    const auto root = test_root();
+    const auto install_root = root / "npp-install";
+    const auto settings_root = root / "npp-settings";
+    std::filesystem::create_directories(install_root);
+    std::filesystem::create_directories(settings_root);
+    write_models(install_root);
+    std::ofstream(settings_root / "config.xml") << "<NotepadPlus><GUIConfigs /></NotepadPlus>\n";
+
+    flavor_tests::notepadpp::NppParameters parameters;
+    require(parameters.load({install_root, settings_root, {}, {}, false}), "load should succeed");
+
+    flavor_tests::notepadpp::find_history history;
+    history.find = {"needle", "ampersand & value"};
+    history.replace = {"replacement"};
+    history.paths = {"/tmp/project"};
+    history.filters = {"*.cpp"};
+
+    const auto report = parameters.writeFindHistory(history);
+
+    require(report.ok, "find-history config write should succeed");
+    require(report.backup_path.has_value(), "config write should keep a backup");
+    const auto config = read_file(settings_root / "config.xml");
+    require(config.find("<FindHistory>") != std::string::npos, "config should contain FindHistory");
+    require(config.find("ampersand &amp; value") != std::string::npos, "find values should be XML escaped");
+    require(config.find("*.cpp") != std::string::npos, "filter history should be persisted");
+}
+
 } // namespace
 
 int main()
@@ -132,6 +216,9 @@ int main()
         command_line_settings_dir_wins_over_cloud_and_local_mode();
         portable_marker_moves_settings_beside_the_install_root();
         save_session_uses_backup_write_and_app_validation();
+        corrupt_session_is_restored_from_backup();
+        write_shortcuts_uses_backup_write_and_refreshes_hmac_source();
+        write_find_history_uses_config_backup_write();
     } catch (const std::exception& failure) {
         std::cerr << failure.what() << '\n';
         return 1;
