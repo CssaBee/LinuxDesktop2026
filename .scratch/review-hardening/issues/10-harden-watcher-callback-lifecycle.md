@@ -6,6 +6,6 @@
 
 **Status:** done
 
-- [ ] Callback exceptions cannot accidentally terminate an internal watcher thread unless the public contract explicitly requires non-throwing callbacks.
-- [ ] Callback-triggered `stop`, watch removal, and callback replacement follow the documented contract.
+- [x] Callback exceptions cannot accidentally terminate an internal watcher thread unless the public contract explicitly requires non-throwing callbacks.
+- [x] Callback-triggered `stop`, watch removal, and callback replacement follow the documented contract.
 - [ ] Tests cover callback throws, callback-triggered lifecycle operations, and destruction while delivery is active.

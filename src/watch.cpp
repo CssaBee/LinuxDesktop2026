@@ -207,6 +207,7 @@ public:
         if (removed) {
             watches_.erase(id.value);
             cancel_settle_tasks_for(id);
+            settle_cv_.notify_all();
         }
         return removed;
     }
@@ -398,6 +399,9 @@ private:
     void enqueue_for_settle(watch_event event)
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (stopped_ || watches_.find(event.source.value) == watches_.end()) {
+            return;
+        }
         const auto key = settle_key(event);
         const auto generation = ++settle_generations_[key];
         settle_queue_.push_back(settle_task{std::move(key), generation, std::move(event)});
@@ -441,7 +445,7 @@ private:
     {
         const auto options = options_for(event.source);
         if (!options.has_value() || !options->settle.has_value()) {
-            return event;
+            return std::nullopt;
         }
 
         const auto settle = *options->settle;
