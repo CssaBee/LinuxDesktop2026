@@ -1,11 +1,97 @@
 #include "openrgb_flavor.hpp"
 
+#include <fstream>
+#include <iterator>
+#include <sstream>
 #include <utility>
 
 namespace flavor_tests::openrgb {
 
 namespace ldp = linuxdesktop::paths;
 namespace lds = linuxdesktop::settings;
+
+namespace {
+
+std::string read_text(const std::filesystem::path& path)
+{
+    std::ifstream input(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+std::string escape_json(std::string value)
+{
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\':
+            escaped += "\\\\";
+            break;
+        case '"':
+            escaped += "\\\"";
+            break;
+        case '\n':
+            escaped += "\\n";
+            break;
+        default:
+            escaped += ch;
+            break;
+        }
+    }
+    return escaped;
+}
+
+bool looks_like_json_object(const std::string& bytes)
+{
+    const auto first = bytes.find_first_not_of(" \t\r\n");
+    const auto last = bytes.find_last_not_of(" \t\r\n");
+    return first != std::string::npos && bytes[first] == '{' && bytes[last] == '}';
+}
+
+std::string render_configuration_json(const std::vector<ControllerConfiguration>& controllers)
+{
+    std::ostringstream output;
+    output << "{\n  \"controllers\": [\n";
+    for (size_t index = 0; index < controllers.size(); ++index) {
+        const auto& controller = controllers[index];
+        output << "    {\"name\": \"" << escape_json(controller.name)
+               << "\", \"zone\": \"" << escape_json(controller.zone) << "\"}";
+        if (index + 1 < controllers.size()) {
+            output << ',';
+        }
+        output << '\n';
+    }
+    output << "  ]\n}\n";
+    return output.str();
+}
+
+lds::write_report write_json_file(const std::filesystem::path& path, std::string content)
+{
+    lds::write_options write;
+    write.target = path;
+    write.content = std::move(content);
+    write.keep_backup = true;
+    write.atomic_replace = true;
+    write.durable_write = true;
+
+    return lds::write_with_backup(write, [](const std::filesystem::path& candidate, std::string& message) {
+        if (looks_like_json_object(read_text(candidate))) {
+            return true;
+        }
+        message = "OpenRGB JSON did not round-trip as an object";
+        return false;
+    });
+}
+
+} // namespace
+
+void ProfileManager::SetConfigurationDirectory(const std::filesystem::path& directory)
+{
+    configuration_directory = directory;
+    profile_directory = configuration_directory / "profiles";
+    std::filesystem::create_directories(profile_directory);
+    profile_list_reloaded = true;
+}
 
 ResourceManager::ResourceManager() = default;
 
@@ -21,9 +107,35 @@ bool ResourceManager::InitializeResources(const RuntimeEnvironment& environment)
 
     settings_manager_.LoadSettings(paths_.config_dir / "OpenRGB.json");
     log_manager_.Configure(paths_.config_dir);
-    profile_manager_ = {paths_.config_dir};
+    profile_manager_.SetConfigurationDirectory(paths_.config_dir);
     init_finished_ = true;
     return true;
+}
+
+bool ResourceManager::SetConfigurationDirectory(const std::filesystem::path& directory)
+{
+    paths_.config_dir = directory;
+    paths_.profiles_dir = directory / "profiles";
+    settings_manager_.LoadSettings(directory / "OpenRGB.json");
+    log_manager_.Configure(directory);
+    profile_manager_.SetConfigurationDirectory(directory);
+    return true;
+}
+
+lds::write_report ResourceManager::SaveSettings(std::string settings_json)
+{
+    auto report = write_json_file(paths_.config_dir / "OpenRGB.json", std::move(settings_json));
+    if (report.ok) {
+        settings_manager_.settings_json = read_text(paths_.config_dir / "OpenRGB.json");
+    }
+    return report;
+}
+
+lds::write_report ResourceManager::SaveConfiguration(
+    const std::vector<ControllerConfiguration>& controllers)
+{
+    return write_json_file(profile_manager_.configuration_directory / "Configuration.json",
+        render_configuration_json(controllers));
 }
 
 bool ResourceManager::SetupConfigurationDirectory(const RuntimeEnvironment& environment)
@@ -51,13 +163,23 @@ lds::effects::effect_report enable_autostart(
     const std::filesystem::path& working_directory,
     const std::filesystem::path& override_directory)
 {
+    return set_autostart_enabled(executable, std::move(arguments), working_directory, override_directory, true);
+}
+
+lds::effects::effect_report set_autostart_enabled(
+    const std::filesystem::path& executable,
+    std::vector<std::string> arguments,
+    const std::filesystem::path& working_directory,
+    const std::filesystem::path& override_directory,
+    bool enabled)
+{
     lds::effects::autostart_entry entry;
     entry.id = "OpenRGB";
     entry.display_name = "OpenRGB";
     entry.executable = executable;
     entry.arguments = std::move(arguments);
     entry.working_directory = working_directory;
-    entry.enabled = true;
+    entry.enabled = enabled;
     entry.user_scope = true;
 
     lds::effects::apply_options options;

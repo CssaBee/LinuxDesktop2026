@@ -19,19 +19,23 @@ Selected upstream subprojects:
   - See the survey notes in `docs/examples/migration-examples.md` and
     `docs/survey/notepad-settings-config-audit.md`.
 - `prusaslicer/`: refactors production-style config hydration and snapshot
-  persistence from PrusaSlicer's config/snapshot area. It keeps PrusaSlicer in
-  charge of profile names, XML content, and validation while replacing repeated
-  copy/backup/temp-write mechanics with `ld_settings::hydrate_config_bundle`
-  and `ld_settings::write_with_backup`.
+  persistence from PrusaSlicer's config/snapshot area, plus the Linux old
+  datadir migration check and recent-project config persistence. It keeps
+  PrusaSlicer in charge of profile names, XML/INI content, prompt policy, and
+  validation while replacing repeated copy/migration/backup/temp-write
+  mechanics with `ld_settings::hydrate_config_bundle`,
+  `ld_settings::plan_migration`, and `ld_settings::write_with_backup`.
   - Source anchors: `src/slic3r/Config/Snapshot.cpp`,
     `src/slic3r/Config/Snapshot.hpp`, and config/resource initialization around
     `src/slic3r/GUI/GUI_App.cpp`.
   - See `docs/survey/extended-watchlist-fit-audit.md`.
 - `openrgb/`: refactors the config/profile root selection from
-  `ResourceManager.cpp` and the Linux desktop autostart write path from
-  `AutoStart/AutoStart-Linux.cpp`. It keeps OpenRGB's JSON/profile naming and
-  startup policy while replacing platform path selection and desktop-file side
-  effects with `ld_paths::resolve_app_paths` and
+  `ResourceManager.cpp`, profile/configuration saves from `ProfileManager.cpp`,
+  and the Linux desktop autostart write path from `AutoStart/AutoStart-Linux.cpp`.
+  It keeps OpenRGB's JSON/profile naming, config-directory switching, profile
+  reload policy, and startup policy while replacing platform path selection,
+  validated JSON writes, and desktop-file side effects with
+  `ld_paths::resolve_app_paths`, `ld_settings::write_with_backup`, and
   `ld_settings::effects::apply_autostart`.
   - See `docs/examples/migration-examples.md` and `docs/survey/extended-watchlist-fit-audit.md`.
 

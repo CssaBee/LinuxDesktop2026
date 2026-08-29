@@ -13,6 +13,7 @@ namespace flavor_tests::openrgb {
 
 struct SettingsManager {
     std::filesystem::path loaded_settings_file;
+    std::string settings_json = "{}";
 
     void LoadSettings(const std::filesystem::path& path) { loaded_settings_file = path; }
 };
@@ -25,6 +26,15 @@ struct LogManager {
 
 struct ProfileManager {
     std::filesystem::path configuration_directory;
+    std::filesystem::path profile_directory;
+    bool profile_list_reloaded = false;
+
+    void SetConfigurationDirectory(const std::filesystem::path& directory);
+};
+
+struct ControllerConfiguration {
+    std::string name;
+    std::string zone;
 };
 
 struct RuntimeEnvironment {
@@ -44,6 +54,10 @@ public:
     ResourceManager();
 
     bool InitializeResources(const RuntimeEnvironment& environment);
+    bool SetConfigurationDirectory(const std::filesystem::path& directory);
+    linuxdesktop::settings::write_report SaveSettings(std::string settings_json);
+    linuxdesktop::settings::write_report SaveConfiguration(
+        const std::vector<ControllerConfiguration>& controllers);
 
     const RuntimePaths& paths() const { return paths_; }
     const linuxdesktop::paths::resolver_report& report() const { return report_; }
@@ -69,5 +83,12 @@ linuxdesktop::settings::effects::effect_report enable_autostart(
     std::vector<std::string> arguments,
     const std::filesystem::path& working_directory,
     const std::filesystem::path& override_directory);
+
+linuxdesktop::settings::effects::effect_report set_autostart_enabled(
+    const std::filesystem::path& executable,
+    std::vector<std::string> arguments,
+    const std::filesystem::path& working_directory,
+    const std::filesystem::path& override_directory,
+    bool enabled);
 
 } // namespace flavor_tests::openrgb

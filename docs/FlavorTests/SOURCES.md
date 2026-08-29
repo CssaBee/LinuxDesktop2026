@@ -32,22 +32,30 @@ roots, hydrate missing model XML, and perform durable validated writes.
 - Upstream files: `src/slic3r/Config/Snapshot.cpp`,
   `src/slic3r/Config/Snapshot.hpp`, and config initialization near
   `src/slic3r/GUI/GUI_App.cpp`.
+- Anchors: preset bundle/vendor config hydration, snapshot persistence,
+  `check_old_linux_datadir()` migration prompting, app config persistence, and
+  recent-project config serialization.
 - Refactored files: `prusaslicer/src/prusaslicer_flavor.*`
 - Tests: `prusaslicer/test/prusaslicer_flavor_tests.cpp`
 
 The extracted slice keeps PrusaSlicer's app-owned preset bundle loading and
-snapshot XML validation, while using LinuxDesktop2026 for first-run model
-hydration and durable temp-write plus backup behavior.
+snapshot XML validation, legacy-datadir prompt policy, recent-project data
+shape, and config section validation, while using LinuxDesktop2026 for
+first-run model hydration, dry-run migration planning, and durable temp-write
+plus backup behavior.
 
 ## OpenRGB
 
 - Upstream files: `ResourceManager.cpp` and `AutoStart/AutoStart-Linux.cpp`
 - Anchors: `ResourceManager::ResourceManager()`,
   `SetupConfigurationDirectory()`, `GetConfigurationDirectory()`, settings load,
-  log-manager setup, profile-manager setup, and Linux autostart.
+  `SetConfigurationDirectory()`, settings save, profile-manager setup,
+  controller configuration save, and Linux autostart.
 - Refactored files: `openrgb/src/openrgb_flavor.*`
 - Tests: `openrgb/test/openrgb_flavor_tests.cpp`
 
 The extracted slice keeps the ResourceManager startup flow and downstream
-consumers of the config directory, while replacing environment probing and XDG
-autostart file planning with `ld_paths` and `ld_settings::effects`.
+consumers of the config directory, OpenRGB's `OpenRGB.json`,
+`Configuration.json`, and `profiles/` conventions, while replacing environment
+probing, validated JSON writes, and XDG autostart file planning with
+`ld_paths`, `ld_settings::write_with_backup`, and `ld_settings::effects`.
