@@ -22,10 +22,9 @@ Use these notes before treating a FlavorTest as integration-readiness evidence:
 
 Remaining visible concepts:
 
-- `NppParameters::load()` still assembles a full `ld_settings::root_options`
-  request because Notepad++ combines install-local config, command-line
-  settings, cloud settings, privileged-install denial, session roots, and plugin
-  config roots.
+- `NppParameters::load()` now uses `ld_settings::root_request_builder` for the
+  common app identity, root, override, portable-marker, privileged-install, and
+  named-root mechanics.
 - The product state keeps copied `linuxdesktop::diagnostic` values because
   Notepad++-style startup diagnostics need to survive after root/default
   resolution.
@@ -51,8 +50,10 @@ Helper assessment:
 
 - The config-write facade shortened the repeated save paths and made intent
   clearer.
-- Root helpers helped the plugin root, but the main root request remains dense.
-  That density reflects real Notepad++ policy rather than just missing syntax.
+- The root-request builder is worth keeping as an experimental C++ helper here.
+  It makes repeated request mechanics easier to scan while the product policy
+  remains visible in the call chain: command-line settings, cloud settings,
+  portable marker, privileged-install denial, and plugin config root.
 
 ## Audacity
 
@@ -81,9 +82,12 @@ Helper assessment:
 
 Remaining visible concepts:
 
-- `Profile::init()` still builds a root request for profile overrides,
-  executable-adjacent portable mode, home/environment injection, and log root
+- `Profile::init()` now uses `root_request_builder` for app identity,
+  executable resource root, injected environment, portable marker, and log root
   placement.
+- The profile-dir override branch remains outside the builder chain because it
+  is qBittorrent policy: command-line profile roots win, otherwise an
+  executable-adjacent `profile` directory activates portable mode.
 - `saveFileLoggerSettings()` now uses `write_common_config()` for the ordinary
   durable settings save.
 
@@ -101,9 +105,9 @@ Product-boundary leakage:
 
 Helper assessment:
 
-- Root helpers reduce the named-root boilerplate but do not make the portable
-  profile decision easier to reason about; qBittorrent's profile model is still
-  inherently application-specific.
+- The root-request builder removes request boilerplate without swallowing the
+  portable profile decision. That split is the desired shape: mechanics in the
+  helper, product branching in the adapter.
 - The write facade is a good fit for file logger settings because qBittorrent
   only contributes the product path, INI content, and validation callback.
 
@@ -145,8 +149,8 @@ Helper assessment:
 
 Remaining visible concepts:
 
-- `SETTINGS_MANAGER` still builds named roots for colors, toolbars, and
-  project-backups.
+- `SETTINGS_MANAGER` uses `root_request_builder` for injected environment setup
+  and named roots for colors, toolbars, and project-backups.
 - `Save()` now uses `write_common_config()` for common durable JSON settings
   writes.
 
@@ -164,9 +168,10 @@ Product-boundary leakage:
 
 Helper assessment:
 
-- Root helpers made the named roots easier to scan, but KiCad still needs a
-  more fluent way to express "component config below this app config root" and
-  "backup root keyed by project" without manual fallback paths.
+- The root-request builder makes KiCad's ordinary environment and named-root
+  setup easier to scan, but it does not solve the product-shaped project backup
+  path. That keyed-by-project fallback should remain KiCad code unless more
+  flavors repeat it.
 - The write facade is a good fit for `Save()` because KiCad still owns the
   settings target and JSON validation choice.
 
@@ -312,9 +317,11 @@ Helper assessment:
   KeePassXC, KiCad, FreeCAD, OpenRGB, Audacity, Notepad++, and PrusaSlicer.
   Preserve direct `write_with_backup()` only where the product seam is testing a
   lower-level behavior, such as Notepad++ backup restore or OBS C-style saves.
-- Consider a root-request builder only if it makes Notepad++, qBittorrent,
-  KeePassXC, KiCad, and FreeCAD easier to read without inventing a second
-  application-profile model.
+- Keep `root_request_builder` experimental for now. It earned promotion
+  consideration in Notepad++, qBittorrent, and KiCad by removing mechanical
+  setup without hiding product policy. Do not force KeePassXC or FreeCAD through
+  it until their product-owned XDG and environment precedence rules can be
+  expressed more clearly than the direct request objects.
 - Keep diagnostics internal by default. If a product needs startup or migration
   diagnostics, translate them into product logging, warning, or prompt data
   before storing them in product-facing state.

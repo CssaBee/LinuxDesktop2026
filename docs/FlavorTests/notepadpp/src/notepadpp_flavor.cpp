@@ -121,24 +121,21 @@ SaveResult to_save_result(const ld::write_report& report)
 
 bool NppParameters::load(const startup_environment& environment)
 {
-    ld::app_identity identity;
-    identity.organization = "notepad-plus-plus";
-    identity.application = "Notepad++";
-
-    ld::root_options roots;
-    roots.resource_root = environment.install_root;
-    roots.settings_override = environment.command_line_settings_dir;
-    roots.sync_config_override = environment.cloud_choice_dir;
-    roots.portable_marker = environment.install_root / "doLocalConf.xml";
-    roots.portable = ld::portable_level::profile;
-    roots.allow_sync_config_for_portable_root = environment.allow_cloud_for_local_config;
-    roots.deny_portable_root_in_privileged_install = true;
-    roots.privileged_install_roots = environment.privileged_install_roots;
-    roots.named_roots = {
-        ld::make_plugin_config_root_request("plugin-config", ld::persistence_class::roaming, "plugins/Config"),
-    };
-
-    const ld::root_report report = ld::resolve_app_roots(identity, roots);
+    const ld::root_report report = ld::root_request_builder()
+        .app("notepad-plus-plus", "Notepad++")
+        .resource_root(environment.install_root)
+        .settings_override(environment.command_line_settings_dir)
+        .sync_config_override(environment.cloud_choice_dir)
+        .portable_marker(environment.install_root / "doLocalConf.xml")
+        .portable(ld::portable_level::profile)
+        .allow_sync_config_for_portable_root(environment.allow_cloud_for_local_config)
+        .deny_portable_root_in_privileged_install(true)
+        .privileged_install_roots(environment.privileged_install_roots)
+        .named_root(ld::make_plugin_config_root_request(
+            "plugin-config",
+            ld::persistence_class::roaming,
+            "plugins/Config"))
+        .resolve();
 
     state_.npp_path = report.roots.resources;
     state_.user_path = report.roots.config;

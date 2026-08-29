@@ -305,6 +305,122 @@ struct root_report {
     std::vector<diagnostic> diagnostics;
 };
 
+class root_request_builder {
+public:
+    root_request_builder() = default;
+
+    explicit root_request_builder(app_identity identity)
+        : identity_(std::move(identity))
+    {
+    }
+
+    root_request_builder& app(std::string organization, std::string application)
+    {
+        identity_.organization = std::move(organization);
+        identity_.application = std::move(application);
+        return *this;
+    }
+
+    root_request_builder& resource_root(std::filesystem::path path)
+    {
+        options_.resource_root = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& home_directory(std::optional<std::filesystem::path> path)
+    {
+        options_.home_directory = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& environment(std::map<std::string, std::string> values)
+    {
+        options_.environment = std::move(values);
+        return *this;
+    }
+
+    root_request_builder& use_process_environment(bool enabled)
+    {
+        options_.use_process_environment = enabled;
+        return *this;
+    }
+
+    root_request_builder& settings_override(std::optional<std::filesystem::path> path)
+    {
+        options_.settings_override = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& sync_config_override(std::optional<std::filesystem::path> path)
+    {
+        options_.sync_config_override = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& portable_marker(std::optional<std::filesystem::path> path)
+    {
+        options_.portable_marker = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& portable(portable_level level)
+    {
+        options_.portable = level;
+        return *this;
+    }
+
+    root_request_builder& allow_portable_root(bool enabled)
+    {
+        options_.allow_portable_root = enabled;
+        return *this;
+    }
+
+    root_request_builder& deny_portable_root_in_privileged_install(bool enabled)
+    {
+        options_.deny_portable_root_in_privileged_install = enabled;
+        return *this;
+    }
+
+    root_request_builder& allow_sync_config_for_portable_root(bool enabled)
+    {
+        options_.allow_sync_config_for_portable_root = enabled;
+        return *this;
+    }
+
+    root_request_builder& privileged_install_roots(std::vector<std::filesystem::path> roots)
+    {
+        options_.privileged_install_roots = std::move(roots);
+        return *this;
+    }
+
+    root_request_builder& create_directories(bool enabled)
+    {
+        options_.create_directories = enabled;
+        return *this;
+    }
+
+    root_request_builder& named_root(named_root_request request)
+    {
+        options_.named_roots.push_back(std::move(request));
+        return *this;
+    }
+
+    root_request_builder& component_roots(component_root_request request)
+    {
+        options_.component_roots.push_back(std::move(request));
+        return *this;
+    }
+
+    const app_identity& identity() const { return identity_; }
+    const root_options& options() const { return options_; }
+    root_options build() const { return options_; }
+    root_report resolve() const;
+
+private:
+    app_identity identity_;
+    root_options options_;
+};
+
 struct config_file {
     std::string name;
     std::string model_name;
@@ -367,6 +483,11 @@ const config_layer* find_config_layer(
     const std::string& name = {});
 
 root_report resolve_app_roots(const app_identity& identity, const root_options& options = {});
+
+inline root_report root_request_builder::resolve() const
+{
+    return resolve_app_roots(identity_, options_);
+}
 
 hydrate_report ensure_config_defaults(const hydrate_options& options);
 hydrate_report hydrate_config_bundle(const hydrate_options& options);

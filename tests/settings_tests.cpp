@@ -306,6 +306,42 @@ void resolves_named_roots_and_layers()
         "storage backend should stringify for diagnostics");
 }
 
+void root_request_builder_preserves_root_options()
+{
+    const auto root = test_root();
+    const auto install = root / "Application";
+    const auto settings = root / "settings";
+    const auto sync = root / "sync";
+
+    const auto report = ld::root_request_builder()
+        .app("BuilderOrg", "BuilderApp")
+        .resource_root(install)
+        .home_directory(root / "home")
+        .environment({{"XDG_CONFIG_HOME", (root / "xdg-config").string()}})
+        .use_process_environment(false)
+        .settings_override(settings)
+        .sync_config_override(sync)
+        .portable_marker(install / "portable.marker")
+        .portable(ld::portable_level::profile)
+        .allow_sync_config_for_portable_root(true)
+        .create_directories(false)
+        .named_root(ld::make_log_root_request(
+            "logs",
+            ld::persistence_class::machine_local,
+            "Logs"))
+        .resolve();
+
+    require(report.settings_override_active, "builder should preserve settings override");
+    require(!report.sync_config_override_active, "builder should preserve settings-over-sync precedence");
+    require(report.roots.resources == install, "builder should preserve resource root");
+    require(report.roots.config == settings, "builder should preserve config root");
+    require(report.roots.state == settings, "builder should preserve state root");
+    const auto* logs = ld::find_named_root(report, "logs");
+    require(logs != nullptr, "builder should preserve named roots");
+    require(logs->path == settings / "Logs", "builder named roots should resolve like explicit options");
+    require(!std::filesystem::exists(settings), "builder should preserve create-directories policy");
+}
+
 void resolves_component_roots()
 {
     const auto root = test_root() / "settings";
@@ -1207,6 +1243,7 @@ int main()
         {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
         {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
         {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
+        {"root_request_builder_preserves_root_options", root_request_builder_preserves_root_options},
         {"resolves_component_roots", resolves_component_roots},
         {"helper_factories_match_explicit_request_shapes", helper_factories_match_explicit_request_shapes},
 #if defined(_WIN32)

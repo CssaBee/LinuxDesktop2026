@@ -6,22 +6,21 @@ list below.
 
 ## Current Order
 
-1. `32` — Prototype Root Request Builder
-2. `33` — Add Walnut FlavorTest Candidate
-3. `34` — Add OpenIPC Dashboard FlavorTest Candidate
-4. `35` — Record OpenIPC Dashboard As Reference Case
-5. `36` — Add OBS Cross-Port Flavor Review
-6. `15` — Validate APIs With One Maintained Consumer Branch
-7. `18` — Expand CI Into Portability Evidence
-8. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-9. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `33` — Add Walnut FlavorTest Candidate
+2. `34` — Add OpenIPC Dashboard FlavorTest Candidate
+3. `35` — Record OpenIPC Dashboard As Reference Case
+4. `36` — Add OBS Cross-Port Flavor Review
+5. `15` — Validate APIs With One Maintained Consumer Branch
+6. `18` — Expand CI Into Portability Evidence
+7. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+8. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 
 The next pass resolves remaining FlavorTest product-boundary leaks before
 treating the current APIs as ready for maintained consumer validation. Migration
-result translation and the common write audit are complete, so the root-request
-builder is the remaining helper question before adding new candidate evidence.
+result translation, the common write audit, and the experimental root-request
+builder pass are complete, so the sequence can move to new candidate evidence.
 
 Walnut and OpenIPC Dashboard now stay concrete without a separate intake
 template gate: each candidate ticket must name its own source-anchored seam

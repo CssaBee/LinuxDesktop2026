@@ -25,27 +25,25 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     portable_mode_enabled_ = !args.profile_dir.has_value() && std::filesystem::is_directory(portable_profile_path);
     relative_fastresume_paths_ = args.relative_fastresume_paths || portable_mode_enabled_;
 
-    ld::app_identity identity;
-    identity.organization = "qBittorrent";
-    identity.application = "qBittorrent" + configurationSuffix();
-
-    ld::root_options options;
-    options.resource_root = environment.executable_dir;
-    options.home_directory = environment.home_directory;
-    options.environment = environment.variables;
-    options.use_process_environment = false;
-    options.portable = ld::portable_level::profile;
-    options.portable_marker = portable_profile_path;
+    auto builder = ld::root_request_builder()
+        .app("qBittorrent", "qBittorrent" + configurationSuffix())
+        .resource_root(environment.executable_dir)
+        .home_directory(environment.home_directory)
+        .environment(environment.variables)
+        .use_process_environment(false)
+        .portable(ld::portable_level::profile)
+        .portable_marker(portable_profile_path)
+        .named_root(ld::make_log_root_request(
+            "logs",
+            ld::persistence_class::machine_local,
+            "logs"));
     if (args.profile_dir) {
-        options.settings_override = *args.profile_dir;
+        builder.settings_override(*args.profile_dir);
     } else if (portable_mode_enabled_) {
-        options.settings_override = portable_profile_path;
+        builder.settings_override(portable_profile_path);
     }
-    options.named_roots = {
-        ld::make_log_root_request("logs", ld::persistence_class::machine_local, "logs"),
-    };
 
-    const auto report = ld::resolve_app_roots(identity, options);
+    const auto report = builder.resolve();
     profile_root_ = report.roots.config;
     data_root_ = report.roots.data;
     fastresume_root_ = relative_fastresume_paths_ ? profile_root_ / "BT_backup" : data_root_ / "BT_backup";

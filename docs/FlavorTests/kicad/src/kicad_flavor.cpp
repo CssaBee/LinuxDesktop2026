@@ -29,25 +29,29 @@ bool json_object_shape(const std::filesystem::path&, std::string& message)
 SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
     : environment_(std::move(environment))
 {
-    ld::app_identity identity;
-    identity.organization = "KiCad";
-    identity.application = "kicad";
-
-    ld::root_options options;
-    options.home_directory = environment_.home_directory;
-    options.environment = environment_.variables;
-    options.use_process_environment = false;
+    auto builder = ld::root_request_builder()
+        .app("KiCad", "kicad")
+        .home_directory(environment_.home_directory)
+        .environment(environment_.variables)
+        .use_process_environment(false)
+        .named_root(ld::make_component_config_root_request(
+            "colors",
+            ld::persistence_class::roaming,
+            "colors"))
+        .named_root(ld::make_component_config_root_request(
+            "toolbars",
+            ld::persistence_class::roaming,
+            "toolbars"))
+        .named_root(ld::make_named_root_request(
+            "project-backups",
+            ld::root_purpose::backup,
+            ld::persistence_class::roaming,
+            "project-backups"));
     if (const auto config_home = environment_.variables.find("XDG_CONFIG_HOME");
         config_home != environment_.variables.end()) {
-        options.settings_override = std::filesystem::path(config_home->second) / "KiCad" / "kicad";
+        builder.settings_override(std::filesystem::path(config_home->second) / "KiCad" / "kicad");
     }
-    options.named_roots = {
-        ld::make_component_config_root_request("colors", ld::persistence_class::roaming, "colors"),
-        ld::make_component_config_root_request("toolbars", ld::persistence_class::roaming, "toolbars"),
-        ld::make_named_root_request("project-backups", ld::root_purpose::backup, ld::persistence_class::roaming,
-            "project-backups"),
-    };
-    const auto report = ld::resolve_app_roots(identity, options);
+    const auto report = builder.resolve();
     user_settings_root_ = report.roots.config;
     state_root_ = report.roots.state;
     color_settings_root_ = report.roots.config / "colors";
