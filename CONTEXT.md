@@ -108,6 +108,10 @@ _Avoid_: Toy exercises, tutorial-only examples, unrelated coding katas
 A small adapter-and-test harness that rewrites a real upstream seam against LinuxDesktop2026 APIs and measures how little glue is needed to integrate it.
 _Avoid_: Toy example, mock-only compatibility test, benchmark suite
 
+**Flavor review round**:
+A later critique/defense pass over completed flavor tests that judges how well the refactor blends into the original product shape.
+_Avoid_: Unit test result, implementation gate, pass/fail criterion
+
 **Desktop integration effect**:
 A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
 _Avoid_: Settings file, GUI toolkit feature, installer only

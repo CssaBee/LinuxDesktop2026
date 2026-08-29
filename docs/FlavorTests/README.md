@@ -38,6 +38,35 @@ Selected upstream subprojects:
   `ld_paths::resolve_app_paths`, `ld_settings::write_with_backup`, and
   `ld_settings::effects::apply_autostart`.
   - See `docs/examples/migration-examples.md` and `docs/survey/extended-watchlist-fit-audit.md`.
+- `keepassxc/`: refactors KeePassXC-style config file selection from
+  `Config.cpp`, including portable config, roaming vs local settings,
+  import/export behavior, and old local-config migration from cache to state.
+  It is meant to stress whether LinuxDesktop2026 root and persistence vocabulary
+  remains understandable when an application already has local/roaming policy.
+- `qbittorrent/`: refactors qBittorrent-style startup profile selection from
+  `Application::Application()` and profile location behavior. It keeps
+  `--profile`, named configurations, executable-adjacent `profile/` portable
+  mode, relative fastresume behavior, and file logger settings as app policy.
+  This is intentionally one of the larger slices because qBittorrent's profile
+  model is a useful pressure test for surrounding-code fit.
+- `obs/`: refactors OBS-style C path helpers and config save behavior from
+  `libobs` utility APIs. It keeps buffer-return and integer status conventions
+  at the product boundary so the sample can expose whether C++ report and option
+  types leak too far into public C-shaped code.
+- `kicad/`: refactors KiCad-style `SETTINGS_MANAGER` path decisions for user,
+  project, color, toolbar, and project-backup settings. It is intentionally one
+  of the larger slices because project-scoped backup roots and per-project
+  disambiguation are likely to reveal integration problems that simpler config
+  roots miss.
+- `audacity/`: refactors Audacity-style file-config probing and save/backup
+  behavior. It is focused on the repeated safe-write call shape so later review
+  rounds can critique whether `write_with_backup` needs a smaller ergonomic
+  facade for common config writes.
+- `freecad/`: refactors FreeCAD-style startup configuration set construction,
+  including `FREECAD_USER_HOME`, `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`,
+  `--user-cfg`, `--system-cfg`, module paths, deprecated-path migration, and
+  user parameter saves. It stresses command-line/environment precedence without
+  letting LinuxDesktop2026 own FreeCAD's application policy.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -46,6 +75,12 @@ methods rather than against generic helper functions:
 - `notepadpp_flavor_tests`
 - `prusaslicer_flavor_tests`
 - `openrgb_flavor_tests`
+- `keepassxc_flavor_tests`
+- `qbittorrent_flavor_tests`
+- `obs_flavor_tests`
+- `kicad_flavor_tests`
+- `audacity_flavor_tests`
+- `freecad_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 
@@ -56,6 +91,9 @@ Seam rule:
 - The app still owns file formats, UI, and policy.
 - LinuxDesktop2026 owns root discovery, candidate reporting, hydration, backup
   writes, and desktop-effect plumbing.
+- A passing flavor test is not a verdict that the refactor is seamless. These
+  samples exist to feed later critique and defense review rounds against the
+  original code shape.
 
 Layout:
 

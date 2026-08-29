@@ -59,3 +59,85 @@ consumers of the config directory, OpenRGB's `OpenRGB.json`,
 `Configuration.json`, and `profiles/` conventions, while replacing environment
 probing, validated JSON writes, and XDG autostart file planning with
 `ld_paths`, `ld_settings::write_with_backup`, and `ld_settings::effects`.
+
+## KeePassXC
+
+- Upstream file: `src/core/Config.cpp`
+- Upstream tests: `tests/TestConfig.cpp`
+- Anchors: `Config::defaultConfigFiles()`, portable config handling, roaming vs
+  local settings, settings import/export, and Linux migration from old cache
+  local settings to state-local settings.
+- Refactored files: `keepassxc/src/keepassxc_flavor.*`
+- Tests: `keepassxc/test/keepassxc_flavor_tests.cpp`
+
+The extracted slice keeps KeePassXC's split between roaming and local settings,
+portable-file naming, import filtering, and app-owned key/value policy while
+using LinuxDesktop2026 for root selection, old-file migration planning, and
+validated backup writes.
+
+## qBittorrent
+
+- Upstream file: `src/app/application.cpp`
+- Upstream support area: `src/base/profile_p.cpp`
+- Anchors: `Application::Application()` profile initialization, `--profile`,
+  executable-adjacent `profile/` portable mode, configuration-name suffixes,
+  relative fastresume behavior, and file logger settings persistence.
+- Refactored files: `qbittorrent/src/qbittorrent_flavor.*`
+- Tests: `qbittorrent/test/qbittorrent_flavor_tests.cpp`
+
+The extracted slice keeps qBittorrent's profile and fastresume rules visible in
+product code while using LinuxDesktop2026 for root selection, named log roots,
+and durable settings-file updates.
+
+## OBS Studio
+
+- Upstream files: `libobs/util/platform-windows.c`, `libobs/util/platform-nix.c`,
+  and `libobs/util/config-file.c`
+- Docs anchor: `docs/sphinx/reference-libobs-util-config-file.rst`
+- Anchors: `os_get_config_path()`, module config paths, and safe config-file
+  save behavior.
+- Refactored files: `obs/src/obs_flavor.*`
+- Tests: `obs/test/obs_flavor_tests.cpp`
+
+The extracted slice keeps OBS-style C APIs, caller-owned buffers, owned string
+paths, and integer return values at the product boundary while using
+LinuxDesktop2026 behind those boundaries for path resolution and backup writes.
+
+## KiCad
+
+- Upstream files: `common/settings/settings_manager.cpp` and
+  `include/settings/settings_manager.h`
+- Docs anchor: KiCad Doxygen for `SETTINGS_MANAGER`
+- Anchors: `GetPathForSettingsFile()`, `GetToolbarSettingsPath()`,
+  `GetBackupRootForProject()`, project-key disambiguation, and settings save.
+- Refactored files: `kicad/src/kicad_flavor.*`
+- Tests: `kicad/test/kicad_flavor_tests.cpp`
+
+The extracted slice keeps KiCad's distinction between user, project, color, and
+toolbar settings plus project-vs-user backup policy. LinuxDesktop2026 supplies
+named roots and durable writes without owning the project backup decision.
+
+## Audacity
+
+- Upstream files: `AudacityFileConfig.cpp` and `FileConfig.cpp`
+- Anchors: local config readability/writability probing, backup file behavior,
+  save/restore loop, and dirty-state clearing after a successful flush.
+- Refactored files: `audacity/src/audacity_flavor.*`
+- Tests: `audacity/test/audacity_flavor_tests.cpp`
+
+The extracted slice keeps Audacity's local file-config object and dirty-state
+ownership while using LinuxDesktop2026 for the atomic backup write. It exists
+mainly to expose whether repeated write-option setup becomes too visible.
+
+## FreeCAD
+
+- Upstream docs: FreeCAD startup and configuration documentation
+- Anchors: startup configuration set construction, `FREECAD_USER_HOME`,
+  `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`, `--user-cfg`, `--system-cfg`,
+  module path handling, deprecated path behavior, and user parameter saves.
+- Refactored files: `freecad/src/freecad_flavor.*`
+- Tests: `freecad/test/freecad_flavor_tests.cpp`
+
+The extracted slice keeps FreeCAD's command-line and environment precedence in
+application code while using LinuxDesktop2026 for path candidate reporting,
+deprecated-path migration planning, and durable parameter-file writes.
