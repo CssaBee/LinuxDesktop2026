@@ -57,6 +57,29 @@ jobs:
         run: |
           Write-Host "This job verifies Windows compile/test behavior for Known Folders, atomic replace, Registry, autostart, policy, and ReadDirectoryChangesW watcher backend shapes."
 
+  sanitizers:
+    name: Sanitizers
+    runs-on: ubuntu-latest
+    env:
+      CFLAGS: -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+      CXXFLAGS: -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+      LDFLAGS: -fsanitize=address,undefined
+      ASAN_OPTIONS: detect_leaks=0
+      LSAN_OPTIONS: detect_leaks=0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: cmake -S . -B build-sanitizers -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build-sanitizers
+
+      - name: Test
+        run: ctest --test-dir build-sanitizers --output-on-failure
+
   watcher-libuv:
     name: Watcher libuv backend
     runs-on: ubuntu-latest

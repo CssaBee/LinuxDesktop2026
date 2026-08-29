@@ -6,6 +6,8 @@
 
 **Status:** ready-for-agent
 
+- [x] Build policy applies `-Wall -Wextra -Wpedantic -Wconversion` on GCC and Clang, with a reasonable MSVC warning level.
+- [x] CI has one Ubuntu sanitizer lane using ASan/UBSan.
 - [ ] CI covers GCC and Clang on Linux, MSVC on Windows, and both Debug and Release configurations where practical.
 - [ ] CI includes shared-library builds and sanitizer jobs where supported.
 - [ ] CI includes an older supported Ubuntu baseline or containerized equivalent where practical.

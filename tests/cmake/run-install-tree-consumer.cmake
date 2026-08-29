@@ -48,6 +48,9 @@ endif()
 if(DEFINED LD2026_CONSUMER_CXX_COMPILER AND NOT LD2026_CONSUMER_CXX_COMPILER STREQUAL "")
     list(APPEND ld2026_configure_args "-DCMAKE_CXX_COMPILER=${LD2026_CONSUMER_CXX_COMPILER}")
 endif()
+if(DEFINED LD2026_CONSUMER_EXE_LINKER_FLAGS AND NOT LD2026_CONSUMER_EXE_LINKER_FLAGS STREQUAL "")
+    list(APPEND ld2026_configure_args "-DCMAKE_EXE_LINKER_FLAGS=${LD2026_CONSUMER_EXE_LINKER_FLAGS}")
+endif()
 
 execute_process(
     COMMAND ${ld2026_configure_args}
@@ -71,7 +74,10 @@ endif()
 
 set(ld2026_consumer_runtime_dir "${LD2026_CONSUMER_BINARY_DIR}")
 if(DEFINED LD2026_CONSUMER_BUILD_CONFIG AND NOT LD2026_CONSUMER_BUILD_CONFIG STREQUAL "")
-    set(ld2026_consumer_runtime_dir "${LD2026_CONSUMER_BINARY_DIR}/${LD2026_CONSUMER_BUILD_CONFIG}")
+    set(ld2026_candidate_runtime_dir "${LD2026_CONSUMER_BINARY_DIR}/${LD2026_CONSUMER_BUILD_CONFIG}")
+    if(EXISTS "${ld2026_candidate_runtime_dir}")
+        set(ld2026_consumer_runtime_dir "${ld2026_candidate_runtime_dir}")
+    endif()
 endif()
 
 execute_process(

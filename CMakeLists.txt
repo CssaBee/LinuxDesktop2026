@@ -13,6 +13,12 @@ set(LD2026_CONFIG_HAS_LIBUV OFF)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
 
+if(MSVC)
+    add_compile_options(/W4 /permissive-)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic -Wconversion)
+endif()
+
 add_library(ld_core INTERFACE)
 add_library(LinuxDesktop2026::ld_core ALIAS ld_core)
 
@@ -298,6 +304,7 @@ if(LD2026_BUILD_TESTS)
             -DLD2026_CONSUMER_GENERATOR=${CMAKE_GENERATOR}
             -DLD2026_CONSUMER_C_COMPILER=${CMAKE_C_COMPILER}
             -DLD2026_CONSUMER_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DLD2026_CONSUMER_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
             -DLD2026_CONSUMER_BUILD_CONFIG=$<CONFIG>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/run-install-tree-consumer.cmake
     )
