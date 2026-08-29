@@ -65,6 +65,16 @@ std::string render_configuration_json(const std::vector<ControllerConfiguration>
     return output.str();
 }
 
+std::string sanitize_desktop_id(std::string value)
+{
+    for (char& ch : value) {
+        if (ch == '/' || ch == '\\' || ch == ':' || ch == '\0') {
+            ch = '-';
+        }
+    }
+    return value.empty() ? "application.desktop" : value + ".desktop";
+}
+
 lds::write_report write_json_file(const std::filesystem::path& path, std::string content)
 {
     lds::write_options write;
@@ -190,7 +200,9 @@ lds::effects::effect_report set_autostart_enabled(
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = override_directory;
 
-    return lds::effects::apply_autostart(entry, options);
+    auto report = lds::effects::apply_autostart(entry, options);
+    report.path = override_directory / sanitize_desktop_id(entry.id);
+    return report;
 }
 
 } // namespace flavor_tests::openrgb
