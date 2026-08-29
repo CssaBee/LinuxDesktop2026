@@ -85,6 +85,9 @@ methods rather than against generic helper functions:
 - `freecad_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
+See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers
+should read those notes before treating passing FlavorTests as
+integration-readiness evidence.
 
 Seam rule:
 
