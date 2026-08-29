@@ -6,6 +6,8 @@ and Registry-shaped migration compatibility.
 
 **Blocked by:** None — the migration extraction already exists.
 
+**Expiry:** release-candidate cleanup. After that point, any remaining `ld_settings -> ld_migration` compatibility link is a defect, not a supported transition.
+
 **Status:** ready-for-agent
 
 - [ ] `ld_settings` no longer PUBLIC-links `ld_migration` for compatibility.

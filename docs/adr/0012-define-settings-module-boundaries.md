@@ -57,7 +57,9 @@ policy C++ implementation lives in `ld_desktop`; migration
 planning/execution and app-settings Registry snapshot/import/export
 compatibility live in `ld_migration`. `ld_settings` does not expose namespace
 bridges for those areas. None of those responsibilities are stable
-`ld_settings` responsibilities.
+`ld_settings` responsibilities. Any remaining transitive dependency from
+`ld_settings` to those owning modules is a bounded transition that expires at
+release-candidate cleanup.
 
 Before `1.0`, C++ APIs may break when needed to correct module boundaries.
 Those breaks must be documented with replacement paths. Existing C ABI entry

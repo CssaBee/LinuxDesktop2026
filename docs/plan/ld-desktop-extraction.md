@@ -8,6 +8,8 @@ desktop, shell, session, or managed-policy environment. The current C++
 autostart and managed/enforced policy implementation lives in
 `linuxdesktop::desktop`; callers should use `ld_desktop` directly for those
 effects. Registry-equivalent desktop/system behavior belongs in `ld_desktop`.
+Any `ld_settings` dependency on `ld_desktop` exists only as a bounded transition
+surface and must be removed by release-candidate cleanup.
 
 ## Scope
 
@@ -79,4 +81,5 @@ callers believing that `ld_settings` owns desktop integration.
 
 The C ABI remains intentionally unchanged until release-candidate status. Its
 `ld_settings_*` desktop-effect entry points are documentable migration points,
-not stable ownership claims.
+not stable ownership claims, and they must not become a permanent compatibility
+layer.

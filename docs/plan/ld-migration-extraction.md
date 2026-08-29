@@ -7,6 +7,8 @@ before ship-candidate status.
 state moves. `linuxdesktop::settings` keeps only the settings-specific API; the
 owning implementation and Registry snapshot/import/export compatibility data
 live in `ld_migration`.
+Any `ld_settings` dependency on `ld_migration` exists only as a bounded
+transition surface and must be removed by release-candidate cleanup.
 
 ## Scope
 

@@ -6,6 +6,8 @@ managed/enforced policy behavior.
 
 **Blocked by:** None — the desktop extraction already exists.
 
+**Expiry:** release-candidate cleanup. After that point, any remaining `ld_settings -> ld_desktop` compatibility link is a defect, not a supported transition.
+
 **Status:** ready-for-agent
 
 - [ ] `ld_settings` no longer PUBLIC-links `ld_desktop` for compatibility.
