@@ -20,7 +20,7 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
 1. Treat C++ APIs as source-compatible only. Keep existing C ABI entry points compatible where practical, but postpone C ABI expansion and binary-stability design until release-candidate status.
 2. Split `ld_settings` by responsibility. Keep settings root/config-bundle behavior; route general path discovery through `ld_paths`; extract desktop integration effects to the planned `ld_desktop` module; extract migration planning/execution and app-settings Registry migration compatibility to the planned `ld_migration` module.
 3. Correct write-safety semantics. Distinguish atomic namespace replacement from crash-durable writes, use secure exclusive temporary-file creation, and keep durable mode explicit instead of implied by replacement.
-4. Harden `ld_watch` before expanding it. Define callback threading/reentrancy, bound internal queues, handle callback exceptions, and stress recursive watching.
+4. Harden `ld_watch` before expanding it. Define callback threading/reentrancy, keep internal queues bounded, handle callback exceptions, and stress recursive watching.
 5. Upgrade CI from smoke coverage to portability evidence: GCC and Clang on Linux, MSVC on Windows, Debug and Release, shared-library builds, sanitizer jobs, and older supported Ubuntu coverage where practical.
 6. Add adversarial tests for filesystem and watcher behavior: permissions, full/error paths where practical, rename/remove churn, large event bursts, and callback lifecycle tests.
 7. Stop adding public enums and structs until at least two real integrations exercise the same concept.
@@ -48,7 +48,7 @@ Confirmed problems:
 - ADR 0012 defines the required boundary correction: `ld_settings` narrows to settings/config behavior, `ld_paths` owns generic root policy, `ld_desktop` owns desktop integration effects, and `ld_migration` owns migration behavior.
 - Linux atomic replacement currently does not imply crash durability unless the code explicitly opts into durable flushing and the platform can support it.
 - Temporary-file creation currently uses predictable names and a check-then-open pattern.
-- `ld_watch` needs stronger callback, queue, and stress-test contracts before ship.
+- `ld_watch` needs stronger callback, queue, and stress-test contracts before ship, and those contracts now need to remain explicit in the public docs as the prototype hardens.
 - C++ public value types make stable binary compatibility unrealistic.
 
 Reasonable engineering concerns:

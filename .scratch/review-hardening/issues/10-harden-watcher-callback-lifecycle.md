@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 — Define Watcher Callback Contract Publicly.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Callback exceptions cannot accidentally terminate an internal watcher thread unless the public contract explicitly requires non-throwing callbacks.
 - [ ] Callback-triggered `stop`, watch removal, and callback replacement follow the documented contract.

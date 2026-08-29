@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Public watcher documentation states which thread may invoke callbacks and that UI-thread dispatch is not promised.
 - [ ] Public watcher documentation states whether callbacks may call `stop`, remove watches, replace callbacks, or destroy the watcher.

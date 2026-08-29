@@ -194,9 +194,9 @@ The first `watcher` object owns backend resources and an internal event queue.
 - `set_callback` installs process-local callback delivery; passing an empty callback returns future events to `poll`/`wait` delivery.
 - Callbacks are invoked from the watcher delivery thread or caller-pumped backend thread, never promised on a UI thread.
 - Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
-- Callback exceptions must not escape an internal watcher thread. Either the callback API must require a non-throwing callback contract and document process-termination consequences, or the implementation must catch exceptions and convert them into diagnostics/degraded state.
-- Callback reentrancy must be explicitly supported or explicitly forbidden. In particular, `stop`, destruction, `remove_watch`, and callback replacement from inside a callback need tests or documented rejection behavior.
-- Internal event queues must have bounded overflow behavior before ship. If user-space buffering overflows, the watcher should degrade and emit a rescan-required event rather than grow memory without limit.
+- Callbacks may call `stop`, `remove_watch`, and `set_callback` from inside the callback. They must not destroy the watcher object that is currently invoking them.
+- Callback exceptions are caught, degrade the stream, and fall back to queued delivery with a diagnostic error event rather than escaping the delivery thread.
+- Internal event queues are bounded. If pull-mode delivery falls behind, the watcher discards queued events, emits a degraded overflow event with rescan guidance, and resumes once the queue is drained.
 
 The prototype can use one delivery thread on Linux. A later toolkit adapter may marshal events onto Qt, GLib, wxWidgets, .NET, or application-specific dispatchers.
 
@@ -436,8 +436,7 @@ Before `ld_watch` can move from prototype to ship candidate:
 
 - Add stress tests for rename storms, deep recursive creation, remove/recreate churn, queue pressure, and callback lifecycle edge cases.
 - Add user-space queue limits and overflow/rescan semantics.
-- Add an exception boundary around callbacks or make the callback type/contract explicitly non-throwing.
-- Decide whether callback delivery is a long-term API or whether toolkit/application dispatchers should become the primary integration path.
+- Keep callback delivery process-local and honest about thread ownership; if a later toolkit adapter becomes the preferred integration point, let it live above `ld_watch` instead of weakening the public contract.
 - Keep libuv and efsw as serious fallback/wrap candidates if native backend maintenance cost starts dominating feature work.
 
 ## Related Docs

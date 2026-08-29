@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <deque>
+#include <exception>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -16,6 +17,42 @@ namespace {
 diagnostic make_diagnostic(severity level, std::string code, std::string message, std::filesystem::path path = {})
 {
     return diagnostic{level, std::move(code), std::move(message), std::move(path)};
+}
+
+constexpr std::size_t max_queue_depth = 512;
+
+watch_event make_failure_event(
+    const watch_event& source,
+    std::string code,
+    std::string message,
+    bool rescan_recommended)
+{
+    watch_event event = source;
+    event.kind = event_kind::error;
+    event.state = stream_state::degraded;
+    event.rescan_recommended = rescan_recommended;
+    event.diagnostics.clear();
+    event.diagnostics.push_back(make_diagnostic(
+        severity::error,
+        std::move(code),
+        std::move(message),
+        source.path.absolute));
+    return event;
+}
+
+watch_event make_overflow_event(const watch_event& source, std::string message)
+{
+    watch_event event = source;
+    event.kind = event_kind::overflow;
+    event.state = stream_state::degraded;
+    event.rescan_recommended = true;
+    event.diagnostics.clear();
+    event.diagnostics.push_back(make_diagnostic(
+        severity::error,
+        std::string(diagnostic_code::queue_overflow),
+        std::move(message),
+        source.path.absolute));
+    return event;
 }
 
 } // namespace
@@ -176,23 +213,25 @@ public:
 
     void stop()
     {
+        const auto current_thread = std::this_thread::get_id();
+        bool should_stop_backend = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (stopped_) {
-                return;
+            if (!stopped_) {
+                stopped_ = true;
+                state_ = stream_state::stopped;
+                should_stop_backend = true;
             }
-            stopped_ = true;
-            state_ = stream_state::stopped;
-            if (backend_) {
-                backend_->stop();
-            }
+        }
+        if (should_stop_backend && backend_) {
+            backend_->stop();
         }
         cv_.notify_all();
         settle_cv_.notify_all();
-        if (worker_.joinable()) {
+        if (worker_.joinable() && worker_.get_id() != current_thread) {
             worker_.join();
         }
-        if (settle_worker_.joinable()) {
+        if (settle_worker_.joinable() && settle_worker_.get_id() != current_thread) {
             settle_worker_.join();
         }
     }
@@ -209,9 +248,7 @@ public:
         if (queue_.empty()) {
             return std::nullopt;
         }
-        auto event = std::move(queue_.front());
-        queue_.pop_front();
-        return event;
+        return pop_queue_front_locked();
     }
 
     std::optional<watch_event> wait()
@@ -223,9 +260,7 @@ public:
         if (queue_.empty()) {
             return std::nullopt;
         }
-        auto event = std::move(queue_.front());
-        queue_.pop_front();
-        return event;
+        return pop_queue_front_locked();
     }
 
     std::optional<watch_event> wait_for(std::chrono::milliseconds timeout)
@@ -240,9 +275,7 @@ public:
         if (!ready || queue_.empty()) {
             return std::nullopt;
         }
-        auto event = std::move(queue_.front());
-        queue_.pop_front();
-        return event;
+        return pop_queue_front_locked();
     }
 
     capability_report capabilities() const
@@ -501,12 +534,61 @@ private:
             }
             callback = callback_;
             if (!callback) {
-                queue_.push_back(std::move(event));
-                cv_.notify_all();
+                enqueue_locked(std::move(event));
                 return;
             }
         }
-        callback(event);
+        try {
+            callback(event);
+        } catch (const std::exception& ex) {
+            handle_callback_exception(event, ex.what());
+        } catch (...) {
+            handle_callback_exception(event, "callback threw an unknown exception");
+        }
+    }
+
+    void handle_callback_exception(const watch_event& event, const std::string& reason)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callback_ = {};
+        state_ = stream_state::degraded;
+        enqueue_locked(make_failure_event(
+            event,
+            std::string(diagnostic_code::callback_exception),
+            reason,
+            false));
+    }
+
+    void enqueue_locked(watch_event event)
+    {
+        if (event.state == stream_state::degraded) {
+            state_ = stream_state::degraded;
+        }
+        if (queue_overflowed_) {
+            return;
+        }
+        if (queue_.size() >= max_queue_depth) {
+            queue_.clear();
+            queue_.push_back(make_overflow_event(
+                event,
+                "Watcher queue overflowed; rescan watched roots before trusting further events"));
+            state_ = stream_state::degraded;
+            queue_overflowed_ = true;
+            cv_.notify_all();
+            return;
+        }
+        queue_.push_back(std::move(event));
+        cv_.notify_all();
+    }
+
+    watch_event pop_queue_front_locked()
+    {
+        auto event = std::move(queue_.front());
+        queue_.pop_front();
+        if (queue_.empty()) {
+            queue_overflowed_ = false;
+        }
+        return event;
     }
 
     mutable std::mutex mutex_;
@@ -523,6 +605,7 @@ private:
     std::uint64_t next_id_ = 1;
     stream_state state_ = stream_state::clean;
     bool stopped_ = false;
+    bool queue_overflowed_ = false;
 };
 
 watcher::watcher()

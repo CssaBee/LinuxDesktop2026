@@ -4,7 +4,7 @@
 
 **Blocked by:** 11 — Add Bounded Watcher Queue Semantics.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Stress tests cover rename storms, deep recursive creation, remove/recreate churn, and large event bursts.
 - [ ] Recursive watch docs describe events as hints and rescan as authoritative after degradation.

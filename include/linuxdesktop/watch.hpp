@@ -94,6 +94,8 @@ inline constexpr std::string_view recursive_duplicate_skipped = "watch.recursive
 inline constexpr std::string_view recursive_discovered = "watch.recursive.discovered";
 inline constexpr std::string_view overflow = "watch.overflow";
 inline constexpr std::string_view rescan_recommended = "watch.rescan_recommended";
+inline constexpr std::string_view callback_exception = "watch.callback.exception";
+inline constexpr std::string_view queue_overflow = "watch.queue.overflow";
 inline constexpr std::string_view resource_limit = "watch.resource.limit";
 inline constexpr std::string_view rename_unpaired = "watch.rename.unpaired";
 inline constexpr std::string_view settle_timeout = "watch.settle.timeout";
@@ -144,6 +146,13 @@ struct watch_event {
 
 using event_callback = std::function<void(const watch_event&)>;
 
+// Callbacks run on the watcher delivery thread or backend-owned delivery path.
+// They are not promised on a UI thread. Callbacks may call stop(), remove_watch(),
+// and set_callback() from inside the callback, but they must not destroy the
+// watcher object that is currently invoking them.
+// Callback exceptions are caught, mark the stream degraded, and fall back to
+// queued delivery with a diagnostic error event.
+
 struct capability_report {
     backend_kind backend = backend_kind::unavailable;
     bool native_recursive = false;
@@ -169,6 +178,9 @@ watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
 
 class watcher {
 public:
+    // Watcher queues are bounded. If pull-mode delivery falls behind far enough,
+    // the watcher drops queued events, emits a degraded overflow event, and
+    // expects the caller to rescan.
     watcher();
     ~watcher();
 

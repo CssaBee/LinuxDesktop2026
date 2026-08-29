@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Watcher queues have documented bounds or backpressure behavior.
 - [ ] Queue overflow emits a degraded event with rescan guidance.

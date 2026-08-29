@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -366,6 +367,160 @@ void supports_callback_delivery()
     require(watcher.poll() == std::nullopt, "callback-delivered events should not also be queued");
 }
 
+void callback_stop_and_remove_are_safe()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "watch should start");
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool stopped = false;
+    bool removed = false;
+
+    watcher.set_callback([&](const ld::watch_event&) {
+        watcher.remove_watch(report.id);
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            removed = true;
+        }
+        watcher.stop();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            stopped = true;
+        }
+        cv.notify_all();
+    });
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "first.txt"));
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "second.txt"));
+
+    std::unique_lock<std::mutex> lock(mutex);
+    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return stopped && removed; }),
+        "callback should be able to stop, remove, and replace itself");
+    lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+    require(watcher.state() == ld::stream_state::stopped, "self-stop should leave watcher stopped");
+}
+
+void callback_replacement_applies_to_future_events()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "watch should start");
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool replacement_seen = false;
+    bool installed = false;
+
+    watcher.set_callback([&](const ld::watch_event&) {
+        watcher.set_callback([&](const ld::watch_event&) {
+            std::lock_guard<std::mutex> lock(mutex);
+            replacement_seen = true;
+            cv.notify_all();
+        });
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            installed = true;
+        }
+        cv.notify_all();
+    });
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "first.txt"));
+
+    std::unique_lock<std::mutex> lock(mutex);
+    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return installed; }),
+        "replacement should be installed inside callback");
+    lock.unlock();
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "second.txt"));
+
+    lock.lock();
+    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return replacement_seen; }),
+        "replacement callback should receive later events");
+}
+
+void callback_exception_is_caught_and_falls_back_to_queue()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "watch should start");
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    int callback_calls = 0;
+    watcher.set_callback([&](const ld::watch_event&) {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            ++callback_calls;
+        }
+        cv.notify_all();
+        throw std::runtime_error("boom");
+    });
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "broken.txt"));
+
+    std::unique_lock<std::mutex> lock(mutex);
+    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return callback_calls == 1; }),
+        "callback should have been invoked once");
+    lock.unlock();
+
+    const auto fallback = watcher.wait_for(std::chrono::seconds(2));
+    require(fallback.has_value(), "callback failure should surface through queued delivery");
+    require(fallback->kind == ld::event_kind::error, "callback failure should become an error event");
+    require(has_diagnostic(fallback->diagnostics, ld::diagnostic_code::callback_exception),
+        "callback failure should carry a callback diagnostic");
+    require(watcher.state() == ld::stream_state::degraded, "callback failure should degrade the watcher");
+}
+
+void pull_queue_overflow_emits_rescan_hint()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "watch should start");
+
+    for (int i = 0; i < 3000; ++i) {
+        backend->push(backend->event_for(report.id, ld::event_kind::modified, "burst-" + std::to_string(i) + ".txt"));
+    }
+
+    for (int i = 0; i < 200; ++i) {
+        if (watcher.state() == ld::stream_state::degraded) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    }
+    require(watcher.state() == ld::stream_state::degraded, "queue overflow should degrade the watcher state");
+
+    const auto received = watcher.wait_for(std::chrono::seconds(2));
+    require(received.has_value(), "queue overflow event should arrive");
+    require(received->kind == ld::event_kind::overflow, "queue overflow should surface as overflow");
+    require(received->state == ld::stream_state::degraded, "queue overflow should degrade the watcher");
+    require(received->rescan_recommended, "queue overflow should ask for a rescan");
+    require(has_diagnostic(received->diagnostics, ld::diagnostic_code::queue_overflow),
+        "queue overflow should carry a queue diagnostic");
+}
+
 void maps_rename_and_overflow_state()
 {
     const auto root = test_root();
@@ -663,6 +818,10 @@ int main()
         reports_start_failures_and_recursive_policy();
         supports_pull_delivery_and_paths();
         supports_callback_delivery();
+        callback_stop_and_remove_are_safe();
+        callback_replacement_applies_to_future_events();
+        callback_exception_is_caught_and_falls_back_to_queue();
+        pull_queue_overflow_emits_rescan_hint();
         maps_rename_and_overflow_state();
         preserves_backend_resource_limit_start_diagnostics();
         preserves_resource_limit_event_diagnostics();
