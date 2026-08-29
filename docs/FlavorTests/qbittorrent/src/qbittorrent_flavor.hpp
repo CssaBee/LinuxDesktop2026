@@ -28,15 +28,19 @@ struct RuntimeEnvironment {
     std::map<std::string, std::string> variables;
 };
 
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
+};
+
 class Profile {
 public:
     bool init(const RuntimeEnvironment& environment, const CommandLineArgs& args);
     std::filesystem::path location(SpecialFolder folder) const;
-    linuxdesktop::settings::write_report saveFileLoggerSettings(std::string content) const;
+    SaveResult saveFileLoggerSettings(std::string content) const;
 
     bool portableModeEnabled() const { return portable_mode_enabled_; }
     bool relativeFastresumePaths() const { return relative_fastresume_paths_; }
-    const linuxdesktop::settings::root_report& report() const { return report_; }
 
 private:
     std::string configurationSuffix() const;
@@ -47,7 +51,6 @@ private:
     std::string configuration_name_;
     bool portable_mode_enabled_ = false;
     bool relative_fastresume_paths_ = false;
-    linuxdesktop::settings::root_report report_;
 };
 
 } // namespace flavor_tests::qbittorrent

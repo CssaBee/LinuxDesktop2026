@@ -118,6 +118,20 @@ API exposure budget:
   dry-run versus execution, durable writes, dangerous migration actions, or
   capability diagnostics.
 
+Report translation rule:
+
+- Rich LinuxDesktop2026 reports are appropriate inside adapter code,
+  diagnostic consoles, tests that exercise mechanism details, and applications
+  that intentionally expose LinuxDesktop2026 as their platform layer.
+- Product-shaped methods should translate those reports before returning. A
+  Notepad++-style save method should return a Notepad++-shaped save result, an
+  OBS-style C seam should keep integer and caller-owned-buffer conventions, and
+  migration checks should return product decisions such as "prompt the user" plus
+  the source and target the product needs to display.
+- A new write, root, or migration convenience API is not complete merely because
+  unit tests pass. It must also let the relevant FlavorTest call sites avoid
+  unnecessary report propagation across product boundaries.
+
 Layout:
 
 - `<product>/src/` contains the refactored production-shaped code.

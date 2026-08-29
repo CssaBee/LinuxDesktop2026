@@ -104,13 +104,13 @@ void file_logger_settings_use_backup_write()
 
     flavor_tests::qbittorrent::Profile app_profile;
     require(app_profile.init({root / "bin", {}, {}}, {profile, {}, false}), "profile init should succeed");
-    const auto report = app_profile.saveFileLoggerSettings("[Application]\nFileLogger\\MaxSizeBytes=1024\n");
+    const auto result = app_profile.saveFileLoggerSettings("[Application]\nFileLogger\\MaxSizeBytes=1024\n");
 
-    require(report.ok, "file logger settings save should succeed");
-    require(report.backup_path.has_value(), "file logger settings save should keep backup");
+    require(result.saved, "file logger settings save should succeed");
+    require(result.backup_file.has_value(), "file logger settings save should keep backup");
     require(read_file(profile / "qBittorrent.ini").find("1024") != std::string::npos,
         "new logger setting should be persisted");
-    require(read_file(*report.backup_path).find("MaxSizeBytes=1") != std::string::npos,
+    require(read_file(*result.backup_file).find("MaxSizeBytes=1") != std::string::npos,
         "backup should contain old logger setting");
 }
 

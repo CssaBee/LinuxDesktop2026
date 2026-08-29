@@ -112,6 +112,11 @@ std::string render_find_history_xml(const find_history& history)
     return output.str();
 }
 
+SaveResult to_save_result(const ld::write_report& report)
+{
+    return {report.ok, report.backup_path};
+}
+
 } // namespace
 
 bool NppParameters::load(const startup_environment& environment)
@@ -235,7 +240,7 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
     return report.ok && loadXml(session_xml_, session_path);
 }
 
-ld::write_report NppParameters::saveSession(const std::string& session_xml)
+SaveResult NppParameters::saveSession(const std::string& session_xml)
 {
     ld::write_options write;
     write.target = state_.session_path / "session.xml";
@@ -244,18 +249,17 @@ ld::write_report NppParameters::saveSession(const std::string& session_xml)
     write.atomic_replace = true;
     write.durable_write = true;
 
-    return ld::write_with_backup(write, [this](const std::filesystem::path& path, std::string&) {
+    const auto report = ld::write_with_backup(write, [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);
     });
+    return to_save_result(report);
 }
 
-ld::write_report NppParameters::writeShortcuts(const shortcut_store& store)
+SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
 {
     if (!store.any_shortcut_modified) {
-        ld::write_report skipped;
-        skipped.ok = true;
-        return skipped;
+        return {true, std::nullopt};
     }
 
     ld::write_options write;
@@ -274,10 +278,10 @@ ld::write_report NppParameters::writeShortcuts(const shortcut_store& store)
         state_.shortcuts_xml_hmac_source_in_config = write.content;
         loadXml(shortcuts_xml_, state_.shortcuts_path);
     }
-    return report;
+    return to_save_result(report);
 }
 
-ld::write_report NppParameters::writeFindHistory(const find_history& history)
+SaveResult NppParameters::writeFindHistory(const find_history& history)
 {
     ld::write_options write;
     write.target = state_.config_path;
@@ -293,7 +297,7 @@ ld::write_report NppParameters::writeFindHistory(const find_history& history)
     if (report.ok) {
         loadXml(config_xml_, state_.config_path);
     }
-    return report;
+    return to_save_result(report);
 }
 
 bool NppParameters::loadXml(XmlDocument& document, const std::filesystem::path& path) const

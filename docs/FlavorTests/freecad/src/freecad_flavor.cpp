@@ -1,5 +1,9 @@
 #include "freecad_flavor.hpp"
 
+#include "linuxdesktop/migration.hpp"
+#include "linuxdesktop/paths.hpp"
+#include "linuxdesktop/settings.hpp"
+
 #include <utility>
 
 namespace flavor_tests::freecad {
@@ -57,7 +61,7 @@ ConfigurationSet ApplicationConfig::build(
     path_options.temp_override = config.app_temp_path;
     path_options.environment = environment.variables;
     path_options.use_process_environment = false;
-    config.path_report = ldp::resolve_app_paths(identity, path_options);
+    (void)ldp::resolve_app_paths(identity, path_options);
 
     config.user_parameter = command_line.user_cfg.value_or(config.user_app_data / "user.cfg");
     config.system_parameter = command_line.system_cfg.value_or(config.user_app_data / "system.cfg");
@@ -70,13 +74,19 @@ ConfigurationSet ApplicationConfig::build(
         action.name = "Copy deprecated FreeCAD user data into configured user data";
         action.source_path = deprecated;
         action.target_path = config.user_app_data;
-        config.deprecated_path_migration = ldm::plan_migration({action}, {});
+        const auto plan = ldm::plan_migration({action}, {});
+        config.deprecated_path_migration.dry_run = plan.dry_run;
+        if (!plan.actions.empty()) {
+            config.deprecated_path_migration.planned = true;
+            config.deprecated_path_migration.source = plan.actions.front().source_path;
+            config.deprecated_path_migration.target = plan.actions.front().target_path;
+        }
     }
 
     return config;
 }
 
-lds::write_report ApplicationConfig::saveUserParameter(
+SaveResult ApplicationConfig::saveUserParameter(
     const ConfigurationSet& config,
     std::string xml) const
 {
@@ -86,7 +96,8 @@ lds::write_report ApplicationConfig::saveUserParameter(
     write.keep_backup = true;
     write.atomic_replace = true;
     write.durable_write = true;
-    return lds::write_with_backup(write, xml_like);
+    const auto report = lds::write_with_backup(write, xml_like);
+    return {report.ok, report.backup_path};
 }
 
 } // namespace flavor_tests::freecad

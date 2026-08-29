@@ -103,9 +103,9 @@ void save_settings_uses_backup_write_without_changing_product_api()
     std::filesystem::create_directories(manager.GetPathForSettingsFile(settings).parent_path());
     std::ofstream(manager.GetPathForSettingsFile(settings)) << "{\"old\": true}\n";
 
-    const auto report = manager.Save(settings);
-    require(report.ok, "KiCad settings save should succeed");
-    require(report.backup_path.has_value(), "KiCad settings save should keep backup");
+    const auto result = manager.Save(settings);
+    require(result.saved, "KiCad settings save should succeed");
+    require(result.backup_file.has_value(), "KiCad settings save should keep backup");
     require(read_file(manager.GetPathForSettingsFile(settings)).find("false") != std::string::npos,
         "KiCad settings save should update JSON file");
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <cstddef>
@@ -25,7 +24,7 @@ public:
     int config_save_safe(const std::filesystem::path& path, const std::string& content) const;
 
 private:
-    linuxdesktop::paths::resolver_report resolve() const;
+    std::filesystem::path resolve_config_root() const;
 
     RuntimeEnvironment environment_;
 };

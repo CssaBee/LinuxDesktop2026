@@ -62,9 +62,9 @@ void first_run_copies_missing_vendor_profile_models()
     };
 
     require(snapshot.load_config_bundle(app_config), "profile bundle should load");
-    const auto& report = *snapshot.hydrateReport();
-    require(report.copied.size() == 1, "one missing vendor profile should be copied");
-    require(report.skipped_existing.size() == 1, "existing physical printer config should be kept");
+    const auto& load_result = snapshot.lastLoadResult();
+    require(load_result.copied_defaults == 1, "one missing vendor profile should be copied");
+    require(load_result.preserved_existing == 1, "existing physical printer config should be kept");
     require(snapshot.bundle().vendors_loaded, "vendor profiles should be loaded into the bundle");
     require(snapshot.bundle().physical_printers_loaded, "physical printer profiles should be loaded into the bundle");
     require(snapshot.bundle().loaded_files.size() == 2, "both profile files should pass through app-owned loading");
@@ -86,18 +86,18 @@ void snapshot_save_keeps_backup_and_validates_new_file()
     snapshot.path = target;
     snapshot.xml = "<snapshot version=\"new\" />\n";
 
-    const auto report = writer.save_snapshot(snapshot,
+    const auto result = writer.save_snapshot(snapshot,
         [](const std::filesystem::path& path, std::string&) {
             return read_file(path).find("version=\"new\"") != std::string::npos;
         });
 
-    require(report.ok, "snapshot save should succeed");
-    require(report.backup_path.has_value(), "previous snapshot should be backed up");
-    require(report.temp_path.has_value(), "temp file should be reported");
-    require(report.durable_write, "snapshot writes should request durable mode");
+    require(result.saved, "snapshot save should succeed");
+    require(result.backup_file.has_value(), "previous snapshot should be backed up");
+    require(result.temporary_file.has_value(), "temp file should be reported");
+    require(result.durable, "snapshot writes should request durable mode");
     require(read_file(target).find("version=\"new\"") != std::string::npos,
         "target should contain the new snapshot");
-    require(read_file(*report.backup_path).find("version=\"old\"") != std::string::npos,
+    require(read_file(*result.backup_file).find("version=\"old\"") != std::string::npos,
         "backup should contain the old snapshot");
 }
 
@@ -122,10 +122,10 @@ void old_linux_datadir_plans_migration_when_new_datadir_is_empty()
 
     require(check.should_prompt_user, "legacy datadir check should ask before silently ignoring old data");
     require(check.migration.dry_run, "legacy datadir migration should be planned as a dry run");
-    require(check.migration.actions.size() == 1, "one directory copy should be planned");
-    require(check.migration.actions.front().source_path == old_config,
+    require(check.migration.planned, "one directory copy should be planned");
+    require(check.migration.source == old_config,
         "migration should copy from the legacy wx datadir");
-    require(check.migration.actions.front().target_path == config,
+    require(check.migration.target == config,
         "migration should target the XDG datadir");
 }
 
@@ -150,7 +150,7 @@ void old_linux_datadir_check_stays_silent_when_new_datadir_has_content()
     const auto check = snapshot.check_old_linux_datadir(app_config);
 
     require(!check.should_prompt_user, "pop-up should stay silent once the new datadir has user content");
-    require(check.migration.actions.empty(), "no migration action should be planned");
+    require(!check.migration.planned, "no migration action should be planned");
 }
 
 void app_config_save_uses_backup_write_and_validates_sections()
@@ -161,13 +161,13 @@ void app_config_save_uses_backup_write_and_validates_sections()
     std::ofstream(target) << "[app]\nversion=old\n";
 
     const flavor_tests::prusaslicer::PrusaConfigSnapshot snapshot;
-    const auto report = snapshot.save_app_config({target, "[app]\nversion=new\n"});
+    const auto result = snapshot.save_app_config({target, "[app]\nversion=new\n"});
 
-    require(report.ok, "app config save should succeed");
-    require(report.backup_path.has_value(), "app config save should keep a backup");
+    require(result.saved, "app config save should succeed");
+    require(result.backup_file.has_value(), "app config save should keep a backup");
     require(read_file(target).find("version=new") != std::string::npos,
         "config should contain the new app settings");
-    require(read_file(*report.backup_path).find("version=old") != std::string::npos,
+    require(read_file(*result.backup_file).find("version=old") != std::string::npos,
         "backup should contain the old app settings");
 }
 
@@ -179,12 +179,12 @@ void recent_projects_are_written_to_prusaslicer_ini()
     std::ofstream(config / "PrusaSlicer.ini") << "[app]\nversion=old\n";
 
     const flavor_tests::prusaslicer::PrusaConfigSnapshot snapshot;
-    const auto report = snapshot.save_recent_projects(config, {
+    const auto result = snapshot.save_recent_projects(config, {
         {root / "models" / "case.3mf", "case-thumb"},
         {root / "models" / "fixture.stl", "fixture-thumb"},
     });
 
-    require(report.ok, "recent project save should succeed");
+    require(result.saved, "recent project save should succeed");
     const auto config_text = read_file(config / "PrusaSlicer.ini");
     require(config_text.find("[recent_projects]") != std::string::npos,
         "recent projects section should be persisted");

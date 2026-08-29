@@ -34,6 +34,11 @@ struct JsonSettings {
     const Project* owning_project = nullptr;
 };
 
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
+};
+
 struct RuntimeEnvironment {
     std::optional<std::filesystem::path> home_directory;
     std::map<std::string, std::string> variables;
@@ -47,11 +52,10 @@ public:
     std::filesystem::path GetPathForSettingsFile(const JsonSettings& settings) const;
     std::filesystem::path GetToolbarSettingsPath() const;
     std::filesystem::path GetBackupRootForProject(const Project* project = nullptr) const;
-    linuxdesktop::settings::write_report Save(const JsonSettings& settings) const;
+    SaveResult Save(const JsonSettings& settings) const;
 
     void SetProject(Project project) { project_ = std::move(project); }
     void SetBackupLocation(BackupLocation location) { backup_location_ = location; }
-    const linuxdesktop::settings::root_report& report() const { return report_; }
 
 private:
     const Project& resolveProject(const Project* project) const;
@@ -60,7 +64,11 @@ private:
     RuntimeEnvironment environment_;
     Project project_;
     BackupLocation backup_location_ = BackupLocation::ProjectDir;
-    linuxdesktop::settings::root_report report_;
+    std::filesystem::path user_settings_root_;
+    std::filesystem::path state_root_;
+    std::filesystem::path color_settings_root_;
+    std::filesystem::path toolbar_settings_root_;
+    std::filesystem::path user_backup_root_;
 };
 
 } // namespace flavor_tests::kicad

@@ -24,21 +24,31 @@ struct ConfigFiles {
     bool portable = false;
 };
 
+struct ExportResult {
+    bool exported = false;
+    std::optional<std::filesystem::path> backup_file;
+};
+
+struct LocalConfigMigration {
+    bool planned = false;
+    bool dry_run = true;
+    std::filesystem::path source;
+    std::filesystem::path target;
+};
+
 class Config {
 public:
     bool open(const RuntimeEnvironment& environment);
     bool importSettings(const std::filesystem::path& file_name);
-    linuxdesktop::settings::write_report exportSettings(const std::filesystem::path& file_name) const;
-    linuxdesktop::migration::migration_plan migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
+    ExportResult exportSettings(const std::filesystem::path& file_name) const;
+    LocalConfigMigration migrateOldLocalConfig(const RuntimeEnvironment& environment) const;
 
     void set(std::string key, std::string value, bool local = false);
     std::optional<std::string> get(const std::string& key) const;
     const ConfigFiles& files() const { return files_; }
-    const linuxdesktop::settings::root_report& rootReport() const { return roots_; }
 
 private:
     ConfigFiles files_;
-    linuxdesktop::settings::root_report roots_;
     std::map<std::string, std::string> roaming_values_;
     std::map<std::string, std::string> local_values_;
 };

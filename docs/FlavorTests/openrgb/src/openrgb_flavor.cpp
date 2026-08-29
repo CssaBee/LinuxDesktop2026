@@ -1,5 +1,7 @@
 #include "openrgb_flavor.hpp"
 
+#include "linuxdesktop/paths.hpp"
+
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -93,6 +95,24 @@ lds::write_report write_json_file(const std::filesystem::path& path, std::string
     });
 }
 
+SaveResult to_save_result(const lds::write_report& report)
+{
+    return {report.ok, report.backup_path};
+}
+
+AutostartUpdate to_autostart_update(
+    const lds::effects::effect_report& report,
+    const lds::effects::autostart_entry& entry,
+    const std::filesystem::path& override_directory)
+{
+    return {
+        report.ok,
+        report.dry_run,
+        entry.enabled,
+        override_directory / sanitize_desktop_id(entry.id),
+    };
+}
+
 } // namespace
 
 void ProfileManager::SetConfigurationDirectory(const std::filesystem::path& directory)
@@ -132,20 +152,20 @@ bool ResourceManager::SetConfigurationDirectory(const std::filesystem::path& dir
     return true;
 }
 
-lds::write_report ResourceManager::SaveSettings(std::string settings_json)
+SaveResult ResourceManager::SaveSettings(std::string settings_json)
 {
     auto report = write_json_file(paths_.config_dir / "OpenRGB.json", std::move(settings_json));
     if (report.ok) {
         settings_manager_.settings_json = read_text(paths_.config_dir / "OpenRGB.json");
     }
-    return report;
+    return to_save_result(report);
 }
 
-lds::write_report ResourceManager::SaveConfiguration(
+SaveResult ResourceManager::SaveConfiguration(
     const std::vector<ControllerConfiguration>& controllers)
 {
-    return write_json_file(profile_manager_.configuration_directory / "Configuration.json",
-        render_configuration_json(controllers));
+    return to_save_result(write_json_file(profile_manager_.configuration_directory / "Configuration.json",
+        render_configuration_json(controllers)));
 }
 
 bool ResourceManager::SetupConfigurationDirectory(const RuntimeEnvironment& environment)
@@ -163,14 +183,14 @@ bool ResourceManager::SetupConfigurationDirectory(const RuntimeEnvironment& envi
         options.config_override = std::filesystem::path(config_home->second) / "OpenRGB" / "OpenRGB";
     }
 
-    report_ = ldp::resolve_app_paths(identity, options);
-    paths_.resources_dir = report_.selected.at(ldp::path_family::resources);
-    paths_.config_dir = report_.selected.at(ldp::path_family::config);
+    const auto report = ldp::resolve_app_paths(identity, options);
+    paths_.resources_dir = report.selected.at(ldp::path_family::resources);
+    paths_.config_dir = report.selected.at(ldp::path_family::config);
     paths_.profiles_dir = paths_.config_dir / "profiles";
     return true;
 }
 
-lds::effects::effect_report enable_autostart(
+AutostartUpdate enable_autostart(
     const std::filesystem::path& executable,
     std::vector<std::string> arguments,
     const std::filesystem::path& working_directory,
@@ -179,7 +199,7 @@ lds::effects::effect_report enable_autostart(
     return set_autostart_enabled(executable, std::move(arguments), working_directory, override_directory, true);
 }
 
-lds::effects::effect_report set_autostart_enabled(
+AutostartUpdate set_autostart_enabled(
     const std::filesystem::path& executable,
     std::vector<std::string> arguments,
     const std::filesystem::path& working_directory,
@@ -200,9 +220,8 @@ lds::effects::effect_report set_autostart_enabled(
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = override_directory;
 
-    auto report = lds::effects::apply_autostart(entry, options);
-    report.path = override_directory / sanitize_desktop_id(entry.id);
-    return report;
+    const auto report = lds::effects::apply_autostart(entry, options);
+    return to_autostart_update(report, entry, override_directory);
 }
 
 } // namespace flavor_tests::openrgb

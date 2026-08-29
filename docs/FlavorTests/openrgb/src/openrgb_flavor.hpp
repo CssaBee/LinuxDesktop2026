@@ -1,6 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/paths.hpp"
 #include "linuxdesktop/settings.hpp"
 
 #include <filesystem>
@@ -49,18 +48,29 @@ struct RuntimePaths {
     std::filesystem::path resources_dir;
 };
 
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
+};
+
+struct AutostartUpdate {
+    bool ok = false;
+    bool dry_run = false;
+    bool enabled = false;
+    std::optional<std::filesystem::path> desktop_file;
+};
+
 class ResourceManager {
 public:
     ResourceManager();
 
     bool InitializeResources(const RuntimeEnvironment& environment);
     bool SetConfigurationDirectory(const std::filesystem::path& directory);
-    linuxdesktop::settings::write_report SaveSettings(std::string settings_json);
-    linuxdesktop::settings::write_report SaveConfiguration(
+    SaveResult SaveSettings(std::string settings_json);
+    SaveResult SaveConfiguration(
         const std::vector<ControllerConfiguration>& controllers);
 
     const RuntimePaths& paths() const { return paths_; }
-    const linuxdesktop::paths::resolver_report& report() const { return report_; }
     const SettingsManager& settingsManager() const { return settings_manager_; }
     const LogManager& logManager() const { return log_manager_; }
     const ProfileManager& profileManager() const { return profile_manager_; }
@@ -72,19 +82,18 @@ private:
     SettingsManager settings_manager_;
     LogManager log_manager_;
     ProfileManager profile_manager_;
-    linuxdesktop::paths::resolver_report report_;
     bool detection_enabled_ = true;
     bool first_detection_complete_ = false;
     bool init_finished_ = false;
 };
 
-linuxdesktop::settings::effects::effect_report enable_autostart(
+AutostartUpdate enable_autostart(
     const std::filesystem::path& executable,
     std::vector<std::string> arguments,
     const std::filesystem::path& working_directory,
     const std::filesystem::path& override_directory);
 
-linuxdesktop::settings::effects::effect_report set_autostart_enabled(
+AutostartUpdate set_autostart_enabled(
     const std::filesystem::path& executable,
     std::vector<std::string> arguments,
     const std::filesystem::path& working_directory,

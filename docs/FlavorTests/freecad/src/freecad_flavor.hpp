@@ -25,6 +25,13 @@ struct RuntimeEnvironment {
     std::map<std::string, std::string> variables;
 };
 
+struct DeprecatedPathMigration {
+    bool planned = false;
+    bool dry_run = true;
+    std::filesystem::path source;
+    std::filesystem::path target;
+};
+
 struct ConfigurationSet {
     std::filesystem::path user_home_path;
     std::filesystem::path user_app_data;
@@ -32,14 +39,18 @@ struct ConfigurationSet {
     std::filesystem::path user_parameter;
     std::filesystem::path system_parameter;
     std::vector<std::filesystem::path> python_search_path;
-    linuxdesktop::paths::resolver_report path_report;
-    linuxdesktop::migration::migration_plan deprecated_path_migration;
+    DeprecatedPathMigration deprecated_path_migration;
+};
+
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
 };
 
 class ApplicationConfig {
 public:
     ConfigurationSet build(const RuntimeEnvironment& environment, const CommandLineOptions& options) const;
-    linuxdesktop::settings::write_report saveUserParameter(
+    SaveResult saveUserParameter(
         const ConfigurationSet& config,
         std::string xml) const;
 };

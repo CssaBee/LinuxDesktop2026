@@ -45,12 +45,12 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
         {"logs", ld::root_purpose::logs, ld::persistence_class::machine_local, "logs", true},
     };
 
-    report_ = ld::resolve_app_roots(identity, options);
-    profile_root_ = report_.roots.config;
-    data_root_ = report_.roots.data;
+    const auto report = ld::resolve_app_roots(identity, options);
+    profile_root_ = report.roots.config;
+    data_root_ = report.roots.data;
     fastresume_root_ = relative_fastresume_paths_ ? profile_root_ / "BT_backup" : data_root_ / "BT_backup";
-    logs_root_ = report_.roots.state / "logs";
-    if (const auto* logs = ld::find_named_root(report_, "logs")) {
+    logs_root_ = report.roots.state / "logs";
+    if (const auto* logs = ld::find_named_root(report, "logs")) {
         logs_root_ = logs->path;
     }
     return !profile_root_.empty();
@@ -71,7 +71,7 @@ std::filesystem::path Profile::location(SpecialFolder folder) const
     return {};
 }
 
-ld::write_report Profile::saveFileLoggerSettings(std::string content) const
+SaveResult Profile::saveFileLoggerSettings(std::string content) const
 {
     ld::write_options write;
     write.target = profile_root_ / "qBittorrent.ini";
@@ -79,7 +79,8 @@ ld::write_report Profile::saveFileLoggerSettings(std::string content) const
     write.keep_backup = true;
     write.atomic_replace = true;
     write.durable_write = true;
-    return ld::write_with_backup(write, validate_ini);
+    const auto report = ld::write_with_backup(write, validate_ini);
+    return {report.ok, report.backup_path};
 }
 
 std::string Profile::configurationSuffix() const

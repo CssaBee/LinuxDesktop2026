@@ -47,7 +47,7 @@ bool FileConfig::Init()
     return false;
 }
 
-ld::write_report FileConfig::Flush(std::string content)
+FlushResult FileConfig::Flush(std::string content)
 {
     ld::write_options write;
     write.target = local_filename_;
@@ -60,7 +60,7 @@ ld::write_report FileConfig::Flush(std::string content)
     if (report.ok) {
         dirty_ = false;
     }
-    return report;
+    return {report.ok, report.backup_path};
 }
 
 void FileConfig::Warn()

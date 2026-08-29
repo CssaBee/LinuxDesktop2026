@@ -53,6 +53,23 @@ bool looks_like_ini(const std::filesystem::path& path, std::string& message)
     return ok;
 }
 
+ExportResult to_export_result(const ld::write_report& report)
+{
+    return {report.ok, report.backup_path};
+}
+
+LocalConfigMigration to_local_config_migration(const ldm::migration_plan& plan)
+{
+    LocalConfigMigration result;
+    result.dry_run = plan.dry_run;
+    if (!plan.actions.empty()) {
+        result.planned = true;
+        result.source = plan.actions.front().source_path;
+        result.target = plan.actions.front().target_path;
+    }
+    return result;
+}
+
 } // namespace
 
 bool Config::open(const RuntimeEnvironment& environment)
@@ -74,10 +91,10 @@ bool Config::open(const RuntimeEnvironment& environment)
         {"local-settings", ld::root_purpose::state, ld::persistence_class::machine_local, {}, true},
     };
 
-    roots_ = ld::resolve_app_roots(identity, options);
-    files_.portable = roots_.settings_override_active;
-    files_.roaming = roots_.roots.config / "keepassxc.ini";
-    files_.local = roots_.roots.state / "keepassxc_local.ini";
+    const auto roots = ld::resolve_app_roots(identity, options);
+    files_.portable = roots.settings_override_active;
+    files_.roaming = roots.roots.config / "keepassxc.ini";
+    files_.local = roots.roots.state / "keepassxc_local.ini";
     if (const auto config_home = environment.variables.find("XDG_CONFIG_HOME");
         !files_.portable && config_home != environment.variables.end()) {
         files_.roaming = std::filesystem::path(config_home->second) / "keepassxc" / "keepassxc.ini";
@@ -87,7 +104,7 @@ bool Config::open(const RuntimeEnvironment& environment)
         files_.local = std::filesystem::path(state_home->second) / "keepassxc" / "keepassxc_local.ini";
     }
     if (files_.portable) {
-        files_.local = roots_.roots.config / "keepassxc_local.ini";
+        files_.local = roots.roots.config / "keepassxc_local.ini";
     }
     std::filesystem::create_directories(files_.roaming.parent_path());
     std::filesystem::create_directories(files_.local.parent_path());
@@ -98,7 +115,7 @@ bool Config::open(const RuntimeEnvironment& environment)
     if (std::filesystem::exists(files_.local)) {
         local_values_ = parse_ini(read_text(files_.local));
     }
-    return !roots_.roots.config.empty();
+    return !roots.roots.config.empty();
 }
 
 bool Config::importSettings(const std::filesystem::path& file_name)
@@ -116,7 +133,7 @@ bool Config::importSettings(const std::filesystem::path& file_name)
     return !roaming_values_.empty();
 }
 
-ld::write_report Config::exportSettings(const std::filesystem::path& file_name) const
+ExportResult Config::exportSettings(const std::filesystem::path& file_name) const
 {
     ld::write_options write;
     write.target = file_name;
@@ -124,10 +141,10 @@ ld::write_report Config::exportSettings(const std::filesystem::path& file_name) 
     write.keep_backup = true;
     write.atomic_replace = true;
     write.durable_write = true;
-    return ld::write_with_backup(write, looks_like_ini);
+    return to_export_result(ld::write_with_backup(write, looks_like_ini));
 }
 
-ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
+LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& environment) const
 {
     if (!environment.old_cache_config_file || std::filesystem::exists(files_.local) ||
         !std::filesystem::exists(*environment.old_cache_config_file)) {
@@ -139,7 +156,7 @@ ldm::migration_plan Config::migrateOldLocalConfig(const RuntimeEnvironment& envi
     action.name = "Move legacy KeePassXC local settings from cache to state";
     action.source_path = *environment.old_cache_config_file;
     action.target_path = files_.local;
-    return ldm::plan_migration({action}, {});
+    return to_local_config_migration(ldm::plan_migration({action}, {}));
 }
 
 void Config::set(std::string key, std::string value, bool local)

@@ -64,15 +64,20 @@ struct find_history {
     std::vector<std::string> filters;
 };
 
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
+};
+
 class NppParameters {
 public:
     bool load(const startup_environment& environment);
     bool loadConfigFiles();
     bool loadShortcuts();
     bool loadSessionWithBackupRecovery(bool remember_last_session);
-    linuxdesktop::settings::write_report saveSession(const std::string& session_xml);
-    linuxdesktop::settings::write_report writeShortcuts(const shortcut_store& store);
-    linuxdesktop::settings::write_report writeFindHistory(const find_history& history);
+    SaveResult saveSession(const std::string& session_xml);
+    SaveResult writeShortcuts(const shortcut_store& store);
+    SaveResult writeFindHistory(const find_history& history);
 
     const loaded_parameters& state() const { return state_; }
     const XmlDocument& langs() const { return langs_xml_; }

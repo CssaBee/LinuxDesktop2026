@@ -1,5 +1,7 @@
 #include "obs_flavor.hpp"
 
+#include "linuxdesktop/paths.hpp"
+
 #include <cstring>
 #include <utility>
 
@@ -35,8 +37,7 @@ Platform::Platform(RuntimeEnvironment environment)
 
 int Platform::os_get_config_path(char* dst, std::size_t size, const char* name) const
 {
-    const auto report = resolve();
-    auto path = report.selected.at(ldp::path_family::config);
+    auto path = resolve_config_root();
     if (name && *name) {
         path /= name;
     }
@@ -45,8 +46,7 @@ int Platform::os_get_config_path(char* dst, std::size_t size, const char* name) 
 
 std::string Platform::obs_module_get_config_path(const std::string& module, const std::string& file) const
 {
-    const auto report = resolve();
-    return (report.selected.at(ldp::path_family::config) / "plugin_config" / module / file).string();
+    return (resolve_config_root() / "plugin_config" / module / file).string();
 }
 
 int Platform::config_save_safe(const std::filesystem::path& path, const std::string& content) const
@@ -60,7 +60,7 @@ int Platform::config_save_safe(const std::filesystem::path& path, const std::str
     return lds::write_with_backup(write, config_has_section).ok ? 0 : -1;
 }
 
-ldp::resolver_report Platform::resolve() const
+std::filesystem::path Platform::resolve_config_root() const
 {
     ldp::app_identity identity;
     identity.organization = "obsproject";
@@ -74,7 +74,7 @@ ldp::resolver_report Platform::resolve() const
         config_home != environment_.variables.end()) {
         options.config_override = std::filesystem::path(config_home->second) / "obs-studio";
     }
-    return ldp::resolve_app_paths(identity, options);
+    return ldp::resolve_app_paths(identity, options).selected.at(ldp::path_family::config);
 }
 
 } // namespace flavor_tests::obs

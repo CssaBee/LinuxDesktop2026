@@ -1,7 +1,5 @@
 #include "openrgb_flavor.hpp"
 
-#include "linuxdesktop/paths.hpp"
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -10,8 +8,6 @@
 #include <string>
 
 namespace {
-
-namespace ldp = linuxdesktop::paths;
 
 struct test_failure : public std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -62,8 +58,6 @@ void resource_manager_uses_xdg_config_for_settings_and_profiles()
         "config should resolve from XDG_CONFIG_HOME");
     require(paths.profiles_dir == config_home / "OpenRGB" / "OpenRGB" / "profiles",
         "profiles should stay below OpenRGB config");
-    require(manager.report().selected.at(ldp::path_family::config) == paths.config_dir,
-        "path report should expose selected config root");
     require(manager.settingsManager().loaded_settings_file == paths.config_dir / "OpenRGB.json",
         "settings manager should load OpenRGB.json from the resolved config directory");
     require(manager.logManager().configured_directory == paths.config_dir,
@@ -120,15 +114,15 @@ void settings_save_uses_validated_backup_write()
     require(manager.InitializeResources(environment), "resource manager start should succeed");
     std::ofstream(manager.paths().config_dir / "OpenRGB.json") << "{\"old\": true}\n";
 
-    const auto report = manager.SaveSettings("{\"client\": {\"start_minimized\": true}}\n");
+    const auto result = manager.SaveSettings("{\"client\": {\"start_minimized\": true}}\n");
 
-    require(report.ok, "settings save should succeed");
-    require(report.backup_path.has_value(), "settings save should keep a backup");
+    require(result.saved, "settings save should succeed");
+    require(result.backup_file.has_value(), "settings save should keep a backup");
     require(manager.settingsManager().settings_json.find("start_minimized") != std::string::npos,
         "settings manager should retain the saved settings JSON");
     require(read_file(manager.paths().config_dir / "OpenRGB.json").find("client") != std::string::npos,
         "OpenRGB.json should contain the new settings");
-    require(read_file(*report.backup_path).find("old") != std::string::npos,
+    require(read_file(*result.backup_file).find("old") != std::string::npos,
         "backup should contain the previous settings JSON");
 }
 
@@ -146,12 +140,12 @@ void controller_configuration_is_saved_under_profile_manager_root()
     flavor_tests::openrgb::ResourceManager manager;
     require(manager.InitializeResources(environment), "resource manager start should succeed");
 
-    const auto report = manager.SaveConfiguration({
+    const auto result = manager.SaveConfiguration({
         {"Keyboard", "Underglow"},
         {"Mouse", "Logo"},
     });
 
-    require(report.ok, "controller configuration save should succeed");
+    require(result.saved, "controller configuration save should succeed");
     const auto configuration = read_file(manager.paths().config_dir / "Configuration.json");
     require(configuration.find("Keyboard") != std::string::npos,
         "configuration should contain controller names");
@@ -164,18 +158,18 @@ void linux_autostart_is_planned_as_a_desktop_effect()
     const auto root = test_root();
     const auto autostart_root = root / "autostart";
 
-    const auto report = flavor_tests::openrgb::enable_autostart(
+    const auto result = flavor_tests::openrgb::enable_autostart(
         root / "bin" / "OpenRGB",
         {"--startminimized", "--profile", "daily"},
         root,
         autostart_root);
 
-    require(report.ok, "autostart planning should succeed");
-    require(report.dry_run, "autostart should be dry-run in tests");
-    require(report.path.has_value(), "autostart target should be reported");
-    require(*report.path == autostart_root / "OpenRGB.desktop",
+    require(result.ok, "autostart planning should succeed");
+    require(result.dry_run, "autostart should be dry-run in tests");
+    require(result.desktop_file.has_value(), "autostart target should be reported");
+    require(*result.desktop_file == autostart_root / "OpenRGB.desktop",
         "desktop file path should follow the override directory");
-    require(!std::filesystem::exists(*report.path), "dry-run should not write the desktop file");
+    require(!std::filesystem::exists(*result.desktop_file), "dry-run should not write the desktop file");
 }
 
 void linux_autostart_disable_is_the_same_product_seam()
@@ -183,18 +177,18 @@ void linux_autostart_disable_is_the_same_product_seam()
     const auto root = test_root();
     const auto autostart_root = root / "autostart";
 
-    const auto report = flavor_tests::openrgb::set_autostart_enabled(
+    const auto result = flavor_tests::openrgb::set_autostart_enabled(
         root / "bin" / "OpenRGB",
         {"--startminimized"},
         root,
         autostart_root,
         false);
 
-    require(report.ok, "autostart disable planning should succeed");
-    require(report.dry_run, "autostart disable should be dry-run in tests");
-    require(!report.enabled, "autostart report should reflect the disabled product setting");
-    require(report.path.has_value(), "disabled autostart target should still be reported");
-    require(*report.path == autostart_root / "OpenRGB.desktop",
+    require(result.ok, "autostart disable planning should succeed");
+    require(result.dry_run, "autostart disable should be dry-run in tests");
+    require(!result.enabled, "autostart result should reflect the disabled product setting");
+    require(result.desktop_file.has_value(), "disabled autostart target should still be reported");
+    require(*result.desktop_file == autostart_root / "OpenRGB.desktop",
         "disabled autostart should use the same desktop file path");
 }
 

@@ -46,26 +46,37 @@ SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
         {"toolbars", ld::root_purpose::component_config, ld::persistence_class::roaming, "toolbars", true},
         {"project-backups", ld::root_purpose::backup, ld::persistence_class::roaming, "project-backups", true},
     };
-    report_ = ld::resolve_app_roots(identity, options);
+    const auto report = ld::resolve_app_roots(identity, options);
+    user_settings_root_ = report.roots.config;
+    state_root_ = report.roots.state;
+    color_settings_root_ = report.roots.config / "colors";
+    toolbar_settings_root_ = report.roots.config / "toolbars";
+    user_backup_root_ = report.roots.state / "project-backups";
+    if (const auto* colors = ld::find_named_root(report, "colors")) {
+        color_settings_root_ = colors->path;
+    }
+    if (const auto* toolbars = ld::find_named_root(report, "toolbars")) {
+        toolbar_settings_root_ = toolbars->path;
+    }
+    if (const auto* backups = ld::find_named_root(report, "project-backups")) {
+        user_backup_root_ = backups->path;
+    }
 }
 
 bool SETTINGS_MANAGER::SettingsDirectoryValid() const
 {
-    return !report_.roots.config.empty() && std::filesystem::is_directory(report_.roots.config);
+    return !user_settings_root_.empty() && std::filesystem::is_directory(user_settings_root_);
 }
 
 std::filesystem::path SETTINGS_MANAGER::GetPathForSettingsFile(const JsonSettings& settings) const
 {
     switch (settings.location) {
     case SettingsLocation::User:
-        return report_.roots.config / settings.file_name;
+        return user_settings_root_ / settings.file_name;
     case SettingsLocation::Project:
         return resolveProject(settings.owning_project).full_name.parent_path() / settings.file_name;
     case SettingsLocation::Colors:
-        if (const auto* colors = ld::find_named_root(report_, "colors")) {
-            return colors->path / settings.file_name;
-        }
-        return report_.roots.config / "colors" / settings.file_name;
+        return color_settings_root_ / settings.file_name;
     case SettingsLocation::Toolbars:
         return GetToolbarSettingsPath() / settings.file_name;
     }
@@ -74,10 +85,7 @@ std::filesystem::path SETTINGS_MANAGER::GetPathForSettingsFile(const JsonSetting
 
 std::filesystem::path SETTINGS_MANAGER::GetToolbarSettingsPath() const
 {
-    if (const auto* toolbars = ld::find_named_root(report_, "toolbars")) {
-        return toolbars->path;
-    }
-    return report_.roots.config / "toolbars";
+    return toolbar_settings_root_;
 }
 
 std::filesystem::path SETTINGS_MANAGER::GetBackupRootForProject(const Project* project) const
@@ -86,12 +94,10 @@ std::filesystem::path SETTINGS_MANAGER::GetBackupRootForProject(const Project* p
     if (backup_location_ == BackupLocation::ProjectDir) {
         return resolved.full_name.parent_path() / (resolved.name + "-backups");
     }
-    const auto* backups = ld::find_named_root(report_, "project-backups");
-    const auto base = backups ? backups->path : report_.roots.state / "project-backups";
-    return base / projectKeySuffix(resolved);
+    return user_backup_root_ / projectKeySuffix(resolved);
 }
 
-ld::write_report SETTINGS_MANAGER::Save(const JsonSettings& settings) const
+SaveResult SETTINGS_MANAGER::Save(const JsonSettings& settings) const
 {
     ld::write_options write;
     write.target = GetPathForSettingsFile(settings);
@@ -99,7 +105,8 @@ ld::write_report SETTINGS_MANAGER::Save(const JsonSettings& settings) const
     write.keep_backup = true;
     write.atomic_replace = true;
     write.durable_write = true;
-    return ld::write_with_backup(write, json_object_shape);
+    const auto report = ld::write_with_backup(write, json_object_shape);
+    return {report.ok, report.backup_path};
 }
 
 const Project& SETTINGS_MANAGER::resolveProject(const Project* project) const

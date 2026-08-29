@@ -115,12 +115,12 @@ void save_session_uses_backup_write_and_app_validation()
     flavor_tests::notepadpp::NppParameters parameters;
     require(parameters.load({install_root, settings_root, {}, {}, false}), "load should succeed");
 
-    const auto report = parameters.saveSession("<Session new=\"1\" />\n");
-    require(report.ok, "session save should succeed");
-    require(report.backup_path.has_value(), "session save should keep a backup");
+    const auto result = parameters.saveSession("<Session new=\"1\" />\n");
+    require(result.saved, "session save should succeed");
+    require(result.backup_file.has_value(), "session save should keep a backup");
     require(read_file(settings_root / "session.xml").find("new=\"1\"") != std::string::npos,
         "session should contain the new XML");
-    require(read_file(*report.backup_path).find("old=\"1\"") != std::string::npos,
+    require(read_file(*result.backup_file).find("old=\"1\"") != std::string::npos,
         "backup should contain the old XML");
 }
 
@@ -166,10 +166,10 @@ void write_shortcuts_uses_backup_write_and_refreshes_hmac_source()
     store.plugin_commands.push_back({43001, "Plugin action", "Ctrl+Shift+P"});
     store.scintilla_keys.push_back({2400, "SCI_LINEDELETE", "Ctrl+Shift+L"});
 
-    const auto report = parameters.writeShortcuts(store);
+    const auto result = parameters.writeShortcuts(store);
 
-    require(report.ok, "shortcut write should succeed");
-    require(report.backup_path.has_value(), "shortcut write should keep a backup");
+    require(result.saved, "shortcut write should succeed");
+    require(result.backup_file.has_value(), "shortcut write should keep a backup");
     require(parameters.shortcuts().loaded, "shortcut XML should reload after save");
     require(parameters.state().shortcuts_on_disk_hmac_source != original_hmac_source,
         "shortcut HMAC source should be recomputed from the new file content");
@@ -198,10 +198,10 @@ void write_find_history_uses_config_backup_write()
     history.paths = {"/tmp/project"};
     history.filters = {"*.cpp"};
 
-    const auto report = parameters.writeFindHistory(history);
+    const auto result = parameters.writeFindHistory(history);
 
-    require(report.ok, "find-history config write should succeed");
-    require(report.backup_path.has_value(), "config write should keep a backup");
+    require(result.saved, "find-history config write should succeed");
+    require(result.backup_file.has_value(), "config write should keep a backup");
     const auto config = read_file(settings_root / "config.xml");
     require(config.find("<FindHistory>") != std::string::npos, "config should contain FindHistory");
     require(config.find("ampersand &amp; value") != std::string::npos, "find values should be XML escaped");

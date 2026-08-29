@@ -89,12 +89,12 @@ void deprecated_path_migration_is_planned_unless_kept()
     environment.variables["FREECAD_USER_DATA"] = (root / "xdg" / "FreeCAD").string();
 
     const auto config = app_config.build(environment, {});
-    require(config.deprecated_path_migration.actions.size() == 1,
+    require(config.deprecated_path_migration.planned,
         "deprecated FreeCAD path should be planned as a migration");
 
     flavor_tests::freecad::CommandLineOptions keep;
     keep.keep_deprecated_paths = true;
-    require(app_config.build(environment, keep).deprecated_path_migration.actions.empty(),
+    require(!app_config.build(environment, keep).deprecated_path_migration.planned,
         "--keep-deprecated-paths should suppress migration planning");
 }
 
@@ -111,9 +111,9 @@ void user_parameter_save_uses_backup_write()
     std::filesystem::create_directories(config.user_parameter.parent_path());
     std::ofstream(config.user_parameter) << "<FCParameters old=\"true\" />\n";
 
-    const auto report = app_config.saveUserParameter(config, "<FCParameters old=\"false\" />\n");
-    require(report.ok, "FreeCAD user parameter save should succeed");
-    require(report.backup_path.has_value(), "FreeCAD user parameter save should keep backup");
+    const auto result = app_config.saveUserParameter(config, "<FCParameters old=\"false\" />\n");
+    require(result.saved, "FreeCAD user parameter save should succeed");
+    require(result.backup_file.has_value(), "FreeCAD user parameter save should keep backup");
     require(read_file(config.user_parameter).find("false") != std::string::npos,
         "FreeCAD user parameter should be updated");
 }

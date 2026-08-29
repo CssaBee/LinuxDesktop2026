@@ -56,14 +56,14 @@ void flush_replaces_config_and_removes_dirty_state()
 
     flavor_tests::audacity::FileConfig config(target);
     require(config.Init(), "Audacity config init should succeed");
-    const auto report = config.Flush("[Directories]\nTempDir=new\n");
+    const auto result = config.Flush("[Directories]\nTempDir=new\n");
 
-    require(report.ok, "Audacity config flush should succeed");
-    require(report.backup_path.has_value(), "Audacity config flush should keep backup");
+    require(result.saved, "Audacity config flush should succeed");
+    require(result.backup_file.has_value(), "Audacity config flush should keep backup");
     require(!config.dirty(), "Audacity dirty flag should clear after successful flush");
     require(read_file(target).find("TempDir=new") != std::string::npos,
         "Audacity config should contain new content");
-    require(read_file(*report.backup_path).find("TempDir=old") != std::string::npos,
+    require(read_file(*result.backup_file).find("TempDir=old") != std::string::npos,
         "Audacity backup should contain old config");
 }
 

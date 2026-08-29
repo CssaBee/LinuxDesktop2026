@@ -49,6 +49,23 @@ bool directory_has_user_content(const std::filesystem::path& path)
     return std::filesystem::directory_iterator(path, ec) != std::filesystem::directory_iterator();
 }
 
+SaveResult to_save_result(const ld::write_report& report)
+{
+    return {report.ok, report.backup_path, report.temp_path, report.durable_write};
+}
+
+PlannedDirectoryCopy to_planned_directory_copy(const ldm::migration_plan& plan)
+{
+    PlannedDirectoryCopy result;
+    result.dry_run = plan.dry_run;
+    if (!plan.actions.empty()) {
+        result.planned = true;
+        result.source = plan.actions.front().source_path;
+        result.target = plan.actions.front().target_path;
+    }
+    return result;
+}
+
 } // namespace
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
@@ -57,12 +74,18 @@ bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
     hydrate.model_root = config.resources_dir;
     hydrate.target_root = config.config_dir;
     hydrate.files = config.vendor_profiles;
-    hydrate_report_ = ld::hydrate_config_bundle(hydrate);
+    const auto hydrate_report = ld::hydrate_config_bundle(hydrate);
+    load_result_ = {
+        false,
+        hydrate_report.copied.size(),
+        hydrate_report.skipped_existing.size(),
+    };
 
     bool loaded = true;
     for (const auto& profile : config.vendor_profiles) {
         loaded = load_profile_file(config.config_dir / profile.name) && loaded;
     }
+    load_result_.loaded = loaded;
     return loaded;
 }
 
@@ -89,11 +112,11 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
     ldm::options options;
     options.dry_run = true;
     options.overwrite_existing = false;
-    check.migration = ldm::plan_migration({action}, options);
+    check.migration = to_planned_directory_copy(ldm::plan_migration({action}, options));
     return check;
 }
 
-ld::write_report PrusaConfigSnapshot::save_snapshot(
+SaveResult PrusaConfigSnapshot::save_snapshot(
     const Snapshot& snapshot,
     ld::validation_callback validate) const
 {
@@ -104,10 +127,10 @@ ld::write_report PrusaConfigSnapshot::save_snapshot(
     write.atomic_replace = true;
     write.durable_write = true;
 
-    return ld::write_with_backup(write, std::move(validate));
+    return to_save_result(ld::write_with_backup(write, std::move(validate)));
 }
 
-ld::write_report PrusaConfigSnapshot::save_app_config(const AppConfigStore& config) const
+SaveResult PrusaConfigSnapshot::save_app_config(const AppConfigStore& config) const
 {
     ld::write_options write;
     write.target = config.path;
@@ -116,17 +139,17 @@ ld::write_report PrusaConfigSnapshot::save_app_config(const AppConfigStore& conf
     write.atomic_replace = true;
     write.durable_write = true;
 
-    return ld::write_with_backup(write, [](const std::filesystem::path& path, std::string& message) {
+    return to_save_result(ld::write_with_backup(write, [](const std::filesystem::path& path, std::string& message) {
         const std::string bytes = read_text(path);
         const bool ok = bytes.find("[app]") != std::string::npos || bytes.find("[recent_projects]") != std::string::npos;
         if (!ok) {
             message = "PrusaSlicer config did not contain a known section";
         }
         return ok;
-    });
+    }));
 }
 
-ld::write_report PrusaConfigSnapshot::save_recent_projects(
+SaveResult PrusaConfigSnapshot::save_recent_projects(
     const std::filesystem::path& config_dir,
     const std::vector<RecentProject>& recent_projects) const
 {

@@ -32,15 +32,35 @@ struct RecentProject {
     std::string thumbnail_cache_key;
 };
 
+struct SaveResult {
+    bool saved = false;
+    std::optional<std::filesystem::path> backup_file;
+    std::optional<std::filesystem::path> temporary_file;
+    bool durable = false;
+};
+
+struct BundleLoadResult {
+    bool loaded = false;
+    std::size_t copied_defaults = 0;
+    std::size_t preserved_existing = 0;
+};
+
 struct PresetBundle {
     bool vendors_loaded = false;
     bool physical_printers_loaded = false;
     std::vector<std::string> loaded_files;
 };
 
+struct PlannedDirectoryCopy {
+    bool planned = false;
+    bool dry_run = true;
+    std::filesystem::path source;
+    std::filesystem::path target;
+};
+
 struct OldDatadirCheck {
     bool should_prompt_user = false;
-    linuxdesktop::migration::migration_plan migration;
+    PlannedDirectoryCopy migration;
 };
 
 class PrusaConfigSnapshot {
@@ -48,22 +68,22 @@ public:
     bool load_config_bundle(const AppConfig& config);
     OldDatadirCheck check_old_linux_datadir(const AppConfig& config) const;
 
-    linuxdesktop::settings::write_report save_snapshot(
+    SaveResult save_snapshot(
         const Snapshot& snapshot,
         linuxdesktop::settings::validation_callback validate) const;
-    linuxdesktop::settings::write_report save_app_config(const AppConfigStore& config) const;
-    linuxdesktop::settings::write_report save_recent_projects(
+    SaveResult save_app_config(const AppConfigStore& config) const;
+    SaveResult save_recent_projects(
         const std::filesystem::path& config_dir,
         const std::vector<RecentProject>& recent_projects) const;
 
     const PresetBundle& bundle() const { return bundle_; }
-    const std::optional<linuxdesktop::settings::hydrate_report>& hydrateReport() const { return hydrate_report_; }
+    const BundleLoadResult& lastLoadResult() const { return load_result_; }
 
 private:
     bool load_profile_file(const std::filesystem::path& path);
 
     PresetBundle bundle_;
-    std::optional<linuxdesktop::settings::hydrate_report> hydrate_report_;
+    BundleLoadResult load_result_;
 };
 
 } // namespace flavor_tests::prusaslicer
