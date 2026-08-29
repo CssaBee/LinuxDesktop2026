@@ -544,7 +544,7 @@ void common_config_write_reports_durable_mode_and_keeps_backup()
     require(read_file(*report.backup_path).find("old") != std::string::npos, "durable common config write backup should contain old content");
 }
 
-void common_config_write_restores_backup_after_readback_failure()
+void common_config_write_restores_backup_after_readback_mismatch()
 {
     const auto root = test_root();
     const auto target = root / "config.xml";
@@ -556,16 +556,16 @@ void common_config_write_restores_backup_after_readback_failure()
 
     const auto report = ld::write_common_config({target, "<Config saved=\"new\" />\n", true},
         [](const std::filesystem::path& path, std::string&) {
-        std::error_code ec;
-        std::filesystem::permissions(path, std::filesystem::perms::owner_write, std::filesystem::perm_options::replace, ec);
+        std::ofstream corrupt(path, std::ios::binary | std::ios::trunc);
+        corrupt << "<Config saved=\"corrupt\" />\n";
         return true;
     });
 
-    require(!report.ok, "readback failure should fail the common config write");
-    require(report.durable_write, "readback failure should still report durable mode");
-    require(has_diagnostic(report.diagnostics, "write-readback-failed"), "readback failure should be reported");
-    require(has_diagnostic(report.diagnostics, "backup-restored-after-readback-failure"), "backup should be restored after readback failure");
-    require(read_file(target).find("old") != std::string::npos, "readback failure should restore original target content");
+    require(!report.ok, "readback mismatch should fail the common config write");
+    require(report.durable_write, "readback mismatch should still report durable mode");
+    require(has_diagnostic(report.diagnostics, "write-readback-mismatch"), "readback mismatch should be reported");
+    require(has_diagnostic(report.diagnostics, "backup-restored-after-readback-failure"), "backup should be restored after readback mismatch");
+    require(read_file(target).find("old") != std::string::npos, "readback mismatch should restore original target content");
 }
 
 void migration_plan_is_dry_run_first()
@@ -1081,7 +1081,7 @@ int main()
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
         {"common_config_write_reports_durable_mode_and_keeps_backup", common_config_write_reports_durable_mode_and_keeps_backup},
-        {"common_config_write_restores_backup_after_readback_failure", common_config_write_restores_backup_after_readback_failure},
+        {"common_config_write_restores_backup_after_readback_mismatch", common_config_write_restores_backup_after_readback_mismatch},
         {"migration_plan_is_dry_run_first", migration_plan_is_dry_run_first},
         {"migration_execute_copies_file", migration_execute_copies_file},
         {"migration_blocks_dangerous_without_permission", migration_blocks_dangerous_without_permission},

@@ -1446,12 +1446,12 @@ write_report write_with_backup(const write_options& options, validation_callback
     }
 
     std::error_code read_ec;
-    static_cast<void>(read_text(options.target, read_ec));
-    if (read_ec) {
+    const auto persisted_content = read_text(options.target, read_ec);
+    if (read_ec || persisted_content != options.content) {
         report.diagnostics.push_back(make_diagnostic(
             severity::error,
-            "write-readback-failed",
-            read_ec.message(),
+            read_ec ? "write-readback-failed" : "write-readback-mismatch",
+            read_ec ? read_ec.message() : "Written file content did not match readback content",
             options.target));
         if (report.backup_path) {
             std::error_code restore_ec;
