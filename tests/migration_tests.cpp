@@ -80,14 +80,8 @@ void plan_is_dry_run_first()
         file << "<Config />\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_file;
-    action.name = "copy config";
-    action.source_path = source;
-    action.target_path = target;
-
     ld::options options;
-    const auto plan = ld::plan_migration({action}, options);
+    const auto plan = ld::plan_copy_file(source, target, options);
     require(plan.dry_run, "migration plans should be dry-run objects");
     require(plan.actions.size() == 1, "migration plan should keep actions");
     require(!has_error_diagnostic(plan.diagnostics), "valid migration plan should not have errors");
@@ -115,13 +109,7 @@ void execute_copies_file()
         file << "<Config copied=\"true\" />\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_file;
-    action.name = "copy config";
-    action.source_path = source;
-    action.target_path = target;
-
-    const auto plan = ld::plan_migration({action});
+    const auto plan = ld::plan_copy_file(source, target);
 
     ld::options execute_options;
     execute_options.dry_run = false;
@@ -150,13 +138,9 @@ void move_execution_requires_dangerous_permission()
         file << "<Config />\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::move_file;
-    action.name = "move config";
-    action.source_path = source;
-    action.target_path = target;
-
-    const auto plan = ld::plan_migration({action});
+    ld::options plan_options;
+    plan_options.allow_dangerous = true;
+    const auto plan = ld::plan_move_file(source, target, plan_options);
 
     ld::options execute_options;
     execute_options.dry_run = false;
@@ -183,13 +167,7 @@ void execute_copies_directory()
         file << "copied=true\n";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::copy_directory;
-    action.name = "copy profile";
-    action.source_path = source;
-    action.target_path = target;
-
-    const auto plan = ld::plan_migration({action});
+    const auto plan = ld::plan_copy_directory(source, target);
     ld::options execute_options;
     execute_options.dry_run = false;
     const auto report = ld::execute_migration_plan(plan, execute_options);
@@ -214,13 +192,9 @@ void execute_moves_file_with_permission()
         file << "state";
     }
 
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::move_file;
-    action.name = "move state";
-    action.source_path = source;
-    action.target_path = target;
-
-    const auto plan = ld::plan_migration({action});
+    ld::options plan_options;
+    plan_options.allow_dangerous = true;
+    const auto plan = ld::plan_move_file(source, target, plan_options);
     ld::options execute_options;
     execute_options.dry_run = false;
     execute_options.allow_dangerous = true;
@@ -263,14 +237,53 @@ void rooted_paths_resolve_through_ld_paths()
         "rooted migration path should reject absolute tails");
 }
 
+void plan_copy_infers_source_kind()
+{
+    const auto root = test_root();
+    const auto file_source = root / "old" / "config.xml";
+    const auto file_target = root / "new" / "config.xml";
+    const auto directory_source = root / "old-profile";
+    const auto directory_target = root / "new-profile";
+    std::filesystem::create_directories(file_source.parent_path());
+    std::filesystem::create_directories(directory_source / "subdir");
+    {
+        std::ofstream file(file_source);
+        file << "<Config />\n";
+    }
+    {
+        std::ofstream file(directory_source / "subdir" / "settings.ini");
+        file << "copied=true\n";
+    }
+
+    const auto file_plan = ld::plan_copy(file_source, file_target);
+    require(file_plan.actions.size() == 1, "copy helper should infer file source kind");
+    require(ld::to_string(file_plan.actions[0].kind) == "copy_file",
+        "copy helper should infer file actions");
+    require(!has_error_diagnostic(file_plan.diagnostics), "copy helper should not warn for existing files");
+
+    const auto directory_plan = ld::plan_copy(directory_source, directory_target);
+    require(directory_plan.actions.size() == 1, "copy helper should infer directory source kind");
+    require(ld::to_string(directory_plan.actions[0].kind) == "copy_directory",
+        "copy helper should infer directory actions");
+    require(!has_error_diagnostic(directory_plan.diagnostics),
+        "copy helper should not warn for existing directories");
+}
+
+void plan_copy_missing_source_reports_diagnostic()
+{
+    const auto root = test_root();
+    const auto source = root / "missing" / "config.xml";
+    const auto target = root / "new" / "config.xml";
+
+    const auto plan = ld::plan_copy(source, target);
+    require(plan.actions.empty(), "missing source should not guess a copy action");
+    require(has_diagnostic(plan.diagnostics, "migration-source-missing"),
+        "missing source should report a diagnostic");
+}
+
 void dangerous_actions_are_denied_by_default()
 {
-    ld::migration_action action;
-    action.kind = ld::migration_action_kind::delete_registry_key;
-    action.name = "delete legacy key";
-    action.dangerous = true;
-
-    const auto plan = ld::plan_migration({action});
+    const auto plan = ld::plan_delete_registry_key();
     require(has_diagnostic(plan.diagnostics, "migration-dangerous-action-denied"),
         "dangerous migration action should require explicit permission");
 }
@@ -410,6 +423,8 @@ int main()
         {"execute_copies_directory", execute_copies_directory},
         {"execute_moves_file_with_permission", execute_moves_file_with_permission},
         {"rooted_paths_resolve_through_ld_paths", rooted_paths_resolve_through_ld_paths},
+        {"plan_copy_infers_source_kind", plan_copy_infers_source_kind},
+        {"plan_copy_missing_source_reports_diagnostic", plan_copy_missing_source_reports_diagnostic},
         {"dangerous_actions_are_denied_by_default", dangerous_actions_are_denied_by_default},
         {"registry_json_snapshot_round_trips", registry_json_snapshot_round_trips},
         {"registry_reg_snapshot_round_trips", registry_reg_snapshot_round_trips},

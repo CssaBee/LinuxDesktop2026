@@ -441,16 +441,8 @@ void Program::UpdatePersonalPath()
 
     // CHANGE: ld_migration can now represent the file migration as a dry-run
     // plan. The app can show this before executing anything.
-    const ldm::migration_plan path_migration = ldm::plan_migration({
-        {
-            ldm::migration_action_kind::copy_directory,
-            "copy legacy personal folder",
-            LegacyPersonalFolder,
-            report.roots.config,
-            false,
-            false
-        }
-    });
+    const ldm::migration_plan path_migration =
+        ldm::plan_copy_directory(LegacyPersonalFolder, report.roots.config);
     ShowMigrationPreview(path_migration);
 
     // CHANGE: ld_migration::registry can represent Registry snapshots/imports

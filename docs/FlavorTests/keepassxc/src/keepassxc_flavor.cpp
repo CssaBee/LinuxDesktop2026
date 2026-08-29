@@ -151,12 +151,9 @@ LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& env
         return {};
     }
 
-    ldm::migration_action action;
-    action.kind = ldm::migration_action_kind::move_file;
-    action.name = "Move legacy KeePassXC local settings from cache to state";
-    action.source_path = *environment.old_cache_config_file;
-    action.target_path = files_.local;
-    return to_local_config_migration(ldm::plan_migration({action}, {}));
+    ldm::options options;
+    options.allow_dangerous = true;
+    return to_local_config_migration(ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options));
 }
 
 void Config::set(std::string key, std::string value, bool local)

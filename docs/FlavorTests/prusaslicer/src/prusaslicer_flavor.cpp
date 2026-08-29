@@ -103,16 +103,11 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
         return check;
     }
 
-    ldm::migration_action action;
-    action.kind = ldm::migration_action_kind::copy_directory;
-    action.name = "Copy legacy PrusaSlicer datadir into the XDG datadir";
-    action.source_path = config.old_linux_datadir;
-    action.target_path = config.config_dir;
-
     ldm::options options;
     options.dry_run = true;
     options.overwrite_existing = false;
-    check.migration = to_planned_directory_copy(ldm::plan_migration({action}, options));
+    check.migration = to_planned_directory_copy(
+        ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options));
     return check;
 }
 

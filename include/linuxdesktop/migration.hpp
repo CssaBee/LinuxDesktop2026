@@ -8,6 +8,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <utility>
 #include <vector>
 
 namespace linuxdesktop::migration {
@@ -65,6 +67,62 @@ struct migration_plan {
     std::vector<diagnostic> diagnostics;
 };
 
+migration_plan plan_migration(std::vector<migration_action> actions, const options& options = {});
+
+namespace detail {
+
+inline migration_plan plan_path_inference(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options,
+    migration_action_kind file_kind,
+    migration_action_kind directory_kind,
+    bool dangerous,
+    std::string_view helper_name)
+{
+    migration_plan plan;
+    plan.dry_run = true;
+
+    if (source_path.empty()) {
+        plan.diagnostics.push_back(diagnostic{
+            severity::error,
+            "migration-helper-source-empty",
+            std::string(helper_name) + " requires a source path",
+            {}});
+        return plan;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(source_path, ec)) {
+        plan.diagnostics.push_back(diagnostic{
+            severity::error,
+            "migration-source-missing",
+            "Migration source does not exist",
+            source_path});
+        return plan;
+    }
+
+    const bool directory = std::filesystem::is_directory(source_path, ec);
+    const bool regular_file = std::filesystem::is_regular_file(source_path, ec);
+    if (directory == regular_file) {
+        plan.diagnostics.push_back(diagnostic{
+            severity::error,
+            "migration-source-kind-ambiguous",
+            "Migration source kind is ambiguous",
+            source_path});
+        return plan;
+    }
+
+    migration_action action;
+    action.kind = directory ? directory_kind : file_kind;
+    action.source_path = std::move(source_path);
+    action.target_path = std::move(target_path);
+    action.dangerous = dangerous;
+    return plan_migration({std::move(action)}, options);
+}
+
+} // namespace detail
+
 struct migration_action_result {
     migration_action action;
     migration_action_state state = migration_action_state::planned;
@@ -103,7 +161,110 @@ struct migration_execution_report {
 std::string_view to_string(migration_action_kind value);
 std::string_view to_string(migration_action_state value);
 
-migration_plan plan_migration(std::vector<migration_action> actions, const options& options = {});
+inline migration_plan plan_copy_file(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    migration_action action;
+    action.kind = migration_action_kind::copy_file;
+    action.source_path = std::move(source_path);
+    action.target_path = std::move(target_path);
+    return plan_migration({std::move(action)}, options);
+}
+
+inline migration_plan plan_copy_directory(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    migration_action action;
+    action.kind = migration_action_kind::copy_directory;
+    action.source_path = std::move(source_path);
+    action.target_path = std::move(target_path);
+    return plan_migration({std::move(action)}, options);
+}
+
+inline migration_plan plan_copy(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    return detail::plan_path_inference(
+        std::move(source_path),
+        std::move(target_path),
+        options,
+        migration_action_kind::copy_file,
+        migration_action_kind::copy_directory,
+        false,
+        "plan_copy");
+}
+
+inline migration_plan copy_path(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    return plan_copy(std::move(source_path), std::move(target_path), options);
+}
+
+inline migration_plan plan_move_file(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    migration_action action;
+    action.kind = migration_action_kind::move_file;
+    action.source_path = std::move(source_path);
+    action.target_path = std::move(target_path);
+    action.dangerous = true;
+    return plan_migration({std::move(action)}, options);
+}
+
+inline migration_plan plan_move_directory(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    migration_action action;
+    action.kind = migration_action_kind::move_directory;
+    action.source_path = std::move(source_path);
+    action.target_path = std::move(target_path);
+    action.dangerous = true;
+    return plan_migration({std::move(action)}, options);
+}
+
+inline migration_plan plan_move(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    return detail::plan_path_inference(
+        std::move(source_path),
+        std::move(target_path),
+        options,
+        migration_action_kind::move_file,
+        migration_action_kind::move_directory,
+        true,
+        "plan_move");
+}
+
+inline migration_plan move_path(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    return plan_move(std::move(source_path), std::move(target_path), options);
+}
+
+inline migration_plan plan_delete_registry_key(std::string name = {}, const options& options = {})
+{
+    migration_action action;
+    action.kind = migration_action_kind::delete_registry_key;
+    action.name = std::move(name);
+    action.dangerous = true;
+    return plan_migration({std::move(action)}, options);
+}
 
 migration_execution_report execute_migration_plan(const migration_plan& plan, const options& options = {});
 

@@ -552,14 +552,8 @@ void migration_plan_is_dry_run_first()
         file << "<Config />\n";
     }
 
-    mig::migration_action action;
-    action.kind = mig::migration_action_kind::copy_file;
-    action.name = "copy config";
-    action.source_path = source;
-    action.target_path = target;
-
     mig::options options;
-    const auto plan = mig::plan_migration({action}, options);
+    const auto plan = mig::plan_copy_file(source, target, options);
     require(plan.dry_run, "migration plans should be dry-run objects");
     require(plan.actions.size() == 1, "migration plan should keep actions");
     require(!has_error_diagnostic(plan.diagnostics), "valid migration plan should not have errors");
@@ -585,14 +579,8 @@ void migration_execute_copies_file()
         file << "<Config copied=\"true\" />\n";
     }
 
-    mig::migration_action action;
-    action.kind = mig::migration_action_kind::copy_file;
-    action.name = "copy config";
-    action.source_path = source;
-    action.target_path = target;
-
     mig::options plan_options;
-    const auto plan = mig::plan_migration({action}, plan_options);
+    const auto plan = mig::plan_copy_file(source, target, plan_options);
 
     mig::options execute_options;
     execute_options.dry_run = false;
@@ -606,12 +594,7 @@ void migration_execute_copies_file()
 
 void migration_blocks_dangerous_without_permission()
 {
-    mig::migration_action action;
-    action.kind = mig::migration_action_kind::delete_registry_key;
-    action.name = "delete legacy key";
-    action.dangerous = true;
-
-    const auto plan = mig::plan_migration({action});
+    const auto plan = mig::plan_delete_registry_key();
     require(has_diagnostic(plan.diagnostics, "migration-dangerous-action-denied"),
         "dangerous migration action should require explicit permission");
 }

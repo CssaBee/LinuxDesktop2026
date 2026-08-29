@@ -6,14 +6,13 @@ list below.
 
 ## Current Order
 
-1. `26` — Add Ergonomic Migration Action Helpers
-2. `25` — Add Clear Config Defaults Alias
-3. `27` — Record FlavorTest API Friction Notes
-4. `14` — Add Adversarial Parser And Filesystem Tests
-5. `15` — Validate APIs With One Maintained Consumer Branch
-6. `18` — Expand CI Into Portability Evidence
-7. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-8. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `25` — Add Clear Config Defaults Alias
+2. `27` — Record FlavorTest API Friction Notes
+3. `14` — Add Adversarial Parser And Filesystem Tests
+4. `15` — Validate APIs With One Maintained Consumer Branch
+5. `18` — Expand CI Into Portability Evidence
+6. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+7. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 

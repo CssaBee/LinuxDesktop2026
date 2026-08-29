@@ -38,12 +38,6 @@ void append_action_gate_diagnostics(
     const options& options,
     std::vector<diagnostic>& diagnostics)
 {
-    if (action.name.empty()) {
-        diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "migration-action-name-empty",
-            "Migration action requires a non-empty name"));
-    }
     if (action.dangerous && !options.allow_dangerous) {
         diagnostics.push_back(make_diagnostic(
             severity::error,

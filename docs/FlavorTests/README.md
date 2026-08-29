@@ -25,7 +25,8 @@ Selected upstream subprojects:
   PrusaSlicer in charge of profile names, XML/INI content, prompt policy, and
   validation while replacing repeated copy/migration/backup/temp-write
   mechanics with `ld_settings::hydrate_config_bundle`,
-  `ld_migration::plan_migration`, `ld_settings::write_with_backup`, and
+  `ld_migration::plan_copy_directory`, `ld_migration::plan_move_file`,
+  `ld_settings::write_with_backup`, and
   `ld_settings::write_common_config` for the repeated save path.
   - Source anchors: `src/slic3r/Config/Snapshot.cpp`,
     `src/slic3r/Config/Snapshot.hpp`, and config/resource initialization around

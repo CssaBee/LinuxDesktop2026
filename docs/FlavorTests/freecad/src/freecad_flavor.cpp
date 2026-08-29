@@ -69,12 +69,7 @@ ConfigurationSet ApplicationConfig::build(
 
     const auto deprecated = config.user_home_path / ".FreeCAD";
     if (!command_line.keep_deprecated_paths && deprecated != config.user_app_data && std::filesystem::exists(deprecated)) {
-        ldm::migration_action action;
-        action.kind = ldm::migration_action_kind::copy_directory;
-        action.name = "Copy deprecated FreeCAD user data into configured user data";
-        action.source_path = deprecated;
-        action.target_path = config.user_app_data;
-        const auto plan = ldm::plan_migration({action}, {});
+        const auto plan = ldm::plan_copy_directory(deprecated, config.user_app_data);
         config.deprecated_path_migration.dry_run = plan.dry_run;
         if (!plan.actions.empty()) {
             config.deprecated_path_migration.planned = true;
