@@ -1,87 +1,78 @@
 # LinuxDesktop2026
 
-LinuxDesktop2026 is an early-stage project to study how Windows-heavy desktop applications use platform features, then design small reusable libraries that make native Linux support easier.
-
-The project starts from a practical proof case: Notepad++ on Ubuntu. Notepad++ is not the whole identity of the project, and a complete native Linux port is not assumed. The durable goal is a set of general-purpose platform libraries that GitHub users and AI coding agents can understand, build, and reuse.
+LinuxDesktop2026 designs small reusable libraries that make native Linux support easier for Windows-heavy desktop applications. Notepad++ on Ubuntu is the proof case, not the whole project.
 
 ## Current Stage
 
-We are in the prototype hardening stage. The repository has working sample
-libraries, tests, demos, and install-tree checks, but it is not claiming
-production-ready behavior yet.
+We are in the prototype hardening and flavor-review stage.
 
-The project direction is:
+`ld_settings` is the current C++17 settings/config sample. It covers root
+resolution, config hydration, ordered writes, backup files, validation before
+commit, opt-in durable writes, and temporary compatibility surfaces for older
+callers. Autostart and managed/enforced policy live in `ld_desktop`; migration
+execution and Registry-shaped compatibility still need their own modules before
+ship-candidate status.
 
-1. Survey 15 to 20 repositories that use Windows desktop features.
-2. Include about five reference implementations that already abstracted or ported similar features.
-3. Include unported candidates where Linux support was frequently requested.
-4. Score candidate modules by real usage, coupling, Linux complexity, standalone usefulness, and proof-case value.
-5. Run a focused follow-up search for the strongest module candidates.
-6. Pick implementation work only after the evidence supports it.
+`ld_paths` is the next module. Its public C++ and C prototype includes a
+CMake target, tests, demos, install-tree consumer coverage, standard user
+paths, executable/resource/install roots, candidate reports, path lists, typed
+plugin path sets, and opt-in directory creation.
 
-The first selected sample is `ld_settings`, a C++17 settings/config prototype.
-It currently demonstrates root resolution, config-only sync overrides,
-privileged-install portable denial, config bundle hydration, ordered writes,
-atomic namespace replacement, backup files, validation-before-commit,
-opt-in durable writes where the platform supports them, dry-run-first
-migration plans, raw Registry API shape, Registry JSON/`.reg` snapshot
-formats, and compatibility facades for older desktop-effect callers.
-Autostart and managed/enforced policy C++ behavior now lives in `ld_desktop`.
-Registry-shaped compatibility and migration execution remain temporary
-`ld_settings` implementation locations and must move to their owning modules
-before ship-candidate status. Some of that surface is
-evidence-gathering only and still needs hostile-input coverage, durability,
-Windows verification, rollback reporting, permissions testing, and
-real-consumer validation before it can be called shippable.
+For migration shape examples, see [Migration examples](docs/examples/migration-examples.md).
 
-The next module is `ld_paths`, a resolver-first path module shaped by the extended survey. Its public C++ and C prototype is present with a CMake target, tests, demos, and install-tree consumer coverage. It now covers standard user paths, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, opt-in directory creation, and C report ownership rules.
+## Flavor Tests
 
-For migration shape examples, see [Migration examples](docs/examples/migration-examples.md). They show how real Notepad++, ShareX, WinSCP, KeePassXC, OpenRGB, FreeCAD, Carla, PortableApps-style startup/config code, and internal `ld_settings` extraction change when platform policy moves into LinuxDesktop2026 modules.
+FlavorTests is the adapter-and-test harness for checking API fit at real
+upstream seams.
+
+- The harness lives in [docs/FlavorTests/README.md](docs/FlavorTests/README.md).
+- It currently covers Notepad++, PrusaSlicer, OpenRGB, KeePassXC, qBittorrent,
+  OBS, KiCad, Audacity, and FreeCAD slices.
+- Flavor-review feeds back into API ergonomics before the public surface grows.
 
 ## Roadmap
 
-This roadmap is meant to help both humans and AI agents quickly see what is
-implemented as prototype evidence, what is underway, and what remains research.
+This roadmap shows what is done, active, next, and parked.
 
 Status legend:
 
-- `✅ Done`: implemented and documented as prototype behavior, not a shipping claim.
-- `🟡 In progress`: actively being explored or refined.
-- `📌 Next`: the next selected implementation target.
-- `⬜ Later`: research/backlog candidates, not active delivery promises.
+- `✅ Done`: implemented prototype behavior.
+- `🟡 In progress`: active work.
+- `📌 Next`: next target.
+- `⬜ Later`: parked research.
 
 | Status | Category | Current state |
 | --- | --- | --- |
-| `✅` Done | `ld_settings` | First sample library and demo. Covers root resolution, config-only sync overrides, privileged-install portable denial, config bundle hydration, ordered writes, atomic namespace replacement, backup files, validation-before-commit, and opt-in durable writes. Crash-durable guarantees remain explicit and platform-limited. |
-| `✅` Done | `ld_settings_tests` | Test coverage for current prototype behavior through `ctest`; not yet a durability, stress, or real-consumer validation suite. |
-| `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions capture the design trail for humans and agents. |
-| `✅` Done | CMake consumption | `LinuxDesktop2026::ld_settings` is documented for `FetchContent`, `add_subdirectory`, and installed `find_package` use; CTest verifies an install-tree consumer. |
-| `✅` Done | `ld_settings` C ABI surface | Existing pre-RC C entry points expose root resolution, root/layer reports, config hydration, atomic replacement writes, and the current temporary migration/Registry/autostart/policy prototype surface for future Rust bindings and non-C++ consumers. The project is not expanding C ABI coverage until release-candidate status. |
-| `✅` Done | API/ABI version surface | Public headers expose `0.1.0` version constants/functions and the stability policy defines pre-1.0 source compatibility expectations. Stable C++ binary ABI is not promised. |
-| `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` exposes shared C++ diagnostics, with `ld_settings` aliases kept source-compatible. |
-| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, dry-run migration plans, raw Registry operations, JSON Registry snapshots, `.reg` snapshots, and compatibility effect facades are represented in the public C++ prototype surface. This is not yet a final module boundary. |
-| `🟡` In progress | `ld_desktop` extraction | C++ autostart and managed/enforced policy implementation moved to `ld_desktop`; capability reports cover the full desktop-effect extraction scope. Desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, and Windows mutation backends still need implementation or verified diagnostics. |
-| `🟡` In progress | `ld_settings` ship design | ADR 0012 narrows `ld_settings` to settings/config behavior. Desktop effects and migration behavior now have C++ extraction modules; remaining ship work is hardening, completion, Windows verification, and release-candidate C ABI cleanup. |
-| `📌` Next | Flavor-derived API ergonomics | Expanded FlavorTests now gate API ergonomics before broader hardening: apply the API exposure budget documented in `docs/FlavorTests/README.md`, translate LinuxDesktop2026 reports at product boundaries where the product has not adopted them publicly, add a common config-write facade, reduce root-request boilerplate, add migration planning helpers, and add clearer config-default naming. |
-| `🟡` In progress | Survey and scoring | Repository surveys, ecosystem audits, module scoring, and expanded settings/Registry survey are guiding reusable seams. The broader `ld_watch` application/library follow-up is complete enough to guide implementation. |
-| `✅` Done | File watching (`ld_watch`) prototype | Broad prototype exists with public C++ API, named diagnostic constants, backend capability identity, timeout-capable pull delivery, native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional verified libuv backend, simulated backend tests, smoke coverage, demo, and install-tree consumer linkage. Callback lifecycle, bounded queues, recursive stress, and consumer validation still gate ship-candidate status. |
-| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C prototype is present with `LinuxDesktop2026::ld_paths`, version constants/functions, shared diagnostics, path family/source enums, resolver reports, deterministic resolver hooks, Linux XDG Base Directory behavior, XDG user-dir parsing, user-directory fallbacks, executable/resource/install roots, legacy and site-default config candidates, opt-in directory creation, path-list parsing/joining, typed plugin path sets, Wine-prefix-aware defaults, tests, demos, and install-tree consumer coverage. Remaining prototype work: Windows verification before public prototype announcement. |
-| `🟡` In progress | `ld_migration` hardening | C++ migration planning/execution and app-settings Registry snapshot/import/export compatibility now live in `ld_migration`. Remaining work includes adversarial path tests, deeper rollback evidence, Windows Registry verification, and release-candidate C ABI cleanup. |
-| `⬜` Later | Process and shell integration | Candidate module for launching commands, shell helpers, and process lifecycle seams. |
-| `⬜` Later | Dynamic library loading | Candidate module for loading shared libraries and resolving symbols cleanly. |
-| `⬜` Later | Single-instance IPC | Candidate module for app-ownership checks, lock files, local transports, and activation forwarding. |
-| `⬜` Later | `ld_desktop` completion | Required completion work for desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, Windows autostart/policy mutation, and Registry-equivalent desktop/system behavior. |
-| `⬜` Later | Cross-module migration orchestration | Future `ld_migration` work for coordinating path, desktop, and settings migrations after the core module hardens. |
-| `⬜` Later | Service and daemon lifecycle | Future module for background process supervision, command channels, and service integration. |
-| `⬜` Later | GUI / windowing | UI foundation for top-level windows, platform windows, and event plumbing. |
-| `⬜` Later | Clipboard | UI-adjacent module for copy/paste integration and capability reporting. |
-| `⬜` Later | Drag-and-drop | UI-adjacent module for drop targets, payload inspection, and platform differences. |
-| `⬜` Later | Common dialogs and resources | File pickers, message dialogs, icons, and resource access abstractions. |
+| `✅` Done | `ld_settings` | Current settings/config sample: root resolution, config hydration, ordered writes, backups, validation before commit, and opt-in durable writes. |
+| `✅` Done | `ld_settings_tests` | `ctest` coverage for current prototype behavior. |
+| `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions. |
+| `✅` Done | CMake consumption | `FetchContent`, `add_subdirectory`, installed `find_package`, and install-tree smoke coverage. |
+| `✅` Done | `ld_settings` C ABI surface | Pre-RC C entry points for root resolution, reports, config hydration, and replacement writes. |
+| `✅` Done | API/ABI version surface | `0.1.0` version constants/functions and pre-1.0 source-compatibility policy. |
+| `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` shared C++ diagnostics with `ld_settings` aliases. |
+| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, migration plans, Registry snapshots, and effect facades. |
+| `🟡` In progress | `ld_desktop` extraction | Autostart and managed/enforced policy live in `ld_desktop`; desktop-effect completion remains. |
+| `🟡` In progress | `ld_settings` ship design | `ld_settings` stays scoped to settings/config while desktop and migration move out. |
+| `📌` Next | Flavor-derived API ergonomics | FlavorTests gate API ergonomics before broader hardening. |
+| `✅` Done | Survey and scoring | Survey, ecosystem, and scoring work shaped module selection. |
+| `✅` Done | File watching (`ld_watch`) prototype | Public watcher prototype with native Linux and Windows backends, tests, demos, and install-tree linkage. |
+| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C path prototype with tests, demos, typed plugin path sets, and install-tree coverage. |
+| `🟡` In progress | `ld_migration` hardening | Migration planning and execution now live in `ld_migration`; hardening continues. |
+| `⬜` Later | Process and shell integration | Launching commands, shell helpers, and process lifecycle seams. |
+| `⬜` Later | Dynamic library loading | Loading shared libraries and resolving symbols. |
+| `⬜` Later | Single-instance IPC | App-ownership checks, lock files, local transports, and activation forwarding. |
+| `⬜` Later | `ld_desktop` completion | Desktop entries, icons, MIME/file associations, protocols, and system behavior. |
+| `⬜` Later | Cross-module migration orchestration | Coordinating path, desktop, and settings migrations. |
+| `⬜` Later | Service and daemon lifecycle | Background supervision, command channels, and service integration. |
+| `⬜` Later | GUI / windowing | Top-level windows, platform windows, and event plumbing. |
+| `⬜` Later | Clipboard | Copy/paste integration and capability reporting. |
+| `⬜` Later | Drag-and-drop | Drop targets, payload inspection, and platform differences. |
+| `⬜` Later | Common dialogs and resources | File pickers, message dialogs, icons, and resource access. |
 | `⬜` Later | Printing | Print pipeline and page setup integration. |
-| `⬜` Later | Plugin ABI | Binary compatibility, plugin discovery, and host/plugin boundary design. |
-| `⬜` Later | Advanced theming and DPI | Theme, scaling, and high-DPI adaptation surfaces. |
-| `⬜` Later | Accessibility | Screen reader, focus, and assistive-technology integration. |
-| `⬜` Later | Installer and package integration | Packaging, install-time behavior, and distribution-specific integration. |
+| `⬜` Later | Plugin ABI | Binary compatibility, plugin discovery, and host/plugin boundaries. |
+| `⬜` Later | Advanced theming and DPI | Theme, scaling, and high-DPI adaptation. |
+| `⬜` Later | Accessibility | Screen reader, focus, and assistive-technology support. |
+| `⬜` Later | Installer and package integration | Packaging, install-time behavior, and distribution integration. |
 
 Quick read:
 
