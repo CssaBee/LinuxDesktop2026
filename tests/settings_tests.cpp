@@ -214,16 +214,27 @@ void delegates_generic_roots_to_paths_with_injected_environment()
     options.create_directories = false;
     options.use_process_environment = false;
     options.home_directory = root / "home";
+#if defined(_WIN32)
+    options.environment["APPDATA"] = (root / "appdata" / "roaming").string();
+    options.environment["LOCALAPPDATA"] = "relative-local";
+#else
     options.environment["XDG_CONFIG_HOME"] = "relative-config";
     options.environment["XDG_DATA_HOME"] = (root / "xdg-data").string();
     options.environment["XDG_STATE_HOME"] = (root / "xdg-state").string();
     options.environment["XDG_CACHE_HOME"] = (root / "xdg-cache").string();
     options.environment["XDG_RUNTIME_DIR"] = (root / "xdg-runtime").string();
+#endif
 
     const auto report = ld::resolve_app_roots(identity(), options);
 
     require(has_diagnostic(report.diagnostics, "paths.environment.relative_ignored"),
         "settings root resolution should expose ld_paths diagnostics");
+#if defined(_WIN32)
+    require(report.roots.config == root / "appdata" / "roaming" / "LinuxDesktop2026" / "settings-tests",
+        "settings config root should use ld_paths Windows roaming selection");
+    require(report.roots.data == root / "appdata" / "roaming" / "LinuxDesktop2026" / "settings-tests",
+        "settings data root should use ld_paths Windows roaming selection");
+#else
     require(report.roots.config == root / "home" / ".config" / "LinuxDesktop2026" / "settings-tests",
         "settings config root should fall back through ld_paths");
     require(report.roots.data == root / "xdg-data" / "LinuxDesktop2026" / "settings-tests",
@@ -234,6 +245,7 @@ void delegates_generic_roots_to_paths_with_injected_environment()
         "settings cache root should use ld_paths XDG cache selection");
     require(report.roots.runtime == root / "xdg-runtime" / "settings-tests",
         "settings runtime root should use ld_paths XDG runtime selection");
+#endif
 }
 
 void reports_path_directory_failure_for_generic_root_creation()
@@ -915,13 +927,27 @@ void c_abi_root_resolution_accepts_injected_environment()
 {
     const auto root = test_root();
     const auto home = root / "home";
+#if defined(_WIN32)
+    const auto config = root / "appdata" / "roaming";
+    const auto local = root / "appdata" / "local";
+    const auto config_text = path_to_utf8_string(config);
+    const auto local_text = path_to_utf8_string(local);
+#else
     const auto config = root / "xdg-config";
     const auto config_text = path_to_utf8_string(config);
+#endif
     const auto home_text = path_to_utf8_string(home);
 
-    ld_settings_environment_entry environment[1] = {};
+    ld_settings_environment_entry environment[2] = {};
+#if defined(_WIN32)
+    environment[0].name = "APPDATA";
+    environment[0].value = config_text.c_str();
+    environment[1].name = "LOCALAPPDATA";
+    environment[1].value = local_text.c_str();
+#else
     environment[0].name = "XDG_CONFIG_HOME";
     environment[0].value = config_text.c_str();
+#endif
 
     ld_settings_root_options options = {};
     ld_settings_root_options_init(&options);
@@ -929,7 +955,11 @@ void c_abi_root_resolution_accepts_injected_environment()
     options.application = "c-settings-tests";
     options.home_directory = home_text.c_str();
     options.environment = environment;
+#if defined(_WIN32)
+    options.environment_count = 2;
+#else
     options.environment_count = 1;
+#endif
     options.use_process_environment = 0;
     options.create_directories = 0;
 
@@ -938,8 +968,13 @@ void c_abi_root_resolution_accepts_injected_environment()
 
     require(ok == 1, "C ABI injected environment root resolution should succeed");
     require(report.config != nullptr, "C ABI injected environment should allocate config path");
+#if defined(_WIN32)
+    require(std::filesystem::path(report.config) == config / "LinuxDesktop2026" / "c-settings-tests",
+        "C ABI config path should use injected APPDATA");
+#else
     require(std::filesystem::path(report.config) == config / "LinuxDesktop2026" / "c-settings-tests",
         "C ABI config path should use injected XDG_CONFIG_HOME");
+#endif
 
     ld_settings_free_root_report(&report);
 }
