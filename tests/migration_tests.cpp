@@ -241,12 +241,19 @@ void rooted_paths_resolve_through_ld_paths()
     request.identity.application = "migration-tests";
     request.resolver_options.home_directory = root / "home";
     request.resolver_options.use_process_environment = false;
-    request.resolver_options.environment = {{"XDG_STATE_HOME", (root / "state").string()}};
     request.family = linuxdesktop::paths::path_family::state;
     request.relative_path = "registry-snapshot.json";
 
+#if defined(_WIN32)
+    request.resolver_options.environment = {{"LOCALAPPDATA", (root / "state").string()}};
+    const auto expected = root / "state" / "migration-tests" / "state" / "registry-snapshot.json";
+#else
+    request.resolver_options.environment = {{"XDG_STATE_HOME", (root / "state").string()}};
+    const auto expected = root / "state" / "migration-tests" / "registry-snapshot.json";
+#endif
+
     const auto resolved = ld::resolve_rooted_path(request);
-    require(resolved.path == root / "state" / "migration-tests" / "registry-snapshot.json",
+    require(resolved.path == expected,
         "rooted migration path should be resolved through ld_paths");
     require(!has_error_diagnostic(resolved.diagnostics), "rooted path should not report errors");
 
