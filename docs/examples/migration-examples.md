@@ -204,7 +204,9 @@ if (!loadSession(session))
     restoreBackupOrStartEmptySession(session);
 ```
 
-After, the same task hydrates the config bundle, loads the app-owned XML documents, and saves the same ordered files with temp-write/replace plus backup/validation:
+After, the same task ensures missing config defaults, loads the app-owned XML
+documents, and saves the same ordered files with temp-write/replace plus
+backup/validation:
 
 ```cpp
 namespace ld = linuxdesktop::settings;
@@ -212,20 +214,20 @@ namespace ldm = linuxdesktop::migration;
 
 bool NppParameters::loadConfigFiles()
 {
-    ld::hydrate_options hydrate;
+    ld::hydrate_options defaults;
 
     // KEEP: Notepad++ decides which model files ship with the app.
     // CHANGE: the library copies missing files and reports skipped/errors.
-    hydrate.model_root = _nppPath;
-    hydrate.target_root = _userPath;
-    hydrate.files = {
+    defaults.model_root = _nppPath;
+    defaults.target_root = _userPath;
+    defaults.files = {
         {"langs.xml", "langs.model.xml", true},
         {"stylers.xml", "stylers.model.xml", true},
         {"shortcuts.xml", "shortcuts.model.xml", true},
         {"contextMenu.xml", "contextMenu.model.xml", false},
     };
 
-    const ld::hydrate_report hydrated = ld::hydrate_config_bundle(hydrate);
+    const ld::hydrate_report hydrated = ld::ensure_config_defaults(defaults);
     log_hydration(hydrated);
 
     // KEEP: XML parsing and in-memory menu/shortcut models stay in Notepad++.
@@ -279,7 +281,7 @@ bool NppParameters::saveConfigFiles()
 }
 ```
 
-The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: file family hydration, missing-file policy, ordered writes, atomic temp-write/replace, backups, validation-before-commit, and structured errors.
+The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: copying missing shipped defaults, missing-file policy, ordered writes, atomic temp-write/replace, backups, validation-before-commit, and structured errors.
 
 C ABI shape for the same Notepad++ hydration/write task:
 
@@ -685,12 +687,12 @@ bool NppParameters::load()
     _userPluginConfDir = _userPath / "plugins" / "Config";
 
     // KEEP: settings payload behavior stays in ld_settings and Notepad++.
-    lds::hydrate_options hydrate;
-    hydrate.model_root = _nppPath;
-    hydrate.target_root = _userPath;
-    hydrate.files = NotepadConfigModels();
+    lds::hydrate_options defaults;
+    defaults.model_root = _nppPath;
+    defaults.target_root = _userPath;
+    defaults.files = NotepadConfigModels();
     LogPathCandidates(resolved.candidates);
-    LogHydration(lds::hydrate_config_bundle(hydrate));
+    LogHydration(lds::ensure_config_defaults(defaults));
 
     return loadConfigFiles();
 }

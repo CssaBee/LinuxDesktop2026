@@ -228,14 +228,14 @@ int main(int argc, char** argv)
         config_file.model_name = "config.model.xml";
         config_file.required = true;
 
-        linuxdesktop::settings::hydrate_options hydrate_options;
-        hydrate_options.model_root = cli.model_root;
-        hydrate_options.target_root = roots.roots.config;
-        hydrate_options.files = {shortcuts_file, config_file};
+        linuxdesktop::settings::hydrate_options defaults_options;
+        defaults_options.model_root = cli.model_root;
+        defaults_options.target_root = roots.roots.config;
+        defaults_options.files = {shortcuts_file, config_file};
 
-        const auto hydrated = linuxdesktop::settings::hydrate_config_bundle(hydrate_options);
+        const auto hydrated = linuxdesktop::settings::ensure_config_defaults(defaults_options);
 
-        std::cout << "\nhydration\n";
+        std::cout << "\nconfig defaults\n";
         for (const auto& path : hydrated.copied) {
             std::cout << "  copied:  " << path.string() << "\n";
         }

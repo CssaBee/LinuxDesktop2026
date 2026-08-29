@@ -1207,7 +1207,7 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
     return report;
 }
 
-hydrate_report hydrate_config_bundle(const hydrate_options& options)
+hydrate_report ensure_config_defaults(const hydrate_options& options)
 {
     hydrate_report report;
     if (options.create_target_root) {
@@ -1256,6 +1256,11 @@ hydrate_report hydrate_config_bundle(const hydrate_options& options)
     }
 
     return report;
+}
+
+hydrate_report hydrate_config_bundle(const hydrate_options& options)
+{
+    return ensure_config_defaults(options);
 }
 
 write_report write_with_backup(const write_options& options, validation_callback validate)

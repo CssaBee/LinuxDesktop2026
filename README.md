@@ -7,8 +7,8 @@ LinuxDesktop2026 designs small reusable libraries that make native Linux support
 We are in the prototype hardening and flavor-review stage.
 
 `ld_settings` is the current C++17 settings/config sample. It covers root
-resolution, config hydration, ordered writes, backup files, validation before
-commit, and opt-in durable writes. `ld_desktop` owns autostart and
+resolution, seeding missing config defaults, ordered writes, backup files,
+validation before commit, and opt-in durable writes. `ld_desktop` owns autostart and
 managed/enforced policy. `ld_migration` owns migration execution and
 Registry-shaped compatibility. `ld_settings` stays on settings/config only and
 no longer carries migration or Registry helpers.
@@ -43,11 +43,11 @@ Status legend:
 
 | Status | Category | Current state |
 | --- | --- | --- |
-| `✅` Done | `ld_settings` | Current settings/config sample: root resolution, config hydration, ordered writes, backups, validation before commit, and opt-in durable writes. |
+| `✅` Done | `ld_settings` | Current settings/config sample: root resolution, seeding missing config defaults, ordered writes, backups, validation before commit, and opt-in durable writes. |
 | `✅` Done | `ld_settings_tests` | `ctest` coverage for current prototype behavior. |
 | `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions. |
 | `✅` Done | CMake consumption | `FetchContent`, `add_subdirectory`, installed `find_package`, and install-tree smoke coverage. |
-| `✅` Done | `ld_settings` C ABI surface | Pre-RC C entry points for root resolution, reports, config hydration, and replacement writes. |
+| `✅` Done | `ld_settings` C ABI surface | Pre-RC C entry points for root resolution, reports, config-default hydration, and replacement writes. |
 | `✅` Done | API/ABI version surface | `0.1.0` version constants/functions and pre-1.0 source-compatibility policy. |
 | `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` shared C++ diagnostics with `ld_settings` aliases. |
 | `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, migration plans, Registry snapshots, and effect facades. |
@@ -93,6 +93,9 @@ ctest --test-dir build --output-on-failure
 The demo uses a temporary settings override so it does not touch your normal application config directory.
 It can also simulate Notepad++-style policy seams with `--sync-config-dir`, `--resource-root`, and `--deny-portable-under-root`.
 It prints a dry-run migration preview so callers can inspect planned file moves before executing them.
+`ld_settings::ensure_config_defaults` copies missing shipped default/model files
+into the target config root; applications still own config parsing, validation,
+merge policy, and the file list.
 
 Optional file watcher backend flags:
 

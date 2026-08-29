@@ -368,6 +368,7 @@ const config_layer* find_config_layer(
 
 root_report resolve_app_roots(const app_identity& identity, const root_options& options = {});
 
+hydrate_report ensure_config_defaults(const hydrate_options& options);
 hydrate_report hydrate_config_bundle(const hydrate_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});

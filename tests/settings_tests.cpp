@@ -394,7 +394,34 @@ void windows_default_roots_are_resolved()
 }
 #endif
 
-void hydration_copies_missing_models()
+void ensure_config_defaults_copies_missing_models()
+{
+    const auto root = test_root();
+    const auto models = root / "models";
+    const auto target = root / "config";
+    std::filesystem::create_directories(models);
+    {
+        std::ofstream model(models / "config.model.xml");
+        model << "<Config />\n";
+    }
+
+    ld::config_file file;
+    file.name = "config.xml";
+    file.model_name = "config.model.xml";
+    file.required = true;
+
+    ld::hydrate_options options;
+    options.model_root = models;
+    options.target_root = target;
+    options.files = {file};
+
+    const auto report = ld::ensure_config_defaults(options);
+
+    require(report.copied.size() == 1, "config defaults should copy one model");
+    require(std::filesystem::exists(target / "config.xml"), "config default target should exist");
+}
+
+void legacy_hydrate_config_bundle_forwards_to_config_defaults()
 {
     const auto root = test_root();
     const auto models = root / "models";
@@ -417,8 +444,8 @@ void hydration_copies_missing_models()
 
     const auto report = ld::hydrate_config_bundle(options);
 
-    require(report.copied.size() == 1, "hydration should copy one model");
-    require(std::filesystem::exists(target / "config.xml"), "hydration target should exist");
+    require(report.copied.size() == 1, "legacy hydration API should keep forwarding");
+    require(std::filesystem::exists(target / "config.xml"), "legacy hydration target should exist");
 }
 
 void common_config_write_replaces_target_with_backup()
@@ -1048,7 +1075,8 @@ int main()
 #if defined(_WIN32)
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif
-        {"hydration_copies_missing_models", hydration_copies_missing_models},
+        {"ensure_config_defaults_copies_missing_models", ensure_config_defaults_copies_missing_models},
+        {"legacy_hydrate_config_bundle_forwards_to_config_defaults", legacy_hydrate_config_bundle_forwards_to_config_defaults},
         {"common_config_write_replaces_target_with_backup", common_config_write_replaces_target_with_backup},
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},

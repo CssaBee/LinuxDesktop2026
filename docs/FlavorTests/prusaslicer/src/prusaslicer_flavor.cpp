@@ -58,11 +58,11 @@ SaveResult to_save_result(const ld::write_report& report)
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
 {
-    ld::hydrate_options hydrate;
-    hydrate.model_root = config.resources_dir;
-    hydrate.target_root = config.config_dir;
-    hydrate.files = config.vendor_profiles;
-    const auto hydrate_report = ld::hydrate_config_bundle(hydrate);
+    ld::hydrate_options defaults;
+    defaults.model_root = config.resources_dir;
+    defaults.target_root = config.config_dir;
+    defaults.files = config.vendor_profiles;
+    const auto hydrate_report = ld::ensure_config_defaults(defaults);
     load_result_ = {
         false,
         hydrate_report.copied.size(),

@@ -24,7 +24,7 @@ Selected upstream subprojects:
   datadir migration check and recent-project config persistence. It keeps
   PrusaSlicer in charge of profile names, XML/INI content, prompt policy, and
   validation while replacing repeated copy/migration/backup/temp-write
-  mechanics with `ld_settings::hydrate_config_bundle`,
+  mechanics with `ld_settings::ensure_config_defaults`,
   `ld_migration::plan_copy_directory`, `ld_migration::plan_move_file`,
   `ld_settings::write_with_backup`, and
   `ld_settings::write_common_config` for the repeated save path.
@@ -91,8 +91,10 @@ Seam rule:
 - The adapter code should stay smaller than the original upstream control flow
   it replaces.
 - The app still owns file formats, UI, and policy.
-- LinuxDesktop2026 owns root discovery, candidate reporting, hydration, backup
-  writes, and desktop-effect plumbing.
+- LinuxDesktop2026 owns root discovery, candidate reporting, copying missing
+  shipped defaults, backup writes, and desktop-effect plumbing.
+- Applications still own config parsing, validation, merge policy, and the
+  shipped default/model file list.
 - A passing flavor test is not a verdict that the refactor is seamless. These
   samples exist to feed later critique and defense review rounds against the
   original code shape.

@@ -162,10 +162,10 @@ bool NppParameters::load(const startup_environment& environment)
 
 bool NppParameters::loadConfigFiles()
 {
-    ld::hydrate_options hydrate;
-    hydrate.model_root = state_.npp_path;
-    hydrate.target_root = state_.user_path;
-    hydrate.files = {
+    ld::hydrate_options defaults;
+    defaults.model_root = state_.npp_path;
+    defaults.target_root = state_.user_path;
+    defaults.files = {
         {"langs.xml", "langs.model.xml", true},
         {"config.xml", "config.model.xml", true},
         {"stylers.xml", "stylers.model.xml", true},
@@ -173,7 +173,7 @@ bool NppParameters::loadConfigFiles()
         {"contextMenu.xml", "contextMenu.xml.model", true},
     };
 
-    const ld::hydrate_report hydration = ld::hydrate_config_bundle(hydrate);
+    const ld::hydrate_report hydration = ld::ensure_config_defaults(defaults);
     state_.diagnostics.insert(
         state_.diagnostics.end(),
         hydration.diagnostics.begin(),
