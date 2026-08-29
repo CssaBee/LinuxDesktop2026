@@ -13,6 +13,8 @@
 namespace {
 
 namespace ld = linuxdesktop::settings;
+namespace desk = linuxdesktop::desktop;
+namespace mig = linuxdesktop::migration;
 
 struct test_failure {
     std::string message;
@@ -597,26 +599,25 @@ void migration_blocks_dangerous_without_permission()
 void registry_reports_unsupported_on_linux()
 {
 #if !defined(_WIN32)
-    linuxdesktop::settings::registry::key key;
+    mig::registry::key key;
     key.subkey = "Software/LinuxDesktop2026/settings-tests";
 
-    const auto report = linuxdesktop::settings::registry::read_value(key, "Example");
+    const auto report = mig::registry::read_value(key, "Example");
     require(!report.ok, "Linux raw Registry read should not succeed");
     require(has_diagnostic(report.diagnostics, "registry-unsupported-platform"),
         "Linux raw Registry read should report unsupported platform");
-    require(linuxdesktop::settings::registry::to_string(key.root) == "current_user",
+    require(mig::registry::to_string(key.root) == "current_user",
         "Registry hive should stringify");
-    require(linuxdesktop::settings::registry::to_string(key.registry_view) == "native",
+    require(mig::registry::to_string(key.registry_view) == "native",
         "Registry view should stringify");
-    require(linuxdesktop::settings::registry::to_string(
-                linuxdesktop::settings::registry::value_type::dword) == "dword",
+    require(mig::registry::to_string(mig::registry::value_type::dword) == "dword",
         "Registry value type should stringify");
 #endif
 }
 
 void registry_json_snapshot_round_trips()
 {
-    namespace reg = linuxdesktop::settings::registry;
+    namespace reg = mig::registry;
 
     reg::snapshot snapshot;
     snapshot.root.root = reg::hive::current_user;
@@ -653,7 +654,7 @@ void registry_json_snapshot_round_trips()
 
 void registry_reg_snapshot_round_trips()
 {
-    namespace reg = linuxdesktop::settings::registry;
+    namespace reg = mig::registry;
 
     reg::snapshot snapshot;
     snapshot.root.root = reg::hive::current_user;
@@ -717,7 +718,7 @@ void registry_reg_snapshot_round_trips()
 
 void registry_import_requires_explicit_permission()
 {
-    namespace reg = linuxdesktop::settings::registry;
+    namespace reg = mig::registry;
 
     reg::snapshot snapshot;
     snapshot.root.root = reg::hive::current_user;
@@ -738,9 +739,9 @@ void registry_import_requires_explicit_permission()
         "Registry JSON import should require allow_import");
 }
 
-ld::effects::autostart_entry autostart_entry_for_tests()
+desk::autostart_entry autostart_entry_for_tests()
 {
-    ld::effects::autostart_entry entry;
+    desk::autostart_entry entry;
     entry.id = "linuxdesktop2026-settings-tests";
     entry.display_name = "LinuxDesktop2026 Settings Tests";
     entry.executable = "/usr/bin/ld-settings-test";
@@ -750,16 +751,14 @@ ld::effects::autostart_entry autostart_entry_for_tests()
 
 void autostart_dry_run_does_not_write()
 {
-    namespace effects = linuxdesktop::settings::effects;
-
     const auto root = test_root() / "autostart";
     const auto entry = autostart_entry_for_tests();
 
-    effects::apply_options options;
+    desk::apply_options options;
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = root;
 
-    const auto report = effects::apply_autostart(entry, options);
+    const auto report = desk::apply_autostart(entry, options);
     require(report.ok, "autostart dry-run should succeed");
     require(report.dry_run, "autostart dry-run should report dry_run");
     require(report.path.has_value(), "autostart dry-run should report target path");
@@ -771,17 +770,15 @@ void autostart_dry_run_does_not_write()
 void autostart_linux_writes_queries_and_removes_desktop_file()
 {
 #if !defined(_WIN32)
-    namespace effects = linuxdesktop::settings::effects;
-
     const auto root = test_root() / "autostart";
     const auto entry = autostart_entry_for_tests();
 
-    effects::apply_options options;
+    desk::apply_options options;
     options.dry_run = false;
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = root;
 
-    const auto applied = effects::apply_autostart(entry, options);
+    const auto applied = desk::apply_autostart(entry, options);
     require(applied.ok, "Linux autostart write should succeed");
     require(applied.path.has_value(), "Linux autostart write should report path");
     const auto content = read_file(*applied.path);
@@ -792,19 +789,19 @@ void autostart_linux_writes_queries_and_removes_desktop_file()
     require(content.find("Exec=/usr/bin/ld-settings-test --profile 'Default User'") != std::string::npos,
         "autostart file should quote arguments in Exec");
 
-    auto queried = effects::query_autostart(entry, options);
+    auto queried = desk::query_autostart(entry, options);
     require(queried.ok, "Linux autostart query should succeed");
     require(queried.enabled, "Linux autostart query should report enabled file");
 
     auto disabled_entry = entry;
     disabled_entry.enabled = false;
-    const auto disabled = effects::apply_autostart(disabled_entry, options);
+    const auto disabled = desk::apply_autostart(disabled_entry, options);
     require(disabled.ok, "Linux disabled autostart write should succeed");
-    queried = effects::query_autostart(entry, options);
+    queried = desk::query_autostart(entry, options);
     require(queried.ok, "Linux disabled autostart query should succeed");
     require(!queried.enabled, "Linux Hidden=true autostart file should query as disabled");
 
-    const auto removed = effects::remove_autostart(entry, options);
+    const auto removed = desk::remove_autostart(entry, options);
     require(removed.ok, "Linux autostart remove should succeed");
     require(!std::filesystem::exists(*applied.path), "Linux autostart remove should delete the desktop file");
 #endif
@@ -812,24 +809,22 @@ void autostart_linux_writes_queries_and_removes_desktop_file()
 
 void autostart_global_write_requires_permission()
 {
-    namespace effects = linuxdesktop::settings::effects;
-
     auto entry = autostart_entry_for_tests();
     entry.user_scope = false;
 
-    effects::apply_options options;
+    desk::apply_options options;
     options.allow_desktop_integration_write = true;
     options.autostart_directory_override = test_root() / "autostart";
 
-    const auto report = effects::apply_autostart(entry, options);
+    const auto report = desk::apply_autostart(entry, options);
     require(!report.ok, "global autostart write should be denied without permission");
     require(has_diagnostic(report.diagnostics, "autostart-global-write-denied"),
         "global autostart write should require allow_global_write");
 }
 
-ld::effects::policy_entry policy_entry_for_tests()
+desk::policy_entry policy_entry_for_tests()
 {
-    ld::effects::policy_entry entry;
+    desk::policy_entry entry;
     entry.id = "settings-tests-theme";
     entry.schema_id = "org.linuxdesktop2026.settings-tests";
     entry.key = "theme";
@@ -839,14 +834,12 @@ ld::effects::policy_entry policy_entry_for_tests()
 
 void policy_write_requires_explicit_permission()
 {
-    namespace effects = linuxdesktop::settings::effects;
-
     auto entry = policy_entry_for_tests();
 
-    effects::apply_options options;
+    desk::apply_options options;
     options.policy_defaults_directory_override = test_root() / "dconf" / "defaults";
 
-    const auto report = effects::apply_policy(entry, options);
+    const auto report = desk::apply_policy(entry, options);
     require(!report.ok, "policy write should be denied without permission");
     require(has_diagnostic(report.diagnostics, "policy-write-denied"),
         "policy write should require allow_policy_write");
@@ -854,16 +847,14 @@ void policy_write_requires_explicit_permission()
 
 void policy_global_write_requires_permission()
 {
-    namespace effects = linuxdesktop::settings::effects;
-
     auto entry = policy_entry_for_tests();
     entry.user_scope = false;
 
-    effects::apply_options options;
+    desk::apply_options options;
     options.allow_policy_write = true;
     options.policy_defaults_directory_override = test_root() / "dconf" / "defaults";
 
-    const auto report = effects::apply_policy(entry, options);
+    const auto report = desk::apply_policy(entry, options);
     require(!report.ok, "global policy write should be denied without permission");
     require(has_diagnostic(report.diagnostics, "policy-global-write-denied"),
         "global policy write should require allow_global_write");
@@ -871,17 +862,15 @@ void policy_global_write_requires_permission()
 
 void policy_dry_run_does_not_write()
 {
-    namespace effects = linuxdesktop::settings::effects;
-
     auto entry = policy_entry_for_tests();
     entry.user_scope = true;
 
     const auto root = test_root() / "dconf" / "defaults";
-    effects::apply_options options;
+    desk::apply_options options;
     options.allow_policy_write = true;
     options.policy_defaults_directory_override = root;
 
-    const auto report = effects::apply_policy(entry, options);
+    const auto report = desk::apply_policy(entry, options);
     require(report.ok, "policy dry-run should succeed");
     require(report.dry_run, "policy dry-run should report dry_run");
     require(report.present, "policy dry-run should report planned presence");
@@ -894,20 +883,18 @@ void policy_dry_run_does_not_write()
 void policy_linux_writes_queries_and_removes_dconf_files()
 {
 #if !defined(_WIN32)
-    namespace effects = linuxdesktop::settings::effects;
-
     auto entry = policy_entry_for_tests();
     entry.enforced = true;
     entry.user_scope = true;
 
     const auto root = test_root() / "dconf";
-    effects::apply_options options;
+    desk::apply_options options;
     options.dry_run = false;
     options.allow_policy_write = true;
     options.policy_defaults_directory_override = root / "defaults";
     options.policy_locks_directory_override = root / "locks";
 
-    const auto applied = effects::apply_policy(entry, options);
+    const auto applied = desk::apply_policy(entry, options);
     require(applied.ok, "Linux policy write should succeed");
     require(applied.path.has_value(), "Linux policy write should report defaults path");
     require(read_file(*applied.path).find("[org/linuxdesktop2026/settings-tests]") != std::string::npos,
@@ -915,17 +902,17 @@ void policy_linux_writes_queries_and_removes_dconf_files()
     require(read_file(*applied.path).find("theme='dark'") != std::string::npos,
         "Linux policy file should include GVariant-ready value");
 
-    const auto queried = effects::query_policy(entry, options);
+    const auto queried = desk::query_policy(entry, options);
     require(queried.ok, "Linux policy query should succeed");
     require(queried.present, "Linux policy query should report present value");
     require(queried.enforced, "Linux policy query should report lock file");
     require(queried.value.has_value() && *queried.value == "'dark'", "Linux policy query should return value literal");
 
-    const auto removed = effects::remove_policy(entry, options);
+    const auto removed = desk::remove_policy(entry, options);
     require(removed.ok, "Linux policy removal should succeed");
     require(!std::filesystem::exists(*applied.path), "Linux policy removal should remove defaults file");
 
-    const auto queried_after_remove = effects::query_policy(entry, options);
+    const auto queried_after_remove = desk::query_policy(entry, options);
     require(queried_after_remove.ok, "Linux policy query after removal should succeed");
     require(!queried_after_remove.present, "Linux policy query after removal should report absent value");
 #endif

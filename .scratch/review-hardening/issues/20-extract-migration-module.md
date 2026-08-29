@@ -10,3 +10,4 @@
 - [x] `ld_settings` keeps config-bundle hydration and may provide inputs to migration, but does not own the stable migration engine.
 - [x] Existing migration APIs are removed, moved, or replaced with documented pre-1.0 migration guidance.
 - [x] `docs/plan/ld-migration-extraction.md` is used as the implementation checklist.
+- [x] The temporary `linuxdesktop::settings::registry` namespace bridge has been removed; migration callers use `linuxdesktop::migration` directly.

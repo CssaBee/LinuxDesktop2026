@@ -4,9 +4,9 @@ Status: initial C++ extraction complete; additional hardening remains required
 before ship-candidate status.
 
 `ld_migration` owns planning, explaining, executing, and reporting application
-state moves. `linuxdesktop::settings` keeps pre-1.0 compatibility aliases and
-forwarding helpers for existing C++ callers; the owning implementation and
-Registry snapshot/import/export compatibility data now live in `ld_migration`.
+state moves. `linuxdesktop::settings` keeps only the settings-specific API; the
+owning implementation and Registry snapshot/import/export compatibility data
+now live in `ld_migration`.
 
 ## Scope
 
@@ -63,9 +63,9 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 ## Extraction Rule
 
 `linuxdesktop::settings::plan_migration`,
-`linuxdesktop::settings::execute_migration_plan`, and
-`linuxdesktop::settings::registry` are pre-1.0 compatibility facades over
-`linuxdesktop::migration`. New C++ callers should include
-`linuxdesktop/migration.hpp` and use `linuxdesktop::migration` directly.
-Matching C ABI entry points stay under `ld_settings` until release-candidate
-cleanup, but they must continue delegating through the new C++ owner.
+`linuxdesktop::settings::execute_migration_plan`, and the registry helpers in
+`linuxdesktop/migration.hpp` are the current pre-1.0 migration entry points.
+New C++ callers should include `linuxdesktop/migration.hpp` and use
+`linuxdesktop::migration` directly. Matching C ABI entry points stay under
+`ld_settings` until release-candidate cleanup, but they must continue
+delegating through the new C++ owner.

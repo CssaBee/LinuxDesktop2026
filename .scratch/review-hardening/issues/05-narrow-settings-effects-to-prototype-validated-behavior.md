@@ -11,6 +11,7 @@
 - [x] `ld_migration` extraction requirements cover migration planning/execution, file/directory moves, rollback reporting, app-settings Registry snapshot/import/export compatibility, and later cross-module orchestration.
 - [x] Public claims are reduced where current tests do not cover hostile input, rollback, permissions, or real application integration.
 - [x] Any retained effect behavior has focused tests and clear diagnostics for unsupported platforms or incomplete backends.
+- [x] The temporary `linuxdesktop::settings::effects` namespace bridge has been removed; callers now use `linuxdesktop::desktop` directly.
 
 Evidence:
 

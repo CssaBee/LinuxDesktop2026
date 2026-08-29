@@ -110,7 +110,7 @@ Example documentation:
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
 - Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; keep durable-write semantics explicit and opt-in rather than implied by replacement alone.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
-- Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving `linuxdesktop::settings` aliases.
+- Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving the shared diagnostic aliases in `ld_settings`, `ld_paths`, and `ld_watch`.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
@@ -119,8 +119,8 @@ Example documentation:
 - Use `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md` as the extraction requirement inventories for tasks 19 and 20.
 - Verify the Windows Registry/autostart/policy backend paths as part of the `ld_desktop` and `ld_migration` extraction work before claiming those modules are ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
-- Treat current `ld_settings::effects` autostart and policy symbols as
-  compatibility wrappers over `ld_desktop`, not as settings ownership.
+- Treat autostart and policy as `ld_desktop` responsibilities, not as
+  `ld_settings` ownership.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
 
 ## Current Follow-Up Prototype

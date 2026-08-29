@@ -4,6 +4,10 @@ Status: superseded for module ownership by ADR 0012. This document remains an
 inventory of prototype behavior and survey-derived API pressure. It is not the
 controlling plan for what `ld_settings` should own at ship-candidate status.
 
+The temporary `linuxdesktop::settings::registry` and
+`linuxdesktop::settings::effects` namespace bridges no longer exist in code.
+This document keeps the older prototype names as historical inventory only.
+
 This plan captures the older post-grilling prototype shape that temporarily
 expanded `ld_settings` beyond a standard-path resolver.
 

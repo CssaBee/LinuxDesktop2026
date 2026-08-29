@@ -58,7 +58,7 @@ The extracted slice keeps the ResourceManager startup flow and downstream
 consumers of the config directory, OpenRGB's `OpenRGB.json`,
 `Configuration.json`, and `profiles/` conventions, while replacing environment
 probing, validated JSON writes, and XDG autostart file planning with
-`ld_paths`, `ld_settings::write_with_backup`, and `ld_settings::effects`.
+`ld_paths`, `ld_settings::write_with_backup`, and `ld_desktop::apply_autostart`.
 
 ## KeePassXC
 

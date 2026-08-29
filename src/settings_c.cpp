@@ -16,6 +16,8 @@
 namespace {
 
 namespace ld = linuxdesktop::settings;
+namespace desktop = linuxdesktop::desktop;
+namespace registry = linuxdesktop::migration::registry;
 
 char* duplicate_string(const std::string& value)
 {
@@ -519,7 +521,7 @@ bool fill_report(const ld::root_report& source, ld_settings_root_report& target)
     return true;
 }
 
-bool fill_effect_report(const ld::effects::effect_report& source, ld_settings_effect_report& target)
+bool fill_effect_report(const desktop::effect_report& source, ld_settings_effect_report& target)
 {
     target = {};
     target.ok = source.ok ? 1 : 0;
@@ -536,7 +538,7 @@ bool fill_effect_report(const ld::effects::effect_report& source, ld_settings_ef
     return true;
 }
 
-bool fill_policy_report(const ld::effects::policy_report& source, ld_settings_policy_report& target)
+bool fill_policy_report(const desktop::policy_report& source, ld_settings_policy_report& target)
 {
     target = {};
     target.ok = source.ok ? 1 : 0;
@@ -722,38 +724,38 @@ bool fill_write_report(const ld::write_report& source, ld_settings_write_report&
     return true;
 }
 
-ld::registry::hive registry_hive_from_c(int value)
+registry::hive registry_hive_from_c(int value)
 {
     if (value < LD_SETTINGS_REGISTRY_CURRENT_USER || value > LD_SETTINGS_REGISTRY_CURRENT_CONFIG) {
-        return ld::registry::hive::current_user;
+        return registry::hive::current_user;
     }
-    return static_cast<ld::registry::hive>(value);
+    return static_cast<registry::hive>(value);
 }
 
-ld::registry::view registry_view_from_c(int value)
+registry::view registry_view_from_c(int value)
 {
     switch (value) {
     case LD_SETTINGS_REGISTRY_VIEW_32:
-        return ld::registry::view::registry_32;
+        return registry::view::registry_32;
     case LD_SETTINGS_REGISTRY_VIEW_64:
-        return ld::registry::view::registry_64;
+        return registry::view::registry_64;
     case LD_SETTINGS_REGISTRY_VIEW_NATIVE:
     default:
-        return ld::registry::view::native;
+        return registry::view::native;
     }
 }
 
-ld::registry::value_type registry_value_type_from_c(int value)
+registry::value_type registry_value_type_from_c(int value)
 {
     if (value < LD_SETTINGS_REGISTRY_VALUE_NONE || value > LD_SETTINGS_REGISTRY_VALUE_UNKNOWN) {
-        return ld::registry::value_type::unknown;
+        return registry::value_type::unknown;
     }
-    return static_cast<ld::registry::value_type>(value);
+    return static_cast<registry::value_type>(value);
 }
 
-ld::registry::key registry_key_from_c(const ld_settings_registry_key* source)
+registry::key registry_key_from_c(const ld_settings_registry_key* source)
 {
-    ld::registry::key key;
+    registry::key key;
     if (!source) {
         return key;
     }
@@ -763,9 +765,9 @@ ld::registry::key registry_key_from_c(const ld_settings_registry_key* source)
     return key;
 }
 
-ld::registry::options registry_options_from_c(const ld_settings_registry_options* source)
+registry::options registry_options_from_c(const ld_settings_registry_options* source)
 {
-    ld::registry::options options;
+    registry::options options;
     if (!source) {
         return options;
     }
@@ -777,16 +779,16 @@ ld::registry::options registry_options_from_c(const ld_settings_registry_options
     return options;
 }
 
-ld::registry::snapshot registry_snapshot_from_c(
+registry::snapshot registry_snapshot_from_c(
     const ld_settings_registry_key* root,
     const ld_settings_registry_value* values,
     size_t value_count)
 {
-    ld::registry::snapshot snapshot;
+    registry::snapshot snapshot;
     snapshot.root = registry_key_from_c(root);
     for (size_t index = 0; index != value_count; ++index) {
         const auto& source = values[index];
-        ld::registry::snapshot_value item;
+        registry::snapshot_value item;
         item.key_path = source.key_path ? source.key_path : "";
         item.item.name = source.name ? source.name : "";
         item.item.type = registry_value_type_from_c(source.type);
@@ -803,7 +805,7 @@ ld::registry::snapshot registry_snapshot_from_c(
 }
 
 bool fill_registry_operation_report(
-    const ld::registry::operation_report& source,
+    const registry::operation_report& source,
     ld_settings_registry_operation_report& target)
 {
     target = {};
@@ -817,7 +819,7 @@ bool fill_registry_operation_report(
 }
 
 bool fill_registry_format_report(
-    const ld::registry::format_report& source,
+    const registry::format_report& source,
     ld_settings_registry_format_report& target)
 {
     target = {};
@@ -890,9 +892,9 @@ std::map<std::string, std::string> environment_from_c(
     return environment;
 }
 
-ld::effects::apply_options effect_options_from_c(const ld_settings_effect_options* source)
+desktop::apply_options effect_options_from_c(const ld_settings_effect_options* source)
 {
-    ld::effects::apply_options options;
+    desktop::apply_options options;
     if (!source) {
         return options;
     }
@@ -906,9 +908,9 @@ ld::effects::apply_options effect_options_from_c(const ld_settings_effect_option
     return options;
 }
 
-ld::effects::autostart_entry autostart_entry_from_c(const ld_settings_autostart_entry* source)
+desktop::autostart_entry autostart_entry_from_c(const ld_settings_autostart_entry* source)
 {
-    ld::effects::autostart_entry entry;
+    desktop::autostart_entry entry;
     if (!source) {
         return entry;
     }
@@ -925,9 +927,9 @@ ld::effects::autostart_entry autostart_entry_from_c(const ld_settings_autostart_
     return entry;
 }
 
-ld::effects::policy_entry policy_entry_from_c(const ld_settings_policy_entry* source)
+desktop::policy_entry policy_entry_from_c(const ld_settings_policy_entry* source)
 {
-    ld::effects::policy_entry entry;
+    desktop::policy_entry entry;
     if (!source) {
         return entry;
     }
@@ -1146,7 +1148,7 @@ int ld_settings_apply_autostart(
     }
     try {
         return fill_effect_report(
-            ld::effects::apply_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::apply_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1167,7 +1169,7 @@ int ld_settings_remove_autostart(
     }
     try {
         return fill_effect_report(
-            ld::effects::remove_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::remove_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1188,7 +1190,7 @@ int ld_settings_query_autostart(
     }
     try {
         return fill_effect_report(
-            ld::effects::query_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::query_autostart(autostart_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1217,7 +1219,7 @@ int ld_settings_apply_policy(
     }
     try {
         return fill_policy_report(
-            ld::effects::apply_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::apply_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1238,7 +1240,7 @@ int ld_settings_remove_policy(
     }
     try {
         return fill_policy_report(
-            ld::effects::remove_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::remove_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1259,7 +1261,7 @@ int ld_settings_query_policy(
     }
     try {
         return fill_policy_report(
-            ld::effects::query_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
+            desktop::query_policy(policy_entry_from_c(entry), effect_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1427,7 +1429,7 @@ int ld_settings_registry_serialize_json(
     }
     try {
         return fill_registry_format_report(
-            ld::registry::serialize_snapshot_json(registry_snapshot_from_c(root, values, value_count)),
+            registry::serialize_snapshot_json(registry_snapshot_from_c(root, values, value_count)),
             *report)
             ? 1
             : 0;
@@ -1444,12 +1446,12 @@ int ld_settings_registry_parse_json(const char* content, ld_settings_registry_fo
         return 0;
     }
     try {
-        const auto parsed = ld::registry::parse_snapshot_json(content);
-        ld::registry::format_report formatted;
+        const auto parsed = registry::parse_snapshot_json(content);
+        registry::format_report formatted;
         formatted.ok = parsed.ok;
         formatted.diagnostics = parsed.diagnostics;
         if (parsed.item) {
-            formatted = ld::registry::serialize_snapshot_json(*parsed.item);
+            formatted = registry::serialize_snapshot_json(*parsed.item);
             formatted.diagnostics.insert(formatted.diagnostics.begin(), parsed.diagnostics.begin(), parsed.diagnostics.end());
         }
         return fill_registry_format_report(formatted, *report) ? 1 : 0;
@@ -1471,7 +1473,7 @@ int ld_settings_registry_serialize_reg(
     }
     try {
         return fill_registry_format_report(
-            ld::registry::serialize_snapshot_reg(registry_snapshot_from_c(root, values, value_count)),
+            registry::serialize_snapshot_reg(registry_snapshot_from_c(root, values, value_count)),
             *report)
             ? 1
             : 0;
@@ -1488,12 +1490,12 @@ int ld_settings_registry_parse_reg(const char* content, ld_settings_registry_for
         return 0;
     }
     try {
-        const auto parsed = ld::registry::parse_snapshot_reg(content);
-        ld::registry::format_report formatted;
+        const auto parsed = registry::parse_snapshot_reg(content);
+        registry::format_report formatted;
         formatted.ok = parsed.ok;
         formatted.diagnostics = parsed.diagnostics;
         if (parsed.item) {
-            formatted = ld::registry::serialize_snapshot_reg(*parsed.item);
+            formatted = registry::serialize_snapshot_reg(*parsed.item);
             formatted.diagnostics.insert(formatted.diagnostics.begin(), parsed.diagnostics.begin(), parsed.diagnostics.end());
         }
         return fill_registry_format_report(formatted, *report) ? 1 : 0;
@@ -1513,7 +1515,7 @@ int ld_settings_registry_export_tree_json(
     }
     try {
         return fill_registry_format_report(
-            ld::registry::export_tree_json(registry_key_from_c(root)),
+            registry::export_tree_json(registry_key_from_c(root)),
             *report)
             ? 1
             : 0;
@@ -1535,7 +1537,7 @@ int ld_settings_registry_import_tree_json(
     }
     try {
         return fill_registry_operation_report(
-            ld::registry::import_tree_json(registry_key_from_c(root), content, registry_options_from_c(options)),
+            registry::import_tree_json(registry_key_from_c(root), content, registry_options_from_c(options)),
             *report)
             ? 1
             : 0;
@@ -1555,7 +1557,7 @@ int ld_settings_registry_export_tree_reg(
     }
     try {
         return fill_registry_format_report(
-            ld::registry::export_tree_reg(registry_key_from_c(root)),
+            registry::export_tree_reg(registry_key_from_c(root)),
             *report)
             ? 1
             : 0;
@@ -1577,7 +1579,7 @@ int ld_settings_registry_import_tree_reg(
     }
     try {
         return fill_registry_operation_report(
-            ld::registry::import_tree_reg(registry_key_from_c(root), content, registry_options_from_c(options)),
+            registry::import_tree_reg(registry_key_from_c(root), content, registry_options_from_c(options)),
             *report)
             ? 1
             : 0;

@@ -36,7 +36,7 @@ Selected upstream subprojects:
   reload policy, and startup policy while replacing platform path selection,
   validated JSON writes, and desktop-file side effects with
   `ld_paths::resolve_app_paths`, `ld_settings::write_with_backup`, and
-  `ld_settings::effects::apply_autostart`.
+  `ld_desktop::apply_autostart`.
   - See `docs/examples/migration-examples.md` and `docs/survey/extended-watchlist-fit-audit.md`.
 - `keepassxc/`: refactors KeePassXC-style config file selection from
   `Config.cpp`, including portable config, roaming vs local settings,

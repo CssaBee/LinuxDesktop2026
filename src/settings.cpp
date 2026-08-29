@@ -1476,38 +1476,5 @@ write_report write_with_backup(const write_options& options, validation_callback
         options.target));
     return report;
 }
-namespace effects {
-
-effect_report apply_autostart(const autostart_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::apply_autostart(entry, options);
-}
-
-effect_report remove_autostart(const autostart_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::remove_autostart(entry, options);
-}
-
-effect_report query_autostart(const autostart_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::query_autostart(entry, options);
-}
-
-policy_report apply_policy(const policy_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::apply_policy(entry, options);
-}
-
-policy_report remove_policy(const policy_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::remove_policy(entry, options);
-}
-
-policy_report query_policy(const policy_entry& entry, const apply_options& options)
-{
-    return linuxdesktop::desktop::query_policy(entry, options);
-}
-
-} // namespace effects
 
 } // namespace linuxdesktop::settings

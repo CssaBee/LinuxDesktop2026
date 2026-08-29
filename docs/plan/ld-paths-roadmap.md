@@ -239,7 +239,7 @@ examples, and install-tree consumer coverage. Task 04 performs the extraction:
 
 - `ld_paths` resolves config/data/state/cache/resource/runtime roots.
 - `ld_settings` consumes those roots to hydrate config bundles and write settings safely. Migration planning moves to `ld_migration`.
-- `ld_desktop` owns autostart and policy effects; `ld_settings::effects` remains only as a pre-1.0 compatibility facade.
+- `ld_desktop` owns autostart and policy effects; callers should use `ld_desktop` directly for those operations.
 - shared diagnostics remain in `ld_core`.
 
 `ld_watch` should accept normal path values produced by `ld_paths`, but it should not depend on `ld_paths` for core watcher behavior.

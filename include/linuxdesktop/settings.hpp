@@ -271,28 +271,4 @@ inline migration_execution_report execute_migration_plan(
     return linuxdesktop::migration::execute_migration_plan(plan, options);
 }
 
-namespace registry = linuxdesktop::migration::registry;
-
-// Pre-1.0 compatibility facade for desktop integration effects.
-// New C++ callers should use linuxdesktop::desktop. This namespace is retained
-// only to avoid breaking existing prototype consumers before release-candidate
-// cleanup.
-namespace effects {
-
-using autostart_entry = linuxdesktop::desktop::autostart_entry;
-using apply_options = linuxdesktop::desktop::apply_options;
-using effect_report = linuxdesktop::desktop::effect_report;
-using policy_entry = linuxdesktop::desktop::policy_entry;
-using policy_report = linuxdesktop::desktop::policy_report;
-
-effect_report apply_autostart(const autostart_entry& entry, const apply_options& options = {});
-effect_report remove_autostart(const autostart_entry& entry, const apply_options& options = {});
-effect_report query_autostart(const autostart_entry& entry, const apply_options& options = {});
-
-policy_report apply_policy(const policy_entry& entry, const apply_options& options = {});
-policy_report remove_policy(const policy_entry& entry, const apply_options& options = {});
-policy_report query_policy(const policy_entry& entry, const apply_options& options = {});
-
-} // namespace effects
-
 } // namespace linuxdesktop::settings
