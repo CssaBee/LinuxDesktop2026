@@ -6,9 +6,8 @@ required.
 `ld_desktop` owns platform actions that register an application with the
 desktop, shell, session, or managed-policy environment. The current C++
 autostart and managed/enforced policy implementation lives in
-`linuxdesktop::desktop`; `ld_settings` no longer keeps a namespace bridge for
-those calls. Registry-equivalent desktop/system behavior that still lives in
-`ld_settings` remains a temporary pre-1.0 implementation location.
+`linuxdesktop::desktop`; callers should use `ld_desktop` directly for those
+effects. Registry-equivalent desktop/system behavior belongs in `ld_desktop`.
 
 ## Scope
 
@@ -79,5 +78,5 @@ migration guidance for the matching C ABI entry points. Do not leave stable
 callers believing that `ld_settings` owns desktop integration.
 
 The C ABI remains intentionally unchanged until release-candidate status. Its
-existing `ld_settings_*` desktop-effect entry points are compatibility shims,
+`ld_settings_*` desktop-effect entry points are documentable migration points,
 not stable ownership claims.

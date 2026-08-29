@@ -6,7 +6,7 @@ before ship-candidate status.
 `ld_migration` owns planning, explaining, executing, and reporting application
 state moves. `linuxdesktop::settings` keeps only the settings-specific API; the
 owning implementation and Registry snapshot/import/export compatibility data
-now live in `ld_migration`.
+live in `ld_migration`.
 
 ## Scope
 
@@ -25,8 +25,9 @@ boundary:
 
 `ld_settings` keeps config-bundle hydration, layer reports, and settings root
 metadata. It may provide inputs to migration plans, but it does not own the
-stable migration engine. Existing C ABI entry points remain under `ld_settings`
-until release-candidate cleanup.
+stable migration engine. Existing C ABI entry points should move to the owning
+module or be described only as documented migration points until release-candidate
+cleanup.
 
 ## Required API Posture
 
@@ -66,6 +67,5 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 `linuxdesktop::settings::execute_migration_plan`, and the registry helpers in
 `linuxdesktop/migration.hpp` are the current pre-1.0 migration entry points.
 New C++ callers should include `linuxdesktop/migration.hpp` and use
-`linuxdesktop::migration` directly. Matching C ABI entry points stay under
-`ld_settings` until release-candidate cleanup, but they must continue
-delegating through the new C++ owner.
+`linuxdesktop::migration` directly. Matching C ABI entry points should not be
+treated as a permanent `ld_settings` compatibility layer.

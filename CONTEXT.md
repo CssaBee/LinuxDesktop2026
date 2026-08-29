@@ -121,17 +121,15 @@ A platform action that registers an application with the desktop/session environ
 _Avoid_: Settings file, GUI toolkit feature, installer only
 
 **`ld_desktop` extraction**:
-The planned module that owns desktop integration effects, managed/enforced
-policy, shell-equivalent behavior, desktop database updates, and
-Registry-equivalent desktop/system behavior. Current `ld_settings` effect APIs
-are temporary implementation locations until this extraction exists.
+The module that owns desktop integration effects, managed/enforced policy,
+shell-equivalent behavior, desktop database updates, and Registry-equivalent
+desktop/system behavior.
 _Avoid_: Stable `ld_settings` effect API, settings-owned shell integration
 
 **`ld_migration` extraction**:
-The planned module that owns migration planning, file/directory moves,
-rollback reporting, app-settings Registry snapshot/import/export compatibility,
-and later cross-module migration orchestration. Current `ld_settings` migration
-APIs are temporary implementation locations until this extraction exists.
+The module that owns migration planning, file/directory moves, rollback
+reporting, app-settings Registry snapshot/import/export compatibility, and
+cross-module migration orchestration.
 _Avoid_: Stable `ld_settings` migration engine, general Registry editor
 
 **Path resolver**:

@@ -5,18 +5,20 @@ Ticket numbers remain historical; execution order follows the list below.
 
 ## Current Order
 
-1. `21` — Define Flavor API Exposure Budget
-2. `22` — Translate Library Reports At Product Boundaries
-3. `23` — Add Common Config Write Facade
-4. `24` — Add Settings Root Construction Helpers
-5. `26` — Add Ergonomic Migration Action Helpers
-6. `25` — Add Clear Config Defaults Alias
-7. `27` — Record FlavorTest API Friction Notes
-8. `14` — Add Adversarial Parser And Filesystem Tests
-9. `15` — Validate APIs With One Maintained Consumer Branch
-10. `18` — Expand CI Into Portability Evidence
-11. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-12. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `28` — Remove `ld_settings` Desktop Compatibility Facade
+2. `29` — Remove `ld_settings` Migration Compatibility Facade
+3. `21` — Define Flavor API Exposure Budget
+4. `22` — Translate Library Reports At Product Boundaries
+5. `23` — Add Common Config Write Facade
+6. `24` — Add Settings Root Construction Helpers
+7. `26` — Add Ergonomic Migration Action Helpers
+8. `25` — Add Clear Config Defaults Alias
+9. `27` — Record FlavorTest API Friction Notes
+10. `14` — Add Adversarial Parser And Filesystem Tests
+11. `15` — Validate APIs With One Maintained Consumer Branch
+12. `18` — Expand CI Into Portability Evidence
+13. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+14. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 

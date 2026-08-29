@@ -51,13 +51,13 @@ Migration behavior belongs to the real `ld_migration` extraction:
   application state rather than apply a desktop integration effect,
 - cross-module migration orchestration once `ld_desktop` exists.
 
-The current Registry and migration APIs inside `ld_settings` are pre-1.0
-compatibility locations. Autostart and managed/enforced policy C++
-implementation now lives in `ld_desktop`; migration planning/execution and
-app-settings Registry snapshot/import/export compatibility now live in
-`ld_migration`. `ld_settings` no longer exposes namespace bridges for those
-areas. None of those responsibilities are stable `ld_settings`
-responsibilities.
+The Registry and migration APIs live in the owning modules rather than as a
+standing `ld_settings` compatibility layer. Autostart and managed/enforced
+policy C++ implementation lives in `ld_desktop`; migration
+planning/execution and app-settings Registry snapshot/import/export
+compatibility live in `ld_migration`. `ld_settings` does not expose namespace
+bridges for those areas. None of those responsibilities are stable
+`ld_settings` responsibilities.
 
 Before `1.0`, C++ APIs may break when needed to correct module boundaries.
 Those breaks must be documented with replacement paths. Existing C ABI entry
@@ -87,18 +87,17 @@ Task 03 is a documentation and architecture boundary decision. It does not move
 code by itself.
 
 Task 04 routes generic root resolution, including runtime, through `ld_paths`.
-Task 05 marks current Registry, autostart, policy, and migration APIs as
-temporary implementation locations, adds extraction requirements for
-`ld_desktop` and `ld_migration`, and reduces public claims where the current
-prototype lacks hostile-input, rollback, permissions, Windows, or
-real-consumer evidence. Task 19 introduces `ld_desktop`, moves the current C++
-autostart and managed/enforced policy implementation there. Task 20 introduces
-`ld_migration`, moves the current C++ migration planning/execution and
-app-settings Registry compatibility implementation there.
+Task 05 records the split between settings, paths, desktop effects, and
+migration, and reduces public claims where the current prototype lacks
+hostile-input, rollback, permissions, Windows, or real-consumer evidence.
+Task 19 introduces `ld_desktop`, moving the current C++ autostart and
+managed/enforced policy implementation there. Task 20 introduces `ld_migration`,
+moving the current C++ migration planning/execution and app-settings Registry
+compatibility implementation there.
 
-`ld_settings` can keep forwarding or compatibility helpers only when they make
-the transition easier. Since the project is still pre-1.0, source-breaking C++
-cleanup is allowed when a wrapper would preserve the wrong mental model.
+`ld_settings` does not keep a standing compatibility layer for those areas.
+Since the project is still pre-1.0, source-breaking C++ cleanup is allowed when
+a wrapper would preserve the wrong mental model.
 
 The roadmap changes are real. `ld_desktop` and `ld_migration` exist as
 extraction modules and are not speculative homes.
