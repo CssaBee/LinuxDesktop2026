@@ -1,6 +1,9 @@
 # Platform Library Roadmap
 
-The platform libraries are general-purpose, permissively licensed, and designed for both humans and AI coding agents. The repository is currently a prototype hardening effort, not a production-ready platform framework.
+The platform libraries are general-purpose, permissively licensed, and designed
+for both humans and AI coding agents. This document explains direction and
+module gates. The current implementation ledger lives in
+`docs/project-status.md`; parked ideas live in `docs/research-backlog.md`.
 
 ## Initial Direction
 
@@ -74,7 +77,7 @@ two-consumer activation threshold because it removes responsibilities already
 implemented in the wrong module. New surface added during those extractions is
 not exempt; it still needs source or consumer evidence.
 
-## Staged Execution
+## Completed Initial Execution
 
 1. Complete the initial repository survey.
 2. Score module candidates.
@@ -84,9 +87,9 @@ not exempt; it still needs source or consumer evidence.
 6. Make the first sample easy to consume from CMake.
 7. Publish once working code exists with supporting docs.
 
-## Current First Module
+## First Module Decision
 
-The first implementation candidate is settings/config.
+The first implementation candidate was settings/config.
 
 Decision trail:
 
@@ -103,7 +106,7 @@ Original implementation target:
 - Windows Known Folder behavior shaped in the API, implemented as soon as feasible.
 - Structured diagnostic output suitable for humans, tests, and AI agents.
 
-Current prototype sample:
+Current settings/config prototype sample:
 
 - `ld_core` interface target.
 - `LinuxDesktop2026::ld_core` namespaced target.
@@ -118,7 +121,7 @@ Current prototype sample:
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
 - Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
-- Existing pre-RC C ABI surface for root/layer reports, config hydration, atomic replacement writes, and the current temporary migration/Registry/autostart/policy prototype surface, with explicit ownership and matching free functions.
+- Existing pre-RC C ABI surface for root/layer reports, config hydration, and atomic replacement writes, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
 - `ld_desktop` C++ extraction started with Linux XDG Autostart files,
   Linux dconf-compatible managed/enforced policy files, and capability reports
@@ -133,7 +136,11 @@ Current prototype sample:
 Expanded ship direction:
 
 - The current `ld_settings` code is a working first sample, not a finished module.
-- Current prototype API scope includes named roots, component roots, portable levels, all config layers, migration plans, Windows Registry-shaped support, Linux equivalents for relevant Registry effects, autostart, and managed/enforced policy. That surface must be narrowed or validated before a ship candidate.
+- Earlier prototype API scope included named roots, component roots, portable
+  levels, config layers, migration plans, Windows Registry-shaped support,
+  Linux equivalents for relevant Registry effects, autostart, and
+  managed/enforced policy. ADR 0012 narrowed current ownership before ship
+  candidate work continues.
 - File associations and protocol handlers are explicitly unsupported in first `ld_settings`; users should open GitHub issues for those effects.
 - ADR 0012 is the controlling boundary decision: `ld_settings` keeps settings/config behavior, `ld_paths` owns generic path policy, `ld_desktop` owns desktop integration effects, and `ld_migration` owns migration behavior.
 - The expanded survey lives in `docs/survey/settings-registry-app-audit.md` and `docs/survey/settings-registry-platform-equivalents.md`.
@@ -160,9 +167,14 @@ Example documentation:
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
-- Complete desktop integration effects in `ld_desktop`, including desktop entries, icons, MIME/file associations, default applications, URL protocol handlers, shell-equivalent behavior, desktop database updates, Windows autostart/policy mutation, and Registry-equivalent desktop/system behavior.
+- Complete desktop integration effects in `ld_desktop`, including desktop
+  entries, icons, MIME/file associations, default applications, URL protocol
+  handlers, shell-equivalent behavior, desktop database updates, Windows
+  autostart/policy mutation, and Registry-equivalent desktop/system behavior.
 - Continue hardening `ld_migration`, including rollback reporting, cross-module orchestration, adversarial path tests, Windows Registry verification, and release-candidate C ABI cleanup.
-- Use `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md` as the extraction requirement inventories for tasks 19 and 20.
+- Use `docs/plan/ld-desktop-extraction.md` and
+  `docs/plan/ld-migration-extraction.md` as the extraction requirement
+  inventories.
 - Verify the Windows Registry/autostart/policy backend paths as part of the `ld_desktop` and `ld_migration` extraction work before claiming those modules are ready to ship.
 - Add explicit environment override, legacy fallback, and config-layer candidate reporting based on the OpenRGB, FreeCAD, Carla, and NUT evidence.
 - Treat autostart and policy as `ld_desktop` responsibilities, not as

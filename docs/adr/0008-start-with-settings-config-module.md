@@ -103,13 +103,21 @@ This module gives the project a small executable proof before harder Linux deskt
 
 ## Review Update
 
-The current implementation has grown past the original "small settings/config module" boundary. `ld_settings` now includes root selection, config layers, migration planning/execution, Registry-shaped data, autostart effects, managed/enforced policy effects, and write/backup behavior. That is useful prototype evidence, but it must not be treated as a shippable module boundary.
+The implementation grew past the original "small settings/config module"
+boundary during the prototype phase. That was useful evidence, but it must not
+be treated as a shippable module boundary. The current direction is to keep
+`ld_settings` on settings/config behavior while `ld_paths`, `ld_desktop`, and
+`ld_migration` own the generic path, desktop-effect, and migration
+responsibilities.
 
 Before `ld_settings` can be called stable or production-ready:
 
-- Move generic path discovery and root reporting through `ld_paths`.
+- Keep generic path discovery and root reporting routed through `ld_paths`.
 - Extract policy/effect domains that are not settings-specific. Desktop integration effects, including autostart, file associations, protocol handlers, desktop entries, shell-equivalent behavior, and managed/enforced policy, belong to `ld_desktop`.
-- Extract migration behavior that is not direct config-bundle hydration. File/directory migration planning and execution, rollback reporting, and app-settings Registry snapshot/import/export compatibility belong to the planned `ld_migration` module.
+- Keep migration behavior that is not direct config-bundle hydration in
+  `ld_migration`. File/directory migration planning and execution, rollback
+  reporting, and app-settings Registry snapshot/import/export compatibility
+  belong there.
 - Define the write guarantee precisely. "Atomic replace" means namespace replacement only; crash durability requires explicit durable-write support and the implementation has to say when it actually flushes file and directory metadata on the platform.
 - Replace predictable check-then-open temporary-file creation with platform-safe exclusive creation.
 - Keep migration execution behind dry-run-first APIs and real application integration tests.

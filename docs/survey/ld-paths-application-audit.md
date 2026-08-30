@@ -1,6 +1,7 @@
 # ld_paths Application Audit
 
-This audit turns the extended watchlist path findings into an implementation-ready survey for the next planned module, `ld_paths`.
+This audit turned the extended watchlist path findings into the implementation
+survey for `ld_paths`, which is now an active prototype module.
 
 Audit date: 2026-08-28.
 
@@ -89,4 +90,5 @@ The module is presentable to the community when it has:
 - Linux and Windows backend tests or explicit Windows verification notes,
 - clear failure diagnostics for missing home, malformed environment values, malformed XDG user-dirs entries, unavailable known folders, relative overrides, and ambiguous executable roots,
 - examples for Notepad++, OpenRGB, FreeCAD, Carla, and internal `ld_settings` extraction,
-- and README positioning that calls it the next planned module without claiming it is shipped.
+- and README positioning that calls it an active prototype without claiming it
+  is shipped.

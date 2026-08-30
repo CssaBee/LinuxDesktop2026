@@ -120,7 +120,7 @@ Why this subsystem first:
 
 **Fourteenth priority completed enough to continue**: extended watchlist fit audit. The pass sampled OpenRGB, sample-cpp-plugin, dylib, PrusaSlicer, OpenSCAD, FreeCAD, Carla, Project Island, NUT, and GTR_Framework. The audit keeps `ld_settings` and `ld_watch` pointed in the same broad direction, but promotes `ld_paths`, `ld_process`, and `ld_ipc` as separate planning lanes, and names desktop integration plus service/daemon lifecycle as future boundaries.
 
-**Fifteenth priority completed enough to continue**: focused `ld_paths` planning. The survey in `docs/survey/ld-paths-application-audit.md` and roadmap in `docs/plan/ld-paths-roadmap.md` select `ld_paths` as the next planned module. The accepted shape is resolver-first, but broad enough for a community-facing prototype: standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults where needed, opt-in directory creation, C++17 first, and a small C ABI before public prototype announcement.
+**Fifteenth priority completed enough to continue**: focused `ld_paths` planning. The survey in `docs/survey/ld-paths-application-audit.md` and roadmap in `docs/plan/ld-paths-roadmap.md` selected `ld_paths`, which is now an active prototype module. The accepted shape is resolver-first, but broad enough for a community-facing prototype: standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults where needed, opt-in directory creation, C++17 first, and a small C ABI before public prototype announcement.
 
 ## Preliminary Evidence From Source Audit Round 1
 
@@ -131,7 +131,7 @@ Why this subsystem first:
 | Dynamic library loading | Strong | Notepad++, WinMerge, AutoHotkey, Rufus, WinSCP, libuv, wxWidgets, sample-cpp-plugin, dylib, Project Island, Carla, PrusaSlicer, FreeCAD | First focused search candidate; decide adopt/wrap/recommend/reject for `dylib` before implementing |
 | Single-instance IPC | Strong | WinMerge, AutoHotkey, WinSCP, libuv, PrusaSlicer, FreeCAD, NUT; Notepad++ follow-up needed | Promote follow-up if scoped to lock ownership, stale recovery, local transport, and activation forwarding |
 | Settings/config | Strong | ShareX, Greenshot, Files, Rufus, Notepad++ deep pass, library follow-up, executable sample, OpenRGB, PrusaSlicer, OpenSCAD, FreeCAD, NUT, Carla | First implementation candidate; add environment override, legacy fallback, and config-layer candidate diagnostics before ship |
-| Filesystem/path helpers | Strong | All audited apps touch it; Files/Rufus show complex non-path semantics; Notepad++, OpenSCAD, FreeCAD, Carla, OpenRGB, PrusaSlicer, NUT, and Project Island show reusable path-root pressure | Selected as next planned module, `ld_paths`; build resolver-first with standard user dirs, executable/resource roots, candidate reports, path lists, and typed plugin path sets |
+| Filesystem/path helpers | Strong | All audited apps touch it; Files/Rufus show complex non-path semantics; Notepad++, OpenSCAD, FreeCAD, Carla, OpenRGB, PrusaSlicer, NUT, and Project Island show reusable path-root pressure | Active prototype as `ld_paths`; resolver-first with standard user dirs, executable/resource roots, candidate reports, path lists, and typed plugin path sets |
 | Desktop integration effects | Medium to strong | PrusaSlicer, OpenRGB, platform-equivalent survey | Future module/effects package for desktop entries, autostart files, icons, MIME types, URL protocols, and desktop database updates |
 | Clipboard | Strong but UI-coupled | Notepad++, WinMerge, ShareX, Greenshot, WinSCP, Files, wxWidgets | UI-adjacent; likely toolkit adapter |
 | Drag-and-drop | Medium to strong but UI-coupled | ShareX, Greenshot, Files, WinSCP, wxWidgets | UI-adjacent; likely toolkit adapter |
@@ -157,7 +157,7 @@ The scores are good enough to guide the next work item. They are not final proje
 | Settings/config | 5 | 4 | 3 | 5 | 5 | 22 | First implementation sample; consumption path in progress |
 | File watcher | 4 | 4 | 4 | 5 | 4 | 21 | Prototype implemented; C++ API stabilization started; verify Windows next |
 | Process/shell | 5 | 4 | 4 | 5 | 3 | 21 | Follow-up soon; split raw process spawning from desktop-open/default-app behavior |
-| Filesystem/path helpers | 5 | 3 | 3 | 5 | 5 | 21 | Next planned module as `ld_paths`; resolver-first public prototype with C++ API, C ABI, path families, candidate reports, path lists, and typed plugin path sets |
+| Filesystem/path helpers | 5 | 3 | 3 | 5 | 5 | 21 | Active prototype as `ld_paths`; resolver-first public prototype with C++ API, C ABI, path families, candidate reports, path lists, and typed plugin path sets |
 | Dynamic library loading | 4 | 4 | 3 | 4 | 4 | 19 | Follow-up later; likely policy layer over existing loaders |
 | Clipboard | 5 | 4 | 5 | 3 | 4 | 21 | UI-adjacent; design as toolkit/session adapter, not first neutral core |
 | Common dialogs/resources | 4 | 5 | 5 | 2 | 4 | 20 | UI-adjacent; likely migration tooling/docs rather than first library |
@@ -172,7 +172,7 @@ The scores are good enough to guide the next work item. They are not final proje
 
 - `Settings/config` remains the right first sample because it combines high score, low enough implementation risk, and direct Notepad++ proof-case value.
 - `GUI/windowing` and `clipboard` score high as requirements but stay out of first-wave neutral core because Linux behavior is toolkit-, compositor-, and session-dependent.
-- `File watcher` remains a strong prototype, but `ld_paths` is now the next planned module because the extended watchlist exposed a reusable resolver need across OpenSCAD, FreeCAD, Carla, OpenRGB, PrusaSlicer, NUT, Project Island, and the Notepad++ proof case.
+- `File watcher` remains a strong prototype, and `ld_paths` is now active because the extended watchlist exposed a reusable resolver need across OpenSCAD, FreeCAD, Carla, OpenRGB, PrusaSlicer, NUT, Project Island, and the Notepad++ proof case.
 - `ld_paths` should not remain scoped under `ld_settings`. The focused plan splits path resolution from settings payload behavior and adds standard user dirs, executable/resource roots, candidate reports, path lists, typed plugin path sets, and opt-in directory creation.
 - `Process/shell` and `Single-instance IPC` should receive focused design passes before implementation. PrusaSlicer, FreeCAD, and NUT show that spawn, shell command, readiness, lock ownership, stale recovery, and activation forwarding need separate concepts.
 - `Dynamic library loading` should emphasize loader policy rather than reimplementing `dlopen`/`LoadLibrary` primitives, and should classify `dylib` before any build decision.

@@ -32,7 +32,7 @@ This file tracks questions that the repository survey cannot answer yet or that 
 - **Are file associations and protocol handlers in `ld_settings` first scope?** No. They belong to `ld_desktop`.
 - **Is autostart in `ld_settings` first scope?** No. The C++ implementation now lives in `ld_desktop`; the old `settings::effects` bridge has been removed.
 - **Are managed and enforced settings in first scope?** Managed/enforced policy is not stable `ld_settings` scope. It belongs to `ld_desktop` when expressed as administrator policy, even when the Linux representation uses dconf/GSettings-compatible files.
-- **What is the next planned module after the current settings/watch work?** Answered: `ld_paths`. The accepted plan is resolver-first but broad enough for a community-facing prototype, with standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, C++17 first, and a small C ABI before public prototype announcement.
+- **What module followed the settings/watch work?** Answered: `ld_paths` is now an active prototype. The accepted plan is resolver-first but broad enough for a community-facing prototype, with standard user paths, executable/resource/install roots, source-labeled candidate reports, path-list parsing, typed plugin path sets, Wine-prefix-aware defaults, opt-in directory creation, C++17 first, and a small C ABI before public prototype announcement.
 
 ## File Watcher Follow-Up
 
@@ -51,5 +51,5 @@ This file tracks questions that the repository survey cannot answer yet or that 
 
 - **Which path resolver milestones are needed before implementation?** Answered in `docs/plan/ld-paths-roadmap.md`: resolver core, directory creation/path lists, user dirs/legacy fallbacks, typed plugin path sets, and public prototype polish.
 - **Which application examples should guide `ld_paths`?** Answered in `docs/survey/ld-paths-application-audit.md` and `docs/examples/migration-examples.md`: Notepad++, OpenRGB, FreeCAD, Carla, and internal `ld_settings` extraction.
-- **When should `ld_settings` consume `ld_paths`?** After `ld_paths` has resolver tests, a demo, CMake target export, and install-tree consumer coverage.
-- **What still needs design during implementation?** Final C++ type names, C ABI ownership layout, Windows Known Folder test strategy, exact plugin path defaults, and how much directory creation belongs in the first public prototype.
+- **When should `ld_settings` consume `ld_paths`?** Answered for the current prototype: `ld_settings` now routes generic root policy through `ld_paths` while keeping settings-specific hydration and writes.
+- **What still needs design during implementation?** Mostly answered for the active prototype. Remaining design and verification questions are Windows Known Folder fallback behavior, UTF-8 path handling, executable-root verification, exact plugin path defaults on non-Ubuntu systems, and whether custom plugin path sets need first-cut C ABI exposure.

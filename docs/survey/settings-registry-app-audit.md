@@ -2,7 +2,12 @@
 
 This survey expands the original `ld_settings` pass. The goal is to test whether the current API is enough for real Windows-heavy applications and cross-platform references.
 
-Conclusion: the current `ld_settings` sample is a useful seed, but it is not shippable yet. Real applications need named roots, component roots, config layers, migration plans, autostart support, and full Windows Registry support with safe execution controls. ADR 0012 keeps the settings/config subset in `ld_settings` and moves desktop effects to `ld_desktop` and migration behavior to `ld_migration`.
+Conclusion: the current `ld_settings` sample is a useful settings/config seed,
+but it is not shippable yet. Real applications need named roots, component
+roots, config layers, migration plans, autostart support, and Windows
+Registry-shaped compatibility with safe execution controls. ADR 0012 keeps the
+settings/config subset in `ld_settings`, moves desktop effects to `ld_desktop`,
+and moves migration plus app-settings Registry compatibility to `ld_migration`.
 
 ## Requirement Summary
 
@@ -247,19 +252,23 @@ Source anchor:
 
 ## API Consequences
 
-The current `ld_settings` API should be extended before we call it shippable:
+The audit found pressure for several API families. ADR 0012 now assigns them to
+separate modules rather than growing `ld_settings` into a general platform
+bag:
 
-- Add `portable_level` instead of relying on boolean portable state.
-- Add config layers: `defaults`, `global`, `user`, `local`, `portable`, `managed`, and `enforced`.
-- Add default precedence: `defaults < global < user < local < portable < managed < enforced`, with enforced non-overridable.
-- Add named roots in the first C++ and C API.
-- Add component root helpers in the first API.
-- Add a storage backend model: file, registry, null, override, app_callback.
-- Add full Windows Registry support: HKCU/HKLM, 32/64-bit views, read/write/delete/enumerate, import/export, JSON canonical export, `.reg` compatibility, registry value types, and policy hives.
-- Add Linux equivalents for relevant Registry-backed effects: XDG config files, dconf/GSettings defaults and locks, and XDG Autostart.
-- Do not implement file associations or protocol handlers now; document them as issue-requested future scope.
-- Add `migration_plan` with dry-run default and explicit execute step.
-- Require explicit dangerous-operation flags for HKLM, policy hives, recursive delete, import, and autostart changes.
+- `ld_settings`: `portable_level`, config layers, default precedence, named
+  roots, component root helpers, and a storage backend model for settings-layer
+  reporting.
+- `ld_paths`: generic root policy and candidate reporting.
+- `ld_migration`: migration plans with dry-run defaults, explicit execute
+  steps, file/directory copy and move behavior, and app-settings
+  Registry-shaped import/export compatibility.
+- `ld_desktop`: Linux equivalents for Registry-backed desktop/system effects,
+  including dconf/GSettings defaults and locks, XDG Autostart, and later file
+  associations or protocol handlers when they are implemented.
+- Safety policy across the owning modules: require explicit
+  dangerous-operation flags for HKLM-like writes, policy hives, recursive
+  delete, import, autostart changes, and other global or destructive actions.
 
 ## Decision
 

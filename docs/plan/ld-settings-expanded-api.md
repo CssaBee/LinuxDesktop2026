@@ -533,10 +533,10 @@ Required examples before the affected modules ship:
 
 ## Current Status
 
-`ld_settings` is a working first sample, not a shippable final module. The
-current Registry and migration APIs are temporary implementation locations.
-Autostart and managed/enforced policy C++ behavior now lives in `ld_desktop`;
-`settings::effects` remains only as a pre-1.0 compatibility facade. See
+`ld_settings` is a working first sample, not a shippable final module. Generic
+path policy is routed through `ld_paths`; autostart and managed/enforced policy
+C++ behavior lives in `ld_desktop`; migration planning/execution and
+app-settings Registry compatibility live in `ld_migration`. See
 `docs/plan/ld-desktop-extraction.md` and `docs/plan/ld-migration-extraction.md`
 for the extraction requirements that must be satisfied before ship-candidate
 status.

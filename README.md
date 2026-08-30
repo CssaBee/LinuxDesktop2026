@@ -1,146 +1,88 @@
 # LinuxDesktop2026
 
-LinuxDesktop2026 designs small reusable libraries that make native Linux support easier for Windows-heavy desktop applications. Notepad++ on Ubuntu is the proof case, not the whole project.
+LinuxDesktop2026 is a set of small C++17 libraries for Windows-heavy desktop
+applications that want native Linux support without scattering platform
+conditionals through product code.
 
-## Current Stage
+The project is not a desktop environment, GUI toolkit, Wine layer, or Notepad++
+fork. Notepad++ is the first proof case because it has real Windows-shaped
+settings, paths, and compatibility pressure. The libraries are meant to be
+general-purpose and permissively licensed.
 
-We are in the prototype hardening and flavor-review stage.
+## Maturity
 
-`ld_settings` is the current C++17 settings/config sample. It covers root
-resolution, seeding missing config defaults, ordered writes, backup files,
-validation before commit, and opt-in durable writes. `ld_desktop` owns autostart and
-managed/enforced policy. `ld_migration` owns migration execution and
-Registry-shaped compatibility. `ld_settings` stays on settings/config only and
-no longer carries migration or Registry helpers.
+LinuxDesktop2026 is pre-1.0 prototype code. The repository has working modules,
+tests, examples, install-tree consumption checks, FlavorTests, and CI portability
+lanes, but none of the modules should be treated as production-stable yet.
 
-`ld_paths` is the next module. Its public C++ and C prototype includes a
-CMake target, tests, demos, install-tree consumer coverage, standard user
-paths, executable/resource/install roots, candidate reports, path lists, typed
-plugin path sets, and opt-in directory creation.
+Current promises:
 
-For migration shape examples, see [Migration examples](docs/examples/migration-examples.md).
+- C++17 public headers live under `include/linuxdesktop/`.
+- Supported phase-one platforms are Windows 10/11 and Ubuntu LTS.
+- Other XDG-like Linux distributions are best-effort.
+- There is no phase-one macOS support promise.
+- C++ APIs may break before `1.0` when source audits, proof integrations, or
+  module-boundary corrections show that the current shape is wrong.
+- Existing C ABI entry points are maintained where practical, but new C ABI
+  expansion waits until release-candidate status.
+- Filesystem, desktop, policy, and migration mutation is explicit; preview or
+  dry-run behavior is preferred where practical.
 
-## Flavor Tests
+See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 
-FlavorTests is the adapter-and-test harness for checking API fit at real
-upstream seams.
+## Modules
 
-- The harness lives in [docs/FlavorTests/README.md](docs/FlavorTests/README.md).
-- It currently covers Notepad++, PrusaSlicer, OpenRGB, KeePassXC, qBittorrent,
-  OBS, KiCad, Audacity, and FreeCAD slices.
-- Flavor-review feeds back into API ergonomics before the public surface grows.
+| Module | Target | Status | Responsibility |
+| --- | --- | --- | --- |
+| `ld_core` | `LinuxDesktop2026::ld_core` | Active | Shared diagnostic vocabulary and version-adjacent core types. |
+| `ld_settings` | `LinuxDesktop2026::ld_settings` | Active prototype | Settings/config roots, config-default hydration, validated writes, backup behavior, config layers, and settings diagnostics. |
+| `ld_paths` | `LinuxDesktop2026::ld_paths` | Active prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
+| `ld_watch` | `LinuxDesktop2026::ld_watch` | Active prototype | File watching with native Linux and Windows backends, optional libuv, bounded event delivery, recursive-watch honesty, and settled-file behavior. |
+| `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Extraction in progress | Desktop/session integration effects such as autostart and managed/enforced policy, with the broader desktop-effect scope still being completed. |
+| `ld_migration` | `LinuxDesktop2026::ld_migration` | Extraction in progress | Dry-run-first migration planning/execution and app-settings Registry snapshot/import/export compatibility. |
 
-## Roadmap
+`ld_settings` no longer owns desktop effects or migration behavior. New callers
+should use `ld_desktop` and `ld_migration` directly for those responsibilities.
 
-This roadmap shows what is done, active, next, and parked.
+Detailed status lives in [Project status](docs/project-status.md). Long-range
+ideas live in [Research backlog](docs/research-backlog.md).
 
-Status legend:
-
-- `✅ Done`: implemented prototype behavior.
-- `🟡 In progress`: active work.
-- `📌 Next`: next target.
-- `⬜ ideas to inspect`: parked research.
-
-| Status | Category | Current state |
-| --- | --- | --- |
-| `✅` Done | `ld_settings` | Current settings/config sample: root resolution, seeding missing config defaults, ordered writes, backups, validation before commit, and opt-in durable writes. |
-| `✅` Done | `ld_settings_tests` | `ctest` coverage for current prototype behavior. |
-| `✅` Done | Docs and ADRs | Roadmap, migration examples, survey notes, and architecture decisions. |
-| `✅` Done | CMake consumption | `FetchContent`, `add_subdirectory`, installed `find_package`, and install-tree smoke coverage. |
-| `✅` Done | `ld_settings` C ABI surface | Pre-RC C entry points for root resolution, reports, config-default hydration, and replacement writes. |
-| `✅` Done | API/ABI version surface | `0.1.0` version constants/functions and pre-1.0 source-compatibility policy. |
-| `✅` Done | Shared diagnostics | `LinuxDesktop2026::ld_core` shared C++ diagnostics with `ld_settings` aliases. |
-| `✅` Done | `ld_settings` expanded C++ API seed | Named roots, component roots, config layers, portable levels, migration plans, Registry snapshots, and effect facades. |
-| `🟡` In progress | `ld_desktop` extraction | Autostart and managed/enforced policy live in `ld_desktop`; desktop-effect completion remains. |
-| `🟡` In progress | `ld_settings` ship design | `ld_settings` stays scoped to settings/config while desktop and migration move out. |
-| `📌` Next | Flavor-derived API ergonomics | FlavorTests gate API ergonomics before broader hardening. |
-| `✅` Done | Survey and scoring | Survey, ecosystem, and scoring work shaped module selection. |
-| `✅` Done | File watching (`ld_watch`) prototype | Public watcher prototype with native Linux and Windows backends, tests, demos, and install-tree linkage. |
-| `🟡` In progress | Filesystem and path helpers (`ld_paths`) | Public C++ and C path prototype with tests, demos, typed plugin path sets, and install-tree coverage. |
-| `🟡` In progress | `ld_migration` hardening | Migration planning and execution now live in `ld_migration`; hardening continues. |
-| `⬜` ideas to inspect | Process and shell integration | Launching commands, shell helpers, and process lifecycle seams. |
-| `⬜` ideas to inspect | Dynamic library loading | Loading shared libraries and resolving symbols. |
-| `⬜` ideas to inspect | Single-instance IPC | App-ownership checks, lock files, local transports, and activation forwarding. |
-| `⬜` ideas to inspect | `ld_desktop` completion | Desktop entries, icons, MIME/file associations, protocols, and system behavior. |
-| `⬜` ideas to inspect | Cross-module migration orchestration | Coordinating path, desktop, and settings migrations. |
-| `⬜` ideas to inspect | Service and daemon lifecycle | Background supervision, command channels, and service integration. |
-| `⬜` ideas to inspect | GUI / windowing | Top-level windows, platform windows, and event plumbing. |
-| `⬜` ideas to inspect | Clipboard | Copy/paste integration and capability reporting. |
-| `⬜` ideas to inspect | Drag-and-drop | Drop targets, payload inspection, and platform differences. |
-| `⬜` ideas to inspect | Common dialogs and resources | File pickers, message dialogs, icons, and resource access. |
-| `⬜` ideas to inspect | Printing | Print pipeline and page setup integration. |
-| `⬜` ideas to inspect | Plugin ABI | Binary compatibility, plugin discovery, and host/plugin boundaries. |
-| `⬜` ideas to inspect | Advanced theming and DPI | Theme, scaling, and high-DPI adaptation. |
-| `⬜` ideas to inspect | Accessibility | Screen reader, focus, and assistive-technology support. |
-| `⬜` ideas to inspect | Installer and package integration | Packaging, install-time behavior, and distribution integration. |
-
-Quick read:
-
-- `✅` implemented prototype
-- `🟡` active
-- `📌` queued next
-- `⬜` parked research
-
-## Build The First Sample
+## Build
 
 ```sh
 cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
-./build/ld_settings_demo --settings-dir /tmp/linuxdesktop2026-settings-demo
 ```
 
-The demo uses a temporary settings override so it does not touch your normal application config directory.
-It can also simulate Notepad++-style policy seams with `--sync-config-dir`, `--resource-root`, and `--deny-portable-under-root`.
-It prints a dry-run migration preview so callers can inspect planned file moves before executing them.
-`ld_settings::ensure_config_defaults` copies missing shipped default/model files
-into the target config root; applications still own config parsing, validation,
-merge policy, and the file list.
-
-Optional file watcher backend flags:
+Build options:
 
 ```sh
-cmake -S . -B build -DLD2026_WATCH_ENABLE_LIBUV=ON -DLD2026_WATCH_PREFER_LIBUV=ON
+cmake -S . -B build \
+  -DLD2026_BUILD_EXAMPLES=ON \
+  -DLD2026_BUILD_TESTS=ON \
+  -DLD2026_WATCH_ENABLE_LIBUV=ON \
+  -DLD2026_WATCH_PREFER_LIBUV=OFF
 ```
 
-`ld_watch` uses native Linux `inotify` by default on Ubuntu and native `ReadDirectoryChangesW` on Windows. If libuv is available through `pkg-config`, the optional libuv backend can be built, exported to installed CMake consumers, and preferred for libuv-shaped applications.
+`ld_watch` uses native Linux `inotify` on Linux and native
+`ReadDirectoryChangesW` on Windows by default. The libuv backend is optional and
+is most appropriate for applications that already own a libuv event loop and
+only need coarse file-change notifications.
 
-Current backend posture:
+## Examples
 
-- Native Linux `inotify` and Windows `ReadDirectoryChangesW` backends are the owned pre-1.0 direction because `ld_watch` exposes migration-shaped paths, diagnostics, recursive-policy honesty, bounded queue behavior, overflow/rescan signals, and settled-file behavior above raw backend events.
-- libuv remains optional inside LinuxDesktop2026 and is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
-- efsw remains the first wrap candidate if CI, stress tests, or maintained consumer branches show that native backend maintenance is consuming more project effort than the LinuxDesktop2026-specific watcher contract is worth.
-- The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI must keep that target green before the backend is treated as verified.
-- The watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, backend/resource-limit diagnostic preservation, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches.
-- The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, `wait_for`, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics; `ld_watch` C ABI design is postponed until release-candidate status.
-- Windows compatibility work should happen at the LinuxDesktop2026 API layer. Tests and examples should use `ld_paths`, `ld_settings`, and `ld_watch` concepts instead of assuming XDG paths, slash-separated strings, or Registry/file-watcher backend details directly.
+```sh
+./build/ld_settings_demo --settings-dir /tmp/linuxdesktop2026-settings-demo
+./build/ld_paths_demo --org LinuxDesktop2026 --app paths-demo
+./build/ld_paths_c_demo
+./build/ld_watch_demo
+```
 
-## `ld_paths`
+The settings demo uses temporary overrides and does not touch your normal
+application configuration directory.
 
-`ld_paths` is the current module after the `ld_settings` and `ld_watch` prototypes. The committed C++17 prototype includes:
-
-- `LinuxDesktop2026::ld_paths`
-- `linuxdesktop/paths.hpp`
-- `linuxdesktop/paths_c.h`
-- shared `ld_core` diagnostics aliases
-- path family and candidate source enums
-- resolver options, candidates, and report structures
-- small C ABI reports for selected roots, candidates, path-list parsing, and plugin path sets
-- deterministic environment, home, temp, and executable path hooks for tests and examples
-- Linux XDG Base Directory resolution with HOME fallbacks
-- XDG `user-dirs.dirs` parsing with malformed/relative entry diagnostics and HOME fallbacks
-- executable path, executable directory, install prefix, resource root, temp, and standard user-directory resolution
-- legacy and site-default config candidates in resolver reports
-- opt-in directory creation helpers with dry-run defaults
-- path-list parsing/joining with platform separators, duplicate filtering, and rejection diagnostics
-- typed plugin path sets for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX
-- Wine-prefix-aware plugin defaults for relevant Windows plugin formats
-- custom named plugin path sets for app-defined ecosystems
-- `ld_paths_tests`, `ld_paths_c_tests`, `ld_paths_demo`, `ld_paths_c_demo`, and install-tree consumer coverage
-
-The resolver does not create directories. Filesystem mutation remains explicit through `ensure_directory`, which defaults to dry-run mode.
-
-Quick start:
+Minimal `ld_paths` use:
 
 ```cpp
 #include "linuxdesktop/paths.hpp"
@@ -150,51 +92,12 @@ namespace ldp = linuxdesktop::paths;
 int main()
 {
     auto paths = ldp::resolve_app_paths({"LinuxDesktop2026", "example"});
-    auto config_preview = ldp::ensure_directory(paths, ldp::path_family::config);
-
-    ldp::plugin_path_options plugin_options;
-    plugin_options.kinds = {ldp::plugin_path_kind::lv2, ldp::plugin_path_kind::vst3};
-    auto plugins = ldp::resolve_plugin_path_sets(plugin_options);
-
-    return paths.selected.empty() || config_preview.diagnostics.size() > 1 || plugins.sets.empty();
+    auto preview = ldp::ensure_directory(paths, ldp::path_family::config);
+    return paths.selected.empty() || preview.diagnostics.size() > 1;
 }
 ```
 
-C callers use `linuxdesktop/paths_c.h`. Reports own their returned strings and arrays; release them with the matching `ld_paths_free_*_report` function.
-
-The prototype should resolve and report:
-
-- config, data, state, cache, runtime, temp, documents, desktop, downloads, music, pictures, videos, templates, and public-share paths,
-- executable path, executable directory, resource root, and install prefix,
-- explicit options, environment overrides, XDG Base Directory values, XDG user dirs, Windows Known Folders, executable-relative paths, legacy fallbacks, site defaults, and generic fallbacks,
-- path lists using platform separators,
-- and typed plugin path sets for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX.
-
-Compatibility matrix:
-
-| Platform | Current prototype status |
-| --- | --- |
-| Ubuntu LTS / XDG Linux | Covered by deterministic C++ and C tests for Base Directory fallbacks, XDG user-dir parsing, legacy/site config candidates, path lists, directory previews, and plugin search roots. |
-| Other XDG-like Linux | Best effort through the same XDG Base Directory, XDG user-dir, and HOME fallback behavior; distro-specific user-dir behavior is not verified yet. |
-| Windows 10/11 | Public model includes Known Folder sources, user-dir fallbacks, Windows plugin defaults, and CI coverage for deterministic C/C++ path behavior plus hosted-runner Known Folder selection; real Windows verification still needs UTF-8 path, executable-root, unavailable-folder, and plugin-default depth before public announcement. |
-| macOS | No phase-one support promise; API choices should leave room for a later platform backend. |
-
-The first implementation should support Windows 10/11 and Ubuntu LTS, provide C++17 and C entry points, and keep filesystem mutation opt-in.
-
-From a Git checkout or vendored checkout, consumers can already link the target:
-
-```cmake
-target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_paths)
-```
-
-The demos print resolved application paths and small plugin-path-set reports:
-
-```sh
-./build/ld_paths_demo --org LinuxDesktop2026 --app paths-demo
-./build/ld_paths_c_demo
-```
-
-## Consume `ld_settings`
+## Consume From CMake
 
 From a Git checkout:
 
@@ -215,7 +118,7 @@ From a vendored checkout:
 
 ```cmake
 add_subdirectory(external/LinuxDesktop2026)
-target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_settings)
+target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_paths)
 ```
 
 From an installed package:
@@ -227,97 +130,50 @@ cmake --install build --prefix /tmp/linuxdesktop2026-prefix
 
 ```cmake
 find_package(LinuxDesktop2026 CONFIG REQUIRED)
-target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_settings)
+target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_watch)
 ```
 
-## Research Backlog
+## Validation Strategy
 
-These areas are survey and design candidates. They are not active delivery
-promises until at least two real integrations validate the need and boundary.
+The project uses three layers of evidence:
 
-Active or required by extraction:
+- Unit and smoke tests for module behavior, C ABI ownership, install-tree
+  consumption, watcher backends, and Windows/Linux path behavior.
+- [FlavorTests](docs/FlavorTests/README.md), which refactor real upstream-shaped
+  seams from projects such as Notepad++, PrusaSlicer, OpenRGB, KeePassXC,
+  qBittorrent, OBS, KiCad, Audacity, FreeCAD, Walnut, and OpenIPC Dashboard.
+- Maintained consumer proof branches, starting with
+  [LinuxDesktop2026-crossport-notepadpp](docs/consumer-branches/notepadpp-settings-proof.md).
 
-- Settings/config
-- File watching
-- Filesystem/path helpers
-- Desktop integration effects
-- Migration planning/execution
-
-Research-only candidates:
-
-- Process and shell integration
-- Dynamic library loading
-- Single-instance IPC
-
-UI-adjacent candidates:
-
-- GUI/windowing
-- Clipboard
-- Drag-and-drop
-- Common dialogs/resources
-
-Before a research-only candidate becomes an active module, it needs two
-source-anchored integrations showing the same shared seam and an existing-tool
-decision that says whether LinuxDesktop2026 should adopt, wrap, recommend, or
-defer mature alternatives. `ld_desktop` and `ld_migration` are the exception
-because they are required extractions from earlier prototype behavior, not new
-module expansion.
-
-Future work candidates:
-
-- Printing
-- Plugin ABI
-- Advanced theming/DPI
-- Accessibility
-- Installer/package integration
-- Desktop integration completion through `ld_desktop`
-- Migration hardening through `ld_migration`
-- Service and daemon lifecycle
-
-## Design Principles
-
-- General-purpose branding: Notepad++ is a proof case, not the product boundary.
-- Portable core APIs with explicit capability reporting.
-- C++ first, with public API hygiene that keeps future Rust bindings or reimplementation plausible.
-- Standard library first; small optional dependencies only when they earn their place.
-- GUI toolkit dependencies stay isolated to UI-facing modules.
-- CMake consumption should support `FetchContent`, `add_subdirectory`, and installed package configuration.
-- Public GitHub publication should wait until there is at least one tiny working code sample.
-- A module is not shippable while major accepted scope is documentation-only; development milestones can be useful without being called a finished product.
+The CI matrix covers Ubuntu, Fedora, Windows/MSVC, shared-library builds on
+Linux, sanitizer lanes, FlavorTests, optional libuv watcher coverage, and a
+manual Notepad++ proof-branch workflow. See
+[CI portability evidence](docs/ci-portability-evidence.md).
 
 ## Documentation
 
+- [Project status](docs/project-status.md)
+- [Research backlog](docs/research-backlog.md)
 - [Domain language](CONTEXT.md)
 - [Library roadmap](docs/plan/library-roadmap.md)
-- [ld_paths roadmap](docs/plan/ld-paths-roadmap.md)
-- [ld_settings Windows verification](docs/plan/ld-settings-windows-verification.md)
-- [ld_settings C ABI](docs/plan/ld-settings-c-abi.md)
 - [API and ABI stability](docs/plan/api-stability.md)
-- [Expanded ld_settings API plan](docs/plan/ld-settings-expanded-api.md)
+- [FlavorTests](docs/FlavorTests/README.md)
+- [FlavorTest API friction](docs/FlavorTests/API_FRICTION.md)
+- [Cross-port reference rules](docs/FlavorTests/CROSS_PORT_REFERENCES.md)
+- [Maintained consumer branches](docs/consumer-branches/README.md)
+- [Migration examples](docs/examples/migration-examples.md)
+- [Architecture decisions](docs/adr)
+- [Survey documents](docs/survey)
+
+Module plans:
+
+- [`ld_paths` roadmap](docs/plan/ld-paths-roadmap.md)
+- [`ld_settings` Windows verification](docs/plan/ld-settings-windows-verification.md)
+- [`ld_settings` C ABI](docs/plan/ld-settings-c-abi.md)
 - [`ld_desktop` extraction requirements](docs/plan/ld-desktop-extraction.md)
 - [`ld_migration` extraction requirements](docs/plan/ld-migration-extraction.md)
+- [`ld_settings` expanded API inventory](docs/plan/ld-settings-expanded-api.md)
 - [Notepad++ proof case plan](docs/plan/notepad-plus-plus-poc.md)
-- [Repository survey template](docs/survey/repositories.md)
-- [Windows feature matrix](docs/survey/windows-feature-matrix.md)
-- [Module priority score](docs/survey/module-priority-score.md)
-- [Ecosystem audit](docs/survey/ecosystem-audit.md)
-- [Notepad++ settings/config audit](docs/survey/notepad-settings-config-audit.md)
-- [Settings/config library follow-up](docs/survey/settings-config-library-audit.md)
-- [Settings/Registry app audit](docs/survey/settings-registry-app-audit.md)
-- [Settings/Registry platform equivalents](docs/survey/settings-registry-platform-equivalents.md)
-- [Extended watchlist fit audit](docs/survey/extended-watchlist-fit-audit.md)
-- [ld_paths application audit](docs/survey/ld-paths-application-audit.md)
-- [File watcher focused audit](docs/survey/file-watcher-audit.md)
-- [File watcher application audit](docs/survey/file-watcher-application-audit.md)
-- [File watcher library follow-up](docs/survey/file-watcher-library-audit.md)
-- [Migration examples](docs/examples/migration-examples.md)
-- [Source search patterns](docs/survey/source-search-patterns.md)
-- [Open questions](docs/survey/open-questions.md)
-- [Architecture decisions](docs/adr)
-- [ADR 0008: start with settings/config module](docs/adr/0008-start-with-settings-config-module.md)
-- [ADR 0009: extract shared core diagnostics](docs/adr/0009-extract-shared-core-diagnostics.md)
-- [ADR 0010: design the file watcher module](docs/adr/0010-design-file-watcher-module.md)
-- [Original investigation context](docs/context/notepad-plus-plus-native-linux-port-context.md)
 
 ## License
 

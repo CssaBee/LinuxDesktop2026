@@ -14,15 +14,10 @@ The current surface wraps root resolution and the first report vocabulary:
 - caller releases all returned memory with `ld_settings_free_root_report`,
 - named roots, component roots, config layers, active read order, active write layer, and portable level are exposed in the report.
 
-The current surface also wraps first-scope mutation and migration helpers:
+The current surface also wraps first-scope settings mutation helpers:
 
 - config bundle hydration,
 - `write_with_backup` with optional validation callback,
-- migration plan creation,
-- migration plan execution from C-supplied actions,
-- Registry JSON snapshot serialization/parsing,
-- `.reg` snapshot serialization/parsing,
-- Registry tree JSON/`.reg` export/import entry points,
 - report-owned UTF-8 paths/content/diagnostics,
 - and one matching free function per report family.
 
@@ -30,7 +25,8 @@ Desktop effects now live in the separate `ld_desktop` C ABI and C++ module.
 `ld_settings` does not carry autostart, managed/enforced policy, migration, or
 Registry compatibility entry points any more.
 
-Those responsibilities live in `ld_desktop` and `ld_migration` directly.
+Those responsibilities live in `ld_desktop` and `ld_migration` directly. New C
+ABI families for migration are deferred until release-candidate status.
 
 This avoids exposing:
 
@@ -87,6 +83,7 @@ The repository includes `tests/settings_rust_ffi_smoke.rs`, a tiny conditional `
 - Ownership helpers for individual strings or diagnostics.
 - Stable ABI/version negotiation.
 
-The next useful step is real Windows verification for Registry/autostart/policy
-behavior. A small safe Rust crate wrapper and any new ABI families should wait
-until the ABI names and module boundaries settle near release-candidate status.
+The next useful C ABI step is to keep the existing settings, paths, and desktop
+entry points covered while the C++ module boundaries settle. A small safe Rust
+crate wrapper and any new ABI families should wait until release-candidate
+status.
