@@ -141,3 +141,36 @@ mainly to expose whether repeated write-option setup becomes too visible.
 The extracted slice keeps FreeCAD's command-line and environment precedence in
 application code while using LinuxDesktop2026 for path candidate reporting,
 deprecated-path migration planning, and durable parameter-file writes.
+
+## Walnut
+
+- Upstream repository: `StudioCherno/Walnut`
+- Source snapshot: `master` at commit `3b8e414fdecf`
+- Upstream files: `Walnut/src/Walnut/Application.h`,
+  `Walnut/src/Walnut/Application.cpp`, `Walnut/src/Walnut/EntryPoint.h`,
+  `Walnut/src/Walnut/Image.cpp`, `WalnutExternal.lua`,
+  `Walnut/premake5.lua`, and `WalnutApp/premake5.lua`
+- Anchors: `Walnut::ApplicationSpecification`, `Walnut::Application`,
+  `Walnut::Application::Run`, `Walnut::Application::Close`,
+  `Walnut::CreateApplication(int argc, char** argv)`, `Application::Init`,
+  `Application::Shutdown`, `check_vk_result`, `glfw_error_callback`,
+  `SetupVulkan`, `SetupVulkanWindow`, command-buffer helpers,
+  `SubmitResourceFree`, Windows-only `WL_PLATFORM_WINDOWS` entry-point guard,
+  `Walnut::Main`, `g_ApplicationRunning`, `main` versus `WinMain` behavior
+  under `WL_DIST`, `Walnut::Image::Image(std::string_view path)`,
+  `Image::SetData`, `Image::Resize`, `Image::Release`, `VULKAN_SDK`
+  environment use, Windows-only `WL_PLATFORM_WINDOWS`, and `ConsoleApp` versus
+  `WindowedApp` distribution mode.
+- Downstream/supporting anchors: `StudioCherno/WalnutAppTemplate`,
+  `TheCherno/RayTracing`, `TheCherno/Walnut-Chat`, and existing
+  CMake/Linux-experiment forks as review context only.
+- Refactored files: `walnut/src/walnut_flavor.*`
+- Tests: `walnut/test/walnut_flavor_tests.cpp`
+
+The extracted slice does not build Walnut, Vulkan, GLFW, Dear ImGui, or Premake
+projects. It keeps the surrounding Walnut control-flow shape visible:
+application specification, executable-adjacent resources, renderer capability
+checks, GPU selection policy, image path lookup, and entry-point lifecycle state
+remain Walnut responsibilities. LinuxDesktop2026 is used only to resolve
+platform paths, and those diagnostics are translated before leaving the
+Walnut-facing bootstrap plan.

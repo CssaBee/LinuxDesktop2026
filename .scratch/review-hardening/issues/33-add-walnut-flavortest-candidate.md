@@ -6,20 +6,20 @@ tests instead of leaving it as a candidate note.
 
 **Blocked by:** None.
 
-**Status:** proposed
+**Status:** done
 
-- [ ] `docs/FlavorTests/walnut/src/walnut_flavor.hpp` and
+- [x] `docs/FlavorTests/walnut/src/walnut_flavor.hpp` and
   `docs/FlavorTests/walnut/src/walnut_flavor.cpp` exist.
-- [ ] `docs/FlavorTests/walnut/test/walnut_flavor_tests.cpp` exists and is
+- [x] `docs/FlavorTests/walnut/test/walnut_flavor_tests.cpp` exists and is
   wired through `docs/FlavorTests/CMakeLists.txt` with
   `add_flavor_product(walnut)`.
-- [ ] `docs/FlavorTests/README.md` lists Walnut as a covered FlavorTest.
-- [ ] `docs/FlavorTests/SOURCES.md` records the Walnut upstream source anchors
+- [x] `docs/FlavorTests/README.md` lists Walnut as a covered FlavorTest.
+- [x] `docs/FlavorTests/SOURCES.md` records the Walnut upstream source anchors
   and the downstream/non-typical usage anchors considered during selection.
-- [ ] `docs/FlavorTests/API_FRICTION.md` records whether Walnut needs a
+- [x] `docs/FlavorTests/API_FRICTION.md` records whether Walnut needs a
   narrower diagnostics/root helper or whether the existing `ld_paths` shape is
   enough.
-- [ ] The slice tests more than one production-shaped seam. It may add multiple
+- [x] The slice tests more than one production-shaped seam. It may add multiple
   Walnut-facing classes/functions where that keeps the adapter honest.
 
 ## Decision
@@ -184,3 +184,12 @@ Optional tests, if the adapter remains small:
 `walnut_flavor_tests`, and the new Walnut files show that LinuxDesktop2026 can
 support a lightweight graphics-app bootstrap without forcing that app to expose
 raw `ld_*` vocabulary at its product boundary.
+
+## Implementation Note
+
+Added a Walnut FlavorTest with bootstrap, resource-location, and lifecycle
+seams. The adapter uses `ld_paths::resolve_app_paths()` only at the platform
+boundary, translates diagnostics into Walnut startup terms, records Vulkan/GLFW
+capability inputs without linking renderer dependencies, and verifies
+executable-adjacent resources, image lookup, GPU policy, entry-point mode, and
+normal close/shutdown behavior.

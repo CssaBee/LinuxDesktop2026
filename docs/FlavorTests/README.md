@@ -69,6 +69,11 @@ Selected upstream subprojects:
   `--user-cfg`, `--system-cfg`, module paths, deprecated-path migration, and
   user parameter saves. It stresses command-line/environment precedence without
   letting LinuxDesktop2026 own FreeCAD's application policy.
+- `walnut/`: refactors Walnut-style application bootstrap, resource lookup, and
+  lifecycle seams around a lightweight graphics app. It keeps Walnut's window
+  specification, renderer capability decisions, image path semantics, and
+  entry-point behavior in product vocabulary while using `ld_paths` for
+  executable-adjacent resources and config roots.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -83,6 +88,7 @@ methods rather than against generic helper functions:
 - `kicad_flavor_tests`
 - `audacity_flavor_tests`
 - `freecad_flavor_tests`
+- `walnut_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers

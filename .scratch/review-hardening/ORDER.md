@@ -6,14 +6,13 @@ list below.
 
 ## Current Order
 
-1. `33` — Add Walnut FlavorTest Candidate
-2. `34` — Add OpenIPC Dashboard FlavorTest Candidate
-3. `35` — Record OpenIPC Dashboard As Reference Case
-4. `36` — Add OBS Cross-Port Flavor Review
-5. `15` — Validate APIs With One Maintained Consumer Branch
-6. `18` — Expand CI Into Portability Evidence
-7. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
-8. `17` — Reopen Roadmap Only From Consumer Evidence
+1. `34` — Add OpenIPC Dashboard FlavorTest Candidate
+2. `35` — Record OpenIPC Dashboard As Reference Case
+3. `36` — Add OBS Cross-Port Flavor Review
+4. `15` — Validate APIs With One Maintained Consumer Branch
+5. `18` — Expand CI Into Portability Evidence
+6. `16` — Decide Keep, Wrap, Or Retire Native Watch Backends
+7. `17` — Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 

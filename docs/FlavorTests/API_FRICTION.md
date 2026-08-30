@@ -308,6 +308,41 @@ Helper assessment:
   conventions while delegating platform mechanics privately; switching this
   slice to the convenience facade would weaken that coverage.
 
+## Walnut
+
+Remaining visible concepts:
+
+- `ApplicationBootstrap::prepare()` keeps Walnut's `ApplicationSpecification`,
+  renderer startup capability checks, GPU selection, `VULKAN_SDK` observation,
+  distribution-mode entry-point choice, and headless/test launch behavior in
+  Walnut vocabulary.
+- `ResourceLocator::resolveImagePath()` preserves
+  `Walnut::Image::Image(std::string_view path)`-style caller input while using
+  the selected resource root for relative assets.
+- `ApplicationLifecycle` models `Close`, `Shutdown`, and the entry-point loop
+  state without owning the renderer or frame loop.
+
+Acceptable mechanism vocabulary:
+
+- `ld_paths::resolve_app_paths()` is acceptable inside the bootstrap adapter
+  because Walnut needs executable-adjacent resources and an ordinary config root,
+  but does not need settings, migration, desktop effects, or watch vocabulary.
+
+Product-boundary leakage:
+
+- None in the public seam. Path diagnostics are translated into
+  `StartupDiagnostic` values before returning from `prepare()`, and image lookup
+  reports missing assets in Walnut terms.
+
+Helper assessment:
+
+- The existing `ld_paths` API is enough for the first Walnut slice. A narrower
+  diagnostics helper is not justified yet because Walnut's value is precisely
+  that it does not need the heavier settings-root model.
+- This slice is useful negative evidence for `root_request_builder`: graphics
+  app bootstrap with executable-adjacent assets reads more naturally with direct
+  path resolver options than with the settings-oriented root helper.
+
 ## Cross-Flavor Follow-Up
 
 - Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
@@ -325,3 +360,6 @@ Helper assessment:
 - Keep diagnostics internal by default. If a product needs startup or migration
   diagnostics, translate them into product logging, warning, or prompt data
   before storing them in product-facing state.
+- Treat Walnut as a lightweight graphics-app reference slice for path and
+  lifecycle seams, not as evidence that LinuxDesktop2026 has solved Vulkan,
+  GLFW, or renderer ownership.
