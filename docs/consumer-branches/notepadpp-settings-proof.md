@@ -5,8 +5,10 @@ This is the evidence ledger for the first maintained consumer branch.
 ## Branch Contract
 
 - External repository name: `LinuxDesktop2026-crossport-notepadpp`
+- Local checkout: `../LinuxDesktop2026-crossport-notepadpp`
 - Branch name: `linuxdesktop2026-settings-proof`
 - Application base: upstream-shaped Notepad++ source
+- Initial upstream base commit: `c057c0802`
 - LinuxDesktop2026 dependency mode: normal CMake consumption
 - Initial LinuxDesktop2026 modules allowed: `ld_core`, `ld_paths`,
   `ld_settings`, and `ld_migration`
@@ -54,9 +56,19 @@ The branch is not considered validated until all of these are true:
 
 ## Evidence Log
 
-No maintained-branch build evidence has been recorded yet. The current in-tree
-Notepad++ FlavorTest is only a preparation signal; it does not satisfy this
-ticket by itself.
+### 2026-08-30
+
+- LinuxDesktop2026 commit: `1669268`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: not integrated yet
+- Build result: not attempted yet
+- API friction found: none yet
+- Disposition: local proof repository created at
+  `../LinuxDesktop2026-crossport-notepadpp` on branch
+  `linuxdesktop2026-settings-proof`
+
+The current in-tree Notepad++ FlavorTest is only a preparation signal; it does
+not satisfy this ticket by itself.
 
 ## API Pain Log
 
