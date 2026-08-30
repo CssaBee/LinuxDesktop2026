@@ -34,6 +34,7 @@ upstream code snippets.
 
 The project can now expand portability evidence, make watch-backend decisions,
 and reopen roadmap claims only from consumer evidence. Task 15 has its first
-local cross-port proof target, but stays open until the Notepad++ settings proof
-branch records regular build, rebase, dependency, compile, and API-friction
-evidence; local FlavorTests are not enough to close it.
+local cross-port proof target plus a product-shaped Notepad++ settings backend
+rewrite, but stays open until the Notepad++ settings proof branch records
+regular build, rebase, dependency, compile, and API-friction evidence; local
+FlavorTests are not enough to close it.

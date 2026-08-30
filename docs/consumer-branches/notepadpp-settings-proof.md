@@ -93,6 +93,29 @@ not satisfy this ticket by itself.
 - Disposition: satisfies the first maintained-branch existence/build gate, but
   does not yet satisfy the rebase-cadence gate
 
+### 2026-08-30 Backend Rewrite Pass
+
+- LinuxDesktop2026 commit: `83e9215`
+- Cross-port branch commit: `661f6f2e9`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: installed/staged CMake package via
+  `LinuxDesktop2026_DIR=../LinuxDesktop2026/build/task15-proof-package/lib/cmake/LinuxDesktop2026`
+- Build result: `cmake --build ... --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
+- Test result: `ctest --test-dir build --output-on-failure` passed, 1/1
+- Rewrite result: the raw smoke target was replaced with a Notepad++-owned
+  `NotepadPlusPlusSettingsBackend` proof layer
+- Scenarios exercised: normal per-user settings, command-line settings
+  directory winning over cloud settings, cloud settings while session state
+  remains machine-local, `doLocalConf.xml` local config under an allowed install
+  tree, and `doLocalConf.xml` rejection under a protected install tree
+- API friction found: no LinuxDesktop2026 API change is required from this
+  pass; the product backend does need to preserve the distinction between
+  "local config marker requested" and "local config active" so a protected
+  install fallback can be reported without treating settings load as failed
+- Disposition: stronger task-15 evidence because the fork now contains
+  product-shaped code instead of only a direct API smoke test
+
 ## API Pain Log
 
 No blocking maintained-branch pain points have been recorded yet. The first
@@ -100,3 +123,8 @@ proof pass did reinforce that path-kind inference helpers such as
 `ldm::plan_copy` are important for consumer ergonomics; forcing Notepad++ code
 to fill action kind/name fields directly would have created avoidable product
 adapter code.
+
+The backend rewrite added one non-blocking product-mapping rule: consumers need
+both requested and active state for portable/local settings. LinuxDesktop2026
+already exposes this through `portable_requested` and `portable_active`, so the
+fork records the rule in its backend rather than changing the library.

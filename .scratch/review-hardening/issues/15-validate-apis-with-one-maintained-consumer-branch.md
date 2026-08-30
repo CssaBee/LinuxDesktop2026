@@ -20,7 +20,7 @@ extractions.
 - [ ] A second real consumer remains the target before release-candidate
   confidence, but it is not required before starting the first maintained
   branch.
-- [ ] API pain points discovered by the maintained branch are recorded before
+- [x] API pain points discovered by the maintained branch are recorded before
   any new public enums, structs, or modules are added.
 
 Implementation note:
@@ -30,7 +30,9 @@ Implementation note:
 maintained branch contract, the evidence cadence, and the validation gates. This
 ticket remains open until the external branch records regular build, rebase,
 dependency, compile, and API-friction evidence. The local cross-port branch now
-contains a passing `linuxdesktop2026_notepadpp_settings_proof` target at commit
-`5f6457cb5`; it configures against a staged LinuxDesktop2026 CMake package,
+contains a passing `linuxdesktop2026_notepadpp_settings_proof` target. The first
+target landed at `5f6457cb5`; the product-shaped backend rewrite landed at
+`661f6f2e9`. It configures against a staged LinuxDesktop2026 CMake package,
 links exported targets, and exercises root resolution, model hydration,
-validated config writes, and migration planning.
+validated config writes, migration planning, command-line override precedence,
+cloud/session separation, and protected-install local config fallback.
