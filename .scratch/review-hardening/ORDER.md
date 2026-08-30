@@ -6,7 +6,14 @@ list below.
 
 ## Current Order
 
-No agent-ready review-hardening tickets remain in this batch.
+- `38` - Mirror Platform Path Defaults In C ABI
+- `39` - Add Consumer CMake Path Default Generation
+- `40` - Remove Private FlavorTest Platform Path Helper
+- `41` - Document Platform Path Defaults Evidence
+
+## Implemented
+
+- `37` - Add Runtime Platform Path Defaults
 
 ## Maintained Consumer Evidence In Progress
 
@@ -40,3 +47,14 @@ cross-port proof target plus a product-shaped Notepad++ settings backend
 rewrite, but stays open until the Notepad++ settings proof branch records
 observed CI, regular build, rebase, dependency, compile, and API-friction
 evidence; local FlavorTests are not enough to close it.
+
+The path-defaults batch is active because it hardens an existing `ld_paths`
+promise instead of opening a new platform module. Walnut and OpenIPC Dashboard
+exposed a specific API gap: `docs/FlavorTests/support/platform_paths.hpp` made
+user-root resolution look ergonomic while real consumers could not take that
+helper with them. The sequence closes that gap through supported runtime
+defaults, mirrors the capability for C callers, proves consumer-target CMake
+generation through the install-tree path, removes the private FlavorTest helper,
+and records the evidence before treating the improved ergonomics as user-ready.
+
+Spec: `specs/platform-path-defaults.md`

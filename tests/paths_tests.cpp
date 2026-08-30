@@ -138,6 +138,7 @@ void stringifies_public_enums()
     require(ld::to_string(ld::path_family::runtime) == "runtime", "runtime path family should stringify");
     require(ld::to_string(ld::candidate_source::known_folder) == "known_folder", "candidate source should stringify");
     require(ld::to_string(ld::candidate_source::xdg_base_dir) == "xdg_base_dir", "XDG base dir should stringify");
+    require(ld::to_string(ld::candidate_source::platform_default) == "platform_default", "platform default source should stringify");
     require(ld::to_string(ld::directory_action::would_create) == "would_create", "directory action should stringify");
     require(ld::to_string(ld::plugin_path_kind::vst3) == "vst3", "plugin path kind should stringify");
 }
@@ -239,6 +240,95 @@ void resolves_home_fallbacks_when_xdg_is_unset()
         "documents path should use stable HOME fallback when XDG user-dirs is missing");
     require(selected_path(report, ld::path_family::templates) == fixture_path({"home", "Templates"}),
         "templates path should use stable HOME fallback when XDG user-dirs is missing");
+#endif
+}
+
+void resolves_app_paths_from_public_platform_defaults()
+{
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.home_directory.reset();
+    options.platform_defaults = ld::platform_path_defaults::xdg(
+        fixture_path({"platform", "home"}),
+        fixture_path({"platform", "runtime"}));
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+#if defined(_WIN32)
+    require(options.platform_defaults->windows_roaming_appdata == std::nullopt,
+        "XDG factory should not inject Windows defaults");
+#else
+    require(selected_path(report, ld::path_family::config) == fixture_path({"platform", "home", ".config", "LinuxDesktop2026", "paths-tests"}),
+        "config path should use public XDG platform defaults");
+    require(selected_path(report, ld::path_family::data) == fixture_path({"platform", "home", ".local", "share", "LinuxDesktop2026", "paths-tests"}),
+        "data path should use public XDG platform defaults");
+    require(selected_path(report, ld::path_family::state) == fixture_path({"platform", "home", ".local", "state", "LinuxDesktop2026", "paths-tests"}),
+        "state path should use public XDG platform defaults");
+    require(selected_path(report, ld::path_family::cache) == fixture_path({"platform", "home", ".cache", "LinuxDesktop2026", "paths-tests"}),
+        "cache path should use public XDG platform defaults");
+    require(selected_path(report, ld::path_family::runtime) == fixture_path({"platform", "runtime", "paths-tests"}),
+        "runtime path should use public XDG platform defaults");
+    require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::platform_default),
+        "default-derived config candidate should be observable");
+    require(has_selected_candidate(report, ld::path_family::runtime, ld::candidate_source::platform_default),
+        "default-derived runtime candidate should be observable");
+    require(!has_diagnostic(report.diagnostics, ld::diagnostic_code::home_missing),
+        "public platform defaults should not be reported as a missing-home resolution");
+#endif
+}
+
+void platform_defaults_do_not_override_explicit_or_environment_paths()
+{
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.config_override = fixture_path({"override", "config"});
+    options.environment["XDG_DATA_HOME"] = fixture_path({"env", "data"}).string();
+    options.platform_defaults = ld::platform_path_defaults::xdg(
+        fixture_path({"platform", "home"}),
+        fixture_path({"platform", "runtime"}));
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+    require(selected_path(report, ld::path_family::config) == fixture_path({"override", "config"}),
+        "explicit config override should win over platform defaults");
+#if defined(_WIN32)
+    (void)report;
+#else
+    require(selected_path(report, ld::path_family::data) == fixture_path({"env", "data", "LinuxDesktop2026", "paths-tests"}),
+        "environment data root should win over platform defaults");
+    require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::explicit_option),
+        "explicit config candidate should remain selected");
+    require(has_selected_candidate(report, ld::path_family::data, ld::candidate_source::xdg_base_dir),
+        "environment data candidate should remain selected");
+#endif
+}
+
+void rejects_relative_platform_defaults()
+{
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    ld::platform_path_defaults defaults;
+    defaults.xdg_config_home = "relative-config";
+    options.platform_defaults = defaults;
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+#if defined(_WIN32)
+    require(!has_diagnostic(report.diagnostics, ld::diagnostic_code::platform_default_relative_ignored),
+        "unused XDG defaults should not affect Windows resolution");
+#else
+    require(has_diagnostic(report.diagnostics, ld::diagnostic_code::platform_default_relative_ignored),
+        "relative platform default should be diagnosed");
+    require(has_candidate(report, ld::path_family::config, ld::candidate_source::platform_default),
+        "relative platform default should be visible as a rejected candidate");
+    require(selected_path(report, ld::path_family::config) == fixture_path({"home", ".config", "LinuxDesktop2026", "paths-tests"}),
+        "relative platform default should fall through to built-in fallback");
 #endif
 }
 
@@ -607,6 +697,9 @@ int main()
         stringifies_public_enums();
         resolves_linux_xdg_base_directories_from_injected_environment();
         resolves_home_fallbacks_when_xdg_is_unset();
+        resolves_app_paths_from_public_platform_defaults();
+        platform_defaults_do_not_override_explicit_or_environment_paths();
+        rejects_relative_platform_defaults();
         resolves_xdg_user_dirs_from_config_file();
         reports_user_dir_legacy_and_site_fallback_candidates();
         rejects_relative_overrides_and_environment_values();

@@ -24,6 +24,7 @@ inline constexpr std::string_view application_missing = "paths.identity.applicat
 inline constexpr std::string_view home_missing = "paths.home.missing";
 inline constexpr std::string_view environment_relative_ignored = "paths.environment.relative_ignored";
 inline constexpr std::string_view override_relative_ignored = "paths.override.relative_ignored";
+inline constexpr std::string_view platform_default_relative_ignored = "paths.platform_default.relative_ignored";
 inline constexpr std::string_view executable_unavailable = "paths.executable.unavailable";
 inline constexpr std::string_view temp_directory_unavailable = "paths.temp.unavailable";
 inline constexpr std::string_view directory_exists_as_file = "paths.directory.exists_as_file";
@@ -74,7 +75,8 @@ enum class candidate_source {
     executable_relative,
     legacy,
     site_default,
-    fallback
+    fallback,
+    platform_default
 };
 
 struct path_candidate {
@@ -83,6 +85,22 @@ struct path_candidate {
     std::filesystem::path path;
     bool selected = false;
     std::vector<diagnostic> diagnostics;
+};
+
+struct platform_path_defaults {
+    std::optional<std::filesystem::path> xdg_config_home;
+    std::optional<std::filesystem::path> xdg_data_home;
+    std::optional<std::filesystem::path> xdg_state_home;
+    std::optional<std::filesystem::path> xdg_cache_home;
+    std::optional<std::filesystem::path> xdg_runtime_dir;
+    std::optional<std::filesystem::path> windows_roaming_appdata;
+    std::optional<std::filesystem::path> windows_local_appdata;
+
+    static platform_path_defaults xdg(
+        const std::filesystem::path& home,
+        std::optional<std::filesystem::path> runtime = std::nullopt);
+
+    static platform_path_defaults windows(const std::filesystem::path& home);
 };
 
 struct resolver_options {
@@ -96,6 +114,7 @@ struct resolver_options {
     std::optional<std::filesystem::path> install_prefix;
     std::optional<std::filesystem::path> executable_path;
     std::optional<std::filesystem::path> home_directory;
+    std::optional<platform_path_defaults> platform_defaults;
     std::map<std::string, std::string> environment;
     std::vector<std::filesystem::path> legacy_config_files;
     bool use_process_environment = true;

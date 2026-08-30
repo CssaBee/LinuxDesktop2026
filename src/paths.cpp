@@ -444,6 +444,110 @@ std::optional<std::filesystem::path> absolute_environment_path(
     return std::nullopt;
 }
 
+std::optional<std::filesystem::path> absolute_platform_default_path(
+    resolver_report& report,
+    const std::optional<std::filesystem::path>& default_path,
+    path_family family,
+    const std::string& name)
+{
+    if (!default_path || default_path->empty()) {
+        return std::nullopt;
+    }
+    if (default_path->is_absolute()) {
+        return *default_path;
+    }
+
+    add_candidate(
+        report,
+        family,
+        candidate_source::platform_default,
+        *default_path,
+        false,
+        {make_diagnostic(
+            severity::error,
+            std::string(diagnostic_code::platform_default_relative_ignored),
+            name + " platform default must be absolute",
+            *default_path)});
+    return std::nullopt;
+}
+
+std::optional<std::filesystem::path> platform_default_base(
+    resolver_report& report,
+    const resolver_options& options,
+    path_family family)
+{
+    if (!options.platform_defaults) {
+        return std::nullopt;
+    }
+
+    switch (family) {
+    case path_family::config:
+#if defined(_WIN32)
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->windows_roaming_appdata,
+            family,
+            "windows_roaming_appdata");
+#else
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->xdg_config_home,
+            family,
+            "xdg_config_home");
+#endif
+    case path_family::data:
+#if defined(_WIN32)
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->windows_roaming_appdata,
+            family,
+            "windows_roaming_appdata");
+#else
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->xdg_data_home,
+            family,
+            "xdg_data_home");
+#endif
+    case path_family::state:
+#if defined(_WIN32)
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->windows_local_appdata,
+            family,
+            "windows_local_appdata");
+#else
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->xdg_state_home,
+            family,
+            "xdg_state_home");
+#endif
+    case path_family::cache:
+#if defined(_WIN32)
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->windows_local_appdata,
+            family,
+            "windows_local_appdata");
+#else
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->xdg_cache_home,
+            family,
+            "xdg_cache_home");
+#endif
+    case path_family::runtime:
+        return absolute_platform_default_path(
+            report,
+            options.platform_defaults->xdg_runtime_dir,
+            family,
+            "xdg_runtime_dir");
+    default:
+        return std::nullopt;
+    }
+}
+
 void select_base_directory(
     resolver_report& report,
     const resolver_options& options,
@@ -458,6 +562,11 @@ void select_base_directory(
 
     if (auto base = absolute_environment_path(options, report, env_name, family)) {
         add_candidate(report, family, candidate_source::xdg_base_dir, *base / app_leaf, true);
+        return;
+    }
+
+    if (auto base = platform_default_base(report, options, family)) {
+        add_candidate(report, family, candidate_source::platform_default, *base / app_leaf, true);
         return;
     }
 
@@ -786,10 +895,37 @@ std::string_view to_string(candidate_source value)
         return "legacy";
     case candidate_source::site_default:
         return "site_default";
+    case candidate_source::platform_default:
+        return "platform_default";
     case candidate_source::fallback:
         return "fallback";
     }
     return "unknown";
+}
+
+platform_path_defaults platform_path_defaults::xdg(
+    const std::filesystem::path& home,
+    std::optional<std::filesystem::path> runtime)
+{
+    platform_path_defaults defaults;
+    if (!home.empty()) {
+        defaults.xdg_config_home = home / ".config";
+        defaults.xdg_data_home = home / ".local" / "share";
+        defaults.xdg_state_home = home / ".local" / "state";
+        defaults.xdg_cache_home = home / ".cache";
+    }
+    defaults.xdg_runtime_dir = std::move(runtime);
+    return defaults;
+}
+
+platform_path_defaults platform_path_defaults::windows(const std::filesystem::path& home)
+{
+    platform_path_defaults defaults;
+    if (!home.empty()) {
+        defaults.windows_roaming_appdata = home / "AppData" / "Roaming";
+        defaults.windows_local_appdata = home / "AppData" / "Local";
+    }
+    return defaults;
 }
 
 std::string_view to_string(directory_action value)
@@ -877,6 +1013,8 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::config) == report.selected.end()) {
         if (roaming) {
             add_candidate(report, path_family::config, roaming_source, *roaming / app_leaf, true);
+        } else if (auto base = platform_default_base(report, options, path_family::config)) {
+            add_candidate(report, path_family::config, candidate_source::platform_default, *base / app_leaf, true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::config, candidate_source::fallback, home / "AppData" / "Roaming" / app_leaf, true);
         }
@@ -884,6 +1022,8 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::data) == report.selected.end()) {
         if (roaming) {
             add_candidate(report, path_family::data, roaming_source, *roaming / app_leaf, true);
+        } else if (auto base = platform_default_base(report, options, path_family::data)) {
+            add_candidate(report, path_family::data, candidate_source::platform_default, *base / app_leaf, true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::data, candidate_source::fallback, home / "AppData" / "Roaming" / app_leaf, true);
         }
@@ -891,6 +1031,8 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::state) == report.selected.end()) {
         if (local) {
             add_candidate(report, path_family::state, local_source, *local / app_leaf / "state", true);
+        } else if (auto base = platform_default_base(report, options, path_family::state)) {
+            add_candidate(report, path_family::state, candidate_source::platform_default, *base / app_leaf / "state", true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::state, candidate_source::fallback, home / "AppData" / "Local" / app_leaf / "state", true);
         }
@@ -898,6 +1040,8 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::cache) == report.selected.end()) {
         if (local) {
             add_candidate(report, path_family::cache, local_source, *local / app_leaf / "cache", true);
+        } else if (auto base = platform_default_base(report, options, path_family::cache)) {
+            add_candidate(report, path_family::cache, candidate_source::platform_default, *base / app_leaf / "cache", true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::cache, candidate_source::fallback, home / "AppData" / "Local" / app_leaf / "cache", true);
         }
@@ -913,7 +1057,7 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_user_directory_candidate(report, path_family::public_share, candidate_source::known_folder, known_folder(FOLDERID_Public, report, path_family::public_share), home, "Public");
 #else
     const auto home = home_directory(options);
-    if (home.empty()) {
+    if (home.empty() && !options.platform_defaults) {
         append_report_diagnostic(report, make_diagnostic(
             severity::error,
             std::string(diagnostic_code::home_missing),
@@ -928,6 +1072,8 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::runtime) == report.selected.end()) {
         if (auto runtime = absolute_environment_path(options, report, "XDG_RUNTIME_DIR", path_family::runtime)) {
             add_candidate(report, path_family::runtime, candidate_source::xdg_base_dir, *runtime / application, true);
+        } else if (auto base = platform_default_base(report, options, path_family::runtime)) {
+            add_candidate(report, path_family::runtime, candidate_source::platform_default, *base / application, true);
         }
     }
 
@@ -943,6 +1089,14 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_user_directory(report, path_family::videos, home, "Videos", xdg_user_dirs);
     select_user_directory(report, path_family::templates, home, "Templates", xdg_user_dirs);
     select_user_directory(report, path_family::public_share, home, "Public", xdg_user_dirs);
+#endif
+
+#if defined(_WIN32)
+    if (report.selected.find(path_family::runtime) == report.selected.end()) {
+        if (auto base = platform_default_base(report, options, path_family::runtime)) {
+            add_candidate(report, path_family::runtime, candidate_source::platform_default, *base / application, true);
+        }
+    }
 #endif
 
     if (report.selected.find(path_family::temp) == report.selected.end()) {
