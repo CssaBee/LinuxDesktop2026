@@ -134,6 +134,25 @@ not satisfy this ticket by itself.
   the branch still needs remote availability, observed green CI, and
   rebase-cadence entries before task 15 can close
 
+### 2026-08-30 Platform Defaults Rebase
+
+- LinuxDesktop2026 base commit: `27c7dc6`
+- LinuxDesktop2026 local change: `ld_settings::root_options` now forwards
+  `platform_defaults` to `ld_paths`
+- Cross-port branch base commit: `caccfc273`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: fresh installed/staged CMake package at
+  `/tmp/linuxdesktop2026-crossport-prefix`
+- Build result: `cmake --build ... --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
+- Test result: `ctest --test-dir build --output-on-failure` passed, 1/1
+- API friction found: the maintained proof needed the new
+  `ld_settings::root_options::platform_defaults` pass-through so it could use
+  the generated CMake helper without dropping from `ld_settings` to `ld_paths`
+- Disposition: platform-default friction became a LinuxDesktop2026 API fix; the
+  proof branch now uses generated consumer code instead of private path-default
+  helpers or host environment injection
+
 ## API Pain Log
 
 No blocking maintained-branch pain points have been recorded yet. The first
@@ -146,3 +165,7 @@ The backend rewrite added one non-blocking product-mapping rule: consumers need
 both requested and active state for portable/local settings. LinuxDesktop2026
 already exposes this through `portable_requested` and `portable_active`, so the
 fork records the rule in its backend rather than changing the library.
+
+The platform-default rebase added one API fix: `ld_settings` now accepts
+`platform_path_defaults` and passes them to `ld_paths`. This keeps consumers on
+the settings-level API while still allowing CMake-generated OS defaults.

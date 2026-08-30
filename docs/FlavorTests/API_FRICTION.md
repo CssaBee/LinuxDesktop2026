@@ -20,40 +20,46 @@ Use these notes before treating a FlavorTest as integration-readiness evidence:
 
 ## Notepad++
 
-Remaining visible concepts:
+Current proof-branch state:
 
-- `NppParameters::load()` now uses `ld_settings::root_request_builder` for the
-  common app identity, root, override, portable-marker, privileged-install, and
-  named-root mechanics.
-- The product state keeps copied `linuxdesktop::diagnostic` values because
-  Notepad++-style startup diagnostics need to survive after root/default
-  resolution.
-- Session backup recovery still uses the lower-level `write_with_backup()`
-  because it deliberately disables backup creation while restoring from an
-  existing `.bak` file.
+- `LinuxDesktop2026-crossport-notepadpp` now consumes an installed
+  LinuxDesktop2026 package and calls
+  `linuxdesktop2026_generate_path_defaults()` from CMake. The generated header
+  selects the OS-specific `platform_path_defaults` factory at configure time.
+- `NotepadPlusPlusSettingsBackend::resolve()` passes those generated defaults
+  through `ld_settings::root_options::platform_defaults`, while Notepad++ still
+  owns install-root, home/runtime inputs, command-line settings, cloud choice,
+  local-config marker, and privileged-install policy.
+- The in-tree FlavorTest remains useful for behavior coverage, but the
+  cross-port proof branch is the stronger current consumer signal.
 
 Acceptable mechanism vocabulary:
 
-- `resolve_app_roots()`, `ensure_config_defaults()`, and the plugin-config named
-  root are adapter-level platform mechanics.
-- `write_common_config()` is a good fit for normal session, shortcut, and
-  find-history saves because validation remains Notepad++-owned.
+- `resolve_app_roots()`, generated platform defaults, named roots,
+  `ensure_config_defaults()`, `write_common_config()`, and `ldm::plan_copy()`
+  are adapter-level platform mechanics.
+- The builder/factory split now hides OS selection without hiding Notepad++
+  decisions: CMake chooses XDG vs. Windows defaults, and the product supplies
+  the roots it has accepted.
 
 Product-boundary leakage:
 
-- `loaded_parameters::diagnostics` exposes `linuxdesktop::diagnostic` directly.
-  That is useful for the harness, but a real Notepad++ seam would probably
-  translate it to startup warnings or log messages before storing it in the
-  parameter object.
+- The proof layout still carries raw `linuxdesktop::diagnostic` values. That is
+  acceptable for the proof harness, but a real Notepad++ patch should translate
+  them to startup warnings or log messages before storing long-lived product
+  state.
+- Portable/local config needs both "requested" and "active" state so a rejected
+  `doLocalConf.xml` under a protected install can be reported. The current API
+  already exposes this, but product code still has to preserve the distinction.
 
 Helper assessment:
 
-- The config-write facade shortened the repeated save paths and made intent
-  clearer.
-- The root-request builder is worth keeping as an experimental C++ helper here.
-  It makes repeated request mechanics easier to scan while the product policy
-  remains visible in the call chain: command-line settings, cloud settings,
-  portable marker, privileged-install denial, and plugin config root.
+- The former path-default gap is closed for the maintained Notepad++ proof:
+  consumers no longer need a private `platform_paths.hpp`-style helper or host
+  environment injection to get deterministic platform roots.
+- Remaining friction is translation work, not missing mechanism: diagnostics
+  and layout structs should become Notepad++ vocabulary before any upstreamable
+  patch, while the LinuxDesktop2026 calls can stay at the adapter boundary.
 
 ## Audacity
 

@@ -564,6 +564,7 @@ ld_paths::resolver_options path_options_from_root_options(const root_options& op
     ld_paths::resolver_options result;
     result.resource_root = options.resource_root;
     result.home_directory = options.home_directory;
+    result.platform_defaults = options.platform_defaults;
     result.environment = options.environment;
     result.use_process_environment = options.use_process_environment;
     return result;

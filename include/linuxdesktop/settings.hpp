@@ -1,6 +1,7 @@
 #pragma once
 
 #include "linuxdesktop/core.hpp"
+#include "linuxdesktop/paths.hpp"
 #include <cstddef>
 #include <filesystem>
 #include <functional>
@@ -258,6 +259,7 @@ struct layer_report {
 struct root_options {
     std::optional<std::filesystem::path> resource_root;
     std::optional<std::filesystem::path> home_directory;
+    std::optional<linuxdesktop::paths::platform_path_defaults> platform_defaults;
     std::map<std::string, std::string> environment;
 
     // Highest priority: one absolute root for config, data, state, and cache.
@@ -330,6 +332,12 @@ public:
     root_request_builder& home_directory(std::optional<std::filesystem::path> path)
     {
         options_.home_directory = std::move(path);
+        return *this;
+    }
+
+    root_request_builder& platform_defaults(std::optional<linuxdesktop::paths::platform_path_defaults> defaults)
+    {
+        options_.platform_defaults = std::move(defaults);
         return *this;
     }
 

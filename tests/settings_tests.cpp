@@ -15,6 +15,7 @@
 namespace {
 
 namespace ld = linuxdesktop::settings;
+namespace ld_paths = linuxdesktop::paths;
 namespace desk = linuxdesktop::desktop;
 namespace mig = linuxdesktop::migration;
 
@@ -249,6 +250,38 @@ void delegates_generic_roots_to_paths_with_injected_environment()
         "settings cache root should use ld_paths XDG cache selection");
     require(report.roots.runtime == root / "xdg-runtime" / "settings-tests",
         "settings runtime root should use ld_paths XDG runtime selection");
+#endif
+}
+
+void delegates_platform_defaults_to_paths()
+{
+    const auto root = test_root();
+
+    ld::root_options options;
+    options.create_directories = false;
+    options.use_process_environment = false;
+#if defined(_WIN32)
+    options.platform_defaults = ld_paths::platform_path_defaults::windows(root / "home");
+#else
+    options.platform_defaults = ld_paths::platform_path_defaults::xdg(root / "home", root / "runtime");
+#endif
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(!has_error_diagnostic(report.diagnostics),
+        "settings root resolution should accept absolute platform defaults");
+#if defined(_WIN32)
+    require(report.roots.config == root / "home" / "AppData" / "Roaming" / "LinuxDesktop2026" / "settings-tests",
+        "settings config root should use Windows platform defaults");
+    require(report.roots.cache == root / "home" / "AppData" / "Local" / "LinuxDesktop2026" / "settings-tests",
+        "settings cache root should use Windows local platform defaults");
+#else
+    require(report.roots.config == root / "home" / ".config" / "LinuxDesktop2026" / "settings-tests",
+        "settings config root should use XDG platform defaults");
+    require(report.roots.data == root / "home" / ".local" / "share" / "LinuxDesktop2026" / "settings-tests",
+        "settings data root should use XDG platform defaults");
+    require(report.roots.runtime == root / "runtime" / "settings-tests",
+        "settings runtime root should use XDG runtime platform defaults");
 #endif
 }
 
@@ -1241,6 +1274,7 @@ int main()
         {"rejects_relative_sync_config_override", rejects_relative_sync_config_override},
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
         {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
+        {"delegates_platform_defaults_to_paths", delegates_platform_defaults_to_paths},
         {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
         {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
         {"root_request_builder_preserves_root_options", root_request_builder_preserves_root_options},
