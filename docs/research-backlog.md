@@ -57,6 +57,7 @@ current module-boundary cleanup:
 Use these documents before promoting a research candidate:
 
 - [Extended watchlist fit audit](survey/extended-watchlist-fit-audit.md)
+- [Adoption targets and challenge ideas](survey/adoption-targets-and-challenge-ideas.md)
 - [Ecosystem audit](survey/ecosystem-audit.md)
 - [Source search patterns](survey/source-search-patterns.md)
 - [FlavorTests](FlavorTests/README.md)

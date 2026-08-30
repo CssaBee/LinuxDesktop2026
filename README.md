@@ -161,6 +161,7 @@ manual Notepad++ proof-branch workflow. See
 - [FlavorTest API friction](docs/FlavorTests/API_FRICTION.md)
 - [Cross-port reference rules](docs/FlavorTests/CROSS_PORT_REFERENCES.md)
 - [Maintained consumer branches](docs/consumer-branches/README.md)
+- [Adoption targets and challenge ideas](docs/survey/adoption-targets-and-challenge-ideas.md)
 - [Migration examples](docs/examples/migration-examples.md)
 - [Architecture decisions](docs/adr)
 - [Survey documents](docs/survey)
