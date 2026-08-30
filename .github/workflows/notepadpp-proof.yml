@@ -1,0 +1,47 @@
+name: Notepad++ Proof Branch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  settings-proof:
+    name: Notepad++ settings proof
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout LinuxDesktop2026
+        uses: actions/checkout@v6
+        with:
+          path: LinuxDesktop2026
+
+      - name: Checkout Notepad++ proof branch
+        uses: actions/checkout@v6
+        with:
+          repository: CssaBee/LinuxDesktop2026-crossport-notepadpp
+          ref: linuxdesktop2026-settings-proof
+          path: LinuxDesktop2026-crossport-notepadpp
+
+      - name: Configure LinuxDesktop2026 package
+        run: >
+          cmake -S LinuxDesktop2026 -B LinuxDesktop2026/build-proof-package -G Ninja
+          -DLD2026_BUILD_TESTS=OFF
+          -DLD2026_BUILD_EXAMPLES=OFF
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/LinuxDesktop2026/build-proof-package/prefix
+
+      - name: Install LinuxDesktop2026 package
+        run: cmake --build LinuxDesktop2026/build-proof-package --target install
+
+      - name: Configure Notepad++ proof
+        run: >
+          cmake -S LinuxDesktop2026-crossport-notepadpp
+          -B LinuxDesktop2026-crossport-notepadpp/build-proof
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DLinuxDesktop2026_DIR=${{ github.workspace }}/LinuxDesktop2026/build-proof-package/prefix/lib/cmake/LinuxDesktop2026
+
+      - name: Build Notepad++ proof
+        run: cmake --build LinuxDesktop2026-crossport-notepadpp/build-proof --target linuxdesktop2026_notepadpp_settings_proof
+
+      - name: Test Notepad++ proof
+        run: ctest --test-dir LinuxDesktop2026-crossport-notepadpp/build-proof --output-on-failure

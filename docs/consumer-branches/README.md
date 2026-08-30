@@ -51,3 +51,14 @@ default threshold for new public vocabulary before release-candidate status.
 
 - `notepadpp-settings-proof.md`: first maintained consumer target and evidence
   ledger.
+
+## CI Path
+
+The main repository owns the smallest repeatable consumer integration path in
+the manually dispatched `.github/workflows/notepadpp-proof.yml` workflow. It checks out
+`CssaBee/LinuxDesktop2026-crossport-notepadpp` on
+`linuxdesktop2026-settings-proof`, installs the current LinuxDesktop2026 tree
+into a workflow-local CMake package prefix, then configures, builds, and tests
+the proof target against the exported package.
+
+This lane is a release-evidence input, not a full product-port claim.

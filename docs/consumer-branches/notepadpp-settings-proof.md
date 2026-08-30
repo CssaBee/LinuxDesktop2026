@@ -116,6 +116,24 @@ not satisfy this ticket by itself.
 - Disposition: stronger task-15 evidence because the fork now contains
   product-shaped code instead of only a direct API smoke test
 
+### 2026-08-30 CI Path Added
+
+- LinuxDesktop2026 commit: pending commit for task 18
+- Cross-port branch commit: `661f6f2e9`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: installed/staged CMake package in a manually dispatched
+  GitHub Actions workflow
+- Build result: manual workflow added but not yet observed on GitHub Actions
+- Test result: manual workflow added but not yet observed on GitHub Actions
+- CI path: `.github/workflows/notepadpp-proof.yml` checks out the proof branch
+  after it is available on GitHub, installs the current LinuxDesktop2026
+  checkout, and runs
+  `linuxdesktop2026_notepadpp_settings_proof`
+- API friction found: none from the CI wiring itself
+- Disposition: satisfies the documented maintained-consumer CI-path requirement;
+  the branch still needs remote availability, observed green CI, and
+  rebase-cadence entries before task 15 can close
+
 ## API Pain Log
 
 No blocking maintained-branch pain points have been recorded yet. The first
