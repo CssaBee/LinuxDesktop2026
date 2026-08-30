@@ -6,25 +6,33 @@ classes and tests instead of leaving it as a candidate note.
 
 **Blocked by:** None.
 
-**Status:** proposed
+**Status:** done
 
-- [ ] `docs/FlavorTests/openipc_dashboard/src/openipc_dashboard_flavor.hpp`
+- [x] `docs/FlavorTests/openipc_dashboard/src/openipc_dashboard_flavor.hpp`
   and `docs/FlavorTests/openipc_dashboard/src/openipc_dashboard_flavor.cpp`
   exist.
-- [ ] `docs/FlavorTests/openipc_dashboard/test/openipc_dashboard_flavor_tests.cpp`
+- [x] `docs/FlavorTests/openipc_dashboard/test/openipc_dashboard_flavor_tests.cpp`
   exists and is wired through `docs/FlavorTests/CMakeLists.txt` with
   `add_flavor_product(openipc_dashboard)`.
-- [ ] `docs/FlavorTests/README.md` lists OpenIPC Dashboard as a covered
+- [x] `docs/FlavorTests/README.md` lists OpenIPC Dashboard as a covered
   FlavorTest.
-- [ ] `docs/FlavorTests/SOURCES.md` records the OpenIPC Dashboard upstream
+- [x] `docs/FlavorTests/SOURCES.md` records the OpenIPC Dashboard upstream
   source anchors and the packaging/smoke/non-typical usage anchors considered
   during selection.
-- [ ] `docs/FlavorTests/API_FRICTION.md` records where Qt already solves the
+- [x] `docs/FlavorTests/API_FRICTION.md` records where Qt already solves the
   seam and where LinuxDesktop2026 still adds value through neutral root,
   service-profile, and diagnostics vocabulary.
-- [ ] The slice tests multiple hardware-free production-shaped seams. It may
+- [x] The slice tests multiple hardware-free production-shaped seams. It may
   add more than one Dashboard-facing class/function where that keeps the adapter
   readable.
+
+## Implementation Note
+
+Implemented as `openipc_dashboard_flavor_tests`, covering desktop XDG roots,
+service `OPENIPC_DATA_ROOT`, `--data-root` precedence, invalid-root rejection,
+server-only offscreen bootstrap, administrator bootstrap constraints,
+deployment-policy validation, readiness, import path normalization, and
+browser-safe diagnostic redaction.
 
 ## Decision
 

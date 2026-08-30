@@ -74,6 +74,12 @@ Selected upstream subprojects:
   specification, renderer capability decisions, image path semantics, and
   entry-point behavior in product vocabulary while using `ld_paths` for
   executable-adjacent resources and config roots.
+- `openipc_dashboard/`: refactors OpenIPC Dashboard-style desktop versus
+  server-only profile setup, service data-root isolation, web deployment policy,
+  readiness reporting, path normalization, and browser-safe diagnostics. It
+  keeps Dashboard's Qt/QML, web, administrator bootstrap, and deployment
+  vocabulary in product code while using `ld_paths` only for ordinary desktop
+  root discovery.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -89,6 +95,7 @@ methods rather than against generic helper functions:
 - `audacity_flavor_tests`
 - `freecad_flavor_tests`
 - `walnut_flavor_tests`
+- `openipc_dashboard_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers

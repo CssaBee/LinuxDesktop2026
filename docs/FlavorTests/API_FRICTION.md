@@ -343,6 +343,46 @@ Helper assessment:
   app bootstrap with executable-adjacent assets reads more naturally with direct
   path resolver options than with the settings-oriented root helper.
 
+## OpenIPC Dashboard
+
+Remaining visible concepts:
+
+- `ApplicationProfile::resolve()` keeps Dashboard's desktop versus service
+  profile split, `OPENIPC_DATA_ROOT`, `--data-root`, QSettings placement,
+  log/state/modules/analytics/evidence paths, and server-only offscreen intent
+  in Dashboard vocabulary.
+- `ServerModeBootstrap`, `DeploymentPolicy`, readiness reporting,
+  `PathNormalizer`, and browser diagnostics stay Dashboard-shaped because Qt,
+  web routing, administrator bootstrap, import semantics, and redaction policy
+  are product responsibilities.
+
+Acceptable mechanism vocabulary:
+
+- `ld_paths::resolve_app_paths()` is acceptable for the desktop default profile
+  because Dashboard can consume normal XDG/AppData roots without surrendering
+  its service-profile contract.
+- The service data-root branch deliberately remains product-owned. Its
+  `config/`, `data/`, `evidence/`, QSettings, users, state, modules, analytics,
+  and log layout is part of Dashboard's documented autonomous server contract,
+  not generic LinuxDesktop2026 placement policy.
+
+Product-boundary leakage:
+
+- None in the public seam. LinuxDesktop2026 path diagnostics are translated into
+  `DashboardDiagnostic` values, and the other return types use Dashboard terms:
+  deployment profile, readiness, administrator bootstrap, path normalization,
+  and browser diagnostics.
+
+Helper assessment:
+
+- This slice is useful negative evidence for over-generalizing service roots.
+  A helper that only says "data override" would be too weak for Dashboard
+  because the override selects a whole isolated service profile with multiple
+  subordinate roots and browser-facing security constraints.
+- A future profile helper may be worth considering only if more FlavorTests need
+  to express "one absolute root selects a named service profile with app-owned
+  child layout" without leaking LinuxDesktop2026 reports.
+
 ## Cross-Flavor Follow-Up
 
 - Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and

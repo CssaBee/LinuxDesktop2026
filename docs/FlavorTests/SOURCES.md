@@ -174,3 +174,43 @@ checks, GPU selection policy, image path lookup, and entry-point lifecycle state
 remain Walnut responsibilities. LinuxDesktop2026 is used only to resolve
 platform paths, and those diagnostics are translated before leaving the
 Walnut-facing bootstrap plan.
+
+## OpenIPC Dashboard
+
+- Upstream repository: `OpenIPC/dashboard`
+- Source snapshot: `main` at commit `d402f0ee3f83`
+- Upstream files: `src/main.cpp`, `src/backend/AppPaths.h`,
+  `src/backend/SystemController.cpp`,
+  `src/backend/SystemControllerSettings.cpp`,
+  `src/backend/SystemControllerState.cpp`, `src/backend/UserManager.cpp`,
+  `src/backend/analytics/AnalyticsEngine.cpp`,
+  `src/backend/web/DashboardWebDeploymentPolicy.h`,
+  `src/backend/web/DashboardWebDeploymentPolicy.cpp`,
+  `src/backend/web/DashboardWebServer.h`,
+  `src/backend/web/DashboardWebServer.cpp`,
+  `src/backend/web/DashboardWebApi.cpp`, and `src/backend/PathUtils.cpp`
+- Anchors: command-line handling for `--server-only`, `--initialize-admin`,
+  and `--data-root`; `OPENIPC_DATA_ROOT`; `QT_QPA_PLATFORM=offscreen`;
+  QGuiApplication naming and QSettings root placement; log setup under
+  `AppPaths::dataDirectory()`; TLS self-test and QML smoke branches;
+  server-only web-server startup; guarded administrator bootstrap through
+  `OPENIPC_INITIAL_ADMIN_PASSWORD_FILE`; runtime/config/data/evidence roots;
+  user/state/analytics/module paths; deployment-profile normalization; web
+  policy URLs and readiness status; health/log/diagnostic browser output; and
+  local path normalization for file URLs, tilde input, Windows drives, and
+  Linux absolute-path recovery.
+- Supporting anchors: `tests/server_only_smoke.py`,
+  `packaging/systemd/openipc-dashboard.service`,
+  `packaging/windows/install-headless-task.ps1`, `docs/WEB_SERVER.md`,
+  `docs/WEB_DEPLOYMENT.md`,
+  `tests/DashboardWebDeploymentPolicyTests.cpp`, `tests/PathUtilsTests.cpp`,
+  `tests/StateStoreTests.cpp`, and `tests/UserManagerTests.cpp`
+- Refactored files: `openipc_dashboard/src/openipc_dashboard_flavor.*`
+- Tests: `openipc_dashboard/test/openipc_dashboard_flavor_tests.cpp`
+
+The extracted slice does not build Qt, QML, GStreamer, SQL, web sockets, camera
+hardware, or OpenIPC's security model. It keeps Dashboard's profile names,
+service data-root contract, administrator bootstrap rules, deployment policy,
+readiness vocabulary, local import path semantics, and browser redaction policy
+in product-shaped code. LinuxDesktop2026 is used only for ordinary desktop
+root discovery; service-profile layout and web policy remain Dashboard-owned.
