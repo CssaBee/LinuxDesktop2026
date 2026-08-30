@@ -1,6 +1,6 @@
 # ld_paths Roadmap
 
-`ld_paths` is the next planned module after the current `ld_settings` and `ld_watch` work. It exists because the extended survey found repeated path-resolution code in Notepad++, OpenRGB, PrusaSlicer, OpenSCAD, FreeCAD, Carla, NUT, Project Island, and smaller challenge candidates.
+`ld_paths` is an active prototype module after the current `ld_settings` and `ld_watch` work. It exists because the extended survey found repeated path-resolution code in Notepad++, OpenRGB, PrusaSlicer, OpenSCAD, FreeCAD, Carla, NUT, Project Island, and smaller challenge candidates.
 
 The goal is a community-facing prototype that feels useful, boring, and honest: broad enough to hand to other developers, but scoped enough that it does not pretend to be a settings engine, desktop integrator, process launcher, or plugin host.
 

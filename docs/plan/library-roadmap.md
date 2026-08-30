@@ -31,6 +31,49 @@ The platform libraries are general-purpose, permissively licensed, and designed 
   rebase, dependency, compile, and API-friction evidence before the current APIs
   are treated as validated by real consumer maintenance.
 
+## Module Activation Gates
+
+Active modules and required extractions:
+
+- `ld_settings`: active settings/config prototype and ship-candidate narrowing
+  work.
+- `ld_paths`: active path/root prototype because repeated FlavorTests and source
+  surveys already proved shared demand.
+- `ld_watch`: active watcher prototype with the native-backend decision recorded
+  in ADR 0010.
+- `ld_desktop`: required extraction from the earlier `ld_settings` effect
+  prototype; it owns desktop integration effects before they can ship.
+- `ld_migration`: required extraction from the earlier `ld_settings` migration
+  prototype; it owns migration planning/execution before those APIs can ship.
+
+Research-only candidates:
+
+- `ld_process`
+- `ld_ipc`
+- `ld_dynlib`
+- service/daemon lifecycle helpers
+- GUI/windowing, clipboard, drag-and-drop, and common-dialog helpers
+
+Research-only means no new public API design, implementation ticket, or README
+delivery promise yet. A candidate can become active only when all of these are
+true:
+
+- at least two source-anchored FlavorTests or maintained consumer branches show
+  the same repeated seam,
+- the seam is not already better owned by a toolkit, operating-system facility,
+  or mature dependency,
+- an existing-tool decision names whether LinuxDesktop2026 should adopt, wrap,
+  recommend, or defer the obvious alternatives,
+- the proposed module boundary explains what consumer policy stays outside the
+  library,
+- and the first API is scoped to the shared part observed in those integrations,
+  not to a wishlist collected from one application.
+
+The `ld_desktop` and `ld_migration` extraction work is exempt from the
+two-consumer activation threshold because it removes responsibilities already
+implemented in the wrong module. New surface added during those extractions is
+not exempt; it still needs source or consumer evidence.
+
 ## Staged Execution
 
 1. Complete the initial repository survey.
@@ -154,9 +197,9 @@ Current direction:
 - Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, `ld_desktop` reports for desktop effects, and future `ld_migration` reports for migration targets,
 - and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, adding richer capability fields only if stress tests prove they are needed, and reopening the wrap decision only from concrete evidence.
 
-## Next Planned Module: ld_paths
+## Active Path Module: ld_paths
 
-`ld_paths` is the next planned module. The focused survey is captured in `docs/survey/ld-paths-application-audit.md`, and the implementation roadmap is captured in `docs/plan/ld-paths-roadmap.md`.
+`ld_paths` is an active prototype module. The focused survey is captured in `docs/survey/ld-paths-application-audit.md`, and the implementation roadmap is captured in `docs/plan/ld-paths-roadmap.md`.
 
 The module should start resolver-first, but the public prototype should be broad enough to share with the community without feeling like a private spike.
 
@@ -201,10 +244,10 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 
 Near-term planning changes:
 
-- Promote `ld_paths` to the next planned module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Real Windows verification remains before public prototype announcement.
-- Keep `ld_process` as a scoped design candidate with argv-safe spawn, shell command mode, environment control, working directory, output capture, wait/exit status, script interpreter behavior, and readiness handshake support.
-- Keep `ld_ipc` as later design work after process/path planning, scoped around lock ownership, stale server recovery, activation forwarding, local sockets, D-Bus, Windows named pipes, and Windows window-message activation.
+- Keep `ld_paths` as an active prototype module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Real Windows verification remains before public prototype announcement.
+- Keep `ld_process` as research-only until two integrations show the same process boundary and an existing-tool decision explains why `std::process`-like libraries, Qt/GLib process APIs, Boost.Process-style wrappers, or direct platform APIs are not enough for the shared case.
+- Keep `ld_ipc` as research-only until two integrations show the same activation/IPC boundary and an existing-tool decision covers D-Bus, local sockets, Windows named pipes, toolkit single-instance helpers, and Windows window-message activation.
 - Extract desktop integration work into `ld_desktop` for `.desktop` files, command escaping, icon installation, MIME types, file associations, URL protocols, AppImage executable discovery, policy, autostart, Registry-equivalent shell/system behavior, and uninstall cleanup.
 - Extract migration work into `ld_migration` for file/directory moves, rollback reporting, app-settings Registry migration compatibility, and later cross-module migration orchestration.
 - Keep service/daemon lifecycle work parked until `ld_process` and `ld_ipc` mature enough to support it cleanly.
-- Run an existing-tool decision for `dylib` before implementing a dynamic loader module.
+- Keep `ld_dynlib` research-only and run an existing-tool decision for `dylib`, Boost.DLL-style wrappers, direct `dlopen`/`LoadLibrary`, and plugin-framework alternatives before implementing a dynamic loader module.

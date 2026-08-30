@@ -235,11 +235,16 @@ target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_settings)
 These areas are survey and design candidates. They are not active delivery
 promises until at least two real integrations validate the need and boundary.
 
-First candidates:
+Active or required by extraction:
 
 - Settings/config
 - File watching
 - Filesystem/path helpers
+- Desktop integration effects
+- Migration planning/execution
+
+Research-only candidates:
+
 - Process and shell integration
 - Dynamic library loading
 - Single-instance IPC
@@ -250,6 +255,13 @@ UI-adjacent candidates:
 - Clipboard
 - Drag-and-drop
 - Common dialogs/resources
+
+Before a research-only candidate becomes an active module, it needs two
+source-anchored integrations showing the same shared seam and an existing-tool
+decision that says whether LinuxDesktop2026 should adopt, wrap, recommend, or
+defer mature alternatives. `ld_desktop` and `ld_migration` are the exception
+because they are required extractions from earlier prototype behavior, not new
+module expansion.
 
 Future work candidates:
 

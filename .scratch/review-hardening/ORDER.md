@@ -6,11 +6,12 @@ list below.
 
 ## Current Order
 
-1. `17` - Reopen Roadmap Only From Consumer Evidence
+No agent-ready review-hardening tickets remain in this batch.
 
 ## Maintained Consumer Evidence In Progress
 
 - `15` - Validate APIs With One Maintained Consumer Branch
+- `17` - Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 
