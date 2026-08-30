@@ -307,6 +307,30 @@ void platform_defaults_do_not_override_explicit_or_environment_paths()
 #endif
 }
 
+void windows_platform_defaults_precede_known_folders()
+{
+#if defined(_WIN32)
+    ld::app_identity identity;
+    identity.organization = "LinuxDesktop2026";
+    identity.application = "paths-tests";
+    auto options = deterministic_options();
+    options.environment["APPDATA"] = "";
+    options.environment["LOCALAPPDATA"] = "";
+    options.platform_defaults = ld::platform_path_defaults::windows(fixture_path({"platform", "home"}));
+
+    const auto report = ld::resolve_app_paths(identity, options);
+
+    require(selected_path(report, ld::path_family::config) == fixture_path({"platform", "home", "AppData", "Roaming", "LinuxDesktop2026", "paths-tests"}),
+        "Windows config path should use injected platform default before Known Folder");
+    require(selected_path(report, ld::path_family::data) == fixture_path({"platform", "home", "AppData", "Roaming", "LinuxDesktop2026", "paths-tests"}),
+        "Windows data path should use injected platform default before Known Folder");
+    require(selected_path(report, ld::path_family::state) == fixture_path({"platform", "home", "AppData", "Local", "LinuxDesktop2026", "paths-tests", "state"}),
+        "Windows state path should use injected platform default before Known Folder");
+    require(has_selected_candidate(report, ld::path_family::config, ld::candidate_source::platform_default),
+        "Windows injected config default should be source-labeled");
+#endif
+}
+
 void rejects_relative_platform_defaults()
 {
     ld::app_identity identity;
@@ -699,6 +723,7 @@ int main()
         resolves_home_fallbacks_when_xdg_is_unset();
         resolves_app_paths_from_public_platform_defaults();
         platform_defaults_do_not_override_explicit_or_environment_paths();
+        windows_platform_defaults_precede_known_folders();
         rejects_relative_platform_defaults();
         resolves_xdg_user_dirs_from_config_file();
         reports_user_dir_legacy_and_site_fallback_candidates();

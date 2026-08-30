@@ -1000,11 +1000,19 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     auto roaming = absolute_environment_path(options, report, "APPDATA", path_family::config);
     auto roaming_source = candidate_source::environment;
     if (!roaming) {
+        roaming = platform_default_base(report, options, path_family::config);
+        roaming_source = candidate_source::platform_default;
+    }
+    if (!roaming) {
         roaming = known_folder(FOLDERID_RoamingAppData, report, path_family::config);
         roaming_source = candidate_source::known_folder;
     }
     auto local = absolute_environment_path(options, report, "LOCALAPPDATA", path_family::state);
     auto local_source = candidate_source::environment;
+    if (!local) {
+        local = platform_default_base(report, options, path_family::state);
+        local_source = candidate_source::platform_default;
+    }
     if (!local) {
         local = known_folder(FOLDERID_LocalAppData, report, path_family::state);
         local_source = candidate_source::known_folder;
@@ -1013,8 +1021,6 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::config) == report.selected.end()) {
         if (roaming) {
             add_candidate(report, path_family::config, roaming_source, *roaming / app_leaf, true);
-        } else if (auto base = platform_default_base(report, options, path_family::config)) {
-            add_candidate(report, path_family::config, candidate_source::platform_default, *base / app_leaf, true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::config, candidate_source::fallback, home / "AppData" / "Roaming" / app_leaf, true);
         }
@@ -1022,8 +1028,6 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::data) == report.selected.end()) {
         if (roaming) {
             add_candidate(report, path_family::data, roaming_source, *roaming / app_leaf, true);
-        } else if (auto base = platform_default_base(report, options, path_family::data)) {
-            add_candidate(report, path_family::data, candidate_source::platform_default, *base / app_leaf, true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::data, candidate_source::fallback, home / "AppData" / "Roaming" / app_leaf, true);
         }
@@ -1031,8 +1035,6 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::state) == report.selected.end()) {
         if (local) {
             add_candidate(report, path_family::state, local_source, *local / app_leaf / "state", true);
-        } else if (auto base = platform_default_base(report, options, path_family::state)) {
-            add_candidate(report, path_family::state, candidate_source::platform_default, *base / app_leaf / "state", true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::state, candidate_source::fallback, home / "AppData" / "Local" / app_leaf / "state", true);
         }
@@ -1040,8 +1042,6 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     if (report.selected.find(path_family::cache) == report.selected.end()) {
         if (local) {
             add_candidate(report, path_family::cache, local_source, *local / app_leaf / "cache", true);
-        } else if (auto base = platform_default_base(report, options, path_family::cache)) {
-            add_candidate(report, path_family::cache, candidate_source::platform_default, *base / app_leaf / "cache", true);
         } else if (!home.empty()) {
             add_candidate(report, path_family::cache, candidate_source::fallback, home / "AppData" / "Local" / app_leaf / "cache", true);
         }
