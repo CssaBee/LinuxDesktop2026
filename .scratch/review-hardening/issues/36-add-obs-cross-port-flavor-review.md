@@ -6,15 +6,15 @@ without copying upstream code into the repository.
 
 **Blocked by:** 27 - Record FlavorTest API Friction Notes.
 
-**Status:** proposed
+**Status:** done
 
-- [ ] `docs/FlavorTests/SOURCES.md` labels OBS as the first cross-port review
+- [x] `docs/FlavorTests/SOURCES.md` labels OBS as the first cross-port review
   pilot.
-- [ ] The review uses links, source anchors, and short paraphrased notes rather
+- [x] The review uses links, source anchors, and short paraphrased notes rather
   than commented upstream code snippets.
-- [ ] `docs/FlavorTests/API_FRICTION.md` records whether LinuxDesktop2026
+- [x] `docs/FlavorTests/API_FRICTION.md` records whether LinuxDesktop2026
   matches OBS's shared product concept or merely mirrors one platform backend.
-- [ ] The review identifies at least one keep/change/defer lesson for C-shaped
+- [x] The review identifies at least one keep/change/defer lesson for C-shaped
   path and config-save seams.
 
 ## Decision
@@ -23,3 +23,10 @@ Do not add commented upstream code snippets to FlavorTests. The side-by-side
 idea is dropped because source copying can create review noise and licensing or
 copyright concerns. Cross-port comparison should happen through anchors and
 paraphrased notes instead.
+
+## Implementation Note
+
+Implemented in `docs/FlavorTests/CROSS_PORT_REFERENCES.md`,
+`docs/FlavorTests/SOURCES.md`, and `docs/FlavorTests/API_FRICTION.md`. OBS is
+now labeled as the first cross-port review pilot, with keep/change/defer lessons
+for C-shaped config path and safe-save seams.

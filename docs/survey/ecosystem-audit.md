@@ -92,6 +92,40 @@ This does not mean we avoid solved areas automatically. A solved area can still 
   - Which issues remain hard even after a rewrite?
   - Which parts of ShareX could have benefited from reusable platform modules instead of a rewrite?
 
+### OpenIPC Dashboard
+
+- **Upstream/project-family status**: OpenIPC Dashboard is a maintained
+  cross-platform Qt/QML application with desktop and headless/server modes.
+- **Reference role**: Both FlavorTest candidate and reference implementation.
+  It is useful for deciding where LinuxDesktop2026 should integrate with an
+  existing toolkit rather than replace it.
+- **Audit status**: FlavorTest extraction complete; source anchors are recorded
+  in `docs/FlavorTests/SOURCES.md`.
+- **Source audit notes**:
+  - The Dashboard-shaped slice keeps Qt/QML startup, web deployment policy,
+    administrator bootstrap, readiness, browser diagnostics, QSettings
+    placement, and service data-root layout in product code.
+  - LinuxDesktop2026 is used only for ordinary desktop root discovery through
+    `ld_paths`.
+  - `OPENIPC_DATA_ROOT` and `--data-root` select an isolated service profile,
+    not just a generic settings directory override.
+- **Platform seam findings**:
+  - Qt already owns application identity, QSettings mechanics, QML lifecycle,
+    resource loading, event-loop ownership, and web/server object integration.
+  - LinuxDesktop2026 still has useful adjacency around desktop root discovery,
+    service/headless environment guidance, diagnostics translation, migration
+    safety, packaging boundaries, and desktop/server separation.
+- **Classification**: Strong reference case and negative evidence against a
+  generic toolkit replacement layer. Prefer `document/recommend` for Qt-owned
+  seams and `build/adapt` only around narrower platform mechanics.
+- **Immediate effect on scoring**:
+  - Reduces confidence in broad service-root or toolkit abstractions before
+    another product repeats the same pressure.
+  - Strengthens the rule that product-facing diagnostics should be translated
+    before reaching UI, browser, or health-check surfaces.
+  - Reinforces that FlavorTests can be evidence against new APIs, not only
+    evidence for them.
+
 ### Greenshot
 
 - **Upstream status**: Greenshot has a macOS version but no Linux plan in the near term; the FAQ cites the historical .NET Framework/WinForms/WPF codebase and reluctance to maintain multiple codebases.

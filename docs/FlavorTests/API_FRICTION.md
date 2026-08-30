@@ -290,6 +290,9 @@ Remaining visible concepts:
   while `config_save_safe()` returns `0`/`-1`.
 - `resolve_config_root()` and `config_save_safe()` use LinuxDesktop2026 only
   inside private implementation.
+- The cross-port review compares the shared OBS concept across Windows and
+  Unix-like platform helpers instead of treating the Linux backend as the whole
+  product model.
 
 Acceptable mechanism vocabulary:
 
@@ -307,6 +310,11 @@ Helper assessment:
   testing whether C-shaped callers can keep pointer/buffer and integer return
   conventions while delegating platform mechanics privately; switching this
   slice to the convenience facade would weaken that coverage.
+- Keep: preserve OBS-style C boundaries and private LinuxDesktop2026 mechanics.
+- Change: every future cross-port FlavorTest should state whether the helper
+  matches a product concept shared by more than one backend.
+- Defer: do not broaden the C ABI from this evidence before release-candidate
+  status.
 
 ## Walnut
 
@@ -382,6 +390,9 @@ Helper assessment:
 - A future profile helper may be worth considering only if more FlavorTests need
   to express "one absolute root selects a named service profile with app-owned
   child layout" without leaking LinuxDesktop2026 reports.
+- As a reference case, Dashboard says LinuxDesktop2026 should adapt around Qt
+  application lifecycle, QSettings mechanics, QML startup, and event-loop
+  ownership instead of competing with them.
 
 ## Cross-Flavor Follow-Up
 

@@ -6,12 +6,10 @@ list below.
 
 ## Current Order
 
-1. `35` - Record OpenIPC Dashboard As Reference Case
-2. `36` - Add OBS Cross-Port Flavor Review
-3. `15` - Validate APIs With One Maintained Consumer Branch
-4. `18` - Expand CI Into Portability Evidence
-5. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
-6. `17` - Reopen Roadmap Only From Consumer Evidence
+1. `15` - Validate APIs With One Maintained Consumer Branch
+2. `18` - Expand CI Into Portability Evidence
+3. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
+4. `17` - Reopen Roadmap Only From Consumer Evidence
 
 ## Rationale
 
@@ -25,10 +23,10 @@ template gate: each candidate ticket must name its own source-anchored seam
 before code is added. OpenIPC is tracked twice: as a FlavorTest candidate for
 data-root/profile separation and as a reference case for when Qt already solves
 a seam well enough that LinuxDesktop2026 should document, recommend, or adapt
-instead of replacing it. OBS is the first cross-port review pilot; cross-port
-reviews use source anchors and paraphrased lessons, not copied upstream code
-snippets.
+instead of replacing it. OBS completed the first cross-port review pilot;
+cross-port reviews use source anchors and paraphrased lessons, not copied
+upstream code snippets.
 
-Only after that cleanup should the project return to maintained consumer
-validation, broader portability evidence, watch-backend decisions, and roadmap
-reopening from consumer evidence.
+The project can now return to maintained consumer validation, broader
+portability evidence, watch-backend decisions, and roadmap reopening from
+consumer evidence.

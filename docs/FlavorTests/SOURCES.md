@@ -94,6 +94,9 @@ and durable settings-file updates.
 - Upstream files: `libobs/util/platform-windows.c`, `libobs/util/platform-nix.c`,
   and `libobs/util/config-file.c`
 - Docs anchor: `docs/sphinx/reference-libobs-util-config-file.rst`
+- Cross-port role: first FlavorTest review pilot comparing Windows and
+  Unix-like OBS utility concepts through source anchors and paraphrased notes,
+  without copying upstream snippets into this repository.
 - Anchors: `os_get_config_path()`, module config paths, and safe config-file
   save behavior.
 - Refactored files: `obs/src/obs_flavor.*`
@@ -102,6 +105,9 @@ and durable settings-file updates.
 The extracted slice keeps OBS-style C APIs, caller-owned buffers, owned string
 paths, and integer return values at the product boundary while using
 LinuxDesktop2026 behind those boundaries for path resolution and backup writes.
+The cross-port lesson is that LinuxDesktop2026 should match OBS's shared product
+concepts, such as config path lookup and safe config persistence, while keeping
+platform-specific path construction and backup mechanics private.
 
 ## KiCad
 
@@ -179,6 +185,9 @@ Walnut-facing bootstrap plan.
 
 - Upstream repository: `OpenIPC/dashboard`
 - Source snapshot: `main` at commit `d402f0ee3f83`
+- Reference role: Qt-native cross-platform application used to decide when
+  LinuxDesktop2026 should document, recommend, or adapt to toolkit-owned seams
+  instead of replacing them.
 - Upstream files: `src/main.cpp`, `src/backend/AppPaths.h`,
   `src/backend/SystemController.cpp`,
   `src/backend/SystemControllerSettings.cpp`,
@@ -214,3 +223,7 @@ service data-root contract, administrator bootstrap rules, deployment policy,
 readiness vocabulary, local import path semantics, and browser redaction policy
 in product-shaped code. LinuxDesktop2026 is used only for ordinary desktop
 root discovery; service-profile layout and web policy remain Dashboard-owned.
+As a reference case, Dashboard is also negative evidence against a generic
+toolkit replacement layer: Qt owns application lifecycle, QSettings mechanics,
+QML startup, and event-loop behavior well enough that LinuxDesktop2026 should
+stay at the narrower desktop-root, diagnostics, packaging, and migration seams.

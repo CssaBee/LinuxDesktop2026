@@ -101,6 +101,9 @@ See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers
 should read those notes before treating passing FlavorTests as
 integration-readiness evidence.
+See `CROSS_PORT_REFERENCES.md` for the rule that keeps local FlavorTests
+separate from maintained cross-port proof repositories, plus the current
+OpenIPC Dashboard and OBS reference lessons.
 
 Seam rule:
 
@@ -151,6 +154,16 @@ Report translation rule:
 - A new write, root, or migration convenience API is not complete merely because
   unit tests pass. It must also let the relevant FlavorTest call sites avoid
   unnecessary report propagation across product boundaries.
+
+Cross-port repository rule:
+
+- Create separate GitHub repositories only for maintained, buildable proof
+  branches or patch series against upstream-shaped source trees.
+- Keep source-anchored notes and small refactors in this repository's
+  FlavorTests.
+- Name external proof repositories with the
+  `LinuxDesktop2026-crossport-<project>` prefix by default so their relationship
+  is visible in GitHub search and issue links.
 
 Layout:
 
