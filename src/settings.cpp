@@ -19,8 +19,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <ShlObj.h>
 #include <objbase.h>
+#include <shlobj.h>
 #include <windows.h>
 #else
 #include <sys/stat.h>

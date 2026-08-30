@@ -22,27 +22,59 @@ void expect(bool condition, const std::string& name)
 
 openipc::RuntimeEnvironment linux_env()
 {
+    const auto root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-flavor";
     openipc::RuntimeEnvironment env;
-    env.home_directory = "/home/alice";
-    env.executable_directory = "/opt/openipc-dashboard";
+    env.home_directory = root / "home" / "alice";
+    env.executable_directory = root / "opt" / "openipc-dashboard";
     env.environment = {
-        {"XDG_CONFIG_HOME", "/home/alice/.config"},
-        {"XDG_DATA_HOME", "/home/alice/.local/share"},
-        {"XDG_STATE_HOME", "/home/alice/.local/state"},
-        {"XDG_RUNTIME_DIR", "/run/user/1000"},
+        {"XDG_CONFIG_HOME", (root / "home" / "alice" / ".config").string()},
+        {"XDG_DATA_HOME", (root / "home" / "alice" / ".local" / "share").string()},
+        {"XDG_STATE_HOME", (root / "home" / "alice" / ".local" / "state").string()},
+        {"XDG_RUNTIME_DIR", (root / "run" / "user" / "1000").string()},
+        {"APPDATA", (root / "appdata" / "roaming").string()},
+        {"LOCALAPPDATA", (root / "appdata" / "local").string()},
     };
     return env;
 }
 
+std::filesystem::path platform_default_config_root(const openipc::RuntimeEnvironment& env)
+{
+#if defined(_WIN32)
+    return std::filesystem::path(env.environment.at("APPDATA")) / "OpenIPC" / "Dashboard";
+#else
+    return std::filesystem::path(env.environment.at("XDG_CONFIG_HOME")) / "OpenIPC" / "Dashboard";
+#endif
+}
+
+std::filesystem::path platform_default_data_root(const openipc::RuntimeEnvironment& env)
+{
+#if defined(_WIN32)
+    return std::filesystem::path(env.environment.at("APPDATA")) / "OpenIPC" / "Dashboard";
+#else
+    return std::filesystem::path(env.environment.at("XDG_DATA_HOME")) / "OpenIPC" / "Dashboard";
+#endif
+}
+
+std::filesystem::path platform_default_state_root(const openipc::RuntimeEnvironment& env)
+{
+#if defined(_WIN32)
+    return std::filesystem::path(env.environment.at("LOCALAPPDATA")) / "OpenIPC" / "Dashboard" / "state";
+#else
+    return std::filesystem::path(env.environment.at("XDG_STATE_HOME")) / "OpenIPC" / "Dashboard";
+#endif
+}
+
 void desktop_default_profile_uses_user_roots()
 {
-    const auto profile = openipc::ApplicationProfile{}.resolve({}, linux_env());
+    const auto env = linux_env();
+    const auto profile = openipc::ApplicationProfile{}.resolve({}, env);
 
     expect(profile.valid, "desktop profile should be valid");
     expect(profile.profile_name == "desktop", "desktop profile keeps desktop name");
-    expect(profile.config_root == "/home/alice/.config/OpenIPC/Dashboard", "desktop config uses xdg config root");
-    expect(profile.data_root == "/home/alice/.local/share/OpenIPC/Dashboard", "desktop data uses xdg data root");
-    expect(profile.state_database == "/home/alice/.local/state/OpenIPC/Dashboard/state.sqlite3", "desktop state database uses xdg state root");
+    expect(profile.config_root == platform_default_config_root(env), "desktop config uses platform config root");
+    expect(profile.data_root == platform_default_data_root(env), "desktop data uses platform data root");
+    expect(profile.state_database == platform_default_state_root(env) / "state.sqlite3",
+        "desktop state database uses platform state root");
     expect(profile.log_file == profile.data_root / "app.log", "desktop log is under data root");
     expect(!profile.qt_offscreen_required, "desktop mode does not force qt offscreen");
 }
@@ -50,34 +82,36 @@ void desktop_default_profile_uses_user_roots()
 void openipc_data_root_creates_isolated_service_profile()
 {
     auto env = linux_env();
-    env.environment["OPENIPC_DATA_ROOT"] = "/var/lib/openipc-dashboard";
+    const auto service_root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-service";
+    env.environment["OPENIPC_DATA_ROOT"] = service_root.string();
 
     const auto profile = openipc::ApplicationProfile{}.resolve({}, env);
 
     expect(profile.profile_name == "service", "environment data root selects service profile");
     expect(profile.data_root_source == openipc::DataRootSource::Environment, "environment data root source is recorded");
-    expect(profile.config_root == "/var/lib/openipc-dashboard/config", "service config root is isolated");
-    expect(profile.data_root == "/var/lib/openipc-dashboard/data", "service data root is isolated");
-    expect(profile.log_file == "/var/lib/openipc-dashboard/data/app.log", "service log file is under service data");
-    expect(profile.state_database == "/var/lib/openipc-dashboard/data/state.sqlite3", "service state database is under service data");
-    expect(profile.modules_root == "/var/lib/openipc-dashboard/data/modules", "service modules root is under service data");
-    expect(profile.analytics_event_store == "/var/lib/openipc-dashboard/data/analytics_events.sqlite", "service analytics store is under service data");
-    expect(profile.evidence_snapshots_root == "/var/lib/openipc-dashboard/evidence/snapshots", "service snapshots root is isolated");
-    expect(profile.evidence_clips_root == "/var/lib/openipc-dashboard/evidence/clips", "service clips root is isolated");
+    expect(profile.config_root == service_root / "config", "service config root is isolated");
+    expect(profile.data_root == service_root / "data", "service data root is isolated");
+    expect(profile.log_file == service_root / "data" / "app.log", "service log file is under service data");
+    expect(profile.state_database == service_root / "data" / "state.sqlite3", "service state database is under service data");
+    expect(profile.modules_root == service_root / "data" / "modules", "service modules root is under service data");
+    expect(profile.analytics_event_store == service_root / "data" / "analytics_events.sqlite", "service analytics store is under service data");
+    expect(profile.evidence_snapshots_root == service_root / "evidence" / "snapshots", "service snapshots root is isolated");
+    expect(profile.evidence_clips_root == service_root / "evidence" / "clips", "service clips root is isolated");
 }
 
 void command_line_data_root_wins_over_environment()
 {
     auto env = linux_env();
-    env.environment["OPENIPC_DATA_ROOT"] = "/var/lib/openipc-dashboard";
+    env.environment["OPENIPC_DATA_ROOT"] = (std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-service").string();
 
     openipc::CommandLineOptions options;
-    options.data_root_override = "/srv/openipc-dashboard";
+    const auto command_line_root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-cli";
+    options.data_root_override = command_line_root;
 
     const auto profile = openipc::ApplicationProfile{}.resolve(options, env);
 
     expect(profile.data_root_source == openipc::DataRootSource::CommandLine, "command-line root source is recorded");
-    expect(profile.config_root == "/srv/openipc-dashboard/config", "command-line data root wins over environment");
+    expect(profile.config_root == command_line_root / "config", "command-line data root wins over environment");
 }
 
 void invalid_data_root_is_fatal_without_desktop_fallback()
@@ -186,7 +220,7 @@ void path_normalizer_keeps_dashboard_import_semantics()
 
     expect(normalizer.localPathFromUserInput("relative/archive.zip", env).path == "relative/archive.zip", "path normalizer preserves relative paths");
     expect(normalizer.localPathFromUserInput("file:///home/alice/Videos/cam%201.mp4", env).path == "/home/alice/Videos/cam 1.mp4", "path normalizer decodes local file urls");
-    expect(normalizer.localPathFromUserInput("~/Videos/cam.mp4", env).path == "/home/alice/Videos/cam.mp4", "path normalizer expands tilde");
+    expect(normalizer.localPathFromUserInput("~/Videos/cam.mp4", env).path == *env.home_directory / "Videos" / "cam.mp4", "path normalizer expands tilde");
     expect(normalizer.localPathFromUserInput("C:\\video\\clip.mp4", env).path == "C:\\video\\clip.mp4", "path normalizer preserves windows drive paths");
     expect(normalizer.localPathFromUserInput("mnt/video/clip.mp4", env).path == "/mnt/video/clip.mp4", "path normalizer recovers likely linux absolute paths");
 }

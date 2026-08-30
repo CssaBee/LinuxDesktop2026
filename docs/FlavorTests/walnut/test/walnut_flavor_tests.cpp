@@ -38,6 +38,8 @@ flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesyst
     environment.current_working_directory = root / "workspace";
     environment.home_directory = root / "home";
     environment.environment["XDG_CONFIG_HOME"] = (root / "xdg-config").string();
+    environment.environment["APPDATA"] = (root / "appdata" / "roaming").string();
+    environment.environment["LOCALAPPDATA"] = (root / "appdata" / "local").string();
     environment.environment["VULKAN_SDK"] = (root / "vulkan-sdk").string();
     environment.gpus = {
         {"integrated", false},
@@ -47,6 +49,15 @@ flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesyst
     std::filesystem::create_directories(environment.current_working_directory);
     std::filesystem::create_directories(*environment.home_directory);
     return environment;
+}
+
+std::filesystem::path expected_default_config_root(const std::filesystem::path& root)
+{
+#if defined(_WIN32)
+    return root / "appdata" / "roaming" / "Walnut" / "WalnutSandbox";
+#else
+    return root / "xdg-config" / "Walnut" / "WalnutSandbox";
+#endif
 }
 
 flavor_tests::walnut::BootstrapPlan prepare_default(
@@ -81,8 +92,8 @@ void default_bootstrap_preserves_window_and_resolves_executable_resources()
         "executable root should come from the executable directory");
     require(plan.resource_root == environment.executable_directory,
         "resource root should default beside the executable");
-    require(plan.config_root == root / "xdg-config" / "Walnut" / "WalnutSandbox",
-        "config root should still be resolved through XDG paths");
+    require(plan.config_root == expected_default_config_root(root),
+        "config root should still be resolved through platform user paths");
     require(plan.diagnostics.empty(), "default bootstrap should not expose path diagnostics");
 }
 
