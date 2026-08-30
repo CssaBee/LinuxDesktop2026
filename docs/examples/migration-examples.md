@@ -1,842 +1,677 @@
 # Migration Examples
 
-These examples show the intended shape of application changes when a project adopts LinuxDesktop2026 modules.
+These examples show the intended shape of application changes when a project
+adopts LinuxDesktop2026 modules.
 
-They are not full ports and they are not copied source files. Each "before" block is a short, source-anchored reconstruction of the surrounding control flow found during the survey. Each "after" block performs the same app-level task with the LinuxDesktop2026 module that owns the relevant policy.
+They are not full ports and they are not copied source files. Each example is a
+short, source-anchored reconstruction of the surrounding control flow exercised
+by `docs/FlavorTests`. The goal is to show where a LinuxDesktop2026 call reads
+like a natural platform-mechanism extraction, and where it should stay out of
+the way.
 
 The comments are part of the example style:
 
-- `CHANGE`: replace this platform-specific policy with a LinuxDesktop2026 call.
-- `KEEP`: keep this application behavior in the application.
-- `DEFER`: record the edge case, but do not pretend the first module solves it yet.
+- `CHANGE`: replace repeated platform mechanics with a LinuxDesktop2026 call.
+- `KEEP`: keep product behavior, file formats, UI policy, and public vocabulary
+  in the application.
+- `NOTE`: use the simplest natural product code when a helper would add
+  framework tax.
+- `DEFER`: record an edge case, but do not pretend the current module solves it.
 
-## Example 1: Notepad++ Settings Root Resolution
+## Reading These Examples
 
-Source anchors:
+The FlavorTests now give stronger evidence than the early survey sketches:
 
-- Notepad++ initializes its executable and current-directory roots with Win32 APIs in `NppParameters::NppParameters()`: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L1130
-- Notepad++ resolves its normal settings folder through `SHGetFolderPath(CSIDL_APPDATA)` and falls back to the executable directory: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L1243
-- Notepad++ later applies local mode, cloud choice, and `-settingsDir` priority in `load()`: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L1271
+- `write_common_config()` is a good fit for ordinary durable config saves where
+  the app owns the target path, payload, and validation.
+- `write_with_backup()` should remain available for lower-level seams such as
+  OBS C APIs and Notepad++ session backup restore.
+- `root_request_builder` is useful in Notepad++, qBittorrent, and KiCad, where
+  a chain of app identity, resource root, portable marker, environment, and
+  named-root declarations improves scanning.
+- Direct `root_options` or `ld_paths::resolver_options` are still more natural
+  for products with strong existing root policy, such as KeePassXC, FreeCAD,
+  Walnut, and OpenIPC Dashboard.
+- Migration plans should normally stay inside adapters. Product-facing methods
+  should return product-shaped migration decisions.
+- Rich LinuxDesktop2026 diagnostics should normally be translated before they
+  leave the adapter boundary.
 
-Before, the app owns both the policy and the Windows implementation:
+When a usage does not feel natural, do not contort the product around the tool.
+That is evidence to either improve the API later or avoid the abstraction at
+that seam.
+
+## Example 1: Notepad++ Settings Roots
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/notepadpp/src/notepadpp_flavor.cpp`
+
+Before, the app owns both policy and Windows implementation:
 
 ```cpp
-// Representative shape from Notepad++ settings initialization.
-// The application decides where resources, user settings, and local mode live.
-NppParameters::NppParameters()
-{
-    wchar_t exe_path[MAX_PATH] = {};
-    GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
-    PathRemoveFileSpecW(exe_path);
-    _nppPath = exe_path;
-
-    wchar_t current_dir[MAX_PATH] = {};
-    GetCurrentDirectoryW(MAX_PATH, current_dir);
-    _currentDirectory = current_dir;
-}
-
 bool NppParameters::load()
 {
-    std::wstring local_conf = _nppPath;
-    pathAppend(local_conf, L"doLocalConf.xml");
-
-    _isLocal = doesFileExist(local_conf.c_str());
-    _userPath = getSettingsFolder();
+    _isLocal = doesFileExist((_nppPath + L"\\doLocalConf.xml").c_str());
+    _userPath = _isLocal ? _nppPath : getSettingsFolderFromAppData();
     _sessionPath = _userPath;
-    _userPluginConfDir = _userPath;
-    pathAppend(_userPluginConfDir, L"plugins\\Config");
-
+    _userPluginConfDir = _userPath + L"\\plugins\\Config";
     createMissingSettingsDirectories();
     return loadConfigFiles();
 }
-
-std::wstring NppParameters::getSettingsFolder() const
-{
-    if (_isLocal)
-        return _nppPath;
-
-    auto app_data = getSpecialFolderLocation(CSIDL_APPDATA);
-    if (app_data.empty())
-        return _nppPath;
-
-    return app_data + L"\\Notepad++";
-}
 ```
 
-After, the same task resolves install resources, active config, session, and plugin-config roots through `ld_settings`:
+After, the startup seam declares product policy and lets `ld_settings` resolve
+roots, layers, directories, and diagnostics:
 
 ```cpp
-#include "linuxdesktop/settings.hpp"
-
 namespace ld = linuxdesktop::settings;
 
 bool NppParameters::load()
 {
-    ld::app_identity identity;
-    identity.organization = "Notepad-plus-plus";
-    identity.application = "Notepad++";
-
-    ld::root_options options;
-
-    // KEEP: the app still decides where its install/resource root is.
-    // CHANGE: the library turns that into a stable resources root.
-    options.resource_root = detect_install_root_from_executable();
-
-    // KEEP: Notepad++ owns the marker name and local-mode policy.
-    // CHANGE: the library handles marker existence, directory selection,
-    // XDG/Known Folder defaults, directory creation, and diagnostics.
-    options.portable_marker = *options.resource_root / "doLocalConf.xml";
-    options.portable = ld::portable_level::profile;
-
-    // CHANGE: Program Files/UAC-style portable denial is now a root policy.
-    // KEEP: Notepad++ still decides which install roots count as privileged for
-    // its compatibility rules and installer layout.
-    options.deny_portable_root_in_privileged_install = true;
-    options.privileged_install_roots = detect_privileged_install_roots();
-
-    // KEEP: Notepad++ still owns the cloud-choice file format and validation.
-    // CHANGE: once the app has an absolute sync directory, ld_settings can move
-    // config/plugin config there while keeping state/session local.
-    options.sync_config_override = readCloudChoiceIfPresentAndValid();
-
-    // KEEP: command-line parsing remains app-owned.
-    // CHANGE: a valid override becomes the active config/data/state root and
-    // intentionally wins over portable and sync config roots.
-    options.settings_override = getCommandLineSettingsDirIfPresent();
-
-    // CHANGE: Notepad++ path families become named roots instead of repeated
-    // string concatenation around _userPath/_sessionPath/_userPluginConfDir.
-    options.named_roots = {
-        {"logs", ld::root_purpose::logs,
-            ld::persistence_class::machine_local, "logs", true},
-        {"profiles", ld::root_purpose::profiles,
-            ld::persistence_class::roaming, "profiles", true},
-        {"backup", ld::root_purpose::backup,
-            ld::persistence_class::machine_local, "backup", true},
-        {"plugin-config", ld::root_purpose::plugin_config,
-            ld::persistence_class::roaming, "plugins/Config", true},
-    };
-
-    // CHANGE: plugins can ask for component-scoped config/state roots without
-    // hard-coding Linux or Windows directory layouts.
-    ld::component_root_request compare_plugin;
-    compare_plugin.name = "ComparePlugin";
-    compare_plugin.kind = ld::component_kind::plugin;
-    compare_plugin.roots = {
-        {"config", ld::root_purpose::component_config,
-            ld::persistence_class::roaming, "Config", true},
-        {"state", ld::root_purpose::component_state,
-            ld::persistence_class::machine_local, "State", true},
-    };
-    options.component_roots = {compare_plugin};
-
-    const ld::root_report report = ld::resolve_app_roots(identity, options);
+    const ld::root_report report = ld::root_request_builder()
+        .app("Notepad-plus-plus", "Notepad++")
+        .resource_root(detect_install_root_from_executable())
+        .portable_marker(detect_install_root_from_executable() / "doLocalConf.xml")
+        .portable(ld::portable_level::profile)
+        .deny_portable_root_in_privileged_install(true)
+        .privileged_install_roots(detect_privileged_install_roots())
+        .sync_config_override(read_cloud_choice_if_present_and_valid())
+        .settings_override(get_command_line_settings_dir_if_present())
+        .named_root(ld::make_plugin_config_root_request(
+            "plugin-config", ld::persistence_class::roaming, "plugins/Config"))
+        .named_root(ld::make_log_root_request(
+            "logs", ld::persistence_class::machine_local, "logs"))
+        .resolve();
 
     // KEEP: legacy member names can stay during an incremental port.
-    // CHANGE: assignments now come from portable roots instead of Win32 calls.
     _nppPath = report.roots.resources;
     _userPath = report.roots.config;
     _sessionPath = report.roots.session;
+
     if (const auto* plugin_config = ld::find_named_root(report, "plugin-config"))
         _userPluginConfDir = plugin_config->path;
-    else
-        _userPluginConfDir = report.roots.plugin_config;
 
-    if (const auto* logs = ld::find_named_root(report, "logs"))
-        _logPath = logs->path;
-
-    if (const auto* plugin = ld::find_component_roots(report, "ComparePlugin")) {
-        if (const auto* state = ld::find_component_named_root(*plugin, "state"))
-            registerPluginStateRoot("ComparePlugin", state->path);
-    }
-
-    // CHANGE: the app can now explain the exact read/write layer order.
-    for (const auto& layer : report.layers.active_read_order)
-        logLayer(ld::to_string(layer.kind), ld::to_string(layer.backend), layer.path);
-
-    // KEEP: app logging/UI policy stays app-owned.
+    // KEEP: diagnostics are translated to Notepad++ startup logging/warnings.
     for (const auto& diagnostic : report.diagnostics)
-        log_platform_diagnostic(diagnostic);
+        log_startup_warning(to_notepad_warning(diagnostic));
 
-    // KEEP: loading/parsing Notepad++ config files is still Notepad++ logic.
     return loadConfigFiles();
 }
 ```
 
-The useful abstraction is not "replace `SHGetFolderPath`." It is "resolve the active settings root from install resources, portable marker, command-line override, per-user config, plugin config, state, cache, and diagnostics."
+The useful abstraction is not "replace `SHGetFolderPath`." It is "resolve the
+active settings root from install resources, portable marker, command-line
+override, cloud config, plugin config, state, and diagnostics."
 
-## Example 2: Notepad++ Config Bundle Hydration And Ordered Saves
+## Example 2: Notepad++ Config Bundle And Saves
 
-Source anchors:
+FlavorTest anchor:
 
-- Notepad++ creates or copies per-user XML files such as context menu config before loading them: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L1691
-- Notepad++ treats `session.xml` specially and restores a backup when the session file cannot be loaded: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L1731
-- Notepad++ copies first-run cloud settings only when destination files are missing: https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/Parameters.cpp#L4135
+- `docs/FlavorTests/notepadpp/src/notepadpp_flavor.cpp`
 
-Before, each config file repeats path construction, model-file fallback, copy/generate behavior, parse, and recovery:
+Before, each config file repeats model fallback, copy/generate behavior, parse,
+backup, and replace mechanics:
 
 ```cpp
-// Representative shape from the Notepad++ XML config family.
-std::wstring context_menu = _userPath;
-pathAppend(context_menu, L"contextMenu.xml");
-
-if (!doesFileExist(context_menu.c_str()))
+bool NppParameters::loadConfigFiles()
 {
-    std::wstring model = _nppPath;
-    pathAppend(model, L"contextMenu.xml.model");
+    ensureModelOrGenerate(_userPath / "shortcuts.xml",
+        _nppPath / "shortcuts.model.xml");
+    ensureModelOrGenerate(_userPath / "contextMenu.xml",
+        _nppPath / "contextMenu.model.xml");
 
-    if (doesFileExist(model.c_str()))
-        CopyFileW(model.c_str(), context_menu.c_str(), TRUE);
-    else
-        generateXmlFromScratch(context_menu.c_str(), default_context_menu_xml);
+    if (!load_shortcuts_xml(_userPath / "shortcuts.xml"))
+        return false;
+
+    if (!load_session_xml(_sessionPath / "session.xml"))
+        restore_session_backup_or_start_empty(_sessionPath / "session.xml");
+
+    return true;
 }
-
-auto* document = new NppXml::NewDocument();
-if (!NppXml::loadFileContextMenu(document, context_menu.c_str()))
-{
-    delete document;
-    document = nullptr;
-}
-
-std::wstring session = _sessionPath;
-pathAppend(session, L"session.xml");
-if (!loadSession(session))
-    restoreBackupOrStartEmptySession(session);
 ```
 
-After, the same task ensures missing config defaults, loads the app-owned XML
-documents, and saves the same ordered files with temp-write/replace plus
-backup/validation:
+After, hydration and common saves are shared, while XML semantics remain
+Notepad++ code:
 
 ```cpp
 namespace ld = linuxdesktop::settings;
-namespace ldm = linuxdesktop::migration;
 
 bool NppParameters::loadConfigFiles()
 {
-    ld::hydrate_options defaults;
+    const auto hydrated = ld::ensure_config_defaults({
+        _nppPath,
+        _userPath,
+        {
+            {"langs.xml", "langs.model.xml", true},
+            {"stylers.xml", "stylers.model.xml", true},
+            {"shortcuts.xml", "shortcuts.model.xml", true},
+            {"contextMenu.xml", "contextMenu.model.xml", false},
+        },
+    });
 
-    // KEEP: Notepad++ decides which model files ship with the app.
-    // CHANGE: the library copies missing files and reports skipped/errors.
-    defaults.model_root = _nppPath;
-    defaults.target_root = _userPath;
-    defaults.files = {
-        {"langs.xml", "langs.model.xml", true},
-        {"stylers.xml", "stylers.model.xml", true},
-        {"shortcuts.xml", "shortcuts.model.xml", true},
-        {"contextMenu.xml", "contextMenu.model.xml", false},
-    };
+    log_hydration(to_notepad_hydration(hydrated));
 
-    const ld::hydrate_report hydrated = ld::ensure_config_defaults(defaults);
-    log_hydration(hydrated);
+    // KEEP: parsing, merging, shortcuts, and session semantics are product code.
+    load_langs_xml(_userPath / "langs.xml");
+    load_stylers_xml(_userPath / "stylers.xml");
+    load_shortcuts_xml(_userPath / "shortcuts.xml");
 
-    // KEEP: XML parsing and in-memory menu/shortcut models stay in Notepad++.
-    // CHANGE: missing-file copy/generate policy is no longer repeated per file.
-    if (!load_langs_xml(_userPath / "langs.xml"))
-        return false;
-    if (!load_stylers_xml(_userPath / "stylers.xml"))
-        return false;
-    if (!load_shortcuts_xml(_userPath / "shortcuts.xml"))
-        return false;
-    load_optional_context_menu_xml(_userPath / "contextMenu.xml");
-
-    // KEEP: session recovery semantics are app-owned because Notepad++ knows
-    // what a valid session means.
-    // CHANGE: the session path comes from state/session roots, not AppData.
     if (!load_session_xml(_sessionPath / "session.xml"))
         restore_session_backup_or_start_empty(_sessionPath / "session.xml");
 
     return true;
 }
 
-bool NppParameters::saveConfigFiles()
+bool NppParameters::saveShortcuts()
 {
-    // KEEP: the save order is app behavior. The survey found that order matters.
-    // CHANGE: each write goes to a same-directory temp file first, validates
-    // before commit when a callback is provided, then atomically replaces the target.
-    const auto shortcuts = ld::write_with_backup({
-        _userPath / "shortcuts.xml",
-        serialize_shortcuts_xml(),
-        true
-    });
-
-    const auto config = ld::write_with_backup({
-        _userPath / "config.xml",
-        serialize_config_xml(),
-        true
-    });
-
-    auto validate_session = [](const std::filesystem::path& path, std::string& error) {
-        // KEEP: validation calls back into app parsing logic.
-        return app_can_load_session_xml(path, error);
+    auto validate = [](const std::filesystem::path& path, std::string& error) {
+        return notepad_can_parse_shortcuts(path, error);
     };
 
-    const auto session = ld::write_with_backup({
-        _sessionPath / "session.xml",
-        serialize_session_xml(),
-        true
-    }, validate_session);
+    const auto saved = ld::write_common_config(
+        {_userPath / "shortcuts.xml", render_shortcuts_xml(), true},
+        validate);
 
-    return shortcuts.ok && config.ok && session.ok;
+    return saved.ok;
 }
 ```
 
-The important boundary is that LinuxDesktop2026 does not become Notepad++'s XML engine. It handles the recurring platform-shaped operations: copying missing shipped defaults, missing-file policy, ordered writes, atomic temp-write/replace, backups, validation-before-commit, and structured errors.
+`write_common_config()` is the natural helper for normal Notepad++ saves.
 
-C ABI shape for the same Notepad++ hydration/write task:
-
-```c
-#include "linuxdesktop/settings_c.h"
-
-static int validate_notepad_session(const char* path, char* message, size_t message_size, void* user_data)
+```cpp
+void NppParameters::restoreSessionFromBackup()
 {
-    /* KEEP: validation calls back into Notepad++ session parsing logic. */
-    struct NppParameters* npp = (struct NppParameters*)user_data;
-    if (npp_can_load_session_xml(npp, path)) {
-        return 1;
-    }
-    snprintf(message, message_size, "Notepad++ session XML did not parse");
-    return 0;
-}
+    // NOTE: keep the lower-level API here. This branch deliberately restores
+    // from an existing .bak file and should not create another backup through
+    // the common save facade.
+    ld::write_options options;
+    options.target = _sessionPath / "session.xml";
+    options.content = read_backup_session();
+    options.keep_backup = false;
 
-void hydrate_and_save_config_files(struct NppParameters* npp)
-{
-    struct ld_settings_config_file files[] = {
-        {"langs.xml", "langs.model.xml", 1},
-        {"stylers.xml", "stylers.model.xml", 1},
-        {"shortcuts.xml", "shortcuts.model.xml", 1},
-        {"contextMenu.xml", "contextMenu.model.xml", 0},
-    };
-
-    struct ld_settings_hydrate_options hydrate;
-    struct ld_settings_hydrate_report hydrated = {0};
-    ld_settings_hydrate_options_init(&hydrate);
-
-    /* KEEP: Notepad++ still chooses model and target roots. */
-    /* CHANGE: copy-missing and skipped-existing reporting are reusable. */
-    hydrate.model_root = npp->install_root_utf8;
-    hydrate.target_root = npp->user_root_utf8;
-    hydrate.files = files;
-    hydrate.file_count = sizeof(files) / sizeof(files[0]);
-
-    if (ld_settings_hydrate_config_bundle(&hydrate, &hydrated)) {
-        npp_log_hydration(&hydrated);
-    }
-    ld_settings_free_hydrate_report(&hydrated);
-
-    struct ld_settings_write_options write_options;
-    struct ld_settings_write_report write_report = {0};
-    const char* session_xml = npp_serialize_session_xml(npp);
-    ld_settings_write_options_init(&write_options);
-
-    /* KEEP: Notepad++ owns save order and XML generation. */
-    /* CHANGE: temp-write, backup, replace, and callback validation are shared. */
-    write_options.target = npp->session_xml_utf8;
-    write_options.content = session_xml;
-    write_options.content_size = strlen(session_xml);
-    ld_settings_write_with_backup(&write_options, validate_notepad_session, npp, &write_report);
-    npp_log_write_result(&write_report);
-    ld_settings_free_write_report(&write_report);
+    (void)ld::write_with_backup(options, can_load_session_xml);
 }
 ```
 
-## Example 3: ShareX Personal Path Selection
+## Example 3: Audacity FileConfig Flush
 
-Source anchor:
+FlavorTest anchor:
 
-- ShareX selects a personal folder from sandbox mode, portable CLI flag, portable marker file, registry-backed setting, migrated config file, and directory creation: https://github.com/ShareX/ShareX/blob/develop/ShareX/Program.cs#L447
+- `docs/FlavorTests/audacity/src/audacity_flavor.cpp`
 
-Before, the app mixes user policy, Windows configuration sources, portable mode, migration, and filesystem creation in one startup function:
+Audacity is the cleanest positive save example. Its `FileConfig::Flush()` method
+is already a persistence boundary, so the common helper names exactly what is
+being replaced:
 
-```csharp
-// Representative shape from ShareX personal path selection.
-static void UpdatePersonalPath()
+```cpp
+namespace ld = linuxdesktop::settings;
+
+FlushResult FileConfig::Flush()
 {
-    Sandbox = CLI.IsCommandExist("sandbox");
+    // KEEP: Audacity owns dirty-state checks and config serialization.
+    if (!dirty_)
+        return {true, {}};
 
-    if (Sandbox)
+    auto validate = [](const std::filesystem::path& path, std::string& error) {
+        return config_stream_is_readable(path, error);
+    };
+
+    const auto report = ld::write_common_config(
+        {local_filename_, serialize(), true},
+        validate);
+
+    // KEEP: callers see Audacity vocabulary, not a LinuxDesktop2026 report.
+    if (report.ok)
+        dirty_ = false;
+
+    return to_flush_result(report);
+}
+```
+
+This is the shape to prefer for ordinary validated config writes: product path
+and product validation in, product result out.
+
+## Example 4: qBittorrent Profile Roots
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/qbittorrent/src/qbittorrent_flavor.cpp`
+
+qBittorrent is a good root-builder example because its profile rules are still
+visible after the refactor:
+
+```cpp
+namespace ld = linuxdesktop::settings;
+
+void Profile::init(const RuntimeEnvironment& environment)
+{
+    if (command_line_profile_root_) {
+        // KEEP: qBittorrent policy says --profile wins outright.
+        setProfileRoot(*command_line_profile_root_);
         return;
-
-    if (CLI.IsCommandExist("portable", "p"))
-    {
-        Portable = true;
-        CustomPersonalPath = PortablePersonalFolder;
-        PersonalPathDetectionMethod = "Portable CLI flag";
-    }
-    else if (File.Exists(PortableCheckFilePath))
-    {
-        Portable = true;
-        CustomPersonalPath = PortablePersonalFolder;
-        PersonalPathDetectionMethod = "Portable file";
-    }
-    else if (!string.IsNullOrEmpty(SystemOptions.PersonalPath))
-    {
-        CustomPersonalPath = SystemOptions.PersonalPath;
-        PersonalPathDetectionMethod = "Registry";
-    }
-    else
-    {
-        MigratePersonalPathConfig();
-        CustomPersonalPath = ReadPersonalPathConfig();
     }
 
-    Directory.CreateDirectory(PersonalFolder);
+    const auto executable_root = environment.executable_path.parent_path();
+    const auto portable_marker = executable_root / "profile";
+
+    const ld::root_report report = ld::root_request_builder()
+        .app("qBittorrent", configuration_name())
+        .resource_root(executable_root)
+        .home_directory(environment.home)
+        .environment(environment.variables)
+        .portable_marker(portable_marker)
+        .portable(ld::portable_level::profile)
+        .named_root(ld::make_log_root_request(
+            "logs", ld::persistence_class::machine_local, "logs"))
+        .resolve();
+
+    setProfileRoot(report.roots.config);
+    setFastResumeRoot(report.roots.data / "BT_backup");
+
+    if (const auto* logs = ld::find_named_root(report, "logs"))
+        setLogRoot(logs->path);
 }
 ```
 
-After, the same startup task keeps ShareX-style policy decisions visible while moving root resolution and directory creation into `ld_settings`:
+The split matters: the builder removes request boilerplate, but it does not
+swallow qBittorrent's command-line precedence or `SpecialFolder` vocabulary.
+
+## Example 5: KeePassXC Local Config Migration
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/keepassxc/src/keepassxc_flavor.cpp`
+
+Before, a migration check can be tempted to return the generic plan directly:
+
+```cpp
+linuxdesktop::migration::migration_plan Config::migrateOldLocalConfig()
+{
+    return linuxdesktop::migration::plan_move_file(old_cache_ini, new_state_ini);
+}
+```
+
+That passes mechanics through the product boundary. The FlavorTest now keeps the
+raw plan private and returns a KeePassXC-shaped decision:
+
+```cpp
+namespace ldm = linuxdesktop::migration;
+
+LocalConfigMigration Config::migrateOldLocalConfig()
+{
+    const auto plan = ldm::plan_move_file(old_cache_ini(), local_state_ini());
+
+    LocalConfigMigration result;
+    result.available = !plan.actions.empty();
+    result.dry_run = plan.dry_run;
+    result.source = old_cache_ini();
+    result.target = local_state_ini();
+    result.action_name = "move KeePassXC local settings";
+    result.prompt_user = result.available && target_is_empty();
+    result.blocked = has_error(plan.diagnostics);
+    return result;
+}
+```
+
+`plan_move_file()` is useful here, but only inside the adapter. Callers should
+not need to understand `migration_action_kind` to decide whether to show a
+KeePassXC prompt.
+
+## Example 6: PrusaSlicer Config Defaults And Old Datadir
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/prusaslicer/src/prusaslicer_flavor.cpp`
+
+PrusaSlicer has two natural LinuxDesktop2026 seams: shipped config hydration and
+dry-run migration planning.
 
 ```cpp
 namespace ld = linuxdesktop::settings;
 namespace ldm = linuxdesktop::migration;
 
-void Program::UpdatePersonalPath()
+LoadBundleResult load_config_bundle(const AppConfig& app_config)
 {
-    Sandbox = CLI.IsCommandExist("sandbox");
-
-    ld::root_options options;
-
-    // KEEP: sandbox mode is app policy.
-    // CHANGE: directory creation becomes a switch on the reusable resolver.
-    options.create_directories = !Sandbox;
-
-    // KEEP: ShareX owns the CLI spelling and marker-file convention.
-    // CHANGE: portable root activation is handled by the resolver.
-    if (CLI.IsCommandExist("portable", "p")) {
-        options.settings_override = PortablePersonalFolder;
-        options.portable = ld::portable_level::profile;
-    } else {
-        options.portable_marker = PortableCheckFilePath;
-    }
-
-    // KEEP: legacy registry/config migration is app-owned.
-    // CHANGE: once migrated to a path, the path is just an override.
-    if (!SystemOptions.PersonalPath.empty() && !CLI.IsCommandExist("portable", "p"))
-        options.settings_override = SystemOptions.PersonalPath;
-    else if (!CLI.IsCommandExist("portable", "p"))
-        options.settings_override = ReadPersonalPathConfigIfAbsolute();
-
-    // CHANGE: ShareX path families become named roots. This keeps the old
-    // user-visible behavior but removes Windows-only folder assumptions.
-    options.named_roots = {
-        {"screenshots", ld::root_purpose::data,
-            ld::persistence_class::roaming, "Screenshots", true},
-        {"history", ld::root_purpose::state,
-            ld::persistence_class::machine_local, "History", true},
-        {"logs", ld::root_purpose::logs,
-            ld::persistence_class::machine_local, "Logs", true},
-        {"image-effects", ld::root_purpose::data,
-            ld::persistence_class::roaming, "ImageEffects", true},
+    ld::hydrate_options defaults;
+    defaults.model_root = app_config.resources / "profiles";
+    defaults.target_root = app_config.config_dir;
+    defaults.files = {
+        {"vendor.ini", "vendor.ini", true},
+        {"print.ini", "print.ini", true},
+        {"filament.ini", "filament.ini", false},
     };
 
-    const ld::root_report report = ld::resolve_app_roots(
-        {"ShareX", "ShareX"},
-        options);
+    const auto hydrated = ld::ensure_config_defaults(defaults);
 
-    Portable = report.portable_active;
-    CustomPersonalPath = report.roots.config;
-    PersonalPathDetectionMethod = explain_detection_method(report);
-
-    // KEEP: app-specific migration can still run after root resolution.
-    if (!report.settings_override_active && !report.portable_active)
-        MigratePersonalPathConfig(report.roots.config);
-
-    // CHANGE: ld_migration can now represent the file migration as a dry-run
-    // plan. The app can show this before executing anything.
-    const ldm::migration_plan path_migration =
-        ldm::plan_copy_directory(LegacyPersonalFolder, report.roots.config);
-    ShowMigrationPreview(path_migration);
-
-    // CHANGE: ld_migration::registry can represent Registry snapshots/imports
-    // through C++ calls. The pre-1.0 C ABI remains under ld_settings until
-    // release-candidate cleanup.
-    // DEFER: real Windows verification decides when this is safe to advertise
-    // as shippable Registry migration behavior.
-
-    // KEEP: ShareX decides which files live under the personal root.
-    LoadApplicationConfig(report.roots.config / "ApplicationConfig.json");
-    LoadTaskSettings(report.roots.config / "Tasks");
-    if (const auto* screenshots = ld::find_named_root(report, "screenshots"))
-        ScreenshotManager::SetOutputRoot(screenshots->path);
-    if (const auto* history = ld::find_named_root(report, "history"))
-        HistoryManager::Open(history->path);
+    // KEEP: profile parsing, merging, and vendor metadata stay PrusaSlicer code.
+    return parse_prusa_profiles(app_config.config_dir, hydrated);
 }
-```
 
-This is why the first module keeps diagnostics as first-class output. A migrated app needs to explain whether a path came from CLI, a portable marker, a legacy settings file, XDG defaults, Windows Known Folders, or an ignored invalid override.
-
-The C ABI example that used to live here has been retired. Use
-`linuxdesktop/migration.hpp` directly for ShareX-style migration previews and
-execution.
-
-## Example 4: WinSCP-Style Storage Selection
-
-Source anchors:
-
-- WinSCP documents two major configuration stores: the Windows Registry and INI files: https://winscp.net/eng/docs/config
-- WinSCP exposes storage selection in preferences, including automatic/registry/INI modes: https://winscp.net/eng/docs/ui_pref_storage
-
-Before, the application branches directly on Windows storage mechanisms:
-
-```cpp
-// Representative shape from an app with WinSCP-like storage choices.
-ConfigStorage OpenConfigurationStorage()
+OldDatadirMigration check_old_linux_datadir(const AppConfig& config)
 {
-    if (StorageMode == StorageMode::Registry)
-        return RegistryStorage(HKEY_CURRENT_USER, L"Software\\Vendor\\App");
+    ldm::options options;
+    options.dry_run = true;
+    options.overwrite_existing = false;
 
-    if (StorageMode == StorageMode::IniFile)
-        return IniStorage(GetExecutableDirectory() / L"winscp.ini");
+    const auto plan =
+        ldm::plan_copy_directory(config.old_linux_datadir, config.config_dir, options);
 
-    if (StorageMode == StorageMode::Nul)
-        return NullStorage();
-
-    return RegistryStorage(HKEY_CURRENT_USER, L"Software\\Vendor\\App");
+    // KEEP: translate to a PrusaSlicer prompt decision before returning.
+    return to_old_datadir_migration(plan, "copy PrusaSlicer legacy config");
 }
 ```
 
-After, the same task asks `ld_settings` for the active layers and keeps payload parsing/storage semantics explicit:
+The helper earns its place because it removes repeated copy/backup mechanics
+without owning profile content or prompt policy.
+
+## Example 7: KiCad Named Roots, But Project Backups Stay KiCad
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/kicad/src/kicad_flavor.cpp`
+
+KiCad naturally uses named roots for colors, toolbars, and ordinary settings:
 
 ```cpp
 namespace ld = linuxdesktop::settings;
 
-ConfigStorage OpenConfigurationStorage()
+SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
 {
-    ld::root_options options;
+    const auto report = ld::root_request_builder()
+        .app("KiCad", "KiCad")
+        .home_directory(environment.home)
+        .environment(environment.variables)
+        .named_root(ld::make_config_root_request(
+            "colors", ld::persistence_class::roaming, "colors"))
+        .named_root(ld::make_config_root_request(
+            "toolbars", ld::persistence_class::roaming, "toolbars"))
+        .named_root(ld::make_named_root_request(
+            "project-backups", ld::root_purpose::backup,
+            ld::persistence_class::machine_local, "backups"))
+        .resolve();
 
-    // KEEP: UI preference names and compatibility modes remain app-owned.
-    const auto storage_mode = ReadStorageModeFromCommandLineOrPreferences();
-
-    if (storage_mode == StorageMode::IniFile)
-        options.settings_override = GetExecutableDirectory();
-    if (storage_mode == StorageMode::Portable)
-        options.portable_marker = GetExecutableDirectory() / "winscp.ini";
-
-    const ld::root_report report =
-        ld::resolve_app_roots({"WinSCP", "WinSCP"}, options);
-
-    // CHANGE: read precedence is now visible and cross-platform.
-    for (const auto& layer : report.layers.active_read_order)
-        TraceConfigLayer(ld::to_string(layer.kind), ld::to_string(layer.backend), layer.path);
-
-    if (storage_mode == StorageMode::Nul)
-        return NullStorage();
-
-    if (storage_mode == StorageMode::IniFile) {
-        const auto* write_layer = report.layers.active_write_layer
-            ? &*report.layers.active_write_layer
-            : ld::find_config_layer(report.layers, ld::config_layer_kind::user);
-        if (write_layer == nullptr)
-            throw ConfigError("No writable configuration layer");
-        return IniStorage(write_layer->path / "winscp.ini");
-    }
-
-    // CHANGE: raw Registry and snapshot operations now have C++ and C ABI
-    // entry points.
-    // DEFER: Windows verification is still required before we call the
-    // registry backend shippable.
-    // Linux builds can select file-backed layers instead of pretending HKCU exists.
-    return OpenPlatformRegistryOrFileStorage(report.layers);
+    user_root_ = report.roots.config;
+    colors_root_ = required_named_root(report, "colors");
+    toolbars_root_ = required_named_root(report, "toolbars");
+    backup_root_ = required_named_root(report, "project-backups");
 }
 ```
 
-This example keeps us honest: `ld_settings` should model storage layers and precedence, but it should not force every app into one universal config parser.
-
-The C ABI example that used to live here has been retired. Use
-`linuxdesktop/migration.hpp` for Registry snapshot compatibility and keep the
-storage choice app-owned.
-
-## Example 5: KeePassXC And PortableApps-Style Roots
-
-Source anchors:
-
-- KeePassXC uses Qt-backed config and has to split config-like data from cache/state-like data: https://github.com/keepassxreboot/keepassxc/blob/develop/src/core/Config.cpp
-- PortableApps Launcher has declarative registry key moving support: https://portableapps.com/manuals/PortableApps.comLauncher/ref/launcher.ini/registry.html
-
-Before, a cross-platform app or portable launcher often handles roots and migration in separate ad-hoc systems:
+Project-scoped backups are different:
 
 ```cpp
-// Representative shape from apps that already have some abstraction.
-auto settings = QSettings(QSettings::IniFormat, QSettings::UserScope, org, app);
-auto cache_dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-auto data_dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+std::filesystem::path SETTINGS_MANAGER::GetBackupRootForProject(const Project& project) const
+{
+    // NOTE: do not add a generic LinuxDesktop2026 helper just for this.
+    // KiCad owns project identity, project-file location, backup-location
+    // preferences, and disambiguation rules.
+    if (backup_location_ == BackupLocation::ProjectDir)
+        return project.file.parent_path() / "backups";
 
-PortableRegistry::MoveKeyBeforeRun("HKCU\\Software\\Vendor\\App");
-RunApplication();
-PortableRegistry::MoveKeyAfterRun("HKCU\\Software\\Vendor\\App");
+    return backup_root_ / project.stable_backup_key();
+}
 ```
 
-After, the same task uses general-purpose roots and keeps portable Registry snapshots behind explicit preview/execution gates:
+This is a counter-example against overuse: use named roots for repeated platform
+placement, but keep product-shaped project policy in product code unless more
+flavors repeat the same shape.
+
+## Example 8: OpenRGB Config Roots, JSON Saves, And Autostart
+
+FlavorTest anchor:
+
+- `docs/FlavorTests/openrgb/src/openrgb_flavor.cpp`
+
+OpenRGB has three distinct seams that should stay distinct:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ldp = linuxdesktop::paths;
+namespace lds = linuxdesktop::settings;
+namespace ldd = linuxdesktop::desktop;
 
-void BootstrapConfigAndPortableState()
+void ResourceManager::SetupConfigurationDirectory(RuntimeEnvironment environment)
 {
-    ld::root_options options;
-    options.portable_marker = executableDir() / "portable.txt";
-    options.portable = ld::portable_level::profile;
+    ldp::resolver_options options;
+    options.home_directory = environment.home;
+    options.environment = environment.variables;
 
-    // CHANGE: roaming config and machine-local state/cache are named in one
-    // report, even when the app keeps Qt, INI, JSON, or XML for payloads.
-    options.named_roots = {
-        {"database-settings", ld::root_purpose::config,
-            ld::persistence_class::roaming, "config", true},
-        {"thumbnails", ld::root_purpose::cache,
-            ld::persistence_class::ephemeral, "thumbnails", true},
-        {"crash-state", ld::root_purpose::state,
-            ld::persistence_class::machine_local, "crash-state", true},
+    const auto paths = ldp::resolve_app_paths({"OpenRGB", "OpenRGB"}, options);
+
+    configuration_directory_ = paths.selected.at(ldp::path_family::config);
+    profile_directory_ = configuration_directory_ / "profiles";
+
+    log_candidates(to_openrgb_candidates(paths.candidates));
+}
+
+SaveResult write_json_file(std::filesystem::path path, std::string content)
+{
+    auto validate_json = [](const std::filesystem::path& path, std::string& error) {
+        return openrgb_json_object_is_valid(path, error);
     };
 
-    const ld::root_report report =
-        ld::resolve_app_roots({"KeePassXC", "KeePassXC"}, options);
+    return to_openrgb_save_result(
+        lds::write_common_config({path, std::move(content), true}, validate_json));
+}
 
-    // KEEP: existing settings engine remains app-owned.
-    if (const auto* config = ld::find_named_root(report, "database-settings"))
-        OpenExistingConfigEngine(config->path / "keepassxc.ini");
+AutostartUpdate set_autostart_enabled(bool enabled)
+{
+    ldd::autostart_entry entry;
+    entry.id = "org.openrgb.OpenRGB";
+    entry.display_name = "OpenRGB";
+    entry.executable = current_executable();
+    entry.arguments = {"--startminimized"};
+    entry.enabled = enabled;
 
-    if (const auto* thumbnails = ld::find_named_root(report, "thumbnails"))
-        ThumbnailCache::SetRoot(thumbnails->path);
+    ldd::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
 
-    // CHANGE: the dry-run migration API can carry the dangerous operation as
-    // an inspectable plan instead of running Registry movement implicitly.
-    const ldm::migration_plan registry_plan = ldm::plan_migration({
-        {
-            ldm::migration_action_kind::export_registry,
-            "snapshot app registry before portable run",
-            {},
-            report.roots.state / "registry-snapshot.json",
-            true,
-            false
-        }
-    });
-    ShowMigrationPreview(registry_plan);
-
-    // CHANGE: JSON/.reg snapshot formats now exist, so app-specific
-    // before/after-run policy can be wired around explicit execution:
-    //
-    //   ldm::options execute_options;
-    //   execute_options.dry_run = false;
-    //   execute_options.allow_dangerous = true;
-    //   auto executed = ldm::execute_migration_plan(registry_plan, execute_options);
-    //
-    // DEFER: Windows verification and rollback evidence are still required
-    // before PortableApps-style registry run wrappers are shippable.
-    // The current API intentionally does not fake this with path roots.
+    return to_openrgb_autostart_update(ldd::apply_autostart(entry, options));
 }
 ```
 
-The pattern is the same across surveyed repos: keep the app's data format and compatibility policy, but move repeated platform placement, root families, and layer reporting into LinuxDesktop2026 modules.
+`write_json_file()` is useful product glue. If JSON object saves repeat across
+more products, add a JSON-oriented helper later. Do not push JSON parsing into
+`ld_settings` just because this wrapper is short.
 
-## Example 6: Notepad++ Root Placement With `ld_paths`
+## Example 9: OBS C-Shaped Boundaries
 
-Source anchors:
+FlavorTest anchor:
 
-- Notepad++ initializes executable/current-directory roots and then uses them as resource and fallback settings roots in `PowerEditor/src/Parameters.cpp`.
-- The earlier `ld_settings` example keeps XML parsing and config hydration in `ld_settings`, but the reusable path placement now belongs in `ld_paths`.
+- `docs/FlavorTests/obs/src/obs_flavor.cpp`
 
-Before, the same constructor-level path code tends to mix executable discovery, resource roots, settings fallback, and portable markers:
-
-```cpp
-NppParameters::NppParameters()
-{
-    wchar_t exe_path[MAX_PATH] = {};
-    GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
-    PathRemoveFileSpecW(exe_path);
-    _nppPath = exe_path;
-
-    wchar_t current_dir[MAX_PATH] = {};
-    GetCurrentDirectoryW(MAX_PATH, current_dir);
-    _currentDirectory = current_dir;
-}
-
-bool NppParameters::load()
-{
-    _isLocal = doesFileExist((_nppPath + L"\\doLocalConf.xml").c_str());
-    _userPath = _isLocal ? _nppPath : getSettingsFolder();
-    _sessionPath = _userPath;
-    _userPluginConfDir = _userPath + L"\\plugins\\Config";
-    return loadConfigFiles();
-}
-```
-
-After, `ld_paths` owns placement and `ld_settings` owns config files:
+OBS is the strongest counter-example against leaking C++ reports through a
+product's public seam:
 
 ```cpp
-#include "linuxdesktop/paths.hpp"
-#include "linuxdesktop/settings.hpp"
-
 namespace ldp = linuxdesktop::paths;
 namespace lds = linuxdesktop::settings;
 
-bool NppParameters::load()
+int os_get_config_path(char* dst, size_t size, const char* name)
 {
-    ldp::resolver_options paths;
-    paths.resource_root = DetectInstallRootFromExecutable();
-    paths.legacy_config_files = {paths.resource_root.value() / "doLocalConf.xml"};
-    paths.config_override = GetCommandLineSettingsDirIfPresent();
+    const auto root = resolve_config_root_private();
+    const auto path = root / name;
 
-    const ldp::resolver_report resolved =
-        ldp::resolve_app_paths({"Notepad-plus-plus", "Notepad++"}, paths);
+    // KEEP: OBS callers still use caller-owned buffers and integer status.
+    return copy_to_c_buffer(dst, size, path.string()) ? 0 : -1;
+}
 
-    // CHANGE: executable/resource/config/state/plugin-config placement comes
-    // from a path report that can explain every candidate and fallback.
-    _nppPath = resolved.selected.at(ldp::path_family::resources);
-    _userPath = resolved.selected.at(ldp::path_family::config);
-    _sessionPath = resolved.selected.at(ldp::path_family::state);
-    _userPluginConfDir = _userPath / "plugins" / "Config";
+int config_save_safe(const char* path, const char* data)
+{
+    lds::write_options options;
+    options.target = path;
+    options.content = data;
+    options.keep_backup = true;
+    options.atomic_replace = true;
 
-    // KEEP: settings payload behavior stays in ld_settings and Notepad++.
-    lds::hydrate_options defaults;
-    defaults.model_root = _nppPath;
-    defaults.target_root = _userPath;
-    defaults.files = NotepadConfigModels();
-    LogPathCandidates(resolved.candidates);
-    LogHydration(lds::ensure_config_defaults(defaults));
-
-    return loadConfigFiles();
+    // NOTE: lower-level write_with_backup is intentional. This slice tests
+    // whether C-shaped callers can keep their conventions while the private
+    // implementation delegates platform mechanics.
+    return lds::write_with_backup(options).ok ? 0 : -1;
 }
 ```
 
-`ld_paths` makes the path decision inspectable. Under ADR 0012,
-`ld_settings` keeps config bundle hydration and writes; migration plans and
-Registry snapshot portability move to `ld_migration`; autostart and policy
-effects move to `ld_desktop`.
+The migration lesson is boundary preservation: LinuxDesktop2026 can be a private
+implementation detail even when the public API remains plain C.
 
-## Example 7: OpenRGB XDG Config And Autostart Split
+## Example 10: FreeCAD Environment Overrides
 
-Source anchors:
+FlavorTest anchor:
 
-- OpenRGB resolves `APPDATA`, `XDG_CONFIG_HOME`, `$HOME/.config`, and the `OpenRGB` app config directory in `ResourceManager.cpp`.
-- OpenRGB writes Linux XDG autostart entries in `AutoStart/AutoStart-Linux.cpp`.
+- `docs/FlavorTests/freecad/src/freecad_flavor.cpp`
 
-Before, config roots and autostart roots can look like one platform helper even though they are different policies:
-
-```cpp
-std::filesystem::path GetConfigurationDirectory()
-{
-    if (const char* xdg = std::getenv("XDG_CONFIG_HOME"))
-        return std::filesystem::path(xdg) / "OpenRGB";
-
-    if (const char* home = std::getenv("HOME"))
-        return std::filesystem::path(home) / ".config" / "OpenRGB";
-
-    return std::filesystem::current_path();
-}
-
-void EnableAutostart()
-{
-    auto autostart = GetConfigurationDirectory().parent_path() / "autostart";
-    WriteDesktopFile(autostart / "OpenRGB.desktop", EscapedExecPath());
-}
-```
-
-After, `ld_paths` resolves user roots while desktop registration stays a separate effect:
+FreeCAD already has strong application vocabulary for startup directories:
 
 ```cpp
 namespace ldp = linuxdesktop::paths;
 namespace ldm = linuxdesktop::migration;
-namespace lds = linuxdesktop::settings;
 
-void StartOpenRGB()
+ConfigurationSet ApplicationConfig::build(
+    const RuntimeEnvironment& environment,
+    const CommandLineOptions& options)
 {
-    ldp::resolver_options paths;
-    const ldp::resolver_report resolved =
-        ldp::resolve_app_paths({"OpenRGB", "OpenRGB"}, paths);
+    ConfigurationSet config;
 
-    const auto config_root = resolved.selected.at(ldp::path_family::config);
-    const auto profile_root = config_root / "profiles";
+    // KEEP: FreeCAD owns this precedence. The environment names are product
+    // compatibility, not generic LinuxDesktop2026 policy.
+    config.user_home = first_absolute(options.user_home,
+        environment.value("FREECAD_USER_HOME"),
+        qt_user_home_fallback());
+    config.user_app_data = first_absolute(options.user_data,
+        environment.value("FREECAD_USER_DATA"),
+        qt_app_data_fallback());
+    config.user_temp = first_absolute(options.user_temp,
+        environment.value("FREECAD_USER_TEMP"),
+        system_temp_fallback());
+    config.user_parameter = options.user_cfg.value_or(
+        config.user_app_data / "user.cfg");
 
-    // CHANGE: XDG_CONFIG_HOME, HOME fallback, invalid env values, and selected
-    // roots are visible in the candidate report.
-    LogPathCandidates(resolved.candidates);
+    // NOTE: this resolver call is useful as compatibility evidence only if it
+    // improves diagnostics or candidate reporting. Do not replace the natural
+    // FreeCAD precedence code with a denser generic request object.
+    ldp::resolver_options path_options;
+    path_options.config_override = config.user_home;
+    path_options.data_override = config.user_app_data;
+    path_options.temp_override = config.user_temp;
+    (void)ldp::resolve_app_paths({"FreeCAD", "FreeCAD"}, path_options);
 
-    LoadJson(config_root / "OpenRGB.json");
-    LoadProfiles(profile_root);
+    config.deprecated_path_migration =
+        to_deprecated_path_migration(ldm::plan_copy_directory(
+            deprecated_freecad_path(), config.user_app_data));
 
-    // DEFER: XDG Autostart file writing is a desktop integration effect.
-    // ld_settings may keep autostart temporarily, but ld_paths only gives
-    // the data/config roots needed by that later effect.
-    lds::write_autostart(BuildOpenRGBAutostartEffect(resolved));
+    return config;
 }
 ```
 
-The split prevents `ld_paths` from becoming a hidden desktop-entry generator.
+`write_common_config()` is still natural for `saveUserParameter()`, because that
+method is an ordinary validated XML write. The startup root selection itself is
+more readable when FreeCAD's own precedence remains direct.
 
-## Example 8: FreeCAD Environment Overrides
+## Example 11: Walnut Lightweight App Bootstrap
 
-Source anchors:
+FlavorTest anchor:
 
-- FreeCAD resolves `FREECAD_USER_HOME`, `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`, Qt standard locations, executable paths, and install roots in `src/App/ApplicationDirectories.cpp`.
+- `docs/FlavorTests/walnut/src/walnut_flavor.cpp`
 
-Before, application directory code has to interleave environment overrides, runtime roots, and migration compatibility:
-
-```cpp
-ApplicationDirectories dirs;
-dirs.user_home = getenvPath("FREECAD_USER_HOME");
-dirs.user_data = getenvPath("FREECAD_USER_DATA");
-dirs.user_temp = getenvPath("FREECAD_USER_TEMP");
-
-if (dirs.user_data.empty())
-    dirs.user_data = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-
-dirs.executable = FindExecutablePath();
-dirs.resource_root = GuessResourceRoot(dirs.executable);
-MigrateOldConfigIfNeeded(dirs);
-```
-
-After, `ld_paths` turns overrides and fallback roots into a report, while migration remains separate:
+Walnut uses LinuxDesktop2026 only where it needs ordinary paths:
 
 ```cpp
 namespace ldp = linuxdesktop::paths;
-namespace lds = linuxdesktop::settings;
 
-void InitializeFreeCADDirectories()
+BootstrapPlan ApplicationBootstrap::prepare(
+    ApplicationSpecification specification,
+    RuntimeEnvironment environment,
+    LaunchOptions launch)
 {
-    ldp::resolver_options paths;
-    paths.environment_overrides = {
-        {"FREECAD_USER_HOME", ldp::path_family::config},
-        {"FREECAD_USER_DATA", ldp::path_family::data},
-        {"FREECAD_USER_TEMP", ldp::path_family::temp},
-    };
-    paths.resource_root = InferFreeCADResourceRoot();
+    BootstrapPlan plan;
+    plan.entry_point = select_entry_point(specification, launch);
+    plan.renderer = inspect_renderer_capabilities(environment);
 
-    const auto resolved = ldp::resolve_app_paths({"FreeCAD", "FreeCAD"}, paths);
+    ldp::resolver_options options;
+    options.executable_path = environment.executable_path;
+    options.resource_root = environment.executable_path.parent_path();
+    options.environment = environment.variables;
 
-    App::SetUserConfigRoot(resolved.selected.at(ldp::path_family::config));
-    App::SetUserDataRoot(resolved.selected.at(ldp::path_family::data));
-    App::SetTempRoot(resolved.selected.at(ldp::path_family::temp));
-    App::SetResourceRoot(resolved.selected.at(ldp::path_family::resources));
+    const auto paths = ldp::resolve_app_paths({"Walnut", specification.name}, options);
 
-    // KEEP: versioned migration rules stay with settings/app code.
-    const auto migration = ldm::plan_migration(BuildFreeCADMigration(resolved));
-    ShowMigrationPreview(migration);
+    plan.resource_root = paths.selected.at(ldp::path_family::resources);
+    plan.config_root = paths.selected.at(ldp::path_family::config);
+    plan.diagnostics = to_walnut_diagnostics(paths.diagnostics);
+    return plan;
 }
 ```
 
-The important part is not replacing Qt. It is making environment-selected roots, fallback choices, and partial failures visible to users and support logs.
+This is negative evidence for `root_request_builder`. A graphics app bootstrap
+with executable-adjacent resources reads more naturally with direct `ld_paths`
+options than with settings-oriented root vocabulary.
 
-## Example 9: Carla Plugin Path Sets
+## Example 12: OpenIPC Dashboard Service Profile
 
-Source anchors:
+FlavorTest anchor:
 
-- Carla defines platform-specific plugin paths for LADSPA, DSSI, LV2, VST2, VST3, CLAP, SF2, SFZ, and JSFX in `source/frontend/carla_shared.py` and `source/frontend/pluginlist/pluginlistdialog.cpp`.
+- `docs/FlavorTests/openipc_dashboard/src/openipc_dashboard_flavor.cpp`
 
-Before, every plugin family tends to carry its own default list and environment parsing:
+Dashboard can use `ld_paths` for ordinary desktop defaults:
 
 ```cpp
-std::vector<std::filesystem::path> vst3Paths()
+namespace ldp = linuxdesktop::paths;
+
+ApplicationProfile ApplicationProfile::desktop(RuntimeEnvironment environment)
 {
-    auto paths = SplitEnv("VST3_PATH");
-    paths.push_back("~/.vst3");
-    paths.push_back("/usr/lib/vst3");
-    paths.push_back("/usr/local/lib/vst3");
-    AddWinePrefixVst3Paths(paths);
-    return Normalize(paths);
+    ldp::resolver_options resolver;
+    resolver.home_directory = environment.home;
+    resolver.environment = environment.variables;
+
+    const auto paths = ldp::resolve_app_paths(
+        {"OpenIPC", "OpenIPC Dashboard"},
+        resolver);
+
+    ApplicationProfile profile;
+    profile.kind = ProfileKind::Desktop;
+    profile.config_root = paths.selected.at(ldp::path_family::config);
+    profile.data_root = paths.selected.at(ldp::path_family::data);
+    profile.diagnostics = to_dashboard_diagnostics(paths.diagnostics);
+    return profile;
 }
 ```
 
-After, `ld_paths` resolves typed search roots without claiming to load plugins:
+The service profile should stay product-owned:
+
+```cpp
+ApplicationProfile ApplicationProfile::service(ServiceOptions options)
+{
+    const auto root = require_absolute_data_root(options.data_root);
+
+    // NOTE: do not flatten this into a generic "data override" helper.
+    // One absolute root selects a whole Dashboard service profile with browser,
+    // administrator-bootstrap, evidence, analytics, user, module, state, and
+    // logging contracts.
+    ApplicationProfile profile;
+    profile.kind = ProfileKind::Service;
+    profile.config_root = root / "config";
+    profile.data_root = root / "data";
+    profile.evidence_root = root / "evidence";
+    profile.analytics_root = root / "analytics";
+    profile.user_root = root / "users";
+    profile.module_root = root / "modules";
+    profile.log_root = root / "logs";
+    return profile;
+}
+```
+
+As a reference case, Dashboard says LinuxDesktop2026 should adapt around Qt
+application lifecycle, QSettings mechanics, QML startup, web routing, and event
+loop ownership instead of competing with them.
+
+## Example 13: Carla Plugin Path Sets
+
+Survey anchor:
+
+- `docs/survey/ld-paths-application-audit.md`
+
+Some path work is not settings work at all. Plugin hosts need typed search
+roots, not config files:
 
 ```cpp
 namespace ldp = linuxdesktop::paths;
@@ -863,77 +698,37 @@ void RefreshCarlaPluginSearchRoots()
     for (const auto& set : report.sets)
         PluginScanner::SetSearchRoots(set.kind, set.paths);
 
-    LogPathCandidates(report.candidates);
-
     // KEEP: scanning, binary loading, plugin ABI, sandboxing, and host policy
-    // remain Carla or future ld_dynlib/plugin-host work.
+    // remain Carla or future plugin-host work.
 }
 ```
 
-This is the clearest reason `ld_paths` cannot stop at config/cache/state roots.
-
-## Example 10: Extract `ld_settings` Root Logic Into `ld_paths`
-
-Source anchors:
-
-- The current LinuxDesktop2026 `ld_settings` sample resolves roots directly before hydrating bundles, writing config, and planning migrations.
-- The `ld_paths` roadmap says to keep that resolver until `ld_paths` has tests and install-tree consumer coverage.
-
-Before extraction, `ld_settings` owns both placement and settings behavior:
-
-```cpp
-namespace linuxdesktop::settings {
-
-root_report resolve_app_roots(app_identity identity, root_options options)
-{
-    root_report report;
-    report.roots.config = ResolveXdgOrKnownFolderConfig(identity, options);
-    report.roots.data = ResolveXdgOrKnownFolderData(identity, options);
-    report.roots.state = ResolveStateRoot(identity, options);
-    report.roots.cache = ResolveCacheRoot(identity, options);
-    report.roots.resources = ResolveResourceRoot(options);
-    report.layers = BuildConfigLayers(report.roots, options);
-    return report;
-}
-
-}
-```
-
-After extraction, `ld_settings` asks `ld_paths` for placement and keeps settings-specific work:
-
-```cpp
-namespace linuxdesktop::settings {
-
-root_report resolve_app_roots(app_identity identity, root_options options)
-{
-    paths::resolver_options path_options;
-    path_options.config_override = options.settings_override;
-    path_options.resource_root = options.resource_root;
-    path_options.legacy_config_files = BuildLegacyMarkers(options);
-
-    const paths::resolver_report paths =
-        paths::resolve_app_paths(ToPathIdentity(identity), path_options);
-
-    root_report report;
-    report.roots.config = paths.selected.at(paths::path_family::config);
-    report.roots.data = paths.selected.at(paths::path_family::data);
-    report.roots.state = paths.selected.at(paths::path_family::state);
-    report.roots.cache = paths.selected.at(paths::path_family::cache);
-    report.roots.resources = paths.selected.at(paths::path_family::resources);
-    report.diagnostics = MergeDiagnostics(paths.diagnostics, SettingsDiagnostics(options));
-    report.layers = BuildConfigLayers(report.roots, options);
-    return report;
-}
-
-}
-```
-
-The extraction is deliberately delayed until `ld_paths` has its own resolver tests, demo, CMake target, and install-tree consumer test.
+This is why `ld_paths` cannot stop at config/cache/state roots. It also shows
+the limit: resolving paths is not the same as loading plugins.
 
 ## What These Examples Prove
 
-- LinuxDesktop2026 modules should expose policy-level operations, not raw wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`, `CopyFile`, or XDG environment parsing.
-- `ld_paths` should own path families, path lists, executable/resource roots, candidate reports, and typed plugin path sets.
-- `ld_settings` should own config bundles and writes. Generic root policy belongs to `ld_paths`; migration behavior and app-settings Registry portability belong to `ld_migration`; autostart, policy, and other desktop integration effects belong to `ld_desktop`.
-- Users should see small application changes: declare identity, declare overrides/portable markers, inspect path and layer reports, hydrate a bundle, write with backup/validation, then keep app-specific parsing in the app.
-- AI agents should have enough surrounding code to recognize the migration seam and propose a safe incremental patch instead of trying to port an entire GUI at once.
+- LinuxDesktop2026 modules should expose policy-level operations, not raw
+  wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`,
+  `CopyFile`, Qt, XDG environment parsing, or desktop-file text.
+- `ld_paths` should own path families, candidate reports, executable/resource
+  roots, user directories, path lists, and typed plugin path sets.
+- `ld_settings` should own config-default hydration and config writes. Generic
+  root placement increasingly belongs to `ld_paths`; migration behavior belongs
+  to `ld_migration`; autostart, policy, and desktop effects belong to
+  `ld_desktop`.
+- `write_common_config()` has enough positive FlavorTest evidence to be the
+  default recommendation for ordinary validated config saves.
+- `root_request_builder` remains experimental. Use it where it clarifies a
+  cluster of settings-root mechanics, and avoid it where direct product code is
+  clearer.
+- Raw migration plans and rich diagnostics should usually stay internal to
+  adapters. Product-facing methods should return product-shaped save results,
+  migration prompts, warnings, or logs.
+- Counter-examples matter. OBS, Walnut, FreeCAD, KiCad project backups, and
+  OpenIPC Dashboard service profiles all show places where the simplest natural
+  solution is to keep product code in charge and use LinuxDesktop2026 narrowly,
+  or not at all.
+- AI agents should have enough surrounding code to recognize the migration seam
+  and propose a safe incremental patch instead of trying to port an entire GUI
+  or replace a toolkit-owned lifecycle.
