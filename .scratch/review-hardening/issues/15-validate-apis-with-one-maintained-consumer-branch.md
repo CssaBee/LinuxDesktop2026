@@ -7,11 +7,11 @@ extractions.
 
 **Blocked by:** 14 — Add Adversarial Parser And Filesystem Tests.
 
-**Status:** waiting-for-maintained-branch
+**Status:** maintained-branch-evidence-in-progress
 
 - [x] The repository names the first maintained consumer target, branch shape,
   validation gates, and evidence ledger outside the local FlavorTests.
-- [ ] A small Notepad++ proof branch or another real maintained application
+- [x] A small Notepad++ proof branch or another real maintained application
   branch uses the current libraries without product code adapting around library
   weaknesses.
 - [ ] The branch is built regularly enough to expose merge/rebase friction,
@@ -28,5 +28,9 @@ Implementation note:
 `docs/consumer-branches/README.md` and
 `docs/consumer-branches/notepadpp-settings-proof.md` now define the first
 maintained branch contract, the evidence cadence, and the validation gates. This
-ticket remains open until the external branch exists and records real build,
-rebase, dependency, compile, and API-friction evidence.
+ticket remains open until the external branch records regular build, rebase,
+dependency, compile, and API-friction evidence. The local cross-port branch now
+contains a passing `linuxdesktop2026_notepadpp_settings_proof` target at commit
+`5f6457cb5`; it configures against a staged LinuxDesktop2026 CMake package,
+links exported targets, and exercises root resolution, model hydration,
+validated config writes, and migration planning.

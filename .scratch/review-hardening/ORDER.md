@@ -10,7 +10,7 @@ list below.
 2. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
 3. `17` - Reopen Roadmap Only From Consumer Evidence
 
-## Waiting For External Evidence
+## Maintained Consumer Evidence In Progress
 
 - `15` - Validate APIs With One Maintained Consumer Branch
 
@@ -33,7 +33,7 @@ cross-port reviews use source anchors and paraphrased lessons, not copied
 upstream code snippets.
 
 The project can now expand portability evidence, make watch-backend decisions,
-and reopen roadmap claims only from consumer evidence. Task 15 stays open until
-the Notepad++ settings proof branch records real build, rebase, dependency,
-compile, and API-friction evidence; local FlavorTests are not enough to close
-it.
+and reopen roadmap claims only from consumer evidence. Task 15 has its first
+local cross-port proof target, but stays open until the Notepad++ settings proof
+branch records regular build, rebase, dependency, compile, and API-friction
+evidence; local FlavorTests are not enough to close it.

@@ -70,6 +70,33 @@ The branch is not considered validated until all of these are true:
 The current in-tree Notepad++ FlavorTest is only a preparation signal; it does
 not satisfy this ticket by itself.
 
+### 2026-08-30 Task 15 Proof Target
+
+- LinuxDesktop2026 commit: `83e9215`
+- Cross-port branch commit: `5f6457cb5`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: installed/staged CMake package via
+  `LinuxDesktop2026_DIR=../LinuxDesktop2026/build/task15-proof-package/lib/cmake/LinuxDesktop2026`
+- Build result: `cmake --build ... --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
+- Test result: `ctest --test-dir build --output-on-failure` passed, 1/1
+- Flows exercised: Notepad++-named settings root resolution, session root
+  resolution, plugin-config root resolution, default XML model hydration,
+  backup-preserving validated config write, and dry-run legacy config migration
+  planning
+- Include/link evidence: proof target links only exported
+  `LinuxDesktop2026::ld_settings` and `LinuxDesktop2026::ld_migration`; include
+  paths and transitive dependencies came from the package targets
+- API friction found: no blocking friction in this first pass; the
+  `ldm::plan_copy` helper was the right shape for product code that should not
+  specify kind/name manually
+- Disposition: satisfies the first maintained-branch existence/build gate, but
+  does not yet satisfy the rebase-cadence gate
+
 ## API Pain Log
 
-No maintained-branch pain points have been recorded yet.
+No blocking maintained-branch pain points have been recorded yet. The first
+proof pass did reinforce that path-kind inference helpers such as
+`ldm::plan_copy` are important for consumer ergonomics; forcing Notepad++ code
+to fill action kind/name fields directly would have created avoidable product
+adapter code.
