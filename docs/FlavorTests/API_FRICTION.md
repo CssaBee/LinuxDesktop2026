@@ -347,6 +347,10 @@ Helper assessment:
 - The existing `ld_paths` API is enough for the first Walnut slice. A narrower
   diagnostics helper is not justified yet because Walnut's value is precisely
   that it does not need the heavier settings-root model.
+- The former private FlavorTest `platform_paths.hpp` gap is closed for Walnut:
+  deterministic user roots now flow through the generated public path-default
+  helper and normal resolver options instead of test-only XDG/AppData
+  environment scaffolding.
 - This slice is useful negative evidence for `root_request_builder`: graphics
   app bootstrap with executable-adjacent assets reads more naturally with direct
   path resolver options than with the settings-oriented root helper.
@@ -387,6 +391,10 @@ Helper assessment:
   A helper that only says "data override" would be too weak for Dashboard
   because the override selects a whole isolated service profile with multiple
   subordinate roots and browser-facing security constraints.
+- The former private FlavorTest `platform_paths.hpp` gap is closed for the
+  desktop profile: generated public platform defaults now provide deterministic
+  config/data/state/runtime roots without exposing raw LinuxDesktop2026 reports
+  at Dashboard boundaries.
 - A future profile helper may be worth considering only if more FlavorTests need
   to express "one absolute root selects a named service profile with app-owned
   child layout" without leaking LinuxDesktop2026 reports.
@@ -414,3 +422,7 @@ Helper assessment:
 - Treat Walnut as a lightweight graphics-app reference slice for path and
   lifecycle seams, not as evidence that LinuxDesktop2026 has solved Vulkan,
   GLFW, or renderer ownership.
+- Keep FlavorTests honest about consumer ergonomics. Walnut and OpenIPC
+  Dashboard now use public runtime/CMake path defaults, so future FlavorTests
+  should not add private path-default policy helpers to make product adapters
+  look easier than installed users would experience.

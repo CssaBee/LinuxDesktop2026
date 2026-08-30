@@ -183,6 +183,8 @@ write_basic_package_version_file(
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/LinuxDesktop2026Config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/LinuxDesktop2026ConfigVersion.cmake"
+    cmake/LinuxDesktop2026PathDefaults.cmake
+    cmake/LinuxDesktop2026PathDefaults.hpp.in
     DESTINATION ${LD2026_INSTALL_CMAKEDIR}
 )
 

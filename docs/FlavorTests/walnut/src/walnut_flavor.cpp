@@ -1,5 +1,7 @@
 #include "walnut_flavor.hpp"
 
+#include "walnut/generated/platform_path_defaults.hpp"
+
 #include "linuxdesktop/paths.hpp"
 
 #include <algorithm>
@@ -81,6 +83,11 @@ BootstrapPlan ApplicationBootstrap::prepare(
     options.home_directory = environment.home_directory;
     options.environment = environment.environment;
     options.use_process_environment = false;
+    if (environment.home_directory) {
+        options.platform_defaults = linuxdesktop2026::generated::platform_path_defaults_for_home(
+            *environment.home_directory,
+            environment.runtime_directory);
+    }
 
     const auto paths = ldp::resolve_app_paths(identity, options);
 

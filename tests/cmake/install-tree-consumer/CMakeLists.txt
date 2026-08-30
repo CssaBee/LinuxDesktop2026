@@ -13,6 +13,8 @@ target_link_libraries(ld_settings_consumer
         LinuxDesktop2026::ld_paths
         LinuxDesktop2026::ld_watch
 )
+linuxdesktop2026_generate_path_defaults(ld_settings_consumer
+    HEADER linuxdesktop2026_install_tree/path_defaults.hpp)
 
 add_executable(ld_paths_c_consumer paths_c_main.c)
 target_link_libraries(ld_paths_c_consumer

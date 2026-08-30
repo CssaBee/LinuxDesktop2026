@@ -72,7 +72,7 @@ int family_to_c(ld::path_family value)
 
 ld::candidate_source source_from_c(int value)
 {
-    if (value < LD_PATHS_SOURCE_EXPLICIT_OPTION || value > LD_PATHS_SOURCE_FALLBACK) {
+    if (value < LD_PATHS_SOURCE_EXPLICIT_OPTION || value > LD_PATHS_SOURCE_PLATFORM_DEFAULT) {
         return ld::candidate_source::fallback;
     }
     return static_cast<ld::candidate_source>(value);
@@ -213,6 +213,31 @@ std::optional<std::filesystem::path> optional_path(const char* value)
     return std::filesystem::path(value);
 }
 
+std::optional<ld::platform_path_defaults> platform_defaults_from_c(
+    const ld_paths_resolver_options& options)
+{
+    ld::platform_path_defaults defaults;
+    bool has_default = false;
+
+    auto assign_path = [&has_default](std::optional<std::filesystem::path>& target, const char* value) {
+        target = optional_path(value);
+        has_default = has_default || target.has_value();
+    };
+
+    assign_path(defaults.xdg_config_home, options.xdg_config_home_default);
+    assign_path(defaults.xdg_data_home, options.xdg_data_home_default);
+    assign_path(defaults.xdg_state_home, options.xdg_state_home_default);
+    assign_path(defaults.xdg_cache_home, options.xdg_cache_home_default);
+    assign_path(defaults.xdg_runtime_dir, options.xdg_runtime_dir_default);
+    assign_path(defaults.windows_roaming_appdata, options.windows_roaming_appdata_default);
+    assign_path(defaults.windows_local_appdata, options.windows_local_appdata_default);
+
+    if (!has_default) {
+        return std::nullopt;
+    }
+    return defaults;
+}
+
 ld::path_list_options path_list_options_from_c(const ld_paths_path_list_options& options)
 {
     ld::path_list_options result;
@@ -324,6 +349,7 @@ int ld_paths_resolve_app_paths(
         resolver_options.install_prefix = optional_path(options->install_prefix);
         resolver_options.executable_path = optional_path(options->executable_path);
         resolver_options.home_directory = optional_path(options->home_directory);
+        resolver_options.platform_defaults = platform_defaults_from_c(*options);
         resolver_options.environment = environment_from_c(options->environment, options->environment_count);
         resolver_options.use_process_environment = options->use_process_environment != 0;
 

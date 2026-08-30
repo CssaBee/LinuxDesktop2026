@@ -10,6 +10,7 @@ set(LD2026_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(LD2026_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory("${FLAVORTESTS_LD2026_ROOT}" linuxdesktop2026-build EXCLUDE_FROM_ALL)
+include("${FLAVORTESTS_LD2026_ROOT}/cmake/LinuxDesktop2026PathDefaults.cmake")
 
 function(add_flavor_product PRODUCT)
     add_library(${PRODUCT}_flavor_support STATIC
@@ -19,7 +20,6 @@ function(add_flavor_product PRODUCT)
     target_include_directories(${PRODUCT}_flavor_support
         PUBLIC
             ${CMAKE_CURRENT_LIST_DIR}/${PRODUCT}/src
-            ${CMAKE_CURRENT_LIST_DIR}/support
     )
 
     target_compile_features(${PRODUCT}_flavor_support PUBLIC cxx_std_17)
@@ -29,6 +29,9 @@ function(add_flavor_product PRODUCT)
             LinuxDesktop2026::ld_migration
             LinuxDesktop2026::ld_settings
     )
+    linuxdesktop2026_generate_path_defaults(
+        ${PRODUCT}_flavor_support
+        HEADER ${PRODUCT}/generated/platform_path_defaults.hpp)
 
     add_executable(${PRODUCT}_flavor_tests
         ${PRODUCT}/test/${PRODUCT}_flavor_tests.cpp

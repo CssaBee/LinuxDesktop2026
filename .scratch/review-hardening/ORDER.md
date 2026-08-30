@@ -6,13 +6,13 @@ list below.
 
 ## Current Order
 
-- `38` - Mirror Platform Path Defaults In C ABI
-- `39` - Add Consumer CMake Path Default Generation
-- `40` - Remove Private FlavorTest Platform Path Helper
 - `41` - Document Platform Path Defaults Evidence
 
 ## Implemented
 
+- `40` - Remove Private FlavorTest Platform Path Helper
+- `39` - Add Consumer CMake Path Default Generation
+- `38` - Mirror Platform Path Defaults In C ABI
 - `37` - Add Runtime Platform Path Defaults
 
 ## Maintained Consumer Evidence In Progress

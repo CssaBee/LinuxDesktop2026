@@ -1,5 +1,7 @@
 #include "openipc_dashboard_flavor.hpp"
 
+#include "openipc_dashboard/generated/platform_path_defaults.hpp"
+
 #include "linuxdesktop/paths.hpp"
 
 #include <algorithm>
@@ -192,6 +194,11 @@ ApplicationProfileResult ApplicationProfile::resolve(
     resolver.executable_path = environment.executable_directory / "openipc-dashboard";
     resolver.environment = environment.environment;
     resolver.use_process_environment = false;
+    if (environment.home_directory) {
+        resolver.platform_defaults = linuxdesktop2026::generated::platform_path_defaults_for_home(
+            *environment.home_directory,
+            environment.runtime_directory);
+    }
 
     const auto report = ldp::resolve_app_paths(identity, resolver);
     profile.runtime_root = selected_or_empty(report, ldp::path_family::runtime);

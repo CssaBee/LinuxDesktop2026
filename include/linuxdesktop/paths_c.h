@@ -57,7 +57,8 @@ enum ld_paths_candidate_source {
     LD_PATHS_SOURCE_EXECUTABLE_RELATIVE = 5,
     LD_PATHS_SOURCE_LEGACY = 6,
     LD_PATHS_SOURCE_SITE_DEFAULT = 7,
-    LD_PATHS_SOURCE_FALLBACK = 8
+    LD_PATHS_SOURCE_FALLBACK = 8,
+    LD_PATHS_SOURCE_PLATFORM_DEFAULT = 9
 };
 
 enum ld_paths_plugin_path_kind {
@@ -114,6 +115,17 @@ struct ld_paths_resolver_options {
     size_t environment_count;
     int use_process_environment;
     const char* runtime_override;
+
+    /* Platform defaults are lower precedence than explicit overrides,
+       environment entries, process environment, and OS APIs. They are used
+       only when the platform-owned root is otherwise unavailable. */
+    const char* xdg_config_home_default;
+    const char* xdg_data_home_default;
+    const char* xdg_state_home_default;
+    const char* xdg_cache_home_default;
+    const char* xdg_runtime_dir_default;
+    const char* windows_roaming_appdata_default;
+    const char* windows_local_appdata_default;
 };
 
 struct ld_paths_resolver_report {

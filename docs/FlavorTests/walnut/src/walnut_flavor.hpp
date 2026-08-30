@@ -24,6 +24,7 @@ struct RuntimeEnvironment {
     std::filesystem::path executable_directory;
     std::filesystem::path current_working_directory;
     std::optional<std::filesystem::path> home_directory;
+    std::optional<std::filesystem::path> runtime_directory;
     std::map<std::string, std::string> environment;
     bool glfw_initializes = true;
     bool vulkan_supported = true;

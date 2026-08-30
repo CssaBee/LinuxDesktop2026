@@ -1,7 +1,5 @@
 #include "walnut_flavor.hpp"
 
-#include "platform_paths.hpp"
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -33,14 +31,27 @@ std::filesystem::path test_root()
     return root;
 }
 
+struct deterministic_user {
+    std::filesystem::path home;
+    std::filesystem::path runtime;
+};
+
+deterministic_user make_deterministic_user(const std::filesystem::path& root)
+{
+    return {
+        root / "home" / "alice",
+        root / "run" / "user" / "1000",
+    };
+}
+
 flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesystem::path& root)
 {
     flavor_tests::walnut::RuntimeEnvironment environment;
-    const auto user = flavor_tests::support::make_fake_user_environment(root);
+    const auto user = make_deterministic_user(root);
     environment.executable_directory = root / "bin";
     environment.current_working_directory = root / "workspace";
     environment.home_directory = user.home;
-    environment.environment = user.variables;
+    environment.runtime_directory = user.runtime;
     environment.environment["VULKAN_SDK"] = (root / "vulkan-sdk").string();
     environment.gpus = {
         {"integrated", false},
@@ -54,11 +65,12 @@ flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesyst
 
 std::filesystem::path expected_default_config_root(const std::filesystem::path& root)
 {
-    return flavor_tests::support::resolved_user_root(
-        {"Walnut", "WalnutSandbox"},
-        flavor_tests::support::make_fake_user_environment(root),
-        linuxdesktop::paths::path_family::config,
-        root / "bin" / "WalnutSandbox");
+    const auto user = make_deterministic_user(root);
+#if defined(_WIN32)
+    return user.home / "AppData" / "Roaming" / "Walnut" / "WalnutSandbox";
+#else
+    return user.home / ".config" / "Walnut" / "WalnutSandbox";
+#endif
 }
 
 flavor_tests::walnut::BootstrapPlan prepare_default(

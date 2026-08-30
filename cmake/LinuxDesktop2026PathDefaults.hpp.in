@@ -1,0 +1,19 @@
+#pragma once
+
+#include "linuxdesktop/paths.hpp"
+
+#include <filesystem>
+#include <optional>
+#include <utility>
+
+namespace linuxdesktop2026::generated {
+
+inline ::linuxdesktop::paths::platform_path_defaults platform_path_defaults_for_home(
+    const std::filesystem::path& home,
+    std::optional<std::filesystem::path> runtime = std::nullopt)
+{
+@LD2026_PATH_DEFAULTS_RUNTIME_UNUSED@
+@LD2026_PATH_DEFAULTS_FACTORY@
+}
+
+} // namespace linuxdesktop2026::generated

@@ -21,6 +21,7 @@ struct CommandLineOptions {
 
 struct RuntimeEnvironment {
     std::optional<std::filesystem::path> home_directory;
+    std::optional<std::filesystem::path> runtime_directory;
     std::filesystem::path executable_directory;
     std::map<std::string, std::string> environment;
     std::string platform_name = "linux";

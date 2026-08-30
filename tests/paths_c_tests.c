@@ -52,6 +52,36 @@ static const char* selected_path(const struct ld_paths_resolver_report* report, 
     return NULL;
 }
 
+static int has_candidate(
+    const struct ld_paths_resolver_report* report,
+    int family,
+    int source,
+    int selected)
+{
+    size_t i;
+    for (i = 0; i < report->candidate_count; ++i) {
+        if (report->candidates[i].family == family &&
+            report->candidates[i].source == source &&
+            report->candidates[i].selected == selected) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int has_diagnostic_code(
+    const struct ld_paths_resolver_report* report,
+    const char* code)
+{
+    size_t i;
+    for (i = 0; i < report->diagnostic_count; ++i) {
+        if (report->diagnostics[i].code && strcmp(report->diagnostics[i].code, code) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static const struct ld_paths_plugin_path_set* plugin_set(
     const struct ld_paths_plugin_path_report* report,
     const char* name)
@@ -76,6 +106,7 @@ int main(void)
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES), "templates") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_RUNTIME), "runtime") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR), "xdg_base_dir") != 0 ||
+        strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_PLATFORM_DEFAULT), "platform_default") != 0 ||
         strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0) {
         fprintf(stderr,
             "name smoke failed: config=%s templates=%s source=%s plugin=%s\n",
@@ -90,7 +121,13 @@ int main(void)
     char config[512];
     char executable[512];
     char temp[512];
+    char platform_home[512];
+    char platform_runtime[512];
     char expected_config[768];
+    char expected_data[768];
+    char expected_state[768];
+    char expected_cache[768];
+    char expected_runtime[768];
     char expected_resources[768];
     char list_input[2048];
     char list_one[512];
@@ -104,6 +141,8 @@ int main(void)
     make_path(config, sizeof(config), "config");
     make_path(executable, sizeof(executable), "opt\\linuxdesktop2026\\bin\\c-paths");
     make_path(temp, sizeof(temp), "tmp");
+    make_path(platform_home, sizeof(platform_home), "platform-home");
+    make_path(platform_runtime, sizeof(platform_runtime), "platform-runtime");
     make_path(list_one, sizeof(list_one), "one");
     make_path(list_two, sizeof(list_two), "two");
     make_path(list_two_dirty, sizeof(list_two_dirty), "two\\..\\two");
@@ -153,6 +192,94 @@ int main(void)
     if (resolver_report.selected != NULL || resolver_report.candidate_count != 0) {
         return EXIT_FAILURE;
     }
+
+    memset(&resolver_report, 0, sizeof(resolver_report));
+    ld_paths_resolver_options_init(&resolver_options);
+    resolver_options.organization = "LinuxDesktop2026";
+    resolver_options.application = "c-paths";
+    resolver_options.xdg_config_home_default = platform_home;
+    resolver_options.xdg_data_home_default = platform_home;
+    resolver_options.xdg_state_home_default = platform_home;
+    resolver_options.xdg_cache_home_default = platform_home;
+    resolver_options.xdg_runtime_dir_default = platform_runtime;
+    resolver_options.use_process_environment = 0;
+
+    if (!ld_paths_resolve_app_paths(&resolver_options, &resolver_report)) {
+        return EXIT_FAILURE;
+    }
+#if !defined(_WIN32)
+    const char* resolved_config;
+    const char* resolved_data;
+    const char* resolved_state;
+    const char* resolved_cache;
+    const char* resolved_runtime;
+    snprintf(expected_config, sizeof(expected_config), "%s%cLinuxDesktop2026%cc-paths", platform_home, '/', '/');
+    snprintf(expected_data, sizeof(expected_data), "%s%cLinuxDesktop2026%cc-paths", platform_home, '/', '/');
+    snprintf(expected_state, sizeof(expected_state), "%s%cLinuxDesktop2026%cc-paths", platform_home, '/', '/');
+    snprintf(expected_cache, sizeof(expected_cache), "%s%cLinuxDesktop2026%cc-paths", platform_home, '/', '/');
+    snprintf(expected_runtime, sizeof(expected_runtime), "%s%cc-paths", platform_runtime, '/');
+    resolved_config = selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG);
+    resolved_data = selected_path(&resolver_report, LD_PATHS_FAMILY_DATA);
+    resolved_state = selected_path(&resolver_report, LD_PATHS_FAMILY_STATE);
+    resolved_cache = selected_path(&resolver_report, LD_PATHS_FAMILY_CACHE);
+    resolved_runtime = selected_path(&resolver_report, LD_PATHS_FAMILY_RUNTIME);
+    if (!resolved_config || strcmp(resolved_config, expected_config) != 0 ||
+        !resolved_data || strcmp(resolved_data, expected_data) != 0 ||
+        !resolved_state || strcmp(resolved_state, expected_state) != 0 ||
+        !resolved_cache || strcmp(resolved_cache, expected_cache) != 0 ||
+        !resolved_runtime || strcmp(resolved_runtime, expected_runtime) != 0 ||
+        !has_candidate(&resolver_report, LD_PATHS_FAMILY_CONFIG, LD_PATHS_SOURCE_PLATFORM_DEFAULT, 1) ||
+        !has_candidate(&resolver_report, LD_PATHS_FAMILY_RUNTIME, LD_PATHS_SOURCE_PLATFORM_DEFAULT, 1)) {
+        fprintf(stderr,
+            "platform defaults failed: config=%s expected=%s runtime=%s expected=%s\n",
+            resolved_config ? resolved_config : "(null)",
+            expected_config,
+            resolved_runtime ? resolved_runtime : "(null)",
+            expected_runtime);
+        ld_paths_free_resolver_report(&resolver_report);
+        return EXIT_FAILURE;
+    }
+#endif
+    ld_paths_free_resolver_report(&resolver_report);
+
+    memset(&resolver_report, 0, sizeof(resolver_report));
+    ld_paths_resolver_options_init(&resolver_options);
+    resolver_options.organization = "LinuxDesktop2026";
+    resolver_options.application = "c-paths";
+    resolver_options.config_override = config;
+    resolver_options.xdg_config_home_default = platform_home;
+    resolver_options.use_process_environment = 0;
+
+    if (!ld_paths_resolve_app_paths(&resolver_options, &resolver_report)) {
+        return EXIT_FAILURE;
+    }
+    const char* override_config = selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG);
+    if (!override_config || strcmp(override_config, config) != 0 ||
+        !has_candidate(&resolver_report, LD_PATHS_FAMILY_CONFIG, LD_PATHS_SOURCE_EXPLICIT_OPTION, 1)) {
+        ld_paths_free_resolver_report(&resolver_report);
+        return EXIT_FAILURE;
+    }
+    ld_paths_free_resolver_report(&resolver_report);
+
+    memset(&resolver_report, 0, sizeof(resolver_report));
+    ld_paths_resolver_options_init(&resolver_options);
+    resolver_options.organization = "LinuxDesktop2026";
+    resolver_options.application = "c-paths";
+    resolver_options.home_directory = home;
+    resolver_options.xdg_config_home_default = "relative-config-default";
+    resolver_options.use_process_environment = 0;
+
+    if (!ld_paths_resolve_app_paths(&resolver_options, &resolver_report)) {
+        return EXIT_FAILURE;
+    }
+#if !defined(_WIN32)
+    if (!has_diagnostic_code(&resolver_report, "paths.platform_default.relative_ignored") ||
+        !has_candidate(&resolver_report, LD_PATHS_FAMILY_CONFIG, LD_PATHS_SOURCE_PLATFORM_DEFAULT, 0)) {
+        ld_paths_free_resolver_report(&resolver_report);
+        return EXIT_FAILURE;
+    }
+#endif
+    ld_paths_free_resolver_report(&resolver_report);
 
     struct ld_paths_path_list_options list_options;
     struct ld_paths_path_list_report list_report;

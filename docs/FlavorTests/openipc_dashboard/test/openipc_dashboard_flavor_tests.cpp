@@ -1,7 +1,5 @@
 #include "openipc_dashboard_flavor.hpp"
 
-#include "platform_paths.hpp"
-
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -22,29 +20,63 @@ void expect(bool condition, const std::string& name)
     }
 }
 
+struct deterministic_user {
+    std::filesystem::path home;
+    std::filesystem::path runtime;
+};
+
+enum class desktop_root_kind {
+    config,
+    data,
+    state
+};
+
+deterministic_user make_deterministic_user(const std::filesystem::path& root)
+{
+    return {
+        root / "home" / "alice",
+        root / "run" / "user" / "1000",
+    };
+}
+
 openipc::RuntimeEnvironment default_env()
 {
     const auto root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-flavor";
-    const auto user = flavor_tests::support::make_fake_user_environment(root);
+    const auto user = make_deterministic_user(root);
     openipc::RuntimeEnvironment env;
     env.home_directory = user.home;
+    env.runtime_directory = user.runtime;
     env.executable_directory = root / "opt" / "openipc-dashboard";
-    env.environment = user.variables;
     return env;
 }
 
 std::filesystem::path platform_default_root(
     const openipc::RuntimeEnvironment& env,
-    linuxdesktop::paths::path_family family)
+    desktop_root_kind kind)
 {
-    flavor_tests::support::fake_user_environment user;
-    user.home = *env.home_directory;
-    user.variables = env.environment;
-    return flavor_tests::support::resolved_user_root(
-        {"OpenIPC", "Dashboard"},
-        user,
-        family,
-        env.executable_directory / "openipc-dashboard");
+    const auto& home = *env.home_directory;
+    switch (kind) {
+    case desktop_root_kind::config:
+#if defined(_WIN32)
+        return home / "AppData" / "Roaming" / "OpenIPC" / "Dashboard";
+#else
+        return home / ".config" / "OpenIPC" / "Dashboard";
+#endif
+    case desktop_root_kind::data:
+#if defined(_WIN32)
+        return home / "AppData" / "Roaming" / "OpenIPC" / "Dashboard";
+#else
+        return home / ".local" / "share" / "OpenIPC" / "Dashboard";
+#endif
+    case desktop_root_kind::state:
+#if defined(_WIN32)
+        return home / "AppData" / "Local" / "OpenIPC" / "Dashboard" / "state";
+#else
+        return home / ".local" / "state" / "OpenIPC" / "Dashboard";
+#endif
+    default:
+        return {};
+    }
 }
 
 void desktop_default_profile_uses_user_roots()
@@ -54,11 +86,11 @@ void desktop_default_profile_uses_user_roots()
 
     expect(profile.valid, "desktop profile should be valid");
     expect(profile.profile_name == "desktop", "desktop profile keeps desktop name");
-    expect(profile.config_root == platform_default_root(env, linuxdesktop::paths::path_family::config),
+    expect(profile.config_root == platform_default_root(env, desktop_root_kind::config),
         "desktop config uses platform config root");
-    expect(profile.data_root == platform_default_root(env, linuxdesktop::paths::path_family::data),
+    expect(profile.data_root == platform_default_root(env, desktop_root_kind::data),
         "desktop data uses platform data root");
-    expect(profile.state_database == platform_default_root(env, linuxdesktop::paths::path_family::state) / "state.sqlite3",
+    expect(profile.state_database == platform_default_root(env, desktop_root_kind::state) / "state.sqlite3",
         "desktop state database uses platform state root");
     expect(profile.log_file == profile.data_root / "app.log", "desktop log is under data root");
     expect(!profile.qt_offscreen_required, "desktop mode does not force qt offscreen");
