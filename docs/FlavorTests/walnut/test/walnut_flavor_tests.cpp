@@ -1,5 +1,7 @@
 #include "walnut_flavor.hpp"
 
+#include "platform_paths.hpp"
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -34,12 +36,11 @@ std::filesystem::path test_root()
 flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesystem::path& root)
 {
     flavor_tests::walnut::RuntimeEnvironment environment;
+    const auto user = flavor_tests::support::make_fake_user_environment(root);
     environment.executable_directory = root / "bin";
     environment.current_working_directory = root / "workspace";
-    environment.home_directory = root / "home";
-    environment.environment["XDG_CONFIG_HOME"] = (root / "xdg-config").string();
-    environment.environment["APPDATA"] = (root / "appdata" / "roaming").string();
-    environment.environment["LOCALAPPDATA"] = (root / "appdata" / "local").string();
+    environment.home_directory = user.home;
+    environment.environment = user.variables;
     environment.environment["VULKAN_SDK"] = (root / "vulkan-sdk").string();
     environment.gpus = {
         {"integrated", false},
@@ -53,11 +54,11 @@ flavor_tests::walnut::RuntimeEnvironment default_environment(const std::filesyst
 
 std::filesystem::path expected_default_config_root(const std::filesystem::path& root)
 {
-#if defined(_WIN32)
-    return root / "appdata" / "roaming" / "Walnut" / "WalnutSandbox";
-#else
-    return root / "xdg-config" / "Walnut" / "WalnutSandbox";
-#endif
+    return flavor_tests::support::resolved_user_root(
+        {"Walnut", "WalnutSandbox"},
+        flavor_tests::support::make_fake_user_environment(root),
+        linuxdesktop::paths::path_family::config,
+        root / "bin" / "WalnutSandbox");
 }
 
 flavor_tests::walnut::BootstrapPlan prepare_default(

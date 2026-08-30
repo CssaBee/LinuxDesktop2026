@@ -19,6 +19,7 @@ function(add_flavor_product PRODUCT)
     target_include_directories(${PRODUCT}_flavor_support
         PUBLIC
             ${CMAKE_CURRENT_LIST_DIR}/${PRODUCT}/src
+            ${CMAKE_CURRENT_LIST_DIR}/support
     )
 
     target_compile_features(${PRODUCT}_flavor_support PUBLIC cxx_std_17)

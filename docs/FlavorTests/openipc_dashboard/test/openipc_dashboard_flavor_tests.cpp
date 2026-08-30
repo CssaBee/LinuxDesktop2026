@@ -1,5 +1,7 @@
 #include "openipc_dashboard_flavor.hpp"
 
+#include "platform_paths.hpp"
+
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -20,60 +22,43 @@ void expect(bool condition, const std::string& name)
     }
 }
 
-openipc::RuntimeEnvironment linux_env()
+openipc::RuntimeEnvironment default_env()
 {
     const auto root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-flavor";
+    const auto user = flavor_tests::support::make_fake_user_environment(root);
     openipc::RuntimeEnvironment env;
-    env.home_directory = root / "home" / "alice";
+    env.home_directory = user.home;
     env.executable_directory = root / "opt" / "openipc-dashboard";
-    env.environment = {
-        {"XDG_CONFIG_HOME", (root / "home" / "alice" / ".config").string()},
-        {"XDG_DATA_HOME", (root / "home" / "alice" / ".local" / "share").string()},
-        {"XDG_STATE_HOME", (root / "home" / "alice" / ".local" / "state").string()},
-        {"XDG_RUNTIME_DIR", (root / "run" / "user" / "1000").string()},
-        {"APPDATA", (root / "appdata" / "roaming").string()},
-        {"LOCALAPPDATA", (root / "appdata" / "local").string()},
-    };
+    env.environment = user.variables;
     return env;
 }
 
-std::filesystem::path platform_default_config_root(const openipc::RuntimeEnvironment& env)
+std::filesystem::path platform_default_root(
+    const openipc::RuntimeEnvironment& env,
+    linuxdesktop::paths::path_family family)
 {
-#if defined(_WIN32)
-    return std::filesystem::path(env.environment.at("APPDATA")) / "OpenIPC" / "Dashboard";
-#else
-    return std::filesystem::path(env.environment.at("XDG_CONFIG_HOME")) / "OpenIPC" / "Dashboard";
-#endif
-}
-
-std::filesystem::path platform_default_data_root(const openipc::RuntimeEnvironment& env)
-{
-#if defined(_WIN32)
-    return std::filesystem::path(env.environment.at("APPDATA")) / "OpenIPC" / "Dashboard";
-#else
-    return std::filesystem::path(env.environment.at("XDG_DATA_HOME")) / "OpenIPC" / "Dashboard";
-#endif
-}
-
-std::filesystem::path platform_default_state_root(const openipc::RuntimeEnvironment& env)
-{
-#if defined(_WIN32)
-    return std::filesystem::path(env.environment.at("LOCALAPPDATA")) / "OpenIPC" / "Dashboard" / "state";
-#else
-    return std::filesystem::path(env.environment.at("XDG_STATE_HOME")) / "OpenIPC" / "Dashboard";
-#endif
+    flavor_tests::support::fake_user_environment user;
+    user.home = *env.home_directory;
+    user.variables = env.environment;
+    return flavor_tests::support::resolved_user_root(
+        {"OpenIPC", "Dashboard"},
+        user,
+        family,
+        env.executable_directory / "openipc-dashboard");
 }
 
 void desktop_default_profile_uses_user_roots()
 {
-    const auto env = linux_env();
+    const auto env = default_env();
     const auto profile = openipc::ApplicationProfile{}.resolve({}, env);
 
     expect(profile.valid, "desktop profile should be valid");
     expect(profile.profile_name == "desktop", "desktop profile keeps desktop name");
-    expect(profile.config_root == platform_default_config_root(env), "desktop config uses platform config root");
-    expect(profile.data_root == platform_default_data_root(env), "desktop data uses platform data root");
-    expect(profile.state_database == platform_default_state_root(env) / "state.sqlite3",
+    expect(profile.config_root == platform_default_root(env, linuxdesktop::paths::path_family::config),
+        "desktop config uses platform config root");
+    expect(profile.data_root == platform_default_root(env, linuxdesktop::paths::path_family::data),
+        "desktop data uses platform data root");
+    expect(profile.state_database == platform_default_root(env, linuxdesktop::paths::path_family::state) / "state.sqlite3",
         "desktop state database uses platform state root");
     expect(profile.log_file == profile.data_root / "app.log", "desktop log is under data root");
     expect(!profile.qt_offscreen_required, "desktop mode does not force qt offscreen");
@@ -81,7 +66,7 @@ void desktop_default_profile_uses_user_roots()
 
 void openipc_data_root_creates_isolated_service_profile()
 {
-    auto env = linux_env();
+    auto env = default_env();
     const auto service_root = std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-service";
     env.environment["OPENIPC_DATA_ROOT"] = service_root.string();
 
@@ -101,7 +86,7 @@ void openipc_data_root_creates_isolated_service_profile()
 
 void command_line_data_root_wins_over_environment()
 {
-    auto env = linux_env();
+    auto env = default_env();
     env.environment["OPENIPC_DATA_ROOT"] = (std::filesystem::temp_directory_path() / "linuxdesktop2026-openipc-dashboard-service").string();
 
     openipc::CommandLineOptions options;
@@ -116,7 +101,7 @@ void command_line_data_root_wins_over_environment()
 
 void invalid_data_root_is_fatal_without_desktop_fallback()
 {
-    auto env = linux_env();
+    auto env = default_env();
     env.environment["OPENIPC_DATA_ROOT"] = "relative-service-root";
 
     const auto profile = openipc::ApplicationProfile{}.resolve({}, env);
@@ -128,7 +113,7 @@ void invalid_data_root_is_fatal_without_desktop_fallback()
 
 void server_only_sets_offscreen_and_starts_web_without_desktop()
 {
-    auto env = linux_env();
+    auto env = default_env();
     env.desktop_auto_start = false;
     openipc::CommandLineOptions options;
     options.server_only = true;
@@ -143,7 +128,7 @@ void server_only_sets_offscreen_and_starts_web_without_desktop()
 
 void initialize_admin_requires_safe_server_only_password_file()
 {
-    auto env = linux_env();
+    auto env = default_env();
     openipc::CommandLineOptions options;
     options.initialize_admin_username = "admin";
 
@@ -195,7 +180,7 @@ void deployment_policy_preserves_profiles_and_validates_reverse_proxy()
 
 void readiness_reports_failures_and_bounded_success()
 {
-    auto env = linux_env();
+    auto env = default_env();
     auto profile = openipc::ApplicationProfile{}.resolve({}, env);
     openipc::DashboardSettings settings;
     auto policy = openipc::DeploymentPolicy{}.fromSettings(settings);
@@ -215,7 +200,7 @@ void readiness_reports_failures_and_bounded_success()
 
 void path_normalizer_keeps_dashboard_import_semantics()
 {
-    auto env = linux_env();
+    auto env = default_env();
     openipc::PathNormalizer normalizer;
 
     expect(normalizer.localPathFromUserInput("relative/archive.zip", env).path == "relative/archive.zip", "path normalizer preserves relative paths");
@@ -227,8 +212,8 @@ void path_normalizer_keeps_dashboard_import_semantics()
 
 void browser_diagnostics_redact_secrets_and_local_paths()
 {
-    auto profile = openipc::ApplicationProfile{}.resolve({}, linux_env());
-    const auto readiness = openipc::readiness_from(profile, openipc::DeploymentPolicy{}.fromSettings({}), linux_env(), 7);
+    auto profile = openipc::ApplicationProfile{}.resolve({}, default_env());
+    const auto readiness = openipc::readiness_from(profile, openipc::DeploymentPolicy{}.fromSettings({}), default_env(), 7);
 
     const auto bundle = openipc::browser_diagnostics(
         profile,
