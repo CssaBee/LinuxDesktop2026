@@ -41,6 +41,11 @@ an actual downstream fork that needs to read naturally to the upstream project,
 `<project>-linuxdesktop2026-proof` is acceptable, but the shared prefix is the
 default.
 
+The first required maintained branch is the Notepad++ settings proof described
+in `docs/consumer-branches/notepadpp-settings-proof.md`. Until that branch has
+clean build and rebase evidence, local FlavorTests remain ergonomics evidence
+rather than integration-readiness evidence.
+
 ## OpenIPC Dashboard Reference Case
 
 OpenIPC Dashboard is both a FlavorTest and a reference case. Its value is not
@@ -95,4 +100,3 @@ Initial keep/change/defer lessons:
   matches that shared concept or only one backend's implementation detail.
 - **Defer:** broader C ABI expansion still waits until release-candidate status;
   the useful pre-RC lesson is boundary preservation, not binding completeness.
-

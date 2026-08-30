@@ -6,17 +6,22 @@ list below.
 
 ## Current Order
 
-1. `15` - Validate APIs With One Maintained Consumer Branch
-2. `18` - Expand CI Into Portability Evidence
-3. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
-4. `17` - Reopen Roadmap Only From Consumer Evidence
+1. `18` - Expand CI Into Portability Evidence
+2. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
+3. `17` - Reopen Roadmap Only From Consumer Evidence
+
+## Waiting For External Evidence
+
+- `15` - Validate APIs With One Maintained Consumer Branch
 
 ## Rationale
 
 The next pass resolves remaining FlavorTest product-boundary leaks before
 treating the current APIs as ready for maintained consumer validation. Migration
-result translation, the common write audit, and the experimental root-request
-builder pass are complete, so the sequence can move to new candidate evidence.
+result translation, the common write audit, the experimental root-request
+builder pass, and the maintained-branch contract are complete, so the sequence
+can move to broader portability evidence while the first external branch is
+created and kept building.
 
 Walnut and OpenIPC Dashboard now stay concrete without a separate intake
 template gate: each candidate ticket must name its own source-anchored seam
@@ -27,6 +32,8 @@ instead of replacing it. OBS completed the first cross-port review pilot;
 cross-port reviews use source anchors and paraphrased lessons, not copied
 upstream code snippets.
 
-The project can now return to maintained consumer validation, broader
-portability evidence, watch-backend decisions, and roadmap reopening from
-consumer evidence.
+The project can now expand portability evidence, make watch-backend decisions,
+and reopen roadmap claims only from consumer evidence. Task 15 stays open until
+the Notepad++ settings proof branch records real build, rebase, dependency,
+compile, and API-friction evidence; local FlavorTests are not enough to close
+it.

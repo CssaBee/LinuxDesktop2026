@@ -28,6 +28,12 @@ The target POC is a native Ubuntu build that can open, edit, and save text, with
 
 The first fork patch should be a mapping exercise, not a full Linux port.
 
+Use `docs/consumer-branches/notepadpp-settings-proof.md` as the branch contract
+and evidence ledger. The proof branch is not validated merely because the
+in-tree Notepad++ FlavorTest passes; it must build against an upstream-shaped
+Notepad++ tree and record rebase, dependency, compile, and API-friction evidence
+as normal maintenance happens.
+
 Use `ld_settings` to replace or isolate these Notepad++ responsibilities:
 
 - settings root resolution,

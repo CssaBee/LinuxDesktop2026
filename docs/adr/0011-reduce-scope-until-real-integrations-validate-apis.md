@@ -34,6 +34,10 @@ The roadmap may keep later topics as research notes, but GUI/windowing, clipboar
    repository-specific vocabulary for common behavior, add a narrower helper or
    reconsider the abstraction before expanding scope. The exposure budget in
    `docs/FlavorTests/README.md` is the checklist for making that judgment.
+10. Record maintained consumer branch evidence separately from FlavorTests. The
+    first target is the Notepad++ settings proof branch described in
+    `docs/consumer-branches/notepadpp-settings-proof.md`; passing local
+    FlavorTests does not satisfy the maintained-branch gate.
 
 ## Rationale
 
@@ -54,6 +58,11 @@ equivalent to maintained upstream forks. They should first drive API ergonomics
 work around root requests, config-default seeding, safe writes, migration
 planning, and report translation; then a maintained consumer branch should test
 whether those APIs survive normal development and rebasing.
+
+The first branch should stay narrow enough to keep the evidence honest:
+settings roots, config hydration, validated writes, and explicit migration
+plans. GUI parity, plugin ABI work, and broader desktop integration remain out
+of scope for that validation pass.
 
 ## Review Classification
 

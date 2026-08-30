@@ -25,6 +25,11 @@ The platform libraries are general-purpose, permissively licensed, and designed 
   defaults, write, migration, or diagnostic translation work. The concrete
   exposure budget lives in `docs/FlavorTests/README.md` and should be applied
   before treating a passing FlavorTest as integration-readiness evidence.
+- Treat maintained consumer branches as the next validation gate after
+  FlavorTests. The first target is
+  `docs/consumer-branches/notepadpp-settings-proof.md`; it must record build,
+  rebase, dependency, compile, and API-friction evidence before the current APIs
+  are treated as validated by real consumer maintenance.
 
 ## Staged Execution
 
@@ -120,6 +125,9 @@ Example documentation:
 - Treat autostart and policy as `ld_desktop` responsibilities, not as
   `ld_settings` ownership.
 - Prepare the first narrow Notepad++ fork patch around `ld_settings` only.
+- Keep the Notepad++ proof branch narrow and maintained. It should validate
+  normal dependency consumption and product-boundary fit before new public
+  vocabulary is added outside repeated consumer evidence.
 
 ## Current Follow-Up Prototype
 
