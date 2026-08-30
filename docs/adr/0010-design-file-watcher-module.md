@@ -28,6 +28,12 @@ The implementation order is now:
 
 Steps 1 through 4 are complete as of 2026-08-28. The broad prototype exists and remains explicitly pre-ship code.
 
+As of 2026-08-30, the backend ownership decision is also settled for the next
+pre-1.0 phase: keep the native Linux and Windows backends as LinuxDesktop2026
+owned behavior, keep libuv optional and recommendation-shaped, and keep efsw as
+the strongest contingency if native backend maintenance becomes the limiting
+cost.
+
 ## Public Model
 
 The first C++ API should live in `include/linuxdesktop/watch.hpp`, use namespace `linuxdesktop::watch`, and expose version constants/functions mirroring `ld_settings`.
@@ -230,9 +236,9 @@ The first header should expose raw events directly. Settled-file behavior should
 
 ## Backend Posture
 
-Linux should start with native `inotify`.
+Linux uses native `inotify` as the owned default backend.
 
-Windows should be shaped around `ReadDirectoryChangesW`.
+Windows uses native `ReadDirectoryChangesW` as the owned default backend.
 
 libuv should be recommended for applications that already want a libuv loop and only need coarse rename/change notifications. It is now available as an optional backend seam when CMake finds libuv, but it should not be a required dependency because its public watcher API intentionally reports only change/rename categories and brings event-loop ownership into the implementation.
 
@@ -245,6 +251,62 @@ e-dant/watcher is the strongest dependency-minimal API/source reference and shou
 Panoptes remains a compact C++17 reference but not a wrap candidate for rename-sensitive work because its README still treats rename/move pairing as wishlist territory.
 
 Watchman and fswatch/libfswatch remain audit inputs for rescan posture, backend taxonomy, latency/settle, filters, and large-tree operational behavior.
+
+### Native Backend Decision
+
+The project should keep the native backends rather than immediately wrapping an
+external watcher library.
+
+Evidence:
+
+- the public `watch_path`, `diagnostic_code`, `capability_report`, and
+  `settle_options` model already contains LinuxDesktop2026-specific migration
+  vocabulary that libuv does not expose directly,
+- Linux tests cover deterministic queue behavior through the simulated backend
+  and real `inotify` behavior for directory events, single-file save-by-replace,
+  recursive emulation, symlink skips, duplicate recursive watches, and resource
+  diagnostics,
+- Windows has a native `ReadDirectoryChangesW` backend and a Windows-only smoke
+  target for create, modify, delete, rename, recursive nested creation, and
+  single-file save-by-replace,
+- the optional libuv path is buildable and smoke-tested when selected, but its
+  public event model is intentionally coarser than the migration-facing
+  semantics this module is trying to provide,
+- and wrapping efsw today would not remove the need to own LinuxDesktop2026's
+  capability, overflow, settle, and path-reporting contract.
+
+Owned behavior:
+
+- portable event vocabulary and diagnostic codes,
+- watcher-owned path values instead of backend strings,
+- single-file facade semantics over whatever primitive the backend provides,
+- explicit recursive-policy success or failure,
+- overflow/lost-sync events with rescan guidance,
+- bounded queue behavior,
+- callback and pull-delivery lifecycle semantics,
+- settled-file readiness and timeout behavior,
+- CMake install/export consumption,
+- and CI evidence that separates Linux, Windows, and optional-libuv behavior.
+
+Delegated or recommended behavior:
+
+- libuv remains the recommended direct choice for applications already centered
+  on a libuv event loop and satisfied with coarse change/rename events,
+- Qt, GLib/GIO, wxWidgets, and .NET watcher APIs remain ecosystem-native
+  recommendations or future adapter targets,
+- Watchman remains a reference for large-tree operational posture rather than a
+  library dependency,
+- and efsw remains the first serious wrap candidate if native backends start
+  consuming more maintenance than the LinuxDesktop2026-specific behavior is
+  worth.
+
+Fallback trigger:
+
+Reopen the keep-versus-wrap decision only with new evidence: repeated Windows
+CI flakes caused by backend correctness, stress tests exposing queue/recursive
+failure modes that would require a large private watcher framework, or a real
+consumer branch showing that `ld_watch` spends more application code adapting
+around native backend quirks than it removes.
 
 The private backend interface should be narrow:
 
@@ -408,7 +470,7 @@ Implemented:
 
 Still prototype-grade:
 
-- Windows is implemented behind the native backend seam, has a Windows-only smoke test target covering create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and is run explicitly by CI on Windows before it can be called verified.
+- Windows is implemented behind the native backend seam, has a Windows-only smoke test target covering create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and must stay green in CI before the backend is treated as verified.
 - The optional libuv backend has a preferred-backend smoke test and CI job when libuv is available and `LD2026_WATCH_PREFER_LIBUV=ON`; it has passed on this Ubuntu host with libuv 1.48.0. It is intentionally not the default Ubuntu backend while native inotify exposes richer Linux behavior.
 - Recursive emulation now expands dynamically when new subdirectories and deeper trees appear, skips duplicate directory watches inside one logical recursive watch, fans out shared native descriptor events to multiple logical watches, reports skipped symlinked directories, preserves remove/rename churn, and maps common inotify resource-limit failures into `watch.resource.limit` diagnostics.
 - Settled-file support now runs outside the raw backend delivery path, coalesces repeated events by source/path, reports `watch.settle.timeout` when an optional timeout expires, cancels pending settled events when a watch is removed, and has larger-batch test coverage.
@@ -437,7 +499,7 @@ Before `ld_watch` can move from prototype to ship candidate:
 - Add stress tests for rename storms, deep recursive creation, remove/recreate churn, queue pressure, and callback lifecycle edge cases.
 - Add user-space queue limits and overflow/rescan semantics.
 - Keep callback delivery process-local and honest about thread ownership; if a later toolkit adapter becomes the preferred integration point, let it live above `ld_watch` instead of weakening the public contract.
-- Keep libuv and efsw as serious fallback/wrap candidates if native backend maintenance cost starts dominating feature work.
+- Keep libuv and efsw as serious fallback/wrap candidates if native backend maintenance cost starts dominating feature work. The decision should be reopened from CI, stress-test, or maintained-consumer evidence, not from general fear that file watching is hard.
 
 ## Related Docs
 

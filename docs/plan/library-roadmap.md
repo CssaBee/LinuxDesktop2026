@@ -138,10 +138,10 @@ The extended watchlist keeps `ld_watch` valid but raises three nearby planning l
 Current direction:
 
 - working name `ld_watch`,
-- broad prototype implemented with native Linux `inotify` first,
-- Windows `ReadDirectoryChangesW` shape in the public model,
-- optional libuv backend seam added for libuv-shaped apps while native Linux `inotify` remains the default Ubuntu backend,
-- efsw kept as the strongest future wrap candidate if the prototype proves direct native implementation too costly,
+- broad prototype implemented with native Linux `inotify` and native Windows `ReadDirectoryChangesW`,
+- native Linux and Windows backends kept as the owned pre-1.0 direction because the value is the LinuxDesktop2026 watcher contract above raw backend events,
+- optional libuv backend seam added for libuv-shaped apps while native backends remain the default,
+- efsw kept as the strongest future wrap candidate if CI, stress tests, or maintained consumer branches prove direct native implementation too costly,
 - e-dant/watcher kept as the strongest compact source/API reference,
 - Qt, GLib/GIO, wxWidgets, and .NET `FileSystemWatcher` as recommendations, adapters, or migration references,
 - Watchman, fswatch, and Panoptes as study/defer references,
@@ -152,7 +152,7 @@ Current direction:
 - public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, timeout-capable pull delivery, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
 - Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, `ld_desktop` reports for desktop effects, and future `ld_migration` reports for migration targets,
-- and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, and adding richer capability fields only if stress tests prove they are needed.
+- and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, adding richer capability fields only if stress tests prove they are needed, and reopening the wrap decision only from concrete evidence.
 
 ## Next Planned Module: ld_paths
 

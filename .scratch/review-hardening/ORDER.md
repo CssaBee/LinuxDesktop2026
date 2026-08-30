@@ -6,8 +6,7 @@ list below.
 
 ## Current Order
 
-1. `16` - Decide Keep, Wrap, Or Retire Native Watch Backends
-2. `17` - Reopen Roadmap Only From Consumer Evidence
+1. `17` - Reopen Roadmap Only From Consumer Evidence
 
 ## Maintained Consumer Evidence In Progress
 
@@ -31,10 +30,12 @@ instead of replacing it. OBS completed the first cross-port review pilot;
 cross-port reviews use source anchors and paraphrased lessons, not copied
 upstream code snippets.
 
-The project now has an expanded CI portability matrix and a documented
-maintained-consumer proof workflow. The next work can make watch-backend
-decisions and reopen roadmap claims only from consumer evidence. Task 15 has
-its first local cross-port proof target plus a product-shaped Notepad++
-settings backend rewrite, but stays open until the Notepad++ settings proof
-branch records observed CI, regular build, rebase, dependency, compile, and
-API-friction evidence; local FlavorTests are not enough to close it.
+The project now has an expanded CI portability matrix, a documented
+maintained-consumer proof workflow, and an explicit watcher backend decision:
+keep native Linux and Windows backends as owned pre-1.0 behavior, keep libuv
+optional/recommended for libuv-shaped apps, and reopen wrapping only from CI,
+stress-test, or maintained-consumer evidence. Task 15 has its first local
+cross-port proof target plus a product-shaped Notepad++ settings backend
+rewrite, but stays open until the Notepad++ settings proof branch records
+observed CI, regular build, rebase, dependency, compile, and API-friction
+evidence; local FlavorTests are not enough to close it.

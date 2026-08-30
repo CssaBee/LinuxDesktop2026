@@ -107,9 +107,10 @@ cmake -S . -B build -DLD2026_WATCH_ENABLE_LIBUV=ON -DLD2026_WATCH_PREFER_LIBUV=O
 
 Current backend posture:
 
-- Native backends remain the default because `ld_watch` exposes migration-shaped paths, diagnostics, recursive-policy honesty, and settled-file behavior above raw backend events.
-- libuv is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
-- The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI runs that target explicitly on Windows before the backend is called verified.
+- Native Linux `inotify` and Windows `ReadDirectoryChangesW` backends are the owned pre-1.0 direction because `ld_watch` exposes migration-shaped paths, diagnostics, recursive-policy honesty, bounded queue behavior, overflow/rescan signals, and settled-file behavior above raw backend events.
+- libuv remains optional inside LinuxDesktop2026 and is recommended directly for applications that already own a libuv loop and only need coarse change/rename notifications.
+- efsw remains the first wrap candidate if CI, stress tests, or maintained consumer branches show that native backend maintenance is consuming more project effort than the LinuxDesktop2026-specific watcher contract is worth.
+- The optional preferred-libuv path is smoke-tested with `LD2026_WATCH_PREFER_LIBUV=ON` when libuv is available; Windows smoke tests now cover create, modify, delete, rename, recursive nested creation, and single-file save-by-replace, and CI must keep that target green before the backend is treated as verified.
 - The watcher hardening pass now covers recursive deep-tree creation, single-file save-by-replace follow-up writes, remove/rename churn, backend/resource-limit diagnostic preservation, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches.
 - The public C++ API now exposes `backend_kind`, `diagnostic_code` constants, `watch_id` equality, `wait_for`, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics; `ld_watch` C ABI design is postponed until release-candidate status.
 - Windows compatibility work should happen at the LinuxDesktop2026 API layer. Tests and examples should use `ld_paths`, `ld_settings`, and `ld_watch` concepts instead of assuming XDG paths, slash-separated strings, or Registry/file-watcher backend details directly.
