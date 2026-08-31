@@ -312,6 +312,102 @@ Leakage:
 - The FlavorTest harness links Dashboard to `ld_paths` only, matching the
   source dependency.
 
+## Gearcoleco
+
+Fit:
+
+- `linuxdesktop::settings::root_builder` fits Gearcoleco's installed versus
+  portable startup decision, including the command-line `--portable` case and
+  executable-adjacent `portable.ini` marker.
+- `ensure_config_defaults()` fits first-run `gearcoleco.ini` seeding from the
+  executable resource root.
+- Executable-relative `gamecontrollerdb.txt` and ROM-relative `.sym`/`.noi`
+  lookup stay in Gearcoleco code.
+
+Friction:
+
+- The command-line portable switch is represented as a settings-root override,
+  while marker-based portable mode is represented as a portable marker. That is
+  accurate enough, but the two ways of asking for the same product behavior are
+  visible in adapter code.
+- The root builder still uses LinuxDesktop2026 portable vocabulary instead of a
+  product phrase like "store everything beside the emulator binary."
+
+Leakage:
+
+- Product-facing startup results expose Gearcoleco concepts. LinuxDesktop2026
+  root and hydration reports stay inside the adapter.
+
+## CtrlrX
+
+Fit:
+
+- `linuxdesktop::paths::resolve_app_paths()` fits ordinary CtrlrX resource,
+  config, data, and cache roots without competing with JUCE.
+- `write_common_config()` fits standalone preference saves to `Ctrlr.settings`.
+- `resolve_plugin_path_sets()` fits exported plugin destinations for VST3 and
+  named custom plugin formats while CtrlrX keeps format and panel-ID policy.
+
+Friction:
+
+- Audio plugin destinations mix standard path kinds and custom sets. VST3 can
+  use a first-class LinuxDesktop2026 kind, while AU and AAX remain string-named
+  custom sets in the adapter.
+- The standalone-versus-plugin guard is product policy and must wrap the
+  settings write. LinuxDesktop2026 cannot tell whether a plugin instance should
+  mutate global application preferences.
+
+Leakage:
+
+- Public CtrlrX results do not expose LinuxDesktop2026 reports. Plugin path set
+  names are still repeated between request and lookup inside the adapter.
+
+## SmartServoFramework
+
+Fit:
+
+- `linuxdesktop::paths::resolve_app_paths()` fits SmartServoGui config, data,
+  state, device profile, and log roots.
+- `write_common_config()` fits persistent device settings once the GUI has
+  chosen the device-specific target file.
+
+Friction:
+
+- Serial access, driver installation, and OS permission checks remain outside
+  LinuxDesktop2026. That is correct, but it means the hardware-facing startup
+  pain is only adjacent to the library rather than reduced by it.
+- Device profile filenames are product policy. The adapter still has to sanitize
+  device names at the settings-write boundary.
+
+Leakage:
+
+- Public SmartServoGui diagnostics are product-owned. LinuxDesktop2026 only
+  contributes translated path and write diagnostics behind the GUI seam.
+
+## KickCAT
+
+Fit:
+
+- `linuxdesktop::paths::resolve_app_paths()` fits optional KickUI and EEPROM
+  editor config/cache/runtime roots.
+- `write_common_config()` fits GUI settings writes for desktop tooling.
+- Runtime roots fit simulator socket placement without pulling the EtherCAT core
+  into LinuxDesktop2026.
+
+Friction:
+
+- KickCAT is a boundary challenge more than an adoption slice. Network
+  interface selection, real-time mode, embedded targets, and bus launch policy
+  are not LinuxDesktop2026 responsibilities.
+- ESI XML lookup is partly resource-root shaped and partly domain-shaped. A
+  generic path helper can provide search roots, but product code still owns
+  validation, device matching, and launch consequences.
+
+Leakage:
+
+- Public KickCAT tool results expose tool and master-launch vocabulary.
+  LinuxDesktop2026 reports stay inside the optional tooling adapter.
+
 ## Dependency Pain
 
 Current desired dependency shape:

@@ -228,3 +228,82 @@ As a reference case, Dashboard is also negative evidence against a generic
 toolkit replacement layer: Qt owns application lifecycle, QSettings mechanics,
 QML startup, and event-loop behavior well enough that LinuxDesktop2026 should
 stay at the narrower desktop-root, diagnostics, packaging, and migration seams.
+
+## Gearcoleco
+
+- Upstream repository: `drhelius/Gearcoleco`
+- Source snapshot: `main`, reviewed from the repository README and source tree
+  on 2026-08-31.
+- Upstream areas: desktop frontend startup under `platforms/`, shared emulator
+  settings/resource handling under `src/`, and README-documented portable mode.
+- Anchors: `--portable`, executable-adjacent `portable.ini`,
+  `gamecontrollerdb.txt` beside the application binary, ROM command-line
+  arguments, optional symbol-file argument, and automatic `.sym`/`.noi` symbol
+  lookup beside the ROM.
+- Refactored files: `gearcoleco/src/gearcoleco_flavor.*`
+- Tests: `gearcoleco/test/gearcoleco_flavor_tests.cpp`
+
+The extracted slice does not build SDL, OpenGL, emulation, debugger, ROM
+loading, or MCP server code. It keeps Gearcoleco's portable-mode trigger,
+controller database name, ROM argument ownership, and symbol lookup order in
+product-shaped code. LinuxDesktop2026 supplies deterministic installed versus
+portable settings roots and first-run `gearcoleco.ini` hydration.
+
+## CtrlrX
+
+- Upstream repository: `damiensellier/CtrlrX`
+- Source snapshot: `main`, reviewed from the repository README/changelog and
+  source tree on 2026-08-31.
+- Upstream areas: `CtrlrSettings.cpp`, `CtrlrManager.cpp`,
+  `CtrlrManagerInstance.cpp`, Projucer project files, exported plugin instance
+  handling, preferences/autosave changes, and resource reload behavior.
+- Anchors: standalone-only autosave preference updates, `Ctrlr.settings`,
+  default look-and-feel preference storage, resource reload roots, VST3/AU/AAX
+  export destinations, intermediate `.jucer` project use, and panel identifier
+  replacement during plugin export.
+- Refactored files: `ctrlrx/src/ctrlrx_flavor.*`
+- Tests: `ctrlrx/test/ctrlrx_flavor_tests.cpp`
+
+The extracted slice does not build JUCE, Lua, MIDI, audio plugins, or exported
+plugin binaries. It keeps standalone-versus-plugin decisions, preference names,
+resource reload order, plugin format naming, and panel identifier policy in
+CtrlrX-shaped code. LinuxDesktop2026 supplies root resolution, common config
+writes, and plugin path-set discovery behind those product decisions.
+
+## SmartServoFramework
+
+- Upstream repository: `emericg/SmartServoFramework`
+- Source snapshot: `master`, reviewed from the repository README and
+  documentation layout on 2026-08-31.
+- Upstream areas: `SmartServoGui/`, framework examples, and serial
+  communication documentation.
+- Anchors: Qt control GUI profile roots, persistent device settings, last
+  session state, serial port scanning, Linux group/permission notes, macOS and
+  Windows USB driver notes, and device-specific profile files.
+- Refactored files: `smartservo/src/smartservo_flavor.*`
+- Tests: `smartservo/test/smartservo_flavor_tests.cpp`
+
+The extracted slice does not build Qt, the C++ actuator framework, or serial
+backends. It keeps link availability, baud rate, actuator scan policy, and safe
+device-profile naming in SmartServoGui-shaped code. LinuxDesktop2026 supplies
+ordinary desktop roots and validated writes for GUI/device settings only.
+
+## KickCAT
+
+- Upstream repository: `leducp/KickCAT`
+- Source snapshot: `master`, reviewed from the repository README, `docs/`, and
+  `tools/` layout on 2026-08-31.
+- Upstream areas: `tools/kickui/`, `tools/eeprom_editor/`, CLI tools,
+  simulator tooling, and documentation for build/runtime options.
+- Anchors: KickUI GUI settings, EEPROM editor workspace, ESI XML lookup, network
+  simulator runtime socket, master launch interface selection, real-time launch
+  flag, and diagnostics for missing interface or ESI files.
+- Refactored files: `kickcat/src/kickcat_flavor.*`
+- Tests: `kickcat/test/kickcat_flavor_tests.cpp`
+
+The extracted slice does not build the EtherCAT master/slave stack, embedded
+targets, socket backends, Python tooling, or ImGui/GLFW frontends. It keeps
+network interface selection, real-time behavior, bus launch rules, and ESI
+requirements in KickCAT-shaped code. LinuxDesktop2026 is limited to optional
+desktop tooling paths and GUI config writes, making this a boundary challenge
+for avoiding accidental coupling to real-time or embedded modules.

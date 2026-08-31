@@ -153,6 +153,31 @@ _Avoid_: Internal settings cleanup, root helper, path resolver rename
 A typed collection of search roots for one plugin or asset ecosystem, including its platform defaults, environment overrides, and compatibility fallbacks.
 _Avoid_: Plugin ABI, plugin host, dynamic loader
 
+**Portable root**:
+An app-owned root selected by a product's portable-mode policy, such as a
+command-line flag, executable-adjacent marker file, or explicit product setting,
+where the application stores settings and related user files beside an
+application-owned location instead of ordinary user profile roots.
+_Avoid_: Generic override, hidden fallback, test-only executable path
+
+**First-class plugin path kind**:
+A LinuxDesktop2026-owned plugin search-root kind for a plugin ecosystem with
+documented discovery conventions that are useful outside one product family.
+_Avoid_: Product-specific plugin folder, arbitrary named path, dynamic loader
+
+**Asset/library path kind**:
+A search-root kind for shared plugin-adjacent assets such as soundfonts or
+sample libraries that have ecosystem conventions but are not executable plugin
+ABIs.
+_Avoid_: Plugin ABI, executable plugin, arbitrary resource folder
+
+**Toolkit-owned plugin system**:
+A plugin ecosystem whose discovery, compatibility checks, deployment files, and
+loading behavior are owned by a GUI/application toolkit rather than by
+LinuxDesktop2026. LinuxDesktop2026 may help a product assemble candidate roots,
+but the toolkit remains authoritative for plugin semantics.
+_Avoid_: First-class plugin path kind, dynamic loader replacement, deployment layer
+
 **Service/daemon lifecycle**:
 The operating-system behavior needed to run, signal, supervise, or communicate with a long-running background process.
 _Avoid_: Ordinary process launch, single-instance GUI activation

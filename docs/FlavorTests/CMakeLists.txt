@@ -77,3 +77,14 @@ add_flavor_product(walnut
     LinuxDesktop2026::ld_paths)
 add_flavor_product(openipc_dashboard
     LinuxDesktop2026::ld_paths)
+add_flavor_product(gearcoleco
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(ctrlrx
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(smartservo
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(kickcat
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)

@@ -6,7 +6,8 @@ list below.
 
 ## Current Order
 
-No active hardening tickets are queued.
+- `50` - Add Portable Root Request API
+- `51` - Harden Plugin Path Kind Taxonomy
 
 ## Implemented
 

@@ -83,6 +83,24 @@ Selected upstream subprojects:
   keeps Dashboard's Qt/QML, web, administrator bootstrap, and deployment
   vocabulary in product code while using `ld_paths` only for ordinary desktop
   root discovery.
+- `gearcoleco/`: refactors Gearcoleco-style startup path decisions for
+  installed versus portable mode, executable-adjacent controller databases,
+  default config hydration, and ROM-adjacent debug symbol lookup. It keeps SDL,
+  emulation, debugger, MCP, and ROM policy in product-shaped code while using
+  `ld_settings` for deterministic desktop roots and first-run config seeding.
+- `ctrlrx/`: refactors CtrlrX-style preferences/resource/export plumbing around
+  a JUCE standalone app and plugin-export workflow. JUCE still owns GUI/audio
+  lifecycle and plugin formats; LinuxDesktop2026 supplies desktop roots,
+  settings writes, and plugin path discovery at the product infrastructure
+  boundary.
+- `smartservo/`: refactors SmartServoFramework GUI profile and device-settings
+  persistence while keeping serial-device discovery, permissions, and actuator
+  protocol policy outside LinuxDesktop2026. It is a hardware-companion evidence
+  slice for separating app configuration from real device access.
+- `kickcat/`: refactors KickCAT tooling and GUI path decisions while keeping the
+  EtherCAT master/slave stack, network interface selection, and real-time
+  behavior product-owned. It is requirements/challenge evidence for separating
+  optional desktop tooling from embedded or real-time core code.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -99,6 +117,10 @@ methods rather than against generic helper functions:
 - `freecad_flavor_tests`
 - `walnut_flavor_tests`
 - `openipc_dashboard_flavor_tests`
+- `gearcoleco_flavor_tests`
+- `ctrlrx_flavor_tests`
+- `smartservo_flavor_tests`
+- `kickcat_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers
