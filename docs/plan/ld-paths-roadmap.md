@@ -15,6 +15,16 @@ In all cases, defaults are lower precedence than explicit overrides, injected
 environment, process environment, and native OS discovery, and higher
 precedence than built-in fallback guesses.
 
+The root-boundary audit keeps `ld_paths` responsible for generic path-family
+resolution, path-list parsing, directory creation, executable/install/resource
+locations, and typed plugin search-root discovery. It also turns two
+pre-public API-shape cleanups into required breaks before the prototype is
+treated as hard: plugin search sets are not selected application path families,
+and executable/install/resource locations are not ordinary user path families.
+Those concepts should stay available from `ld_paths` alone, but the public
+result model must make them distinct before C/Rust consumers or a future
+`ld_root` API harden around them.
+
 ## Design Position
 
 `ld_paths` should resolve path families and explain how it resolved them.
@@ -136,7 +146,7 @@ Exit bar:
 
 ### Milestone 5: Public Prototype Polish
 
-Status: implemented for packaging, examples, C ABI smoke coverage, and docs; still blocked from broad community announcement by Milestone 3 depth and real Windows verification.
+Status: implemented for packaging, examples, C ABI smoke coverage, and docs; still blocked from broad community announcement by Milestone 3 depth, real Windows verification, and the task 45/46 result-shape breaks.
 
 Implement:
 
@@ -154,12 +164,18 @@ Exit bar:
 - a downstream CMake project can link `LinuxDesktop2026::ld_paths`,
 - generated CMake defaults are passed explicitly by the consuming target rather
   than hidden in global library state,
+- plugin path-set reports do not rely on a synthetic selected-path family,
 - C callers can allocate, inspect, and free reports through documented ownership rules,
 - examples do not depend on a developer's real home directory,
 - and unsupported platform behavior is reported, not hidden.
 
 Remaining before public prototype announcement:
 
+- split path-list/plugin-set candidates away from resolver path-family
+  candidates and remove the misleading `plugin_search` family from the public
+  result model,
+- move executable, install-prefix, and resource entries into a distinct public
+  location/provenance result before `ld_root` consumes them,
 - run the Windows 10/11 UTF-8 path, executable-root, unavailable-folder, Known Folder fallback, and plugin-default verification checklist,
 - and decide whether custom plugin path sets need C ABI exposure in the first public cut.
 
@@ -191,10 +207,6 @@ enum class path_family {
     videos,
     templates,
     public_share,
-    executable,
-    install_prefix,
-    resources,
-    plugin_search,
     runtime
 };
 
@@ -246,7 +258,12 @@ resolver_report resolve_app_paths(app_identity identity, resolver_options option
 }
 ```
 
-The final API does not need to use these exact names. The important commitments are source-labeled candidates, selected paths by family, explicit diagnostics, and no hidden filesystem mutation.
+The final API does not need to use these exact names, and the task 44 audit
+now says the sketch is stale where it models executable/install/resource
+locations and plugin search lists as ordinary path families. The important
+commitments are source-labeled candidates, selected platform path families,
+explicit diagnostics, no hidden filesystem mutation, and a clear distinction
+between path families, executable/resource locations, and path sets.
 
 Current C++ callers can construct defaults directly:
 
@@ -308,7 +325,11 @@ examples, and install-tree consumer coverage. Task 04 performs the extraction:
 
 `ld_watch` should accept normal path values produced by `ld_paths`, but it should not depend on `ld_paths` for core watcher behavior.
 
-Future `ld_process`, `ld_ipc`, `ld_dynlib`, and desktop integration modules can reuse path families, path lists, executable roots, resource roots, and plugin path sets without redefining them.
+Future `ld_process`, `ld_ipc`, `ld_dynlib`, desktop integration modules, and a
+possible public `ld_root` module can reuse path families, path lists,
+executable/resource locations, and plugin path sets without redefining them.
+That reuse should not require every consumer to treat a plugin search list or
+install-adjacent resource directory as a user-owned path family.
 
 ## Risks
 
@@ -316,6 +337,9 @@ Future `ld_process`, `ld_ipc`, `ld_dynlib`, and desktop integration modules can 
 - Too little scope: config/cache/state only would duplicate `ld_settings` and miss OpenSCAD, FreeCAD, and Carla evidence.
 - Silent platform differences: every fallback or unavailable folder must be visible in reports.
 - Early refactor risk: making `ld_settings` depend on `ld_paths` before `ld_paths` is tested would destabilize the working sample.
+- Binding drift: if the current mixed `path_family` enum is exported unchanged
+  into more C/Rust consumers, later `ld_root` work will need compatibility code
+  around concepts the project already knows are mislabeled.
 
 ## First Implementation Checklist
 
@@ -327,5 +351,5 @@ Future `ld_process`, `ld_ipc`, `ld_dynlib`, and desktop integration modules can 
 - Reuse `ld_core` diagnostics.
 - Add deterministic environment/executable/user-dir test seams.
 - Add install-tree consumer coverage.
-- Maintain the existing C ABI reports where practical, but defer further C ABI
-  expansion until release-candidate status.
+- Maintain C ABI report ownership rules, but allow pre-public breaking cleanup
+  where the current report vocabulary is misleading.

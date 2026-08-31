@@ -114,6 +114,32 @@ translation than today's `ld_settings::root_options`.
   migration prompts, or user-facing diagnostic vocabulary.
 - Public C or C++ APIs during task 42. This ticket records the boundary only.
 
+## `ld_paths` Overlap Audit
+
+Task 44 audited the current `ld_paths` public and implementation surface against
+the proposed `ld_root` boundary.
+
+| Area | Classification | Decision |
+| --- | --- | --- |
+| Config, data, state, cache, runtime, temp, and XDG/Known Folder user directories | Generic path-family behavior | Stay in `ld_paths`. These answer "where does this platform normally place this family?" and are the base input a future `ld_root` would consume. |
+| Explicit overrides, environment/default precedence, generated platform defaults, and source-labeled resolver candidates | Generic path-family behavior | Stay in `ld_paths`. The platform-default work exists specifically so users can pass deterministic OS roots without private FlavorTest helpers. |
+| Legacy and site config candidates | Generic path-family behavior with config-specific vocabulary | Stay in `ld_paths` for now. NUT/OpenRGB-style search chains justify reporting legacy/site candidates, but no FlavorTest shows this becoming reusable root topology. |
+| Directory creation helpers | Generic filesystem mechanics | Stay public in `ld_paths`; root creation may share internals later. Creation is opt-in and path-oriented, while a future `ld_root` would report creation per named/app-owned root. |
+| Path-list parsing and joining | Generic path-list behavior | Stay in `ld_paths`. This supports environment-shaped search lists and should not move to root topology. |
+| Typed plugin path sets and Wine-prefix-aware plugin defaults | Domain-specific path-set behavior | Stay in `ld_paths`. Carla-style evidence supports search-root discovery, not plugin loading, plugin ABI, or app-owned root topology. |
+| Custom plugin path sets | Path-set behavior, not root topology | Stay in `ld_paths`. A caller-defined plugin ecosystem is still a search list; it should not be confused with named app roots such as Notepad++ plugin config. |
+| Executable path, executable directory, install prefix, and resources | Path-location behavior with future interaction point | Keep in `ld_paths`, but plan a breaking-shape audit before public prototype announcement. Walnut and PrusaSlicer need executable-adjacent resources directly; Notepad++ and qBittorrent need install-adjacent inputs for root topology. These should feed `ld_root`, not move wholesale into it. |
+| `path_family::plugin_search` inside resolver/path-list candidate reports | Misleading public shape | Plan a pre-1.0 breaking cleanup. A plugin search set is not a selected application path family, and C/Rust bindings should not inherit that fake family just because the internal candidate type is reused. |
+| Settings named roots, component roots, portable/local overlays, config layers, hydration, and writes | Root topology or settings lifecycle | Do not move into `ld_paths`. Positive `ld_root` evidence comes from Notepad++, qBittorrent, and KiCad; settings lifecycle remains in `ld_settings`. |
+| Service/data-root profiles and project-keyed roots | Product-owned policy | Do not move into `ld_paths` or `ld_root` yet. OpenIPC Dashboard and KiCad project backups remain negative or limited evidence. |
+
+The audit does not justify merging broad `ld_paths` behavior into `ld_root`.
+It does justify planning a pre-public breaking cleanup of the `ld_paths` result
+shape: the current enum mixes platform families, executable/install locations,
+resources, and a synthetic plugin-search marker. That cleanup should happen
+before a public `ld_root` module is added, otherwise `ld_root` would either
+duplicate the muddle or encode compatibility around it.
+
 ## User Stories
 
 1. As an application developer, I want user-owned and app-owned roots to have a
@@ -165,6 +191,11 @@ translation than today's `ld_settings::root_options`.
 - Audit `ld_paths` separately for internal organization and unjustified overlap,
   but do not merge plugin path sets, path-list parsing, or directory creation
   into `ld_root` without repeated evidence.
+- Treat `path_family::plugin_search` as a pre-1.0 API-shape problem: plugin
+  path-set reports should not pretend that search lists are selected
+  application root families.
+- Keep executable/resource/install location discovery in `ld_paths`, but plan a
+  clearer public result shape before asking `ld_root` to consume those values.
 - Use `API_FRICTION.md`, in-tree FlavorTests, and the Notepad++ cross-port proof
   as the evidence baseline.
 
@@ -189,6 +220,25 @@ translation than today's `ld_settings::root_options`.
 - C ABI expansion before a public `ld_root` API is justified.
 - Broad `ld_paths` public redesign without new FlavorTest or maintained
   consumer evidence.
+
+The task 44 audit removes preserve-before-break caution for the next root/path
+hardening tickets. `path_family::plugin_search` is already misleading in the
+public C++ and C result vocabulary, executable/resource/install locations are
+not ordinary user path families, and the module is still pre-public-prototype.
+Tasks 45 and 46 should take the direct breaking changes needed to make those
+concepts honest. Tasks 47 and 48 should then finish the public `ld_root` and
+contracted `ld_settings` boundary without leaving deprecated aliases,
+duplicated public structs, or temporary adapter layers behind.
+
+The intended final dependency shape is:
+
+- `ld_paths` for platform families, executable/resource locations, path lists,
+  directory helpers, and plugin search roots.
+- `ld_root` for reusable user-owned and app-owned root topology, depending on
+  `ld_paths` without depending on `ld_settings`.
+- `ld_settings` for config layers, hydration, settings writes, backups,
+  portable/settings overlays, and settings diagnostics, with no generic
+  root-topology API exposed as settings vocabulary.
 
 ## Further Notes
 

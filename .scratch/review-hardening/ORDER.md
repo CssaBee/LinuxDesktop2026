@@ -6,10 +6,14 @@ list below.
 
 ## Current Order
 
-- `44` - Audit Paths Root Overlap
+- `45` - Split Path-List Candidate Vocabulary
+- `46` - Separate Path Families From Location Roles
+- `47` - Add Public Root Topology Surface
+- `48` - Contract Settings-Owned Root Builder
 
 ## Implemented
 
+- `44` - Audit Paths Root Overlap
 - `43` - Extract Settings Root Internals
 - `42` - Design Root Module Boundary
 - `41` - Document Platform Path Defaults Evidence
@@ -60,14 +64,32 @@ defaults, mirrors the capability for C callers, proves consumer-target CMake
 generation through the install-tree path, removes the private FlavorTest helper,
 and records the evidence before treating the improved ergonomics as user-ready.
 
-The next batch uses that evidence baseline to examine whether root topology
-deserves a public `ld_root` module. The accepted constraint is no tech-debt
-module: `settings.cpp` being large is a symptom, not the reason to publish a
-new API. Task 42 designs the public boundary first, task 43 extracts
-`ld_settings` root internals only along that boundary, and task 44 audits
-`ld_paths` for overlap without broad redesign. `ld_root` must stay distinct
-from generic path families in `ld_paths`, settings/config lifecycle in
-`ld_settings`, and product-owned service/profile policy.
+The root-topology batch now has its boundary and overlap audit. The accepted
+constraint remains no tech-debt module: `settings.cpp` being large is a symptom,
+not the reason to publish a new API. Task 42 designed the public boundary, task
+43 extracted `ld_settings` root internals only along that boundary, and task 44
+audited `ld_paths` for overlap without broad redesign. The audit found that
+`ld_paths` should keep generic path families, platform defaults, path lists,
+directory creation, plugin search-root sets, and executable/resource discovery,
+but the current public result shape is not clean enough to feed a future
+`ld_root` API.
+
+The next four tickets intentionally take the necessary pre-1.0 breaking changes
+instead of leaving compatibility scaffolding behind. Task 45 removes the
+synthetic plugin-search path-family vocabulary from path-list and plugin-set
+reports. Task 46 separates ordinary path families from
+executable/install/resource location roles. Task 47 can then add public root
+topology for the repeated Notepad++, qBittorrent, and KiCad seams without
+inheriting `ld_paths` ambiguity. Task 48 removes or reshapes the duplicated
+settings-owned generic root-builder surface so `ld_settings` returns to settings
+lifecycle ownership.
+
+By the end of task 48, the hardening lane should have no known root/path API
+tech debt left by design: `ld_paths` is enough for path families, locations,
+path lists, directory helpers, and plugin search roots; `ld_root` is enough for
+user-owned and app-owned root topology; `ld_settings` is only needed for
+settings/config lifecycle. Dependency edges should follow that same order and
+users should not bring in a higher-level module to get lower-level behavior.
 
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`
