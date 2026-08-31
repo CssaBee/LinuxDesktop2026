@@ -4,9 +4,6 @@
 
 namespace flavor_tests::qbittorrent {
 
-namespace ld_settings = linuxdesktop::settings;
-namespace ld_root = linuxdesktop::root;
-
 namespace {
 
 constexpr const char* default_portable_profile_dir = "profile";
@@ -26,17 +23,17 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     portable_mode_enabled_ = !args.profile_dir.has_value() && std::filesystem::is_directory(portable_profile_path);
     relative_fastresume_paths_ = args.relative_fastresume_paths || portable_mode_enabled_;
 
-    auto builder = ld_root::request_builder()
+    auto builder = linuxdesktop::root::request_builder()
         .app("qBittorrent", "qBittorrent" + configurationSuffix())
         .resource_root(environment.executable_dir)
         .home_directory(environment.home_directory)
         .environment(environment.variables)
         .use_process_environment(false)
-        .app_local(ld_root::app_local_level::profile)
+        .app_local(linuxdesktop::root::app_local_level::profile)
         .app_local_marker(portable_profile_path)
-        .named_root(ld_root::make_log_root_request(
+        .named_root(linuxdesktop::root::make_log_root_request(
             "logs",
-            ld_root::ownership_kind::user_local,
+            linuxdesktop::root::ownership_kind::user_local,
             "logs"));
     if (args.profile_dir) {
         builder.app_root_override(*args.profile_dir);
@@ -49,7 +46,7 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     data_root_ = report.roots.data;
     fastresume_root_ = relative_fastresume_paths_ ? profile_root_ / "BT_backup" : data_root_ / "BT_backup";
     logs_root_ = report.roots.state / "logs";
-    if (const auto* logs = ld_root::find_named_root(report, "logs")) {
+    if (const auto* logs = linuxdesktop::root::find_named_root(report, "logs")) {
         logs_root_ = logs->path;
     }
     return !profile_root_.empty();
@@ -72,7 +69,7 @@ std::filesystem::path Profile::location(SpecialFolder folder) const
 
 SaveResult Profile::saveFileLoggerSettings(std::string content) const
 {
-    const auto report = ld_settings::write_common_config({profile_root_ / "qBittorrent.ini", std::move(content), true},
+    const auto report = linuxdesktop::settings::write_common_config({profile_root_ / "qBittorrent.ini", std::move(content), true},
         validate_ini);
     return {report.ok, report.backup_path};
 }

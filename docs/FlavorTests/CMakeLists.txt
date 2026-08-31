@@ -25,10 +25,7 @@ function(add_flavor_product PRODUCT)
     target_compile_features(${PRODUCT}_flavor_support PUBLIC cxx_std_17)
     target_link_libraries(${PRODUCT}_flavor_support
         PUBLIC
-            LinuxDesktop2026::ld_paths
-            LinuxDesktop2026::ld_root
-            LinuxDesktop2026::ld_migration
-            LinuxDesktop2026::ld_settings
+            ${ARGN}
     )
     linuxdesktop2026_generate_path_defaults(
         ${PRODUCT}_flavor_support
@@ -47,14 +44,36 @@ function(add_flavor_product PRODUCT)
     add_test(NAME ${PRODUCT}_flavor_tests COMMAND ${PRODUCT}_flavor_tests)
 endfunction()
 
-add_flavor_product(notepadpp)
-add_flavor_product(prusaslicer)
-add_flavor_product(openrgb)
-add_flavor_product(keepassxc)
-add_flavor_product(qbittorrent)
-add_flavor_product(obs)
-add_flavor_product(kicad)
-add_flavor_product(audacity)
-add_flavor_product(freecad)
-add_flavor_product(walnut)
-add_flavor_product(openipc_dashboard)
+add_flavor_product(notepadpp
+    LinuxDesktop2026::ld_root
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(prusaslicer
+    LinuxDesktop2026::ld_migration
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(openrgb
+    LinuxDesktop2026::ld_desktop
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(keepassxc
+    LinuxDesktop2026::ld_migration
+    LinuxDesktop2026::ld_root
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(qbittorrent
+    LinuxDesktop2026::ld_root
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(obs
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(kicad
+    LinuxDesktop2026::ld_root
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(audacity
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(freecad
+    LinuxDesktop2026::ld_migration
+    LinuxDesktop2026::ld_paths
+    LinuxDesktop2026::ld_settings)
+add_flavor_product(walnut
+    LinuxDesktop2026::ld_paths)
+add_flavor_product(openipc_dashboard
+    LinuxDesktop2026::ld_paths)

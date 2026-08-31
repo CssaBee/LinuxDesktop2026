@@ -1,462 +1,333 @@
 # FlavorTest API Friction Notes
 
-These notes record what still feels unnatural at each product seam after the
-first ergonomics pass. A passing FlavorTest means the selected behavior can be
-refactored through LinuxDesktop2026 today; it does not mean the API is ready for
-real upstream adoption.
+These notes describe the current integration feel of the FlavorTests and the
+Notepad++ cross-port. They are not a changelog. A passing FlavorTest means the
+behavior can be represented through LinuxDesktop2026; it does not mean the API
+is painless enough for upstream adoption.
 
-Use these notes before treating a FlavorTest as integration-readiness evidence:
+Read each section as a boundary check:
 
-- Acceptable platform-mechanism vocabulary is vocabulary a product would
-  reasonably tolerate at an adapter boundary: root discovery, named roots,
-  config-default seeding, backup writes, durable writes, migration planning, and
+- Fit: LinuxDesktop2026 vocabulary that belongs at the product adapter edge.
+- Friction: places where the caller still has to know too much, translate too
+  much, or pull in more shape than the product naturally has.
+- Leakage: LinuxDesktop2026 concepts that escape into product-facing types,
+  CMake linkage, long-lived state, or tests in a way real users would feel.
+
+## Cross-Cutting State
+
+- `ld_paths` is the lightest usable entry point. It handles ordinary
+  config/data/state/cache/runtime roots, executable/install/resource locations,
+  and plugin path sets without requiring settings, root topology, migration, or
   desktop effects.
-- Product-boundary leakage is vocabulary that escapes into a product-shaped
-  public method, result type, stored state, or caller obligation where the
-  application would normally speak in its own terms.
-- Convenience helpers are only successful when they improve local reasoning.
-  Shorter call sites that still require readers to reconstruct LinuxDesktop2026
-  policy are evidence for a future API change.
+- `ld_root` is the shared topology layer for app/user-owned roots. It depends on
+  `ld_paths`, but callers that only need topology do not need to include
+  `ld_settings`.
+- `ld_settings` is settings-lifecycle specific: default hydration, common config
+  writes, and settings-layer reporting. Generic named roots belong in `ld_root`,
+  not here.
+- `ld_migration` is intentionally separate. Flavor adapters should keep raw
+  migration plans private and return product-shaped migration decisions.
+- The public CMake path-default generator is necessary integration surface, not
+  test scaffolding. FlavorTests and cross-port code can get deterministic XDG or
+  Windows defaults without carrying private `platform_paths.hpp` helpers.
+
+Current global pain:
+
+- `docs/FlavorTests/CMakeLists.txt` links each flavor support library only to
+  the modules its source uses. That keeps dependency evidence honest, but it
+  also makes accidental public-header coupling visible when a flavor pulls in a
+  broader module than its product shape really needs.
+- Diagnostics are generic across modules. That is useful at the adapter edge,
+  but any product-facing state still needs translation to product warnings,
+  logs, prompts, or status flags.
+- Examples and FlavorTests use direct C++ namespace names such as
+  `linuxdesktop::root` and `linuxdesktop::settings` at public API call sites.
+  That keeps the evidence code aligned with what users include and link.
 
 ## Notepad++
 
-Current proof-branch state:
+Fit:
 
-- `LinuxDesktop2026-crossport-notepadpp` now consumes an installed
-  LinuxDesktop2026 package and calls
-  `linuxdesktop2026_generate_path_defaults()` from CMake. The generated header
-  selects the OS-specific `platform_path_defaults` factory at configure time.
-- `NotepadPlusPlusSettingsBackend::resolve()` passes those generated defaults
-  through `linuxdesktop::root::options::platform_defaults`, while Notepad++
-  still owns install-root, home/runtime inputs, command-line settings, cloud
-  choice, local-config marker, and privileged-install policy.
-- The in-tree FlavorTest remains useful for behavior coverage, but the
-  cross-port proof branch is the stronger current consumer signal.
+- The cross-port consumes an installed LinuxDesktop2026 package, runs
+  `linuxdesktop2026_generate_path_defaults()`, and passes generated platform
+  defaults into `linuxdesktop::root::options`.
+- `linuxdesktop::root` fits the main layout decision: install resources,
+  command-line settings directory, cloud settings directory, app-local marker,
+  privileged install policy, session root, and plugin config root.
+- `linuxdesktop::settings` fits default XML hydration and common validated
+  config writes.
+- `linuxdesktop::migration` fits the legacy config import mechanic when the raw
+  plan stays behind the Notepad++ adapter.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `linuxdesktop::root::resolve_app_roots()`, generated platform defaults, named roots,
-  `ensure_config_defaults()`, `write_common_config()`, and `ldm::plan_copy()`
-  are adapter-level platform mechanics.
-- The builder/factory split now hides OS selection without hiding Notepad++
-  decisions: CMake chooses XDG vs. Windows defaults, and the product supplies
-  the roots it has accepted.
+- The cross-port still exposes `std::vector<linuxdesktop::diagnostic>` on
+  `SettingsLayout`. That is acceptable proof code, but it is not upstreamable
+  product surface.
+- Local config needs both requested and active state. The API exposes that, but
+  product code must keep the two flags straight or it will blur "marker exists"
+  with "portable mode accepted."
+- The cross-port builds `linuxdesktop::root::options` manually while the in-tree
+  FlavorTest uses `request_builder`. Both are valid, but the split makes it
+  harder to tell which style should be recommended for real consumers.
+- Named roots such as `"xml-config"`, `"session"`, and `"plugin-config"` are
+  stringly typed. Product adapters must look them up by the same names they
+  requested.
 
-Product-boundary leakage:
+Leakage:
 
-- The proof layout still carries raw `linuxdesktop::diagnostic` values. That is
-  acceptable for the proof harness, but a real Notepad++ patch should translate
-  them to startup warnings or log messages before storing long-lived product
-  state.
-- Portable/local config needs both "requested" and "active" state so a rejected
-  `doLocalConf.xml` under a protected install can be reported. The current API
-  already exposes this, but product code still has to preserve the distinction.
-
-Helper assessment:
-
-- The former path-default gap is closed for the maintained Notepad++ proof:
-  consumers no longer need a private `platform_paths.hpp`-style helper or host
-  environment injection to get deterministic platform roots.
-- Remaining friction is translation work, not missing mechanism: diagnostics
-  and layout structs should become Notepad++ vocabulary before any upstreamable
-  patch, while the LinuxDesktop2026 calls can stay at the adapter boundary.
+- `notepadpp_settings_backend.hpp` returns LinuxDesktop2026 diagnostics,
+  hydrate reports, write reports, and migration plans directly. The proof is
+  still more LinuxDesktop2026-shaped than a real Notepad++ patch should be.
+- The CMake dependency list in the cross-port is honest enough:
+  `ld_root`, `ld_settings`, and `ld_migration`. It does not need `ld_paths`
+  directly because `ld_root` carries that dependency.
 
 ## Audacity
 
-Remaining visible concepts:
+Fit:
 
-- `FileConfig::Flush()` only needs common validated backup write behavior.
-- `FileConfig::Init()` still owns the probing and warning loop; this is product
-  behavior, not a LinuxDesktop2026 responsibility.
+- `write_common_config()` fits `FileConfig::Flush()`: Audacity owns the target
+  file and validation, LinuxDesktop2026 owns backup and atomic replace
+  mechanics.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `write_common_config()` is acceptable inside `Flush()` because the method is
-  already a persistence boundary.
+- The helper is good for writes only. Audacity's probing and warning loop stays
+  product code, so there is no broader settings-root proof here.
 
-Product-boundary leakage:
+Leakage:
 
-- None in the public seam after report translation. `FlushResult` is
-  Audacity-shaped and only reports the outcome and backup file.
-
-Helper assessment:
-
-- The write facade improved both length and reasoning here. This is the clearest
-  positive example for the current helper design.
+- The public product seam exposes Audacity-shaped write results. The
+  LinuxDesktop2026 write report stays inside the adapter.
 
 ## qBittorrent
 
-Remaining visible concepts:
+Fit:
 
-- `Profile::init()` now uses `linuxdesktop::root::request_builder` for app identity,
-  executable resource root, injected environment, portable marker, and log root
-  placement.
-- The profile-dir override branch remains outside the builder chain because it
-  is qBittorrent policy: command-line profile roots win, otherwise an
-  executable-adjacent `profile` directory activates portable mode.
-- `saveFileLoggerSettings()` now uses `write_common_config()` for the ordinary
-  durable settings save.
+- `linuxdesktop::root::request_builder` fits `Profile::init()` for app identity,
+  executable resource root, controlled test environment, portable marker policy,
+  and a machine-local log root.
+- `write_common_config()` fits the ordinary `qBittorrent.ini` save path.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `linuxdesktop::root::resolve_app_roots()` and the log named-root request are adapter-level
-  platform mechanics.
-- Keeping qBittorrent's `SpecialFolder` enum at the product boundary is good;
-  callers do not need to learn LinuxDesktop2026 root terminology.
+- The product policy branch remains outside the builder: command-line profile
+  roots win, otherwise an executable-adjacent `profile` directory activates
+  portable mode. That is the right ownership, but it means the adapter still has
+  meaningful product branching around the LinuxDesktop2026 call.
+- Log placement is a named root request and lookup pair. The lookup is still
+  string keyed.
 
-Product-boundary leakage:
+Leakage:
 
-- None in the public result types. The LinuxDesktop2026 concepts remain inside
-  the adapter implementation.
-
-Helper assessment:
-
-- The root-request builder removes request boilerplate without swallowing the
-  portable profile decision. That split is the desired shape: mechanics in the
-  helper, product branching in the adapter.
-- The write facade is a good fit for file logger settings because qBittorrent
-  only contributes the product path, INI content, and validation callback.
+- No product-facing qBittorrent result type needs LinuxDesktop2026 root names.
+  `SpecialFolder` stays product-shaped.
 
 ## KeePassXC
 
-Remaining visible concepts:
+Fit:
 
-- `Config::open()` still combines portable config, roaming/local split, XDG
-  overrides, and a machine-local named root.
-- `exportSettings()` now uses `write_common_config()` for a common durable
-  validated export.
-- `migrateOldLocalConfig()` still combines old cache detection with migration
-  planning, but it now returns a KeePassXC-shaped result.
+- `linuxdesktop::root::options` fits the roaming/local split and a
+  machine-local `local-settings` named root.
+- `write_common_config()` fits settings export.
+- `plan_move_file()` fits old cache config migration when translated into
+  `LocalConfigMigration`.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- Root discovery and the local-settings named root are acceptable adapter
-  mechanics because KeePassXC has explicit roaming/local policy.
-- Using `plan_move_file()` internally is acceptable because the old cache config
-  migration is a platform file move.
+- KeePassXC has enough XDG and roaming/local vocabulary that the raw options
+  object is clearer than the fluent builder. That is a sign the builder should
+  stay optional, not become the blessed path for all root consumers.
+- The product still needs to translate generic app-local/root diagnostics into
+  KeePassXC prompts or warnings.
+- The local-settings root uses LinuxDesktop2026 purpose and ownership terms in
+  the adapter. That is acceptable, but it does not map one-to-one to
+  KeePassXC's own naming.
 
-Product-boundary leakage:
+Leakage:
 
-- Fixed in the follow-up pass. `migrateOldLocalConfig()` now returns
-  `LocalConfigMigration`, carrying availability, blocked state, prompt intent,
-  dry-run state, source/target paths, and a KeePassXC action name. The raw
-  `migration_plan` stays inside the adapter implementation.
-
-Helper assessment:
-
-- `plan_move_file()` removes mechanical action construction, but it only
-  improves the product seam after the adapter translates the raw plan.
-- `write_common_config()` removes low-level backup/replace setup from settings
-  export without hiding KeePassXC's roaming/local filtering.
-- Root helpers help the local-settings declaration; they do not resolve the
-  deeper roaming/local naming mismatch between KeePassXC and LinuxDesktop2026.
+- The public migration result is product-shaped. Raw `migration_plan` does not
+  cross the KeePassXC seam.
 
 ## KiCad
 
-Remaining visible concepts:
+Fit:
 
-- `SETTINGS_MANAGER` uses `linuxdesktop::root::request_builder` for injected environment setup
-  and named roots for colors, toolbars, and project-backups.
-- `Save()` now uses `write_common_config()` for common durable JSON settings
-  writes.
+- `linuxdesktop::root::request_builder` fits ordinary config topology plus
+  named roots for colors, toolbars, and project backups.
+- `write_common_config()` fits JSON settings saves.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- Named roots are acceptable inside the constructor because KiCad has real
-  user, project, color, toolbar, and backup placement distinctions.
-- `GetPathForSettingsFile()` and `GetBackupRootForProject()` stay product-shaped
-  and preserve KiCad's project policy.
+- Project backup placement remains KiCad policy. A generic backup named root can
+  provide a base, but keyed-by-project fallback logic should stay in KiCad.
+- The named-root request/lookup pattern is readable for three roots, but it
+  would get noisy for a larger KiCad component map.
 
-Product-boundary leakage:
+Leakage:
 
-- None in public result types. LinuxDesktop2026 reports are translated before
-  leaving the adapter implementation.
-
-Helper assessment:
-
-- The root-request builder makes KiCad's ordinary environment and named-root
-  setup easier to scan, but it does not solve the product-shaped project backup
-  path. That keyed-by-project fallback should remain KiCad code unless more
-  flavors repeat it.
-- The write facade is a good fit for `Save()` because KiCad still owns the
-  settings target and JSON validation choice.
+- No public KiCad result type currently exposes LinuxDesktop2026 reports.
 
 ## FreeCAD
 
-Remaining visible concepts:
+Fit:
 
-- `ApplicationConfig::build()` still calls `ld_paths::resolve_app_paths()` only
-  to validate or exercise the path layer after FreeCAD-specific environment
-  variables have already selected paths.
-- `ConfigurationSet` stores a FreeCAD-shaped deprecated-path migration decision
-  instead of a raw LinuxDesktop2026 plan.
-- `saveUserParameter()` now uses `write_common_config()` for a common durable
-  XML-shaped user-parameter save.
+- `linuxdesktop::paths::resolve_app_paths()` is useful as a
+  validation/exercise point for FreeCAD-specific environment variables that
+  select user paths.
+- `plan_copy_directory()` fits deprecated path migration when translated into
+  `DeprecatedPathMigration`.
+- `write_common_config()` fits XML user-parameter saves.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- Consulting the path resolver is acceptable inside the adapter, but FreeCAD
-  must continue to own `FREECAD_USER_HOME`, `FREECAD_USER_DATA`,
-  `FREECAD_USER_TEMP`, and command-line override precedence.
-- Planning a deprecated-path copy is acceptable platform mechanics.
+- FreeCAD owns `FREECAD_USER_HOME`, `FREECAD_USER_DATA`,
+  `FREECAD_USER_TEMP`, and command-line override precedence. LinuxDesktop2026
+  currently sits beside that environment map rather than simplifying it.
+- The path resolver call feels like compatibility coverage more than a natural
+  FreeCAD refactor. A future helper would need to model product environment
+  precedence directly to earn its place.
 
-Product-boundary leakage:
+Leakage:
 
-- Fixed in the follow-up pass. `ConfigurationSet` now carries
-  `DeprecatedPathMigration`, with availability, blocked state, prompt intent,
-  dry-run status, source/target paths, and a FreeCAD action name. The raw
-  `migration_plan` stays inside the adapter implementation.
-
-Helper assessment:
-
-- `plan_copy_directory()` removes action setup; the public seam is now clearer
-  because callers see a FreeCAD migration decision instead of a
-  LinuxDesktop2026 migration plan.
-- The path resolver call currently feels like harness coverage more than a
-  natural FreeCAD refactor. A future helper should either earn its place in
-  FreeCAD's environment map flow or this slice should document why it is only
-  compatibility evidence.
-- `write_common_config()` is a good fit for user-parameter saves because FreeCAD
-  still controls the XML path and validation while the platform helper owns the
-  backup/replace mechanics.
+- Public FreeCAD migration state is product-shaped. The raw copy-directory plan
+  stays private.
 
 ## PrusaSlicer
 
-Remaining visible concepts:
+Fit:
 
-- `load_config_bundle()` still constructs `hydrate_options` because the app
-  owns model roots, target roots, and vendor-profile metadata.
-- `OldDatadirCheck` returns a PrusaSlicer-shaped old-datadir migration
-  decision.
-- Save methods use `write_common_config()` and keep PrusaSlicer-owned
-  validation callbacks.
+- `ensure_config_defaults()` fits shipped vendor profile seeding.
+- `write_common_config()` fits snapshot, app config, and recent-project saves.
+- `plan_copy_directory()` fits old datadir migration once translated into
+  `OldDatadirMigration`.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `ensure_config_defaults()` is a good name for shipped profile seeding as long
-  as PrusaSlicer keeps parsing and merge policy.
-- `plan_copy_directory()` is acceptable inside the old datadir check because the
-  platform action is a dry-run directory copy.
+- `hydrate_options` is still LinuxDesktop2026-shaped at a point where the
+  product thinks in vendor bundles, model roots, target roots, and merge
+  metadata. It is acceptable, but it is not especially graceful.
+- Vendor profile metadata is product-specific enough that a generic helper
+  should not try to hide parsing or merge policy.
 
-Product-boundary leakage:
+Leakage:
 
-- Fixed in the follow-up pass. `OldDatadirCheck` now keeps the prompt decision
-  and returns `OldDatadirMigration`, carrying availability, blocked state,
-  dry-run status, source/target paths, and a PrusaSlicer action name. The raw
-  `migration_plan` stays inside the adapter implementation.
-
-Helper assessment:
-
-- `write_common_config()` made snapshot/app-config/recent-project saves clearer.
-- `ensure_config_defaults()` improved naming, but the hydration option object is
-  still not especially product-shaped. That may be acceptable because vendor
-  profile metadata is unusually explicit.
-- The migration helper shortened setup; the product boundary improved once the
-  adapter translated the raw plan into `OldDatadirMigration`.
+- `prusaslicer_flavor.hpp` still exposes `linuxdesktop::settings::config_file`
+  and `validation_callback` in product-facing FlavorTest types. That keeps the
+  slice shorter, but a real adapter should translate those to PrusaSlicer-owned
+  types.
 
 ## OpenRGB
 
-Remaining visible concepts:
+Fit:
 
-- `ResourceManager::SetupConfigurationDirectory()` uses the path resolver
-  directly for resources/config/profile roots.
-- JSON save helpers use a local `write_json_file()` wrapper over
-  `write_common_config()`.
-- Autostart methods translate `ld_desktop::effect_report` into
-  `AutostartUpdate`.
+- `linuxdesktop::paths::resolve_app_paths()` fits resource/config/profile root
+  discovery.
+- `write_common_config()` fits JSON settings saves through a small local
+  `write_json_file()` adapter.
+- `linuxdesktop::desktop` fits autostart application as long as
+  `AutostartUpdate` remains the public result.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- Path resolution and desktop autostart application are adapter-level platform
-  mechanics.
-- `AutostartUpdate` keeps product-shaped public return values and avoids
-  leaking `effect_report`.
+- The JSON wrapper is product glue, not generic settings topology. If more
+  slices repeat it, a JSON-oriented write helper may be justified.
+- Autostart remains verbose because executable, arguments, working directory,
+  enabled state, dry-run mode, and write permission are all explicit.
 
-Product-boundary leakage:
+Leakage:
 
-- None in the public result types after report translation.
-
-Helper assessment:
-
-- The local `write_json_file()` wrapper is useful product glue: it names
-  OpenRGB's JSON-object expectation, keeps rejected JSON from replacing the
-  target, and still delegates common backup/replace mechanics to
-  `write_common_config()`. If more JSON saves repeat this pattern, add a
-  JSON-oriented convenience helper instead of returning to low-level options.
-- Autostart remains fairly verbose; that verbosity is acceptable because it
-  keeps executable, arguments, working directory, enabled state, dry-run, and
-  write permission explicit.
+- Public OpenRGB result types are product-shaped. Desktop effect reports and
+  path diagnostics stay inside the adapter.
 
 ## OBS
 
-Remaining visible concepts:
+Fit:
 
-- The public seam intentionally keeps OBS-style C conventions:
-  `os_get_config_path()` writes to caller buffers and returns integer status,
-  while `config_save_safe()` returns `0`/`-1`.
-- `resolve_config_root()` and `config_save_safe()` use LinuxDesktop2026 only
-  inside private implementation.
-- The cross-port review compares the shared OBS concept across Windows and
-  Unix-like platform helpers instead of treating the Linux backend as the whole
-  product model.
+- `linuxdesktop::paths` fits private config-root resolution.
+- `write_with_backup()` fits `config_save_safe()` because OBS intentionally
+  keeps C-shaped buffers and integer status conventions.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- The private path resolver and backup-write calls are acceptable because they
-  do not cross the OBS-shaped boundary.
+- This slice deliberately uses the lower-level write API. The convenience write
+  facade would be less representative of OBS's actual C boundary.
+- OBS is good evidence that LinuxDesktop2026 can stay private, but it does not
+  prove the C ABI is broad enough for general adoption.
 
-Product-boundary leakage:
+Leakage:
 
-- None. This slice is the strongest evidence that C-shaped call conventions can
-  remain intact while the implementation delegates platform mechanics.
-
-Helper assessment:
-
-- The lower-level write call remains intentional here. OBS is deliberately
-  testing whether C-shaped callers can keep pointer/buffer and integer return
-  conventions while delegating platform mechanics privately; switching this
-  slice to the convenience facade would weaken that coverage.
-- Keep: preserve OBS-style C boundaries and private LinuxDesktop2026 mechanics.
-- Change: every future cross-port FlavorTest should state whether the helper
-  matches a product concept shared by more than one backend.
-- Defer: do not broaden the C ABI from this evidence before release-candidate
-  status.
+- No product-facing OBS boundary exposes LinuxDesktop2026 types.
 
 ## Walnut
 
-Remaining visible concepts:
+Fit:
 
-- `ApplicationBootstrap::prepare()` keeps Walnut's `ApplicationSpecification`,
-  renderer startup capability checks, GPU selection, `VULKAN_SDK` observation,
-  distribution-mode entry-point choice, and headless/test launch behavior in
-  Walnut vocabulary.
-- `ResourceLocator::resolveImagePath()` preserves
-  `Walnut::Image::Image(std::string_view path)`-style caller input while using
-  the selected resource root for relative assets.
-- `ApplicationLifecycle` models `Close`, `Shutdown`, and the entry-point loop
-  state without owning the renderer or frame loop.
+- `linuxdesktop::paths` is enough for executable-adjacent resources and a
+  normal config root.
+- Walnut keeps renderer startup, GPU selection, distribution-mode entry point,
+  headless/test launch, and image lookup in product vocabulary.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `ld_paths::resolve_app_paths()` is acceptable inside the bootstrap adapter
-  because Walnut needs executable-adjacent resources and an ordinary config root,
-  but does not need settings, migration, desktop effects, or watch vocabulary.
-- Current friction is lower after the path API cleanup: Walnut now reads
-  executable/resource values through `selected_locations` and config through
-  ordinary `selected` path families, so the adapter no longer depends on
-  resource locations masquerading as user roots.
+- Walnut is negative evidence for forcing `linuxdesktop::root` into simple
+  graphics bootstrap. Direct path resolver options are easier to read here.
+- Diagnostics still need product translation into `StartupDiagnostic`, but the
+  translation is straightforward.
 
-Product-boundary leakage:
+Leakage:
 
-- None in the public seam. Path diagnostics are translated into
-  `StartupDiagnostic` values before returning from `prepare()`, and image lookup
-  reports missing assets in Walnut terms.
-
-Helper assessment:
-
-- The existing `ld_paths` API is enough for the first Walnut slice. A narrower
-  diagnostics helper is not justified yet because Walnut's value is precisely
-  that it does not need the heavier settings-root model.
-- The former private FlavorTest `platform_paths.hpp` gap is closed for Walnut:
-  deterministic user roots now flow through the generated public path-default
-  helper and normal resolver options instead of test-only XDG/AppData
-  environment scaffolding.
-- This slice is useful negative evidence for `linuxdesktop::root::request_builder`: graphics
-  app bootstrap with executable-adjacent assets reads more naturally with direct
-  path resolver options than with the settings-oriented root helper.
-
-## ld_paths Surface
-
-Current friction:
-
-- The deliberate pre-1.0 break is complete for task 45 and task 46:
-  path-list candidates, plugin path-set candidates, resolver path candidates,
-  and executable/install/resource location candidates are separate public
-  vocabularies in both C++ and C.
-- `path_family` is now ordinary user/platform roots only. Plugin search roots
-  are path sets, and executable/install/resource values are `location_role`
-  entries available from `ld_paths` alone.
-- This keeps Walnut/OpenRGB direct-path adapters lightweight while giving future
-  `ld_root` work clean install/resource inputs instead of inheriting
-  compatibility-shaped path-family names.
+- No product-facing Walnut seam exposes LinuxDesktop2026 paths reports.
+- The FlavorTest harness links Walnut to `ld_paths` only, matching the source
+  dependency.
 
 ## OpenIPC Dashboard
 
-Remaining visible concepts:
+Fit:
 
-- `ApplicationProfile::resolve()` keeps Dashboard's desktop versus service
-  profile split, `OPENIPC_DATA_ROOT`, `--data-root`, QSettings placement,
-  log/state/modules/analytics/evidence paths, and server-only offscreen intent
-  in Dashboard vocabulary.
-- `ServerModeBootstrap`, `DeploymentPolicy`, readiness reporting,
-  `PathNormalizer`, and browser diagnostics stay Dashboard-shaped because Qt,
-  web routing, administrator bootstrap, import semantics, and redaction policy
-  are product responsibilities.
+- `linuxdesktop::paths::resolve_app_paths()` fits the desktop default profile.
+- The service data-root branch correctly remains product-owned: it selects a
+  whole isolated service profile with config, data, evidence, QSettings, users,
+  state, modules, analytics, logs, and browser-facing security constraints.
 
-Acceptable mechanism vocabulary:
+Friction:
 
-- `ld_paths::resolve_app_paths()` is acceptable for the desktop default profile
-  because Dashboard can consume normal XDG/AppData roots without surrendering
-  its service-profile contract.
-- The service data-root branch deliberately remains product-owned. Its
-  `config/`, `data/`, `evidence/`, QSettings, users, state, modules, analytics,
-  and log layout is part of Dashboard's documented autonomous server contract,
-  not generic LinuxDesktop2026 placement policy.
+- LinuxDesktop2026 does not currently model "one absolute root selects an
+  app-owned service profile with named child layout." That may be a future
+  helper if another product repeats the shape.
+- Dashboard's Qt lifecycle, QSettings mechanics, QML startup, redaction policy,
+  and event-loop ownership remain outside the LinuxDesktop2026 abstraction.
 
-Product-boundary leakage:
+Leakage:
 
-- None in the public seam. LinuxDesktop2026 path diagnostics are translated into
-  `DashboardDiagnostic` values, and the other return types use Dashboard terms:
-  deployment profile, readiness, administrator bootstrap, path normalization,
-  and browser diagnostics.
+- Public Dashboard result types use Dashboard vocabulary. LinuxDesktop2026 path
+  diagnostics stay inside the adapter.
+- The FlavorTest harness links Dashboard to `ld_paths` only, matching the
+  source dependency.
 
-Helper assessment:
+## Dependency Pain
 
-- This slice is useful negative evidence for over-generalizing service roots.
-  A helper that only says "data override" would be too weak for Dashboard
-  because the override selects a whole isolated service profile with multiple
-  subordinate roots and browser-facing security constraints.
-- The former private FlavorTest `platform_paths.hpp` gap is closed for the
-  desktop profile: generated public platform defaults now provide deterministic
-  config/data/state/runtime roots without exposing raw LinuxDesktop2026 reports
-  at Dashboard boundaries.
-- A future profile helper may be worth considering only if more FlavorTests need
-  to express "one absolute root selects a named service profile with app-owned
-  child layout" without leaking LinuxDesktop2026 reports.
-- As a reference case, Dashboard says LinuxDesktop2026 should adapt around Qt
-  application lifecycle, QSettings mechanics, QML startup, and event-loop
-  ownership instead of competing with them.
+Current desired dependency shape:
 
-## Cross-Flavor Follow-Up
+- Link `LinuxDesktop2026::ld_paths` alone for plain platform paths,
+  executable/install/resource locations, path lists, plugin path sets, and
+  lightweight bootstrap adapters.
+- Link `LinuxDesktop2026::ld_root` when the caller needs user/app-owned root
+  topology, app-local or portable policy, overrides, named roots, or component
+  roots.
+- Link `LinuxDesktop2026::ld_settings` when the caller needs settings
+  hydration, settings layers, or validated settings writes.
+- Link `LinuxDesktop2026::ld_migration` when the caller needs dry-run
+  copy/move/import planning.
+- Link `LinuxDesktop2026::ld_desktop` for desktop effects such as autostart
+  integration.
 
-- Treat root topology as a solved cross-flavor boundary for the current batch.
-  Notepad++, qBittorrent, and KiCad now use `linuxdesktop::root` for shared
-  root setup mechanics. That does not justify moving the same behavior into
-  `ld_paths` or keeping a duplicate in `ld_settings`.
-- The root-boundary design now classifies Notepad++, qBittorrent, and KiCad as
-  positive evidence for shared root topology, Walnut as negative evidence for
-  overusing root builders in simple graphics bootstrap, and OpenIPC Dashboard
-  as negative evidence for flattening service-profile policy into a generic
-  helper. See `.scratch/review-hardening/specs/root-module-boundary.md`.
-- Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
-  PrusaSlicer now translate raw migration plans into product-shaped migration
-  results before callers see them.
-- Keep ordinary durable config saves on `write_common_config()` in qBittorrent,
-  KeePassXC, KiCad, FreeCAD, OpenRGB, Audacity, Notepad++, and PrusaSlicer.
-  Preserve direct `write_with_backup()` only where the product seam is testing a
-  lower-level behavior, such as Notepad++ backup restore or OBS C-style saves.
-- Keep `linuxdesktop::root::request_builder` focused on root topology. It
-  earned promotion in Notepad++, qBittorrent, and KiCad by removing mechanical
-  setup without hiding product policy. Do not force KeePassXC or FreeCAD
-  through it until their product-owned XDG and environment precedence rules can
-  be expressed more clearly than direct request objects.
-- Keep diagnostics internal by default. If a product needs startup or migration
-  diagnostics, translate them into product logging, warning, or prompt data
-  before storing them in product-facing state.
-- Treat Walnut as a lightweight graphics-app reference slice for path and
-  lifecycle seams, not as evidence that LinuxDesktop2026 has solved Vulkan,
-  GLFW, or renderer ownership.
-- Keep FlavorTests honest about consumer ergonomics. Walnut and OpenIPC
-  Dashboard now use public runtime/CMake path defaults, so future FlavorTests
-  should not add private path-default policy helpers to make product adapters
-  look easier than installed users would experience.
+Current leakage to fix in the evidence harness:
+
+- Cross-port examples should avoid returning LinuxDesktop2026 reports directly
+  from product-shaped public methods. They may print or inspect diagnostics in
+  proof code, but adapter headers should prefer product diagnostics.
+- Future FlavorTests should continue using generated public path defaults. No
+  private path-default helpers should be added to make tests easier than real
+  installed users' code.

@@ -6,7 +6,7 @@ replace real upstream platform code without growing into a bulky adapter layer.
 The goal is not to invent new sample applications. The goal is to take a few
 production-shaped methods from upstream projects, keep their application
 responsibilities intact, and refactor only the platform-root, file-hydration,
-backup-write, and desktop-effect portions through `ld_*` APIs.
+backup-write, and desktop-effect portions through LinuxDesktop2026 APIs.
 
 Selected upstream subprojects:
 
@@ -15,8 +15,8 @@ Selected upstream subprojects:
   settings, session location, plugin config roots, shortcuts XML, find-history
   XML, and session backup recovery while replacing Win32 path discovery,
   directory setup, model-file hydration, and validated backup writes with
-  `ld_settings` calls, including `ld_settings::write_common_config` for the
-  common save path.
+  `linuxdesktop::settings` calls, including
+  `linuxdesktop::settings::write_common_config` for the common save path.
   - See the survey notes in `docs/examples/migration-examples.md` and
     `docs/survey/notepad-settings-config-audit.md`.
 - `prusaslicer/`: refactors production-style config hydration and snapshot
@@ -24,10 +24,11 @@ Selected upstream subprojects:
   datadir migration check and recent-project config persistence. It keeps
   PrusaSlicer in charge of profile names, XML/INI content, prompt policy, and
   validation while replacing repeated copy/migration/backup/temp-write
-  mechanics with `ld_settings::ensure_config_defaults`,
-  `ld_migration::plan_copy_directory`, `ld_migration::plan_move_file`,
-  `ld_settings::write_with_backup`, and
-  `ld_settings::write_common_config` for the repeated save path.
+  mechanics with `linuxdesktop::settings::ensure_config_defaults`,
+  `linuxdesktop::migration::plan_copy_directory`,
+  `linuxdesktop::migration::plan_move_file`,
+  `linuxdesktop::settings::write_with_backup`, and
+  `linuxdesktop::settings::write_common_config` for the repeated save path.
   - Source anchors: `src/slic3r/Config/Snapshot.cpp`,
     `src/slic3r/Config/Snapshot.hpp`, and config/resource initialization around
     `src/slic3r/GUI/GUI_App.cpp`.
@@ -38,8 +39,9 @@ Selected upstream subprojects:
   It keeps OpenRGB's JSON/profile naming, config-directory switching, profile
   reload policy, and startup policy while replacing platform path selection,
   validated JSON writes, and desktop-file side effects with
-  `ld_paths::resolve_app_paths`, `ld_settings::write_with_backup`, and
-  `ld_desktop::apply_autostart`.
+  `linuxdesktop::paths::resolve_app_paths`,
+  `linuxdesktop::settings::write_with_backup`, and
+  `linuxdesktop::desktop::apply_autostart`.
   - See `docs/examples/migration-examples.md` and `docs/survey/extended-watchlist-fit-audit.md`.
 - `keepassxc/`: refactors KeePassXC-style config file selection from
   `Config.cpp`, including portable config, roaming vs local settings,
@@ -63,7 +65,8 @@ Selected upstream subprojects:
   roots miss.
 - `audacity/`: refactors Audacity-style file-config probing and save/backup
   behavior. It is focused on the repeated safe-write call shape and now routes
-  the common validated backup write through `ld_settings::write_common_config`.
+  the common validated backup write through
+  `linuxdesktop::settings::write_common_config`.
 - `freecad/`: refactors FreeCAD-style startup configuration set construction,
   including `FREECAD_USER_HOME`, `FREECAD_USER_DATA`, `FREECAD_USER_TEMP`,
   `--user-cfg`, `--system-cfg`, module paths, deprecated-path migration, and

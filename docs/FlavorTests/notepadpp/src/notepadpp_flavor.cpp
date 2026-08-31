@@ -7,9 +7,6 @@
 
 namespace flavor_tests::notepadpp {
 
-namespace ld_settings = linuxdesktop::settings;
-namespace ld_root = linuxdesktop::root;
-
 namespace {
 
 std::string read_text(const std::filesystem::path& path)
@@ -113,7 +110,7 @@ std::string render_find_history_xml(const find_history& history)
     return output.str();
 }
 
-SaveResult to_save_result(const ld_settings::write_report& report)
+SaveResult to_save_result(const linuxdesktop::settings::write_report& report)
 {
     return {report.ok, report.backup_path};
 }
@@ -122,19 +119,19 @@ SaveResult to_save_result(const ld_settings::write_report& report)
 
 bool NppParameters::load(const startup_environment& environment)
 {
-    const ld_root::report report = ld_root::request_builder()
+    const linuxdesktop::root::report report = linuxdesktop::root::request_builder()
         .app("notepad-plus-plus", "Notepad++")
         .resource_root(environment.install_root)
         .app_root_override(environment.command_line_settings_dir)
         .user_config_override(environment.cloud_choice_dir)
         .app_local_marker(environment.install_root / "doLocalConf.xml")
-        .app_local(ld_root::app_local_level::profile)
+        .app_local(linuxdesktop::root::app_local_level::profile)
         .allow_user_config_for_app_local_root(environment.allow_cloud_for_local_config)
         .deny_app_local_root_in_privileged_install(true)
         .privileged_install_roots(environment.privileged_install_roots)
-        .named_root(ld_root::make_plugin_config_root_request(
+        .named_root(linuxdesktop::root::make_plugin_config_root_request(
             "plugin-config",
-            ld_root::ownership_kind::user_roaming,
+            linuxdesktop::root::ownership_kind::user_roaming,
             "plugins/Config"))
         .resolve();
 
@@ -145,7 +142,7 @@ bool NppParameters::load(const startup_environment& environment)
         state_.session_path = report.roots.config;
     }
     state_.user_plugin_config_dir = report.roots.plugin_config;
-    if (const auto* plugin_config = ld_root::find_named_root(report, "plugin-config")) {
+    if (const auto* plugin_config = linuxdesktop::root::find_named_root(report, "plugin-config")) {
         state_.user_plugin_config_dir = plugin_config->path;
     }
     state_.is_local = report.app_local_active;
@@ -160,7 +157,7 @@ bool NppParameters::load(const startup_environment& environment)
 
 bool NppParameters::loadConfigFiles()
 {
-    ld_settings::hydrate_options defaults;
+    linuxdesktop::settings::hydrate_options defaults;
     defaults.model_root = state_.npp_path;
     defaults.target_root = state_.user_path;
     defaults.files = {
@@ -171,7 +168,7 @@ bool NppParameters::loadConfigFiles()
         {"contextMenu.xml", "contextMenu.xml.model", true},
     };
 
-    const ld_settings::hydrate_report hydration = ld_settings::ensure_config_defaults(defaults);
+    const linuxdesktop::settings::hydrate_report hydration = linuxdesktop::settings::ensure_config_defaults(defaults);
     state_.diagnostics.insert(
         state_.diagnostics.end(),
         hydration.diagnostics.begin(),
@@ -222,14 +219,14 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
         return !std::filesystem::exists(session_path);
     }
 
-    ld_settings::write_options restore;
+    linuxdesktop::settings::write_options restore;
     restore.target = session_path;
     restore.content = read_text(backup_path);
     restore.keep_backup = false;
     restore.atomic_replace = true;
     restore.durable_write = true;
 
-    const auto report = ld_settings::write_with_backup(restore, [this](const std::filesystem::path& path, std::string&) {
+    const auto report = linuxdesktop::settings::write_with_backup(restore, [this](const std::filesystem::path& path, std::string&) {
         XmlDocument restored;
         return loadXml(restored, path);
     });
@@ -240,7 +237,7 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
 
 SaveResult NppParameters::saveSession(const std::string& session_xml)
 {
-    const auto report = ld_settings::write_common_config({state_.session_path / "session.xml", session_xml, true},
+    const auto report = linuxdesktop::settings::write_common_config({state_.session_path / "session.xml", session_xml, true},
         [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);
@@ -254,7 +251,7 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
         return {true, std::nullopt};
     }
 
-    auto report = ld_settings::write_common_config({state_.shortcuts_path, render_shortcuts_xml(store), true},
+    auto report = linuxdesktop::settings::write_common_config({state_.shortcuts_path, render_shortcuts_xml(store), true},
         [this](const std::filesystem::path& path, std::string& message) {
         return validateShortcutXml(path, message);
     });
@@ -269,7 +266,7 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
 
 SaveResult NppParameters::writeFindHistory(const find_history& history)
 {
-    auto report = ld_settings::write_common_config({state_.config_path, render_find_history_xml(history), true},
+    auto report = linuxdesktop::settings::write_common_config({state_.config_path, render_find_history_xml(history), true},
         [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);

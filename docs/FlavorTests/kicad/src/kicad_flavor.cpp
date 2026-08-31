@@ -7,9 +7,6 @@
 
 namespace flavor_tests::kicad {
 
-namespace ld_settings = linuxdesktop::settings;
-namespace ld_root = linuxdesktop::root;
-
 namespace {
 
 std::string hex_suffix(std::size_t value)
@@ -30,23 +27,23 @@ bool json_object_shape(const std::filesystem::path&, std::string& message)
 SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
     : environment_(std::move(environment))
 {
-    auto builder = ld_root::request_builder()
+    auto builder = linuxdesktop::root::request_builder()
         .app("KiCad", "kicad")
         .home_directory(environment_.home_directory)
         .environment(environment_.variables)
         .use_process_environment(false)
-        .named_root(ld_root::make_component_config_root_request(
+        .named_root(linuxdesktop::root::make_component_config_root_request(
             "colors",
-            ld_root::ownership_kind::user_roaming,
+            linuxdesktop::root::ownership_kind::user_roaming,
             "colors"))
-        .named_root(ld_root::make_component_config_root_request(
+        .named_root(linuxdesktop::root::make_component_config_root_request(
             "toolbars",
-            ld_root::ownership_kind::user_roaming,
+            linuxdesktop::root::ownership_kind::user_roaming,
             "toolbars"))
-        .named_root(ld_root::make_named_root_request(
+        .named_root(linuxdesktop::root::make_named_root_request(
             "project-backups",
-            ld_root::purpose_kind::backup,
-            ld_root::ownership_kind::user_roaming,
+            linuxdesktop::root::purpose_kind::backup,
+            linuxdesktop::root::ownership_kind::user_roaming,
             "project-backups"));
     if (const auto config_home = environment_.variables.find("XDG_CONFIG_HOME");
         config_home != environment_.variables.end()) {
@@ -58,13 +55,13 @@ SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
     color_settings_root_ = report.roots.config / "colors";
     toolbar_settings_root_ = report.roots.config / "toolbars";
     user_backup_root_ = report.roots.state / "project-backups";
-    if (const auto* colors = ld_root::find_named_root(report, "colors")) {
+    if (const auto* colors = linuxdesktop::root::find_named_root(report, "colors")) {
         color_settings_root_ = colors->path;
     }
-    if (const auto* toolbars = ld_root::find_named_root(report, "toolbars")) {
+    if (const auto* toolbars = linuxdesktop::root::find_named_root(report, "toolbars")) {
         toolbar_settings_root_ = toolbars->path;
     }
-    if (const auto* backups = ld_root::find_named_root(report, "project-backups")) {
+    if (const auto* backups = linuxdesktop::root::find_named_root(report, "project-backups")) {
         user_backup_root_ = backups->path;
     }
 }
@@ -105,7 +102,7 @@ std::filesystem::path SETTINGS_MANAGER::GetBackupRootForProject(const Project* p
 
 SaveResult SETTINGS_MANAGER::Save(const JsonSettings& settings) const
 {
-    const auto report = ld_settings::write_common_config({GetPathForSettingsFile(settings), settings.json, true},
+    const auto report = linuxdesktop::settings::write_common_config({GetPathForSettingsFile(settings), settings.json, true},
         json_object_shape);
     return {report.ok, report.backup_path};
 }
