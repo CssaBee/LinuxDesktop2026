@@ -4,6 +4,17 @@
 
 The goal is a community-facing prototype that feels useful, boring, and honest: broad enough to hand to other developers, but scoped enough that it does not pretend to be a settings engine, desktop integrator, process launcher, or plugin host.
 
+Platform path defaults are part of that path-resolver promise, not a new broad
+platform module. They exist because FlavorTests briefly depended on a private
+helper that made deterministic XDG and Windows AppData roots look easier than
+they were for installed users. The supported shape is explicit: C++ callers pass
+a `platform_path_defaults` value through `resolver_options`, C callers fill the
+flat default fields on `ld_paths_resolver_options`, and CMake consumers may
+generate a target-local helper with `linuxdesktop2026_generate_path_defaults()`.
+In all cases, defaults are lower precedence than explicit overrides, injected
+environment, process environment, and native OS discovery, and higher
+precedence than built-in fallback guesses.
+
 ## Design Position
 
 `ld_paths` should resolve path families and explain how it resolved them.
@@ -55,6 +66,7 @@ Implement:
 - source-labeled candidate reporting,
 - Linux XDG Base Directory behavior,
 - Windows Known Folder behavior in the public model,
+- explicit runtime platform defaults for XDG and Windows AppData roots,
 - and deterministic test hooks.
 
 Exit bar:
@@ -132,6 +144,7 @@ Implement:
 - C++ and C examples,
 - install/export package files,
 - install-tree consumer test for `LinuxDesktop2026::ld_paths`,
+- consumer-target CMake generation for platform defaults,
 - README quick-start section,
 - API stability notes for `ld_paths`,
 - and a compatibility matrix for Windows 10/11 and Ubuntu LTS.
@@ -139,6 +152,8 @@ Implement:
 Exit bar:
 
 - a downstream CMake project can link `LinuxDesktop2026::ld_paths`,
+- generated CMake defaults are passed explicitly by the consuming target rather
+  than hidden in global library state,
 - C callers can allocate, inspect, and free reports through documented ownership rules,
 - examples do not depend on a developer's real home directory,
 - and unsupported platform behavior is reported, not hidden.
@@ -216,6 +231,7 @@ struct resolver_options {
     std::optional<std::filesystem::path> home_directory;
     std::map<std::string, std::string> environment;
     std::vector<std::filesystem::path> legacy_config_files;
+    std::optional<platform_path_defaults> platform_defaults;
     bool use_process_environment;
 };
 
@@ -231,6 +247,54 @@ resolver_report resolve_app_paths(app_identity identity, resolver_options option
 ```
 
 The final API does not need to use these exact names. The important commitments are source-labeled candidates, selected paths by family, explicit diagnostics, and no hidden filesystem mutation.
+
+Current C++ callers can construct defaults directly:
+
+```cpp
+namespace ldp = linuxdesktop::paths;
+
+ldp::resolver_options options;
+options.use_process_environment = false;
+
+#if defined(_WIN32)
+options.platform_defaults = ldp::platform_path_defaults::windows(home);
+#else
+options.platform_defaults = ldp::platform_path_defaults::xdg(home, runtime);
+#endif
+
+const auto report = ldp::resolve_app_paths({"ExampleOrg", "ExampleApp"}, options);
+```
+
+C callers use flat option fields instead of owning a nested defaults object:
+
+```c
+struct ld_paths_resolver_options options;
+ld_paths_resolver_options_init(&options);
+options.organization = "ExampleOrg";
+options.application = "example-app";
+options.use_process_environment = 0;
+options.xdg_config_home_default = "/tmp/example-home/.config";
+options.xdg_data_home_default = "/tmp/example-home/.local/share";
+options.xdg_state_home_default = "/tmp/example-home/.local/state";
+options.xdg_cache_home_default = "/tmp/example-home/.cache";
+options.xdg_runtime_dir_default = "/tmp/example-runtime";
+```
+
+CMake consumers that want to hide the OS-specific factory choice should generate
+a target-local helper and pass its result explicitly:
+
+```cmake
+find_package(LinuxDesktop2026 CONFIG REQUIRED)
+
+add_executable(example_app main.cpp)
+target_link_libraries(example_app PRIVATE LinuxDesktop2026::ld_paths)
+linuxdesktop2026_generate_path_defaults(example_app
+    HEADER example/generated/platform_path_defaults.hpp)
+```
+
+The generated helper is not global resolver state. It is consumer source that
+selects the platform factory at configure time and still requires the
+application to pass accepted home/runtime roots into resolver options.
 
 ## Relationship To Existing Modules
 

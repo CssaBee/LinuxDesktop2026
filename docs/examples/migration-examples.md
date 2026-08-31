@@ -592,6 +592,9 @@ BootstrapPlan ApplicationBootstrap::prepare(
     options.executable_path = environment.executable_path;
     options.resource_root = environment.executable_path.parent_path();
     options.environment = environment.variables;
+    options.platform_defaults = generated::platform_path_defaults_for_home(
+        environment.home,
+        environment.runtime);
 
     const auto paths = ldp::resolve_app_paths({"Walnut", specification.name}, options);
 
@@ -622,6 +625,9 @@ ApplicationProfile ApplicationProfile::desktop(RuntimeEnvironment environment)
     ldp::resolver_options resolver;
     resolver.home_directory = environment.home;
     resolver.environment = environment.variables;
+    resolver.platform_defaults = generated::platform_path_defaults_for_home(
+        environment.home,
+        environment.runtime);
 
     const auto paths = ldp::resolve_app_paths(
         {"OpenIPC", "OpenIPC Dashboard"},
@@ -712,7 +718,8 @@ the limit: resolving paths is not the same as loading plugins.
   wrappers around `GetModuleFileName`, `SHGetFolderPath`, `CreateDirectory`,
   `CopyFile`, Qt, XDG environment parsing, or desktop-file text.
 - `ld_paths` should own path families, candidate reports, executable/resource
-  roots, user directories, path lists, and typed plugin path sets.
+  roots, user directories, explicit platform defaults, path lists, and typed
+  plugin path sets.
 - `ld_settings` should own config-default hydration and config writes. Generic
   root placement increasingly belongs to `ld_paths`; migration behavior belongs
   to `ld_migration`; autostart, policy, and desktop effects belong to
@@ -729,6 +736,10 @@ the limit: resolving paths is not the same as loading plugins.
   OpenIPC Dashboard service profiles all show places where the simplest natural
   solution is to keep product code in charge and use LinuxDesktop2026 narrowly,
   or not at all.
+- FlavorTests must use public consumer mechanisms for deterministic roots.
+  Runtime `platform_path_defaults`, C flat default fields, and generated CMake
+  target helpers are acceptable; private test-only platform-path helpers are
+  misleading integration evidence.
 - AI agents should have enough surrounding code to recognize the migration seam
   and propose a safe incremental patch instead of trying to port an entire GUI
   or replace a toolkit-owned lifecycle.

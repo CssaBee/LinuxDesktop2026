@@ -59,6 +59,16 @@ ld_paths_version_string()
 
 The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function. Do not broaden this surface until release-candidate API evidence exists.
 
+The C resolver options expose platform defaults as flat borrowed-string fields:
+`xdg_config_home_default`, `xdg_data_home_default`, `xdg_state_home_default`,
+`xdg_cache_home_default`, `xdg_runtime_dir_default`,
+`windows_roaming_appdata_default`, and `windows_local_appdata_default`. These
+fields do not transfer ownership to LinuxDesktop2026 and do not create hidden
+resolver state. Their precedence is explicit override, injected environment,
+process environment or OS APIs, platform defaults, then built-in fallback. The
+selected report uses `LD_PATHS_SOURCE_PLATFORM_DEFAULT` when a default-derived
+candidate wins.
+
 Task 04 adds runtime root selection to `ld_paths` and settings-owned
 home/environment injection controls to `ld_settings` root options. These are
 pre-1.0 C and C++ surface changes made to correct the ADR 0012 module boundary;

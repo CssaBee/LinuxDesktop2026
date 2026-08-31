@@ -91,7 +91,18 @@ namespace ldp = linuxdesktop::paths;
 
 int main()
 {
-    auto paths = ldp::resolve_app_paths({"LinuxDesktop2026", "example"});
+    ldp::resolver_options options;
+    options.use_process_environment = false;
+
+#if defined(_WIN32)
+    options.platform_defaults =
+        ldp::platform_path_defaults::windows("C:/Users/example");
+#else
+    options.platform_defaults =
+        ldp::platform_path_defaults::xdg("/tmp/example-home", "/tmp/example-runtime");
+#endif
+
+    auto paths = ldp::resolve_app_paths({"LinuxDesktop2026", "example"}, options);
     auto preview = ldp::ensure_directory(paths, ldp::path_family::config);
     return paths.selected.empty() || preview.diagnostics.size() > 1;
 }
@@ -127,6 +138,23 @@ From an installed package:
 cmake -S . -B build -DLD2026_BUILD_EXAMPLES=OFF -DLD2026_BUILD_TESTS=OFF
 cmake --install build --prefix /tmp/linuxdesktop2026-prefix
 ```
+
+Installed CMake consumers can generate target-local platform defaults instead
+of copying OS-specific helper code:
+
+```cmake
+find_package(LinuxDesktop2026 CONFIG REQUIRED)
+
+add_executable(your_app main.cpp)
+target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_paths)
+linuxdesktop2026_generate_path_defaults(your_app
+    HEADER your_app/generated/platform_path_defaults.hpp)
+```
+
+The generated header selects the supported XDG or Windows default factory for
+the consumer target. Application code still passes the resulting defaults
+through `ld_paths::resolver_options::platform_defaults`, so there is no hidden
+global path policy in the shared library.
 
 ```cmake
 find_package(LinuxDesktop2026 CONFIG REQUIRED)
