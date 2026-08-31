@@ -140,6 +140,10 @@ _Avoid_: File manager, settings engine, migration executor
 A named group of related filesystem locations that share a purpose, such as user configuration, cache, state, documents, executable roots, resource roots, or plugin search roots.
 _Avoid_: Path string, folder bucket, arbitrary directory
 
+**Root module**:
+The proposed public `ld_root` module that would own application root topology across user-owned and app-owned roots, sitting between generic path families and settings-specific config lifecycle.
+_Avoid_: Internal settings cleanup, root helper, path resolver rename
+
 **Plugin path set**:
 A typed collection of search roots for one plugin or asset ecosystem, including its platform defaults, environment overrides, and compatibility fallbacks.
 _Avoid_: Plugin ABI, plugin host, dynamic loader

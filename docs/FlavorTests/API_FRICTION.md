@@ -410,6 +410,13 @@ Helper assessment:
 
 ## Cross-Flavor Follow-Up
 
+- Treat root topology as the next cross-flavor pressure point. `settings.cpp`
+  now hides too many responsibilities behind one implementation file, and
+  `root_request_builder` is evidence that Notepad++, qBittorrent, and KiCad
+  share some root setup mechanics. That does not automatically justify moving
+  all of it into `ld_paths` or keeping it in `ld_settings`: the next hardening
+  spec should test whether a public `ld_root` module can express user-owned and
+  app-owned roots without becoming a tech-debt rename.
 - Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
   PrusaSlicer now translate raw migration plans into product-shaped migration
   results before callers see them.
