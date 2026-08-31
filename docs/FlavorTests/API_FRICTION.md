@@ -417,6 +417,11 @@ Helper assessment:
   all of it into `ld_paths` or keeping it in `ld_settings`: the next hardening
   spec should test whether a public `ld_root` module can express user-owned and
   app-owned roots without becoming a tech-debt rename.
+- The root-boundary design now classifies Notepad++, qBittorrent, and KiCad as
+  positive evidence for shared root topology, Walnut as negative evidence for
+  overusing root builders in simple graphics bootstrap, and OpenIPC Dashboard
+  as negative evidence for flattening service-profile policy into a generic
+  helper. See `.scratch/review-hardening/specs/root-module-boundary.md`.
 - Keep migration plans internal in FlavorTests. KeePassXC, FreeCAD, and
   PrusaSlicer now translate raw migration plans into product-shaped migration
   results before callers see them.

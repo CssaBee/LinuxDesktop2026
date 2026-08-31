@@ -5,16 +5,16 @@ public `ld_root` boundary proposal before any public API is added.
 
 **Blocked by:** 41 - Document Platform Path Defaults Evidence.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `docs/FlavorTests/API_FRICTION.md` is used as the baseline evidence.
-- [ ] The design distinguishes `ld_paths`, proposed `ld_root`, `ld_settings`,
+- [x] `docs/FlavorTests/API_FRICTION.md` is used as the baseline evidence.
+- [x] The design distinguishes `ld_paths`, proposed `ld_root`, `ld_settings`,
   and product-owned policy.
-- [ ] User-owned roots and app-owned roots are defined in product-facing terms.
-- [ ] The design names which Notepad++, qBittorrent, KiCad, Walnut, and OpenIPC
+- [x] User-owned roots and app-owned roots are defined in product-facing terms.
+- [x] The design names which Notepad++, qBittorrent, KiCad, Walnut, and OpenIPC
   Dashboard seams support or reject a shared root module.
-- [ ] The design states what must not move into `ld_root`.
-- [ ] No public `ld_root` API is added in this ticket.
+- [x] The design states what must not move into `ld_root`.
+- [x] No public `ld_root` API is added in this ticket.
 
 ## Problem Statement
 
@@ -25,4 +25,15 @@ too-broad path helper unless the boundary is designed from consumer evidence.
 
 ## Result
 
-Pending.
+Completed in `specs/root-module-boundary.md`. The design keeps `ld_paths`
+responsible for platform path families and generated defaults, defines the
+proposed public `ld_root` boundary around reusable application root topology,
+keeps settings overrides/config layers/hydration/writes in `ld_settings`, and
+leaves product-specific profile, project, service, cloud, diagnostic, and file
+format policy in adapters.
+
+The FlavorTest evidence is split deliberately: Notepad++, qBittorrent, and
+KiCad support a shared root-topology boundary; Walnut rejects forcing simple
+graphics bootstrap through that model; OpenIPC Dashboard rejects flattening an
+isolated service profile into generic root helpers unless more products repeat
+the same shape.

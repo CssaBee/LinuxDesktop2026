@@ -40,6 +40,80 @@ lines while preserving public behavior. A later public `ld_root` API should be
 added only if the extracted boundary proves reusable across FlavorTests or a
 maintained cross-port branch.
 
+## Boundary Design
+
+`ld_paths` answers "where does this platform normally put a path family for
+this app?" It owns XDG/Known Folder/environment/default precedence, generated
+platform defaults, executable-relative resource discovery, path-list parsing,
+plugin search path sets, and directory creation reports. It should remain the
+right API for products that only need config/data/state/cache/runtime/resource
+families and then apply their own layout.
+
+The proposed `ld_root` boundary answers "how should an application organize the
+roots it owns after the base platform families are known?" It may own a public
+request/report vocabulary for base application roots, named roots, component
+roots, app-local roots, install-adjacent resource roots, user-owned root
+selection, app-owned child root derivation, root source reporting, and root
+creation diagnostics. It should call or share internals with `ld_paths`; it
+should not duplicate platform path discovery.
+
+`ld_settings` answers "how does a settings/config lifecycle use roots?" It owns
+settings overrides, sync-config overrides, portable settings decisions, config
+layers, default hydration, backup/atomic/durable writes, and settings-specific
+diagnostics. It may depend on a future `ld_root` result, but it should continue
+to be where callers look for config defaults and safe settings writes.
+
+Product-owned policy answers "what layout does this product promise to users,
+plugins, projects, services, or existing upstream code?" Product adapters keep
+command-line precedence when it is product-specific, cloud prompt policy,
+service profile contracts, project-keyed backup paths, UI diagnostic wording,
+file formats, plugin ABI expectations, environment variables unique to the
+product, and Qt/renderer/browser lifecycle.
+
+## Root Ownership Terms
+
+A user-owned root is selected by the person or deployment environment using
+ordinary app-user vocabulary: home directory, command-line settings directory,
+cloud/sync directory, XDG/AppData defaults, local portable profile marker, or a
+product-specific override. The product must be able to explain this root to a
+user as "your profile", "your settings directory", "your cloud settings", or
+"your local profile" without exposing LinuxDesktop2026 internals.
+
+An app-owned root is derived by the application from a selected base root. It is
+where the product decides child layout: `plugins/Config`, `BT_backup`, `logs`,
+`colors`, `toolbars`, `project-backups`, QSettings files, module caches, or
+service databases. A future `ld_root` may help when these children are ordinary
+named/component roots with persistence classes. It must not take over children
+whose names, validation, security model, or migration behavior are part of the
+product contract.
+
+## Flavor Evidence
+
+| Flavor | Evidence for `ld_root` | Boundary decision |
+| --- | --- | --- |
+| Notepad++ | Strong positive evidence. Both the in-tree FlavorTest and maintained proof branch compose install resources, user config, session roots, plugin config, command-line settings, cloud choice, local-config marker, and privileged-install denial. | Shared topology is useful, but config default hydration, XML validation, backup restore, plugin ABI, cloud prompt wording, and diagnostic translation remain `ld_settings` or product-owned. |
+| qBittorrent | Positive evidence. `Profile::init()` uses `root_request_builder` for app identity, executable resources, environment/default roots, portable profile activation, and a machine-local log named root. | `ld_root` can own the reusable request/report mechanics. qBittorrent keeps profile-dir override precedence, executable-adjacent `profile` activation policy, `SpecialFolder` naming, and fastresume layout. |
+| KiCad | Positive evidence with limits. Named roots for colors, toolbars, and project backups fit a root topology API better than generic path families. | Component/named roots belong in the proposed boundary. Project-keyed backup fallback, `GetPathForSettingsFile()`, and project ownership remain KiCad policy. |
+| Walnut | Negative evidence. Walnut only needs executable-adjacent resources and ordinary config roots before renderer/bootstrap decisions. Direct `ld_paths::resolve_app_paths()` is clearer than a settings-root builder. | Do not require `ld_root` for simple graphics/bootstrap apps. Keep platform defaults and resource/config family selection in `ld_paths`. |
+| OpenIPC Dashboard | Negative evidence with a narrow future watch point. The desktop profile uses ordinary `ld_paths`, while `--data-root`/`OPENIPC_DATA_ROOT` selects an isolated service profile with many app-owned children. | Do not generalize service roots yet. Reopen only if more FlavorTests need "one absolute root selects a named service profile with app-owned child layout" and can share vocabulary without hiding security/deployment policy. |
+
+KeePassXC and FreeCAD are mixed evidence, not promotion blockers. Their
+roaming/local and app-specific environment precedence rules still read more
+honestly as direct requests until a future boundary can express them with less
+translation than today's `ld_settings::root_options`.
+
+## Do Not Move Into `ld_root`
+
+- Generic platform path-family discovery, platform defaults, path lists, plugin
+  search path sets, or directory-only helpers from `ld_paths`.
+- Config-layer modeling, storage backends, managed/enforced settings layers,
+  default hydration, settings writes, validation callbacks, or backup recovery
+  from `ld_settings`.
+- Product-specific command-line semantics, cloud/sync prompts, service profile
+  security, project-keyed roots, renderer/Qt/browser lifecycle, file formats,
+  migration prompts, or user-facing diagnostic vocabulary.
+- Public C or C++ APIs during task 42. This ticket records the boundary only.
+
 ## User Stories
 
 1. As an application developer, I want user-owned and app-owned roots to have a

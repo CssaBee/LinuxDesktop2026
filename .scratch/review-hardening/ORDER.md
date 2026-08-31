@@ -6,12 +6,12 @@ list below.
 
 ## Current Order
 
-- `42` - Design Root Module Boundary
 - `43` - Extract Settings Root Internals
 - `44` - Audit Paths Root Overlap
 
 ## Implemented
 
+- `42` - Design Root Module Boundary
 - `41` - Document Platform Path Defaults Evidence
 - `40` - Remove Private FlavorTest Platform Path Helper
 - `39` - Add Consumer CMake Path Default Generation
