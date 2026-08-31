@@ -115,7 +115,7 @@ void writes_absolute_settings_override()
     ld::root_options options;
     options.settings_override = root;
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(report.settings_override_active, "settings override should be active");
     require(report.roots.config == root, "settings override should own config");
@@ -129,7 +129,7 @@ void rejects_relative_settings_override()
     ld::root_options options;
     options.settings_override = "relative-settings";
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(!report.settings_override_active, "relative settings override must not activate");
     require(has_diagnostic(report.diagnostics, "settings-override-relative"),
@@ -153,7 +153,7 @@ void denies_portable_under_privileged_install_root()
     options.privileged_install_roots = {root / "Program Files"};
     options.deny_portable_root_in_privileged_install = true;
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(report.portable_requested, "portable marker should be requested");
     require(!report.portable_active, "portable root should be denied under privileged install root");
@@ -169,7 +169,7 @@ void sync_config_override_keeps_state_local()
     ld::root_options options;
     options.sync_config_override = sync;
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(report.sync_config_override_active, "sync config override should be active");
     require(report.roots.config == sync, "sync config override should own config");
@@ -184,7 +184,7 @@ void rejects_relative_sync_config_override()
     ld::root_options options;
     options.sync_config_override = "relative-sync";
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(!report.sync_config_override_active, "relative sync config override must not activate");
     require(has_diagnostic(report.diagnostics, "sync-config-override-relative"),
@@ -201,7 +201,7 @@ void settings_override_wins_over_sync_override()
     options.settings_override = settings;
     options.sync_config_override = sync;
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(report.settings_override_active, "settings override should be active");
     require(!report.sync_config_override_active, "sync override should not activate over settings override");
@@ -230,7 +230,7 @@ void delegates_generic_roots_to_paths_with_injected_environment()
     options.environment["XDG_RUNTIME_DIR"] = (root / "xdg-runtime").string();
 #endif
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(has_diagnostic(report.diagnostics, "paths.environment.relative_ignored"),
         "settings root resolution should expose ld_paths diagnostics");
@@ -266,7 +266,7 @@ void delegates_platform_defaults_to_paths()
     options.platform_defaults = ld_paths::platform_path_defaults::xdg(root / "home", root / "runtime");
 #endif
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(!has_error_diagnostic(report.diagnostics),
         "settings root resolution should accept absolute platform defaults");
@@ -299,32 +299,21 @@ void reports_path_directory_failure_for_generic_root_creation()
     options.use_process_environment = false;
     options.home_directory = root / "home";
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(has_diagnostic(report.diagnostics, "paths.directory.exists_as_file"),
         "generic root creation failures should come from ld_paths diagnostics");
 }
 
-void resolves_named_roots_and_layers()
+void resolves_settings_layers()
 {
     const auto root = test_root() / "settings";
 
     ld::root_options options;
     options.settings_override = root;
-    options.named_roots = {
-        ld::make_log_root_request("logs", ld::persistence_class::machine_local, "Logs"),
-        ld::make_profiles_root_request("profiles", ld::persistence_class::roaming, "Profiles"),
-    };
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
-    require(report.named_roots.size() == 2, "two named roots should be resolved");
-    require(report.named_roots[0].name == "logs", "first named root should preserve name");
-    require(report.named_roots[0].path == report.roots.state / "Logs", "machine-local logs should live under state");
-    require(report.named_roots[1].path == report.roots.config / "Profiles", "roaming profiles should live under config");
-    const auto* logs = ld::find_named_root(report, "logs");
-    require(logs != nullptr, "C++ helper should find named roots by name");
-    require(logs->path == report.roots.state / "Logs", "C++ helper should return the resolved named root");
     require(report.layers.candidates.size() >= 6, "layer report should include default/user/local/managed/enforced candidates");
     require(report.layers.active_write_layer.has_value(), "layer report should include active write layer");
     require(report.layers.active_read_order.front().kind == ld::config_layer_kind::enforced,
@@ -339,14 +328,14 @@ void resolves_named_roots_and_layers()
         "storage backend should stringify for diagnostics");
 }
 
-void root_request_builder_preserves_root_options()
+void root_builder_preserves_root_options()
 {
     const auto root = test_root();
     const auto install = root / "Application";
     const auto settings = root / "settings";
     const auto sync = root / "sync";
 
-    const auto report = ld::root_request_builder()
+    const auto report = ld::root_builder()
         .app("BuilderOrg", "BuilderApp")
         .resource_root(install)
         .home_directory(root / "home")
@@ -358,10 +347,6 @@ void root_request_builder_preserves_root_options()
         .portable(ld::portable_level::profile)
         .allow_sync_config_for_portable_root(true)
         .create_directories(false)
-        .named_root(ld::make_log_root_request(
-            "logs",
-            ld::persistence_class::machine_local,
-            "Logs"))
         .resolve();
 
     require(report.settings_override_active, "builder should preserve settings override");
@@ -369,82 +354,7 @@ void root_request_builder_preserves_root_options()
     require(report.roots.resources == install, "builder should preserve resource root");
     require(report.roots.config == settings, "builder should preserve config root");
     require(report.roots.state == settings, "builder should preserve state root");
-    const auto* logs = ld::find_named_root(report, "logs");
-    require(logs != nullptr, "builder should preserve named roots");
-    require(logs->path == settings / "Logs", "builder named roots should resolve like explicit options");
     require(!std::filesystem::exists(settings), "builder should preserve create-directories policy");
-}
-
-void resolves_component_roots()
-{
-    const auto root = test_root() / "settings";
-
-    const auto plugin = ld::make_component_root_request(
-        "compare-plugin",
-        ld::component_kind::plugin,
-        {
-            ld::make_component_config_root_request("config", ld::persistence_class::roaming, "Config"),
-            ld::make_component_state_root_request("state", ld::persistence_class::machine_local, "State"),
-        });
-
-    ld::root_options options;
-    options.settings_override = root;
-    options.component_roots = {plugin};
-
-    const auto report = ld::resolve_app_roots(identity(), options);
-
-    require(report.component_roots.size() == 1, "one component root group should be resolved");
-    require(report.component_roots[0].name == "compare-plugin", "component name should be preserved");
-    require(report.component_roots[0].kind == ld::component_kind::plugin, "component kind should be preserved");
-    require(report.component_roots[0].roots.size() == 2, "component should expose requested roots");
-    require(report.component_roots[0].roots[0].path == root / "components" / "compare-plugin" / "Config",
-        "component config should live below component namespace");
-    require(report.component_roots[0].roots[1].path == root / "components" / "compare-plugin" / "State",
-        "component state should live below component namespace");
-    const auto* plugin_roots = ld::find_component_roots(report, "compare-plugin");
-    require(plugin_roots != nullptr, "C++ helper should find component root groups");
-    const auto* plugin_state = ld::find_component_named_root(*plugin_roots, "state");
-    require(plugin_state != nullptr, "C++ helper should find roots inside component groups");
-    require(plugin_state->path == root / "components" / "compare-plugin" / "State",
-        "component root helper should return resolved component path");
-}
-
-void helper_factories_match_explicit_request_shapes()
-{
-    const auto config = ld::make_config_root_request("config", ld::persistence_class::roaming, "Config");
-    require(config.name == "config", "config helper should preserve name");
-    require(config.purpose == ld::root_purpose::config, "config helper should set config purpose");
-    require(config.persistence == ld::persistence_class::roaming, "config helper should preserve persistence");
-    require(config.relative_path == "Config", "config helper should preserve relative path");
-    require(config.create, "config helper should keep create enabled by default");
-
-    const auto cache = ld::make_cache_root_request("cache", ld::persistence_class::ephemeral);
-    require(cache.purpose == ld::root_purpose::cache, "cache helper should set cache purpose");
-    require(cache.persistence == ld::persistence_class::ephemeral, "cache helper should preserve persistence");
-
-    const auto session = ld::make_session_root_request("session", ld::persistence_class::machine_local, "Sessions");
-    require(session.purpose == ld::root_purpose::session, "session helper should set session purpose");
-    require(session.relative_path == "Sessions", "session helper should preserve relative path");
-
-    const auto profile_data = ld::make_profile_data_root_request(
-        "profiles", ld::persistence_class::roaming, "Profiles");
-    require(profile_data.purpose == ld::root_purpose::profiles,
-        "profile-data helper should map to the profiles purpose");
-
-    const auto component = ld::make_component_root_request(
-        "compare-plugin",
-        ld::component_kind::plugin,
-        {
-            ld::make_component_config_root_request("config", ld::persistence_class::roaming, "Config"),
-            ld::make_component_state_root_request("state", ld::persistence_class::machine_local, "State"),
-        });
-    require(component.name == "compare-plugin", "component helper should preserve component name");
-    require(component.kind == ld::component_kind::plugin, "component helper should preserve component kind");
-    require(component.roots.size() == 2, "component helper should preserve root count");
-    require(component.roots[0].purpose == ld::root_purpose::component_config,
-        "component helper should preserve child root purpose");
-    require(component.roots[1].persistence == ld::persistence_class::machine_local,
-        "component helper should preserve child root persistence");
 }
 
 #if defined(_WIN32)
@@ -453,7 +363,7 @@ void windows_default_roots_are_resolved()
     ld::root_options options;
     options.create_directories = false;
 
-    const auto report = ld::resolve_app_roots(identity(), options);
+    const auto report = ld::resolve_settings_roots(identity(), options);
 
     require(!report.roots.config.empty(), "Windows config root should be resolved");
     require(!report.roots.data.empty(), "Windows data root should be resolved");
@@ -1164,15 +1074,6 @@ void c_abi_resolves_settings_override()
     options.application = "c-settings-tests";
     const auto root_text = path_to_utf8_string(root);
     options.settings_override = root_text.c_str();
-    ld_settings_named_root_request named_root = {};
-    named_root.name = "logs";
-    named_root.purpose = LD_SETTINGS_ROOT_PURPOSE_LOGS;
-    named_root.persistence = LD_SETTINGS_PERSISTENCE_MACHINE_LOCAL;
-    named_root.relative_path = "Logs";
-    named_root.create = 1;
-    options.named_roots = &named_root;
-    options.named_root_count = 1;
-
     ld_settings_root_report report = {};
     const int ok = ld_settings_resolve_app_roots(&options, &report);
 
@@ -1181,10 +1082,6 @@ void c_abi_resolves_settings_override()
     require(report.config != nullptr, "C ABI config path should be allocated");
     require(std::filesystem::path(report.config) == root, "C ABI config path should match override");
     require(std::filesystem::path(report.session) == root / "sessions", "C ABI session path should match override");
-    require(report.named_root_count == 1, "C ABI should expose named roots");
-    require(std::string(report.named_roots[0].name) == "logs", "C ABI named root should preserve name");
-    require(std::filesystem::path(report.named_roots[0].path) == root / "Logs",
-        "C ABI named root should resolve path");
     require(report.config_layer_count >= 6, "C ABI should expose config layer candidates");
     require(report.active_write_layer != nullptr, "C ABI should expose active write layer");
     require(std::string(ld_settings_severity_name(LD_SETTINGS_SEVERITY_WARNING)) == "warning",
@@ -1276,10 +1173,8 @@ int main()
         {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
         {"delegates_platform_defaults_to_paths", delegates_platform_defaults_to_paths},
         {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
-        {"resolves_named_roots_and_layers", resolves_named_roots_and_layers},
-        {"root_request_builder_preserves_root_options", root_request_builder_preserves_root_options},
-        {"resolves_component_roots", resolves_component_roots},
-        {"helper_factories_match_explicit_request_shapes", helper_factories_match_explicit_request_shapes},
+        {"resolves_settings_layers", resolves_settings_layers},
+        {"root_builder_preserves_root_options", root_builder_preserves_root_options},
 #if defined(_WIN32)
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif

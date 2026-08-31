@@ -33,45 +33,6 @@ enum ld_settings_portable_level {
     LD_SETTINGS_PORTABLE_CLEAN = 3
 };
 
-enum ld_settings_root_purpose {
-    LD_SETTINGS_ROOT_PURPOSE_RESOURCES = 0,
-    LD_SETTINGS_ROOT_PURPOSE_CONFIG = 1,
-    LD_SETTINGS_ROOT_PURPOSE_DATA = 2,
-    LD_SETTINGS_ROOT_PURPOSE_STATE = 3,
-    LD_SETTINGS_ROOT_PURPOSE_CACHE = 4,
-    LD_SETTINGS_ROOT_PURPOSE_RUNTIME = 5,
-    LD_SETTINGS_ROOT_PURPOSE_SESSION = 6,
-    LD_SETTINGS_ROOT_PURPOSE_PLUGIN_CONFIG = 7,
-    LD_SETTINGS_ROOT_PURPOSE_LOGS = 8,
-    LD_SETTINGS_ROOT_PURPOSE_PROFILES = 9,
-    LD_SETTINGS_ROOT_PURPOSE_BACKUP = 10,
-    LD_SETTINGS_ROOT_PURPOSE_TEMP = 11,
-    LD_SETTINGS_ROOT_PURPOSE_COMPONENT_CONFIG = 12,
-    LD_SETTINGS_ROOT_PURPOSE_COMPONENT_DATA = 13,
-    LD_SETTINGS_ROOT_PURPOSE_COMPONENT_STATE = 14,
-    LD_SETTINGS_ROOT_PURPOSE_MANAGED_CONFIG = 15,
-    LD_SETTINGS_ROOT_PURPOSE_ENFORCED_CONFIG = 16,
-    LD_SETTINGS_ROOT_PURPOSE_CUSTOM = 17
-};
-
-enum ld_settings_persistence_class {
-    LD_SETTINGS_PERSISTENCE_ROAMING = 0,
-    LD_SETTINGS_PERSISTENCE_MACHINE_LOCAL = 1,
-    LD_SETTINGS_PERSISTENCE_PORTABLE = 2,
-    LD_SETTINGS_PERSISTENCE_EPHEMERAL = 3,
-    LD_SETTINGS_PERSISTENCE_MANAGED = 4,
-    LD_SETTINGS_PERSISTENCE_ENFORCED = 5
-};
-
-enum ld_settings_component_kind {
-    LD_SETTINGS_COMPONENT_PLUGIN = 0,
-    LD_SETTINGS_COMPONENT_EMBEDDED_TOOL = 1,
-    LD_SETTINGS_COMPONENT_PROFILE = 2,
-    LD_SETTINGS_COMPONENT_LANGUAGE_PACK = 3,
-    LD_SETTINGS_COMPONENT_EXTENSION = 4,
-    LD_SETTINGS_COMPONENT_CUSTOM = 5
-};
-
 enum ld_settings_config_layer_kind {
     LD_SETTINGS_CONFIG_LAYER_DEFAULTS = 0,
     LD_SETTINGS_CONFIG_LAYER_GLOBAL = 1,
@@ -95,40 +56,6 @@ struct ld_settings_diagnostic {
     char* code;
     char* message;
     char* path;
-};
-
-struct ld_settings_named_root_request {
-    const char* name;
-    int purpose;
-    int persistence;
-    const char* relative_path;
-    int create;
-};
-
-struct ld_settings_component_root_request {
-    const char* name;
-    int kind;
-    const struct ld_settings_named_root_request* roots;
-    size_t root_count;
-};
-
-struct ld_settings_named_root {
-    char* name;
-    int purpose;
-    int persistence;
-    char* path;
-    int created;
-    struct ld_settings_diagnostic* diagnostics;
-    size_t diagnostic_count;
-};
-
-struct ld_settings_component_roots {
-    char* name;
-    int kind;
-    struct ld_settings_named_root* roots;
-    size_t root_count;
-    struct ld_settings_diagnostic* diagnostics;
-    size_t diagnostic_count;
 };
 
 struct ld_settings_config_layer {
@@ -161,10 +88,6 @@ struct ld_settings_root_options {
     int allow_sync_config_for_portable_root;
     int create_directories;
     int portable_level;
-    const struct ld_settings_named_root_request* named_roots;
-    size_t named_root_count;
-    const struct ld_settings_component_root_request* component_roots;
-    size_t component_root_count;
     const char* home_directory;
     const struct ld_settings_environment_entry* environment;
     size_t environment_count;
@@ -185,10 +108,6 @@ struct ld_settings_root_report {
     int settings_override_active;
     int sync_config_override_active;
     int portable_level;
-    struct ld_settings_named_root* named_roots;
-    size_t named_root_count;
-    struct ld_settings_component_roots* component_roots;
-    size_t component_root_count;
     struct ld_settings_config_layer* config_layers;
     size_t config_layer_count;
     struct ld_settings_config_layer* active_read_order;

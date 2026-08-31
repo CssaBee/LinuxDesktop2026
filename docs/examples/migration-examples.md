@@ -26,7 +26,7 @@ The FlavorTests now give stronger evidence than the early survey sketches:
   the app owns the target path, payload, and validation.
 - `write_with_backup()` should remain available for lower-level seams such as
   OBS C APIs and Notepad++ session backup restore.
-- `root_request_builder` is useful in Notepad++, qBittorrent, and KiCad, where
+- `request_builder` is useful in Notepad++, qBittorrent, and KiCad, where
   a chain of app identity, resource root, portable marker, environment, and
   named-root declarations improves scanning.
 - Direct `root_options` or `ld_paths::resolver_options` are still more natural
@@ -65,11 +65,12 @@ After, the startup seam declares product policy and lets `ld_settings` resolve
 roots, layers, directories, and diagnostics:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 
 bool NppParameters::load()
 {
-    const ld::root_report report = ld::root_request_builder()
+    const ld::root_report report = ld::request_builder()
         .app("Notepad-plus-plus", "Notepad++")
         .resource_root(detect_install_root_from_executable())
         .portable_marker(detect_install_root_from_executable() / "doLocalConf.xml")
@@ -79,9 +80,9 @@ bool NppParameters::load()
         .sync_config_override(read_cloud_choice_if_present_and_valid())
         .settings_override(get_command_line_settings_dir_if_present())
         .named_root(ld::make_plugin_config_root_request(
-            "plugin-config", ld::persistence_class::roaming, "plugins/Config"))
+            "plugin-config", ld::ownership_kind::user_roaming, "plugins/Config"))
         .named_root(ld::make_log_root_request(
-            "logs", ld::persistence_class::machine_local, "logs"))
+            "logs", ld::ownership_kind::user_local, "logs"))
         .resolve();
 
     // KEEP: legacy member names can stay during an incremental port.
@@ -135,11 +136,12 @@ After, hydration and common saves are shared, while XML semantics remain
 Notepad++ code:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 
 bool NppParameters::loadConfigFiles()
 {
-    const auto hydrated = ld::ensure_config_defaults({
+    const auto hydrated = settings::ensure_config_defaults({
         _nppPath,
         _userPath,
         {
@@ -169,7 +171,7 @@ bool NppParameters::saveShortcuts()
         return notepad_can_parse_shortcuts(path, error);
     };
 
-    const auto saved = ld::write_common_config(
+    const auto saved = settings::write_common_config(
         {_userPath / "shortcuts.xml", render_shortcuts_xml(), true},
         validate);
 
@@ -205,7 +207,8 @@ is already a persistence boundary, so the common helper names exactly what is
 being replaced:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 
 FlushResult FileConfig::Flush()
 {
@@ -217,7 +220,7 @@ FlushResult FileConfig::Flush()
         return config_stream_is_readable(path, error);
     };
 
-    const auto report = ld::write_common_config(
+    const auto report = settings::write_common_config(
         {local_filename_, serialize(), true},
         validate);
 
@@ -242,7 +245,8 @@ qBittorrent is a good root-builder example because its profile rules are still
 visible after the refactor:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 
 void Profile::init(const RuntimeEnvironment& environment)
 {
@@ -255,7 +259,7 @@ void Profile::init(const RuntimeEnvironment& environment)
     const auto executable_root = environment.executable_path.parent_path();
     const auto portable_marker = executable_root / "profile";
 
-    const ld::root_report report = ld::root_request_builder()
+    const ld::root_report report = ld::request_builder()
         .app("qBittorrent", configuration_name())
         .resource_root(executable_root)
         .home_directory(environment.home)
@@ -263,7 +267,7 @@ void Profile::init(const RuntimeEnvironment& environment)
         .portable_marker(portable_marker)
         .portable(ld::portable_level::profile)
         .named_root(ld::make_log_root_request(
-            "logs", ld::persistence_class::machine_local, "logs"))
+            "logs", ld::ownership_kind::user_local, "logs"))
         .resolve();
 
     setProfileRoot(report.roots.config);
@@ -328,12 +332,13 @@ PrusaSlicer has two natural LinuxDesktop2026 seams: shipped config hydration and
 dry-run migration planning.
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 namespace ldm = linuxdesktop::migration;
 
 LoadBundleResult load_config_bundle(const AppConfig& app_config)
 {
-    ld::hydrate_options defaults;
+    settings::hydrate_options defaults;
     defaults.model_root = app_config.resources / "profiles";
     defaults.target_root = app_config.config_dir;
     defaults.files = {
@@ -342,7 +347,7 @@ LoadBundleResult load_config_bundle(const AppConfig& app_config)
         {"filament.ini", "filament.ini", false},
     };
 
-    const auto hydrated = ld::ensure_config_defaults(defaults);
+    const auto hydrated = settings::ensure_config_defaults(defaults);
 
     // KEEP: profile parsing, merging, and vendor metadata stay PrusaSlicer code.
     return parse_prusa_profiles(app_config.config_dir, hydrated);
@@ -374,21 +379,22 @@ FlavorTest anchor:
 KiCad naturally uses named roots for colors, toolbars, and ordinary settings:
 
 ```cpp
-namespace ld = linuxdesktop::settings;
+namespace ld = linuxdesktop::root;
+namespace settings = linuxdesktop::settings;
 
 SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
 {
-    const auto report = ld::root_request_builder()
+    const auto report = ld::request_builder()
         .app("KiCad", "KiCad")
         .home_directory(environment.home)
         .environment(environment.variables)
         .named_root(ld::make_config_root_request(
-            "colors", ld::persistence_class::roaming, "colors"))
+            "colors", ld::ownership_kind::user_roaming, "colors"))
         .named_root(ld::make_config_root_request(
-            "toolbars", ld::persistence_class::roaming, "toolbars"))
+            "toolbars", ld::ownership_kind::user_roaming, "toolbars"))
         .named_root(ld::make_named_root_request(
-            "project-backups", ld::root_purpose::backup,
-            ld::persistence_class::machine_local, "backups"))
+            "project-backups", ld::purpose_kind::backup,
+            ld::ownership_kind::user_local, "backups"))
         .resolve();
 
     user_root_ = report.roots.config;
@@ -605,7 +611,7 @@ BootstrapPlan ApplicationBootstrap::prepare(
 }
 ```
 
-This is negative evidence for `root_request_builder`. A graphics app bootstrap
+This is negative evidence for `request_builder`. A graphics app bootstrap
 with executable-adjacent resources reads more naturally with direct `ld_paths`
 options than with settings-oriented root vocabulary.
 
@@ -726,7 +732,7 @@ the limit: resolving paths is not the same as loading plugins.
   `ld_desktop`.
 - `write_common_config()` has enough positive FlavorTest evidence to be the
   default recommendation for ordinary validated config saves.
-- `root_request_builder` remains experimental. Use it where it clarifies a
+- `request_builder` remains experimental. Use it where it clarifies a
   cluster of settings-root mechanics, and avoid it where direct product code is
   clearer.
 - Raw migration plans and rich diagnostics should usually stay internal to

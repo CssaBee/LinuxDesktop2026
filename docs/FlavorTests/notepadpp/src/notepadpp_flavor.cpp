@@ -7,7 +7,8 @@
 
 namespace flavor_tests::notepadpp {
 
-namespace ld = linuxdesktop::settings;
+namespace ld_settings = linuxdesktop::settings;
+namespace ld_root = linuxdesktop::root;
 
 namespace {
 
@@ -112,7 +113,7 @@ std::string render_find_history_xml(const find_history& history)
     return output.str();
 }
 
-SaveResult to_save_result(const ld::write_report& report)
+SaveResult to_save_result(const ld_settings::write_report& report)
 {
     return {report.ok, report.backup_path};
 }
@@ -121,35 +122,35 @@ SaveResult to_save_result(const ld::write_report& report)
 
 bool NppParameters::load(const startup_environment& environment)
 {
-    const ld::root_report report = ld::root_request_builder()
+    const ld_root::report report = ld_root::request_builder()
         .app("notepad-plus-plus", "Notepad++")
         .resource_root(environment.install_root)
-        .settings_override(environment.command_line_settings_dir)
-        .sync_config_override(environment.cloud_choice_dir)
-        .portable_marker(environment.install_root / "doLocalConf.xml")
-        .portable(ld::portable_level::profile)
-        .allow_sync_config_for_portable_root(environment.allow_cloud_for_local_config)
-        .deny_portable_root_in_privileged_install(true)
+        .app_root_override(environment.command_line_settings_dir)
+        .user_config_override(environment.cloud_choice_dir)
+        .app_local_marker(environment.install_root / "doLocalConf.xml")
+        .app_local(ld_root::app_local_level::profile)
+        .allow_user_config_for_app_local_root(environment.allow_cloud_for_local_config)
+        .deny_app_local_root_in_privileged_install(true)
         .privileged_install_roots(environment.privileged_install_roots)
-        .named_root(ld::make_plugin_config_root_request(
+        .named_root(ld_root::make_plugin_config_root_request(
             "plugin-config",
-            ld::persistence_class::roaming,
+            ld_root::ownership_kind::user_roaming,
             "plugins/Config"))
         .resolve();
 
     state_.npp_path = report.roots.resources;
     state_.user_path = report.roots.config;
     state_.session_path = report.roots.session;
-    if (report.settings_override_active || report.portable_active) {
+    if (report.app_root_override_active || report.app_local_active) {
         state_.session_path = report.roots.config;
     }
     state_.user_plugin_config_dir = report.roots.plugin_config;
-    if (const auto* plugin_config = ld::find_named_root(report, "plugin-config")) {
+    if (const auto* plugin_config = ld_root::find_named_root(report, "plugin-config")) {
         state_.user_plugin_config_dir = plugin_config->path;
     }
-    state_.is_local = report.portable_active;
-    state_.command_line_override_active = report.settings_override_active;
-    state_.cloud_override_active = report.sync_config_override_active;
+    state_.is_local = report.app_local_active;
+    state_.command_line_override_active = report.app_root_override_active;
+    state_.cloud_override_active = report.user_config_override_active;
     state_.diagnostics = report.diagnostics;
     state_.config_path = state_.user_path / "config.xml";
     state_.shortcuts_path = state_.user_path / "shortcuts.xml";
@@ -159,7 +160,7 @@ bool NppParameters::load(const startup_environment& environment)
 
 bool NppParameters::loadConfigFiles()
 {
-    ld::hydrate_options defaults;
+    ld_settings::hydrate_options defaults;
     defaults.model_root = state_.npp_path;
     defaults.target_root = state_.user_path;
     defaults.files = {
@@ -170,7 +171,7 @@ bool NppParameters::loadConfigFiles()
         {"contextMenu.xml", "contextMenu.xml.model", true},
     };
 
-    const ld::hydrate_report hydration = ld::ensure_config_defaults(defaults);
+    const ld_settings::hydrate_report hydration = ld_settings::ensure_config_defaults(defaults);
     state_.diagnostics.insert(
         state_.diagnostics.end(),
         hydration.diagnostics.begin(),
@@ -221,14 +222,14 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
         return !std::filesystem::exists(session_path);
     }
 
-    ld::write_options restore;
+    ld_settings::write_options restore;
     restore.target = session_path;
     restore.content = read_text(backup_path);
     restore.keep_backup = false;
     restore.atomic_replace = true;
     restore.durable_write = true;
 
-    const auto report = ld::write_with_backup(restore, [this](const std::filesystem::path& path, std::string&) {
+    const auto report = ld_settings::write_with_backup(restore, [this](const std::filesystem::path& path, std::string&) {
         XmlDocument restored;
         return loadXml(restored, path);
     });
@@ -239,7 +240,7 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
 
 SaveResult NppParameters::saveSession(const std::string& session_xml)
 {
-    const auto report = ld::write_common_config({state_.session_path / "session.xml", session_xml, true},
+    const auto report = ld_settings::write_common_config({state_.session_path / "session.xml", session_xml, true},
         [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);
@@ -253,7 +254,7 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
         return {true, std::nullopt};
     }
 
-    auto report = ld::write_common_config({state_.shortcuts_path, render_shortcuts_xml(store), true},
+    auto report = ld_settings::write_common_config({state_.shortcuts_path, render_shortcuts_xml(store), true},
         [this](const std::filesystem::path& path, std::string& message) {
         return validateShortcutXml(path, message);
     });
@@ -268,7 +269,7 @@ SaveResult NppParameters::writeShortcuts(const shortcut_store& store)
 
 SaveResult NppParameters::writeFindHistory(const find_history& history)
 {
-    auto report = ld::write_common_config({state_.config_path, render_find_history_xml(history), true},
+    auto report = ld_settings::write_common_config({state_.config_path, render_find_history_xml(history), true},
         [this](const std::filesystem::path& path, std::string&) {
         XmlDocument document;
         return loadXml(document, path);

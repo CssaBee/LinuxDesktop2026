@@ -89,45 +89,6 @@ int portable_level_to_c(ld::portable_level value)
     return LD_SETTINGS_PORTABLE_SETTINGS_ONLY;
 }
 
-ld::root_purpose root_purpose_from_c(int value)
-{
-    if (value < LD_SETTINGS_ROOT_PURPOSE_RESOURCES || value > LD_SETTINGS_ROOT_PURPOSE_CUSTOM) {
-        return ld::root_purpose::custom;
-    }
-    return static_cast<ld::root_purpose>(value);
-}
-
-int root_purpose_to_c(ld::root_purpose value)
-{
-    return static_cast<int>(value);
-}
-
-ld::persistence_class persistence_from_c(int value)
-{
-    if (value < LD_SETTINGS_PERSISTENCE_ROAMING || value > LD_SETTINGS_PERSISTENCE_ENFORCED) {
-        return ld::persistence_class::roaming;
-    }
-    return static_cast<ld::persistence_class>(value);
-}
-
-int persistence_to_c(ld::persistence_class value)
-{
-    return static_cast<int>(value);
-}
-
-ld::component_kind component_kind_from_c(int value)
-{
-    if (value < LD_SETTINGS_COMPONENT_PLUGIN || value > LD_SETTINGS_COMPONENT_CUSTOM) {
-        return ld::component_kind::custom;
-    }
-    return static_cast<ld::component_kind>(value);
-}
-
-int component_kind_to_c(ld::component_kind value)
-{
-    return static_cast<int>(value);
-}
-
 int config_layer_kind_to_c(ld::config_layer_kind value)
 {
     return static_cast<int>(value);
@@ -152,37 +113,6 @@ bool assign_path(char*& target, const std::filesystem::path& value)
 
 bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count);
 std::optional<std::filesystem::path> optional_path(const char* value);
-
-void free_named_root(ld_settings_named_root& root)
-{
-    std::free(root.name);
-    std::free(root.path);
-    if (root.diagnostics) {
-        for (size_t index = 0; index != root.diagnostic_count; ++index) {
-            free_diagnostic(root.diagnostics[index]);
-        }
-        std::free(root.diagnostics);
-    }
-    root = {};
-}
-
-void free_component_roots(ld_settings_component_roots& component)
-{
-    std::free(component.name);
-    if (component.roots) {
-        for (size_t index = 0; index != component.root_count; ++index) {
-            free_named_root(component.roots[index]);
-        }
-        std::free(component.roots);
-    }
-    if (component.diagnostics) {
-        for (size_t index = 0; index != component.diagnostic_count; ++index) {
-            free_diagnostic(component.diagnostics[index]);
-        }
-        std::free(component.diagnostics);
-    }
-    component = {};
-}
 
 void free_config_layer(ld_settings_config_layer& layer)
 {
@@ -284,46 +214,6 @@ bool fill_path_array(const std::vector<std::filesystem::path>& source, char**& v
     return true;
 }
 
-bool fill_named_root(const ld::named_root& source, ld_settings_named_root& target)
-{
-    target = {};
-    target.purpose = root_purpose_to_c(source.purpose);
-    target.persistence = persistence_to_c(source.persistence);
-    target.created = source.created ? 1 : 0;
-    if (!assign_string(target.name, source.name) || !assign_path(target.path, source.path) ||
-        !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
-        free_named_root(target);
-        return false;
-    }
-    return true;
-}
-
-bool fill_named_roots(const std::vector<ld::named_root>& source, ld_settings_named_root*& roots, size_t& count)
-{
-    roots = nullptr;
-    count = 0;
-    if (source.empty()) {
-        return true;
-    }
-    roots = static_cast<ld_settings_named_root*>(std::calloc(source.size(), sizeof(ld_settings_named_root)));
-    if (!roots) {
-        return false;
-    }
-    count = source.size();
-    for (size_t index = 0; index != source.size(); ++index) {
-        if (!fill_named_root(source[index], roots[index])) {
-            for (size_t free_index = 0; free_index <= index; ++free_index) {
-                free_named_root(roots[free_index]);
-            }
-            std::free(roots);
-            roots = nullptr;
-            count = 0;
-            return false;
-        }
-    }
-    return true;
-}
-
 bool fill_config_layer(const ld::config_layer& source, ld_settings_config_layer& target)
 {
     target = {};
@@ -387,8 +277,7 @@ bool fill_report(const ld::root_report& source, ld_settings_root_report& target)
         return false;
     }
 
-    if (!fill_named_roots(source.named_roots, target.named_roots, target.named_root_count) ||
-        !fill_config_layers(source.layers.candidates, target.config_layers, target.config_layer_count) ||
+    if (!fill_config_layers(source.layers.candidates, target.config_layers, target.config_layer_count) ||
         !fill_config_layers(source.layers.active_read_order, target.active_read_order, target.active_read_order_count) ||
         !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
         ld_settings_free_root_report(&target);
@@ -401,27 +290,6 @@ bool fill_report(const ld::root_report& source, ld_settings_root_report& target)
         if (!target.active_write_layer || !fill_config_layer(*source.layers.active_write_layer, *target.active_write_layer)) {
             ld_settings_free_root_report(&target);
             return false;
-        }
-    }
-
-    if (!source.component_roots.empty()) {
-        target.component_roots = static_cast<ld_settings_component_roots*>(
-            std::calloc(source.component_roots.size(), sizeof(ld_settings_component_roots)));
-        if (!target.component_roots) {
-            ld_settings_free_root_report(&target);
-            return false;
-        }
-        target.component_root_count = source.component_roots.size();
-        for (size_t index = 0; index != source.component_roots.size(); ++index) {
-            const auto& component = source.component_roots[index];
-            auto& target_component = target.component_roots[index];
-            target_component.kind = component_kind_to_c(component.kind);
-            if (!assign_string(target_component.name, component.name) ||
-                !fill_named_roots(component.roots, target_component.roots, target_component.root_count) ||
-                !fill_diagnostics(component.diagnostics, target_component.diagnostics, target_component.diagnostic_count)) {
-                ld_settings_free_root_report(&target);
-                return false;
-            }
         }
     }
 
@@ -557,36 +425,7 @@ int ld_settings_resolve_app_roots(const ld_settings_root_options* options, ld_se
             }
         }
 
-        for (size_t index = 0; index != options->named_root_count; ++index) {
-            const auto& source = options->named_roots[index];
-            ld::named_root_request request;
-            request.name = source.name ? source.name : "";
-            request.purpose = root_purpose_from_c(source.purpose);
-            request.persistence = persistence_from_c(source.persistence);
-            request.relative_path = optional_path(source.relative_path).value_or(std::filesystem::path{});
-            request.create = source.create != 0;
-            root_options.named_roots.push_back(std::move(request));
-        }
-
-        for (size_t index = 0; index != options->component_root_count; ++index) {
-            const auto& source = options->component_roots[index];
-            ld::component_root_request component;
-            component.name = source.name ? source.name : "";
-            component.kind = component_kind_from_c(source.kind);
-            for (size_t root_index = 0; root_index != source.root_count; ++root_index) {
-                const auto& root_source = source.roots[root_index];
-                ld::named_root_request request;
-                request.name = root_source.name ? root_source.name : "";
-                request.purpose = root_purpose_from_c(root_source.purpose);
-                request.persistence = persistence_from_c(root_source.persistence);
-                request.relative_path = optional_path(root_source.relative_path).value_or(std::filesystem::path{});
-                request.create = root_source.create != 0;
-                component.roots.push_back(std::move(request));
-            }
-            root_options.component_roots.push_back(std::move(component));
-        }
-
-        return fill_report(ld::resolve_app_roots(identity, root_options), *report) ? 1 : 0;
+        return fill_report(ld::resolve_settings_roots(identity, root_options), *report) ? 1 : 0;
     } catch (const std::bad_alloc&) {
         return 0;
     } catch (const std::exception&) {
@@ -608,20 +447,6 @@ void ld_settings_free_root_report(ld_settings_root_report* report)
     std::free(report->runtime);
     std::free(report->session);
     std::free(report->plugin_config);
-
-    if (report->named_roots) {
-        for (size_t index = 0; index != report->named_root_count; ++index) {
-            free_named_root(report->named_roots[index]);
-        }
-        std::free(report->named_roots);
-    }
-
-    if (report->component_roots) {
-        for (size_t index = 0; index != report->component_root_count; ++index) {
-            free_component_roots(report->component_roots[index]);
-        }
-        std::free(report->component_roots);
-    }
 
     if (report->config_layers) {
         for (size_t index = 0; index != report->config_layer_count; ++index) {

@@ -57,7 +57,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    const auto report = linuxdesktop::settings::resolve_app_roots(identity, options);
+    const auto report = linuxdesktop::settings::resolve_settings_roots(identity, options);
     if (report.roots.config.empty()) {
         return EXIT_FAILURE;
     }

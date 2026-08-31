@@ -1,13 +1,10 @@
 #include "settings_internal.hpp"
 
-#include "linuxdesktop/paths.hpp"
-
 #include <algorithm>
 #include <cerrno>
 #include <cstdlib>
 #include <system_error>
 #include <utility>
-#include <vector>
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -19,43 +16,41 @@
 namespace linuxdesktop::settings {
 namespace {
 
-namespace ld_paths = linuxdesktop::paths;
+namespace ld_root = linuxdesktop::root;
 
-std::filesystem::path selected_path_or_empty(
-    const ld_paths::resolver_report& report,
-    ld_paths::path_family family)
+ld_root::app_local_level to_root_app_local_level(portable_level value)
 {
-    const auto item = report.selected.find(family);
-    return item == report.selected.end() ? std::filesystem::path{} : item->second;
+    switch (value) {
+    case portable_level::off:
+        return ld_root::app_local_level::off;
+    case portable_level::profile:
+        return ld_root::app_local_level::profile;
+    case portable_level::clean:
+        return ld_root::app_local_level::clean;
+    case portable_level::settings_only:
+        return ld_root::app_local_level::config_only;
+    }
+    return ld_root::app_local_level::config_only;
 }
 
-std::filesystem::path selected_location_or_empty(
-    const ld_paths::resolver_report& report,
-    ld_paths::location_role role)
+ld_root::options to_options(const root_options& options)
 {
-    const auto item = report.selected_locations.find(role);
-    return item == report.selected_locations.end() ? std::filesystem::path{} : item->second;
-}
-
-ld_paths::resolver_options path_options_from_root_options(const root_options& options)
-{
-    ld_paths::resolver_options result;
+    ld_root::options result;
     result.resource_root = options.resource_root;
     result.home_directory = options.home_directory;
     result.platform_defaults = options.platform_defaults;
     result.environment = options.environment;
+    result.app_root_override = options.settings_override;
+    result.user_config_override = options.sync_config_override;
+    result.app_local_marker = options.portable_marker;
+    result.privileged_install_roots = options.privileged_install_roots;
+    result.allow_app_local_root = options.allow_portable_root;
+    result.deny_app_local_root_in_privileged_install = options.deny_portable_root_in_privileged_install;
+    result.allow_user_config_for_app_local_root = options.allow_sync_config_for_portable_root;
+    result.create_directories = options.create_directories;
     result.use_process_environment = options.use_process_environment;
+    result.app_local = to_root_app_local_level(options.portable);
     return result;
-}
-
-void apply_default_roots_from_paths(root_report& report, const ld_paths::resolver_report& paths)
-{
-    report.roots.config = selected_path_or_empty(paths, ld_paths::path_family::config);
-    report.roots.data = selected_path_or_empty(paths, ld_paths::path_family::data);
-    report.roots.state = selected_path_or_empty(paths, ld_paths::path_family::state);
-    report.roots.cache = selected_path_or_empty(paths, ld_paths::path_family::cache);
-    report.roots.resources = selected_location_or_empty(paths, ld_paths::location_role::resources);
-    report.roots.runtime = selected_path_or_empty(paths, ld_paths::path_family::runtime);
 }
 
 int default_precedence(config_layer_kind kind)
@@ -77,149 +72,6 @@ int default_precedence(config_layer_kind kind)
         return 70;
     }
     return 0;
-}
-
-std::filesystem::path base_path_for(const app_roots& roots, persistence_class persistence, root_purpose purpose)
-{
-    switch (persistence) {
-    case persistence_class::machine_local:
-        if (purpose == root_purpose::cache || purpose == root_purpose::temp) {
-            return roots.cache;
-        }
-        if (purpose == root_purpose::runtime) {
-            return roots.runtime;
-        }
-        return roots.state;
-    case persistence_class::portable:
-        return roots.config;
-    case persistence_class::ephemeral:
-        return roots.cache;
-    case persistence_class::managed:
-        return roots.config / "managed";
-    case persistence_class::enforced:
-        return roots.config / "enforced";
-    case persistence_class::roaming:
-        break;
-    }
-
-    switch (purpose) {
-    case root_purpose::resources:
-        return roots.resources;
-    case root_purpose::config:
-    case root_purpose::plugin_config:
-    case root_purpose::profiles:
-    case root_purpose::backup:
-    case root_purpose::component_config:
-    case root_purpose::managed_config:
-    case root_purpose::enforced_config:
-    case root_purpose::custom:
-        return roots.config;
-    case root_purpose::data:
-    case root_purpose::component_data:
-        return roots.data;
-    case root_purpose::state:
-    case root_purpose::session:
-    case root_purpose::logs:
-    case root_purpose::component_state:
-        return roots.state;
-    case root_purpose::cache:
-    case root_purpose::temp:
-        return roots.cache;
-    case root_purpose::runtime:
-        return roots.runtime;
-    }
-    return roots.config;
-}
-
-std::filesystem::path default_relative_path(const named_root_request& request)
-{
-    if (!request.relative_path.empty()) {
-        return request.relative_path;
-    }
-    if (!request.name.empty()) {
-        return detail::sanitize_segment(request.name);
-    }
-
-    switch (request.purpose) {
-    case root_purpose::logs:
-        return "logs";
-    case root_purpose::profiles:
-        return "profiles";
-    case root_purpose::backup:
-        return "backups";
-    case root_purpose::temp:
-        return "temp";
-    case root_purpose::plugin_config:
-        return std::filesystem::path{"plugins"} / "Config";
-    case root_purpose::component_config:
-        return "config";
-    case root_purpose::component_data:
-        return "data";
-    case root_purpose::component_state:
-        return "state";
-    case root_purpose::managed_config:
-        return "managed";
-    case root_purpose::enforced_config:
-        return "enforced";
-    default:
-        return {};
-    }
-}
-
-named_root resolve_named_root(const named_root_request& request, const app_roots& roots, bool create_directories)
-{
-    named_root result;
-    result.name = request.name;
-    result.purpose = request.purpose;
-    result.persistence = request.persistence;
-
-    if (request.name.empty()) {
-        result.diagnostics.push_back(detail::make_diagnostic(
-            severity::error,
-            "named-root-name-empty",
-            "Named root requires a non-empty name"));
-        return result;
-    }
-
-    const auto relative = default_relative_path(request);
-    if (relative.is_absolute()) {
-        result.diagnostics.push_back(detail::make_diagnostic(
-            severity::error,
-            "named-root-relative-path-absolute",
-            "Named root relative_path must be relative",
-            relative));
-        return result;
-    }
-
-    const auto base = base_path_for(roots, request.persistence, request.purpose);
-    if (base.empty()) {
-        result.diagnostics.push_back(detail::make_diagnostic(
-            severity::error,
-            "named-root-base-empty",
-            "Named root base path could not be resolved"));
-        return result;
-    }
-
-    result.path = relative.empty() ? base : base / relative;
-    if (create_directories && request.create) {
-        result.created = detail::create_directory_for_root(result.path, result.diagnostics);
-    }
-    return result;
-}
-
-void append_unique_name_diagnostics(std::vector<named_root>& roots)
-{
-    std::vector<std::string> seen;
-    for (auto& root : roots) {
-        if (std::find(seen.begin(), seen.end(), root.name) != seen.end()) {
-            root.diagnostics.push_back(detail::make_diagnostic(
-                severity::error,
-                "named-root-duplicate",
-                "Named root names must be unique within the same scope"));
-        } else {
-            seen.push_back(root.name);
-        }
-    }
 }
 
 layer_report build_layer_report(const app_identity& identity, const root_report& report)
@@ -285,65 +137,6 @@ layer_report build_layer_report(const app_identity& identity, const root_report&
     }
 
     return layers;
-}
-
-std::filesystem::path comparable_path(const std::filesystem::path& path)
-{
-    std::error_code ec;
-    auto absolute = path.is_absolute() ? path : std::filesystem::absolute(path, ec);
-    if (ec) {
-        absolute = path;
-    }
-    return absolute.lexically_normal();
-}
-
-bool path_is_at_or_under(const std::filesystem::path& candidate, const std::filesystem::path& root)
-{
-    const auto normalized_candidate = comparable_path(candidate);
-    const auto normalized_root = comparable_path(root);
-    auto candidate_part = normalized_candidate.begin();
-    auto root_part = normalized_root.begin();
-
-    for (; root_part != normalized_root.end(); ++root_part, ++candidate_part) {
-        if (candidate_part == normalized_candidate.end() || *candidate_part != *root_part) {
-            return false;
-        }
-    }
-    return true;
-}
-
-std::vector<std::filesystem::path> default_privileged_install_roots()
-{
-#if defined(_WIN32)
-    std::vector<std::filesystem::path> roots;
-    if (const char* program_files = std::getenv("ProgramFiles")) {
-        roots.emplace_back(program_files);
-    }
-    if (const char* program_files_x86 = std::getenv("ProgramFiles(x86)")) {
-        roots.emplace_back(program_files_x86);
-    }
-    if (roots.empty()) {
-        roots.emplace_back("C:\\Program Files");
-        roots.emplace_back("C:\\Program Files (x86)");
-    }
-    return roots;
-#else
-    return {"/usr", "/opt", "/app"};
-#endif
-}
-
-bool is_under_privileged_install_root(const std::filesystem::path& path, const root_options& options)
-{
-    const auto roots = options.privileged_install_roots.empty()
-        ? default_privileged_install_roots()
-        : options.privileged_install_roots;
-
-    for (const auto& root : roots) {
-        if (!root.empty() && path_is_at_or_under(path, root)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 } // namespace
@@ -429,9 +222,9 @@ bool create_directory_for_root(const std::filesystem::path& path, std::vector<di
 
 void ensure_root_directory(const std::filesystem::path& path, std::vector<diagnostic>& diagnostics)
 {
-    ld_paths::ensure_directory_options options;
+    linuxdesktop::paths::ensure_directory_options options;
     options.dry_run = false;
-    const auto report = ld_paths::ensure_directory(path, options);
+    const auto report = linuxdesktop::paths::ensure_directory(path, options);
     diagnostics.insert(diagnostics.end(), report.diagnostics.begin(), report.diagnostics.end());
 }
 
@@ -447,30 +240,6 @@ bool has_error(const std::vector<diagnostic>& diagnostics)
 
 } // namespace detail
 
-const named_root* find_named_root(const root_report& report, const std::string& name)
-{
-    const auto it = std::find_if(report.named_roots.begin(), report.named_roots.end(), [&](const auto& root) {
-        return root.name == name;
-    });
-    return it == report.named_roots.end() ? nullptr : &*it;
-}
-
-const component_root_group* find_component_roots(const root_report& report, const std::string& name)
-{
-    const auto it = std::find_if(report.component_roots.begin(), report.component_roots.end(), [&](const auto& component) {
-        return component.name == name;
-    });
-    return it == report.component_roots.end() ? nullptr : &*it;
-}
-
-const named_root* find_component_named_root(const component_root_group& component, const std::string& name)
-{
-    const auto it = std::find_if(component.roots.begin(), component.roots.end(), [&](const auto& root) {
-        return root.name == name;
-    });
-    return it == component.roots.end() ? nullptr : &*it;
-}
-
 const config_layer* find_config_layer(const layer_report& report, config_layer_kind kind, const std::string& name)
 {
     const auto it = std::find_if(report.candidates.begin(), report.candidates.end(), [&](const auto& layer) {
@@ -479,150 +248,50 @@ const config_layer* find_config_layer(const layer_report& report, config_layer_k
     return it == report.candidates.end() ? nullptr : &*it;
 }
 
-root_report resolve_app_roots(const app_identity& identity, const root_options& options)
+root_report resolve_settings_roots(const app_identity& identity, const root_options& options)
 {
-    root_report report;
+    root_report result;
 
-    ld_paths::app_identity path_identity;
-    path_identity.organization = identity.organization;
-    path_identity.application = identity.application;
-    const auto path_report = ld_paths::resolve_app_paths(path_identity, path_options_from_root_options(options));
-    report.diagnostics.insert(report.diagnostics.end(), path_report.diagnostics.begin(), path_report.diagnostics.end());
-    report.roots.resources = selected_location_or_empty(path_report, ld_paths::location_role::resources);
+    ld_root::app_identity root_identity;
+    root_identity.organization = identity.organization;
+    root_identity.application = identity.application;
+    const auto root_result = ld_root::resolve_app_roots(root_identity, to_options(options));
 
-    report.portable = options.portable;
+    result.roots = root_result.roots;
+    result.portable_requested = root_result.app_local_requested;
+    result.portable_active = root_result.app_local_active;
+    result.settings_override_active = root_result.app_root_override_active;
+    result.sync_config_override_active = root_result.user_config_override_active;
+    result.portable = options.portable;
+    result.diagnostics = root_result.diagnostics;
 
-    if (options.settings_override) {
-        if (options.settings_override->is_absolute()) {
-            report.settings_override_active = true;
-            report.roots.config = *options.settings_override;
-            report.roots.data = *options.settings_override;
-            report.roots.state = *options.settings_override;
-            report.roots.cache = *options.settings_override / "cache";
-            report.roots.runtime = std::filesystem::path{};
-        } else {
-            report.diagnostics.push_back(detail::make_diagnostic(
-                severity::error,
-                "settings-override-relative",
-                "Settings override must be absolute",
-                *options.settings_override));
+    for (auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == "app-root-override-relative") {
+            diagnostic.code = "settings-override-relative";
+            diagnostic.message = "Settings override must be absolute";
+        } else if (diagnostic.code == "user-config-override-relative") {
+            diagnostic.code = "sync-config-override-relative";
+            diagnostic.message = "Sync config override must be absolute";
+        } else if (diagnostic.code == "user-config-override-ignored") {
+            diagnostic.code = "sync-config-override-ignored";
+            diagnostic.message = "Sync config override was ignored because settings override is active";
+        } else if (diagnostic.code == "user-config-override-ignored-app-local") {
+            diagnostic.code = "sync-config-override-ignored-portable";
+            diagnostic.message = "Sync config override was ignored because portable root is active";
+        } else if (diagnostic.code == "app_local-denied-privileged-install") {
+            diagnostic.code = "portable-denied-privileged-install";
+            diagnostic.message = "Portable marker exists, but install root is privileged";
+        } else if (diagnostic.code == "app_local-denied") {
+            diagnostic.code = "portable-denied";
+            diagnostic.message = "Portable marker exists, but portable roots are disabled";
+        } else if (diagnostic.code == "app_local-marker-missing") {
+            diagnostic.code = "portable-marker-missing";
+            diagnostic.message = "Portable marker was requested but does not exist";
         }
     }
 
-    report.portable_requested = options.portable_marker.has_value();
-    if (!report.settings_override_active && options.portable_marker) {
-        const auto marker = *options.portable_marker;
-        std::error_code ec;
-        if (std::filesystem::exists(marker, ec)) {
-            if (options.allow_portable_root && options.portable != portable_level::off) {
-                const auto portable_root = marker.parent_path();
-                const auto privileged_path = !report.roots.resources.empty() ? report.roots.resources : portable_root;
-                if (options.deny_portable_root_in_privileged_install &&
-                    is_under_privileged_install_root(privileged_path, options)) {
-                    report.diagnostics.push_back(detail::make_diagnostic(
-                        severity::warning,
-                        "portable-denied-privileged-install",
-                        "Portable marker exists, but install root is privileged",
-                        privileged_path));
-                } else {
-                    report.portable_active = true;
-                    report.roots.config = portable_root;
-                    report.roots.data = portable_root;
-                    report.roots.state = portable_root;
-                    report.roots.cache = portable_root / "cache";
-                    report.roots.runtime = std::filesystem::path{};
-                }
-            } else {
-                report.diagnostics.push_back(detail::make_diagnostic(
-                    severity::warning,
-                    "portable-denied",
-                    "Portable marker exists, but portable roots are disabled",
-                    marker));
-            }
-        } else {
-            report.diagnostics.push_back(detail::make_diagnostic(
-                severity::info,
-                "portable-marker-missing",
-                "Portable marker was requested but does not exist",
-                marker));
-        }
-    }
-
-    if (report.roots.config.empty() && !detail::has_error(report.diagnostics)) {
-        apply_default_roots_from_paths(report, path_report);
-    }
-
-    if (options.sync_config_override) {
-        if (report.settings_override_active) {
-            report.diagnostics.push_back(detail::make_diagnostic(
-                severity::info,
-                "sync-config-override-ignored",
-                "Sync config override was ignored because settings override is active",
-                *options.sync_config_override));
-        } else if (report.portable_active && !options.allow_sync_config_for_portable_root) {
-            report.diagnostics.push_back(detail::make_diagnostic(
-                severity::info,
-                "sync-config-override-ignored-portable",
-                "Sync config override was ignored because portable root is active",
-                *options.sync_config_override));
-        } else if (options.sync_config_override->is_absolute()) {
-            report.sync_config_override_active = true;
-            report.roots.config = *options.sync_config_override;
-        } else {
-            report.diagnostics.push_back(detail::make_diagnostic(
-                severity::error,
-                "sync-config-override-relative",
-                "Sync config override must be absolute",
-                *options.sync_config_override));
-        }
-    }
-
-    report.roots.session = report.roots.state / "sessions";
-    report.roots.plugin_config = report.roots.config / "plugins" / "Config";
-
-    for (const auto& request : options.named_roots) {
-        report.named_roots.push_back(resolve_named_root(request, report.roots, options.create_directories));
-    }
-    append_unique_name_diagnostics(report.named_roots);
-
-    for (const auto& request : options.component_roots) {
-        component_root_group component;
-        component.name = request.name;
-        component.kind = request.kind;
-
-        if (request.name.empty()) {
-            component.diagnostics.push_back(detail::make_diagnostic(
-                severity::error,
-                "component-root-name-empty",
-                "Component root requires a non-empty name"));
-        }
-
-        const auto component_leaf = detail::sanitize_segment(request.name, "component");
-        for (const auto& root_request : request.roots) {
-            auto scoped_request = root_request;
-            const auto relative = default_relative_path(scoped_request);
-            scoped_request.relative_path = std::filesystem::path{"components"} / component_leaf / relative;
-            component.roots.push_back(resolve_named_root(scoped_request, report.roots, options.create_directories));
-        }
-        append_unique_name_diagnostics(component.roots);
-        report.component_roots.push_back(std::move(component));
-    }
-
-    report.layers = build_layer_report(identity, report);
-
-    if (options.create_directories && !detail::has_error(report.diagnostics)) {
-        detail::ensure_root_directory(report.roots.config, report.diagnostics);
-        detail::ensure_root_directory(report.roots.data, report.diagnostics);
-        detail::ensure_root_directory(report.roots.state, report.diagnostics);
-        detail::ensure_root_directory(report.roots.cache, report.diagnostics);
-        detail::create_directory_if_needed(report.roots.session, report.diagnostics);
-        detail::create_directory_if_needed(report.roots.plugin_config, report.diagnostics);
-        if (!report.roots.runtime.empty()) {
-            detail::ensure_root_directory(report.roots.runtime, report.diagnostics);
-        }
-    }
-
-    return report;
+    result.layers = build_layer_report(identity, result);
+    return result;
 }
 
 } // namespace linuxdesktop::settings

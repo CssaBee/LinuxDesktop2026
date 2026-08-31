@@ -110,7 +110,7 @@ void print_backup(const linuxdesktop::settings::write_report& report)
     }
 }
 
-void print_root_report(const linuxdesktop::settings::root_report& roots)
+void print_report(const linuxdesktop::settings::root_report& roots)
 {
     namespace ld = linuxdesktop::settings;
 
@@ -127,24 +127,6 @@ void print_root_report(const linuxdesktop::settings::root_report& roots)
               << (roots.portable_active ? " active" : " inactive") << "\n";
     std::cout << "  override:      " << (roots.settings_override_active ? "active" : "inactive") << "\n";
     std::cout << "  sync config:   " << (roots.sync_config_override_active ? "active" : "inactive") << "\n";
-
-    std::cout << "\nnamed roots\n";
-    for (const auto& root : roots.named_roots) {
-        std::cout << "  " << root.name << " (" << ld::to_string(root.purpose)
-                  << ", " << ld::to_string(root.persistence) << "): "
-                  << root.path.string() << "\n";
-        print_diagnostics(root.diagnostics);
-    }
-
-    std::cout << "\ncomponent roots\n";
-    for (const auto& component : roots.component_roots) {
-        std::cout << "  " << component.name << " (" << ld::to_string(component.kind) << ")\n";
-        print_diagnostics(component.diagnostics);
-        for (const auto& root : component.roots) {
-            std::cout << "    " << root.name << ": " << root.path.string() << "\n";
-            print_diagnostics(root.diagnostics);
-        }
-    }
 
     std::cout << "\nconfig layers\n";
     for (const auto& layer : roots.layers.active_read_order) {
@@ -187,36 +169,21 @@ int main(int argc, char** argv)
     try {
         const auto cli = parse_args(argc, argv);
 
-        linuxdesktop::settings::root_options root_options;
-        root_options.resource_root = cli.resource_root;
-        root_options.settings_override = cli.settings_dir;
-        root_options.sync_config_override = cli.sync_config_dir;
-        root_options.portable_marker = cli.portable_marker;
-        root_options.privileged_install_roots = cli.privileged_install_roots;
-        root_options.deny_portable_root_in_privileged_install = cli.deny_portable_under_privileged_root;
-        root_options.allow_sync_config_for_portable_root = cli.allow_sync_with_portable;
-        root_options.named_roots = {
-            {"logs", linuxdesktop::settings::root_purpose::logs, linuxdesktop::settings::persistence_class::machine_local, "logs", true},
-            {"profiles", linuxdesktop::settings::root_purpose::profiles, linuxdesktop::settings::persistence_class::roaming, "profiles", true},
-            {"backups", linuxdesktop::settings::root_purpose::backup, linuxdesktop::settings::persistence_class::machine_local, "backups", true},
-        };
-
-        linuxdesktop::settings::component_root_request example_plugin;
-        example_plugin.name = "sample-plugin";
-        example_plugin.kind = linuxdesktop::settings::component_kind::plugin;
-        example_plugin.roots = {
-            {"config", linuxdesktop::settings::root_purpose::component_config, linuxdesktop::settings::persistence_class::roaming, "Config", true},
-            {"state", linuxdesktop::settings::root_purpose::component_state, linuxdesktop::settings::persistence_class::machine_local, "State", true},
-        };
-        root_options.component_roots = {example_plugin};
-
+        linuxdesktop::settings::root_options options;
+        options.resource_root = cli.resource_root;
+        options.settings_override = cli.settings_dir;
+        options.sync_config_override = cli.sync_config_dir;
+        options.portable_marker = cli.portable_marker;
+        options.privileged_install_roots = cli.privileged_install_roots;
+        options.deny_portable_root_in_privileged_install = cli.deny_portable_under_privileged_root;
+        options.allow_sync_config_for_portable_root = cli.allow_sync_with_portable;
         linuxdesktop::settings::app_identity identity;
         identity.organization = "LinuxDesktop2026";
         identity.application = "settings-demo";
 
-        const auto roots = linuxdesktop::settings::resolve_app_roots(identity, root_options);
+        const auto roots = linuxdesktop::settings::resolve_settings_roots(identity, options);
 
-        print_root_report(roots);
+        print_report(roots);
 
         linuxdesktop::settings::config_file shortcuts_file;
         shortcuts_file.name = "shortcuts.xml";

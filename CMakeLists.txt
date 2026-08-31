@@ -67,6 +67,40 @@ if(WIN32)
     target_link_libraries(ld_migration PRIVATE advapi32)
 endif()
 
+add_library(ld_paths
+    src/paths.cpp
+    src/paths_c.cpp
+)
+
+add_library(LinuxDesktop2026::ld_paths ALIAS ld_paths)
+
+target_compile_features(ld_paths PUBLIC cxx_std_17)
+
+target_include_directories(ld_paths
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ld_paths PUBLIC LinuxDesktop2026::ld_core)
+
+add_library(ld_root
+    src/root.cpp
+    src/root_c.cpp
+)
+
+add_library(LinuxDesktop2026::ld_root ALIAS ld_root)
+
+target_compile_features(ld_root PUBLIC cxx_std_17)
+
+target_include_directories(ld_root
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ld_root PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_paths)
+
 add_library(ld_settings
     src/settings.cpp
     src/settings_c.cpp
@@ -89,26 +123,9 @@ if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
 endif()
 
-add_library(ld_paths
-    src/paths.cpp
-    src/paths_c.cpp
-)
-
-add_library(LinuxDesktop2026::ld_paths ALIAS ld_paths)
-
-target_compile_features(ld_paths PUBLIC cxx_std_17)
-
-target_include_directories(ld_paths
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(ld_paths PUBLIC LinuxDesktop2026::ld_core)
-
 target_link_libraries(ld_migration PUBLIC LinuxDesktop2026::ld_paths)
 target_link_libraries(ld_desktop PRIVATE LinuxDesktop2026::ld_paths)
-target_link_libraries(ld_settings PRIVATE LinuxDesktop2026::ld_paths)
+target_link_libraries(ld_settings PRIVATE LinuxDesktop2026::ld_root)
 
 add_library(ld_watch
     src/watch.cpp
@@ -157,7 +174,7 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(ld_watch PRIVATE pthread)
 endif()
 
-install(TARGETS ld_core ld_desktop ld_migration ld_settings ld_paths ld_watch
+install(TARGETS ld_core ld_desktop ld_migration ld_settings ld_paths ld_root ld_watch
     EXPORT LinuxDesktop2026Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -218,6 +235,20 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_paths_tests PRIVATE LinuxDesktop2026::ld_paths)
 
     add_test(NAME ld_paths_tests COMMAND ld_paths_tests)
+
+    add_executable(ld_root_tests
+        tests/root_tests.cpp
+    )
+    target_link_libraries(ld_root_tests PRIVATE LinuxDesktop2026::ld_root)
+
+    add_test(NAME ld_root_tests COMMAND ld_root_tests)
+
+    add_executable(ld_root_c_tests
+        tests/root_c_tests.c
+    )
+    target_link_libraries(ld_root_c_tests PRIVATE LinuxDesktop2026::ld_root)
+
+    add_test(NAME ld_root_c_tests COMMAND ld_root_c_tests)
 
     add_executable(ld_paths_c_tests
         tests/paths_c_tests.c
@@ -340,6 +371,11 @@ if(LD2026_BUILD_EXAMPLES)
         examples/paths_demo.cpp
     )
     target_link_libraries(ld_paths_demo PRIVATE LinuxDesktop2026::ld_paths)
+
+    add_executable(ld_root_demo
+        examples/root_demo.cpp
+    )
+    target_link_libraries(ld_root_demo PRIVATE LinuxDesktop2026::ld_root)
 
     add_executable(ld_paths_c_demo
         examples/paths_c_demo.c

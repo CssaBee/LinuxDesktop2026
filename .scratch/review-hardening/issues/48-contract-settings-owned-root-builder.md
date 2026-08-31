@@ -7,23 +7,23 @@ root-topology compatibility debt should remain in `ld_settings`.
 
 **Blocked by:** 47 - Add Public Root Topology Surface.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Settings root resolution consumes the public root topology result where
+- [x] Settings root resolution consumes the public root topology result where
   that reduces duplication without moving hydration or writes out of settings.
-- [ ] Settings-specific overlays, config layers, default hydration, safe writes,
+- [x] Settings-specific overlays, config layers, default hydration, safe writes,
   and backup behavior remain discoverable from the settings module.
-- [ ] Public settings APIs that duplicate generic root topology are removed or
+- [x] Public settings APIs that duplicate generic root topology are removed or
   reshaped to settings-only vocabulary under the documented pre-1.0 break.
-- [ ] FlavorTests and the maintained Notepad++ proof branch show that product
+- [x] FlavorTests and the maintained Notepad++ proof branch show that product
   adapters no longer need settings vocabulary just to resolve app-owned roots.
-- [ ] API friction notes are updated to show which root seams moved and which
+- [x] API friction notes are updated to show which root seams moved and which
   stayed product-owned.
-- [ ] `ld_settings` does not require callers to link or include `ld_root` unless
+- [x] `ld_settings` does not require callers to link or include `ld_root` unless
   they use settings behavior that actually needs root topology.
-- [ ] No deprecated generic root-builder aliases, duplicate public structs, or
+- [x] No deprecated generic root-builder aliases, duplicate public structs, or
   temporary adapter layers remain after the migration.
-- [ ] Build/install/package tests prove the minimal dependency choices: paths
+- [x] Build/install/package tests prove the minimal dependency choices: paths
   only, root without settings, and settings without unrelated plugin/path-set
   APIs.
 
@@ -47,3 +47,16 @@ By the end of task 48, the dependency graph should be boring and explicit:
 No user should need to bring in `ld_settings` for path discovery or app-root
 topology, and no user should need to bring in `ld_root` for simple path-family,
 resource-location, path-list, or plugin-search-root work.
+
+## Implementation Notes
+
+Implemented as a pre-1.0 breaking contraction. C++ settings no longer exposes
+generic named/component root topology; that vocabulary moved to
+`linuxdesktop::root`. Settings keeps `root_options`, `root_report`,
+`root_builder`, config layers, portable/settings overlays, hydration, writes,
+and diagnostic translation.
+
+The C settings ABI no longer exposes named/component root request or report
+structs. C callers use `ld_root_c.h` for topology and `ld_settings_c.h` for
+settings lifecycle behavior. Notepad++, qBittorrent, KiCad, KeePassXC, and the
+maintained Notepad++ proof now use `ld_root` for topology where needed.

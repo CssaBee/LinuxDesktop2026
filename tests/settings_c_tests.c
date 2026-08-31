@@ -129,16 +129,6 @@ int main(void)
     options.settings_override = settings_override;
     options.portable_level = LD_SETTINGS_PORTABLE_PROFILE;
 
-    struct ld_settings_named_root_request roots[1];
-    memset(roots, 0, sizeof(roots));
-    roots[0].name = "logs";
-    roots[0].purpose = LD_SETTINGS_ROOT_PURPOSE_LOGS;
-    roots[0].persistence = LD_SETTINGS_PERSISTENCE_MACHINE_LOCAL;
-    roots[0].relative_path = "Logs";
-    roots[0].create = 1;
-    options.named_roots = roots;
-    options.named_root_count = 1;
-
     if (ld_settings_version_major() != LD_SETTINGS_VERSION_MAJOR ||
         ld_settings_version_minor() != LD_SETTINGS_VERSION_MINOR ||
         ld_settings_version_patch() != LD_SETTINGS_VERSION_PATCH ||
@@ -161,10 +151,6 @@ int main(void)
     }
 
     if (report.portable_level != LD_SETTINGS_PORTABLE_PROFILE ||
-        report.named_root_count != 1 ||
-        !report.named_roots ||
-        strcmp(report.named_roots[0].name, "logs") != 0 ||
-        !report.named_roots[0].path ||
         report.config_layer_count == 0 ||
         report.active_write_layer == NULL) {
         ld_settings_free_root_report(&report);

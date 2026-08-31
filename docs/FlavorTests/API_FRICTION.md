@@ -27,15 +27,15 @@ Current proof-branch state:
   `linuxdesktop2026_generate_path_defaults()` from CMake. The generated header
   selects the OS-specific `platform_path_defaults` factory at configure time.
 - `NotepadPlusPlusSettingsBackend::resolve()` passes those generated defaults
-  through `ld_settings::root_options::platform_defaults`, while Notepad++ still
-  owns install-root, home/runtime inputs, command-line settings, cloud choice,
-  local-config marker, and privileged-install policy.
+  through `linuxdesktop::root::options::platform_defaults`, while Notepad++
+  still owns install-root, home/runtime inputs, command-line settings, cloud
+  choice, local-config marker, and privileged-install policy.
 - The in-tree FlavorTest remains useful for behavior coverage, but the
   cross-port proof branch is the stronger current consumer signal.
 
 Acceptable mechanism vocabulary:
 
-- `resolve_app_roots()`, generated platform defaults, named roots,
+- `linuxdesktop::root::resolve_app_roots()`, generated platform defaults, named roots,
   `ensure_config_defaults()`, `write_common_config()`, and `ldm::plan_copy()`
   are adapter-level platform mechanics.
 - The builder/factory split now hides OS selection without hiding Notepad++
@@ -88,7 +88,7 @@ Helper assessment:
 
 Remaining visible concepts:
 
-- `Profile::init()` now uses `root_request_builder` for app identity,
+- `Profile::init()` now uses `linuxdesktop::root::request_builder` for app identity,
   executable resource root, injected environment, portable marker, and log root
   placement.
 - The profile-dir override branch remains outside the builder chain because it
@@ -99,7 +99,7 @@ Remaining visible concepts:
 
 Acceptable mechanism vocabulary:
 
-- `resolve_app_roots()` and the log named-root request are adapter-level
+- `linuxdesktop::root::resolve_app_roots()` and the log named-root request are adapter-level
   platform mechanics.
 - Keeping qBittorrent's `SpecialFolder` enum at the product boundary is good;
   callers do not need to learn LinuxDesktop2026 root terminology.
@@ -155,7 +155,7 @@ Helper assessment:
 
 Remaining visible concepts:
 
-- `SETTINGS_MANAGER` uses `root_request_builder` for injected environment setup
+- `SETTINGS_MANAGER` uses `linuxdesktop::root::request_builder` for injected environment setup
   and named roots for colors, toolbars, and project-backups.
 - `Save()` now uses `write_common_config()` for common durable JSON settings
   writes.
@@ -361,7 +361,7 @@ Helper assessment:
   deterministic user roots now flow through the generated public path-default
   helper and normal resolver options instead of test-only XDG/AppData
   environment scaffolding.
-- This slice is useful negative evidence for `root_request_builder`: graphics
+- This slice is useful negative evidence for `linuxdesktop::root::request_builder`: graphics
   app bootstrap with executable-adjacent assets reads more naturally with direct
   path resolver options than with the settings-oriented root helper.
 
@@ -429,13 +429,10 @@ Helper assessment:
 
 ## Cross-Flavor Follow-Up
 
-- Treat root topology as the next cross-flavor pressure point. `settings.cpp`
-  now hides too many responsibilities behind one implementation file, and
-  `root_request_builder` is evidence that Notepad++, qBittorrent, and KiCad
-  share some root setup mechanics. That does not automatically justify moving
-  all of it into `ld_paths` or keeping it in `ld_settings`: the next hardening
-  spec should test whether a public `ld_root` module can express user-owned and
-  app-owned roots without becoming a tech-debt rename.
+- Treat root topology as a solved cross-flavor boundary for the current batch.
+  Notepad++, qBittorrent, and KiCad now use `linuxdesktop::root` for shared
+  root setup mechanics. That does not justify moving the same behavior into
+  `ld_paths` or keeping a duplicate in `ld_settings`.
 - The root-boundary design now classifies Notepad++, qBittorrent, and KiCad as
   positive evidence for shared root topology, Walnut as negative evidence for
   overusing root builders in simple graphics bootstrap, and OpenIPC Dashboard
@@ -448,11 +445,11 @@ Helper assessment:
   KeePassXC, KiCad, FreeCAD, OpenRGB, Audacity, Notepad++, and PrusaSlicer.
   Preserve direct `write_with_backup()` only where the product seam is testing a
   lower-level behavior, such as Notepad++ backup restore or OBS C-style saves.
-- Keep `root_request_builder` experimental for now. It earned promotion
-  consideration in Notepad++, qBittorrent, and KiCad by removing mechanical
-  setup without hiding product policy. Do not force KeePassXC or FreeCAD through
-  it until their product-owned XDG and environment precedence rules can be
-  expressed more clearly than the direct request objects.
+- Keep `linuxdesktop::root::request_builder` focused on root topology. It
+  earned promotion in Notepad++, qBittorrent, and KiCad by removing mechanical
+  setup without hiding product policy. Do not force KeePassXC or FreeCAD
+  through it until their product-owned XDG and environment precedence rules can
+  be expressed more clearly than direct request objects.
 - Keep diagnostics internal by default. If a product needs startup or migration
   diagnostics, translate them into product logging, warning, or prompt data
   before storing them in product-facing state.

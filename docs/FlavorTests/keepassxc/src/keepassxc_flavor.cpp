@@ -9,7 +9,8 @@
 
 namespace flavor_tests::keepassxc {
 
-namespace ld = linuxdesktop::settings;
+namespace ld_settings = linuxdesktop::settings;
+namespace ld_root = linuxdesktop::root;
 namespace ldm = linuxdesktop::migration;
 
 namespace {
@@ -55,7 +56,7 @@ bool looks_like_ini(const std::filesystem::path& path, std::string& message)
     return ok;
 }
 
-ExportResult to_export_result(const ld::write_report& report)
+ExportResult to_export_result(const ld_settings::write_report& report)
 {
     return {report.ok, report.backup_path};
 }
@@ -80,25 +81,25 @@ LocalConfigMigration to_local_config_migration(const ldm::migration_plan& plan)
 
 bool Config::open(const RuntimeEnvironment& environment)
 {
-    ld::app_identity identity;
+    ld_root::app_identity identity;
     identity.organization = "keepassxc";
     identity.application = "keepassxc";
 
-    ld::root_options options;
+    ld_root::options options;
     options.resource_root = environment.app_dir;
     options.home_directory = environment.home_directory;
     options.environment = environment.variables;
     options.use_process_environment = false;
-    options.portable = ld::portable_level::profile;
+    options.app_local = ld_root::app_local_level::profile;
     if (environment.portable_config_dir) {
-        options.settings_override = *environment.portable_config_dir;
+        options.app_root_override = *environment.portable_config_dir;
     }
     options.named_roots = {
-        ld::make_state_root_request("local-settings", ld::persistence_class::machine_local),
+        ld_root::make_state_root_request("local-settings", ld_root::ownership_kind::user_local),
     };
 
-    const auto roots = ld::resolve_app_roots(identity, options);
-    files_.portable = roots.settings_override_active;
+    const auto roots = ld_root::resolve_app_roots(identity, options);
+    files_.portable = roots.app_root_override_active;
     files_.roaming = roots.roots.config / "keepassxc.ini";
     files_.local = roots.roots.state / "keepassxc_local.ini";
     if (const auto config_home = environment.variables.find("XDG_CONFIG_HOME");
@@ -141,7 +142,7 @@ bool Config::importSettings(const std::filesystem::path& file_name)
 
 ExportResult Config::exportSettings(const std::filesystem::path& file_name) const
 {
-    return to_export_result(ld::write_common_config({file_name, render_ini(roaming_values_), true},
+    return to_export_result(ld_settings::write_common_config({file_name, render_ini(roaming_values_), true},
         looks_like_ini));
 }
 

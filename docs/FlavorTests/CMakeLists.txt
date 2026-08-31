@@ -26,6 +26,7 @@ function(add_flavor_product PRODUCT)
     target_link_libraries(${PRODUCT}_flavor_support
         PUBLIC
             LinuxDesktop2026::ld_paths
+            LinuxDesktop2026::ld_root
             LinuxDesktop2026::ld_migration
             LinuxDesktop2026::ld_settings
     )

@@ -6,11 +6,12 @@ list below.
 
 ## Current Order
 
-- `47` - Add Public Root Topology Surface
-- `48` - Contract Settings-Owned Root Builder
+No root/path hardening tickets are currently queued in this batch.
 
 ## Implemented
 
+- `48` - Contract Settings-Owned Root Builder
+- `47` - Add Public Root Topology Surface
 - `46` - Separate Path Families From Location Roles
 - `45` - Split Path-List Candidate Vocabulary
 - `44` - Audit Paths Root Overlap
