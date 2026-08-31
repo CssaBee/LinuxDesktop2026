@@ -70,6 +70,7 @@ endif()
 add_library(ld_settings
     src/settings.cpp
     src/settings_c.cpp
+    src/settings_roots.cpp
 )
 
 add_library(LinuxDesktop2026::ld_settings ALIAS ld_settings)
