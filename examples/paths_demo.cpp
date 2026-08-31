@@ -69,11 +69,26 @@ void print_report(const linuxdesktop::paths::resolver_report& report)
     for (const auto& item : report.selected) {
         std::cout << "  " << ld::to_string(item.first) << ": " << item.second.string() << "\n";
     }
+    std::cout << "locations:\n";
+    for (const auto& item : report.selected_locations) {
+        std::cout << "  " << ld::to_string(item.first) << ": " << item.second.string() << "\n";
+    }
 
     std::cout << "candidates: " << report.candidates.size() << "\n";
     for (const auto& candidate : report.candidates) {
         std::cout << "  " << (candidate.selected ? "*" : "-")
                   << " " << ld::to_string(candidate.family)
+                  << " via " << ld::to_string(candidate.source);
+        if (!candidate.path.empty()) {
+            std::cout << ": " << candidate.path.string();
+        }
+        std::cout << "\n";
+        print_diagnostics(candidate.diagnostics);
+    }
+    std::cout << "location candidates: " << report.location_candidates.size() << "\n";
+    for (const auto& candidate : report.location_candidates) {
+        std::cout << "  " << (candidate.selected ? "*" : "-")
+                  << " " << ld::to_string(candidate.role)
                   << " via " << ld::to_string(candidate.source);
         if (!candidate.path.empty()) {
             std::cout << ": " << candidate.path.string();
@@ -98,7 +113,8 @@ void print_plugin_sets(const linuxdesktop::paths::plugin_path_report& report)
     std::cout << "plugin candidates: " << report.candidates.size() << "\n";
     for (const auto& candidate : report.candidates) {
         std::cout << "  " << (candidate.selected ? "*" : "-")
-                  << " " << ld::to_string(candidate.source);
+                  << " " << candidate.set_name
+                  << " via " << ld::to_string(candidate.source);
         if (!candidate.path.empty()) {
             std::cout << ": " << candidate.path.string();
         }

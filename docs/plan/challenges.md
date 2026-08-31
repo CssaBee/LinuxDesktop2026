@@ -155,7 +155,7 @@ Useful anchor details:
 
 - Windows: `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%`, `%USERPROFILE%`, `Documents`, `Desktop`, `Downloads`, and other known folders.
 - Linux: `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`, `XDG_RUNTIME_DIR`, and `user-dirs.dirs`.
-- Path families: `config`, `data`, `state`, `cache`, `temp`, `documents`, `desktop`, `downloads`, `music`, `pictures`, `videos`, `templates`, `public_share`, `resources`, `plugin_search`.
+- Path families: `config`, `data`, `state`, `cache`, `temp`, `runtime`, `documents`, `desktop`, `downloads`, `music`, `pictures`, `videos`, `templates`, `public_share`; executable/install/resource discovery is reported as location roles, and plugin search roots are reported as path sets.
 - Negative cases: relative overrides, missing home directories, inaccessible parents, and malformed environment values.
 - Hint: start with a report object that records both the selected path and the rejected candidates, then layer creation helpers on top of that.
 

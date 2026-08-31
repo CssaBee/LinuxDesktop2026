@@ -146,8 +146,7 @@ void append_path_list_candidate(
     std::vector<diagnostic> diagnostics = {},
     candidate_source source = candidate_source::environment)
 {
-    path_candidate candidate;
-    candidate.family = path_family::plugin_search;
+    path_list_candidate candidate;
     candidate.source = source;
     candidate.path = std::move(path);
     candidate.selected = selected;
@@ -387,12 +386,38 @@ void add_candidate(
     report.candidates.push_back(std::move(candidate));
 }
 
+void add_location_candidate(
+    resolver_report& report,
+    location_role role,
+    candidate_source source,
+    std::filesystem::path path,
+    bool selected,
+    std::vector<diagnostic> diagnostics = {})
+{
+    location_candidate candidate;
+    candidate.role = role;
+    candidate.source = source;
+    candidate.path = std::move(path);
+    candidate.selected = selected;
+    candidate.diagnostics = std::move(diagnostics);
+
+    if (candidate.selected) {
+        report.selected_locations[candidate.role] = candidate.path;
+    }
+
+    for (const auto& item : candidate.diagnostics) {
+        report.diagnostics.push_back(item);
+    }
+
+    report.location_candidates.push_back(std::move(candidate));
+}
+
 bool select_absolute_override(
     resolver_report& report,
     path_family family,
     const std::optional<std::filesystem::path>& override_path)
 {
-    if (!override_path) {
+    if (!override_path || override_path->empty()) {
         return false;
     }
     if (override_path->is_absolute()) {
@@ -410,6 +435,33 @@ bool select_absolute_override(
             severity::error,
             std::string(diagnostic_code::override_relative_ignored),
             "Explicit path override must be absolute",
+            *override_path)});
+    return false;
+}
+
+bool select_absolute_location_override(
+    resolver_report& report,
+    location_role role,
+    const std::optional<std::filesystem::path>& override_path)
+{
+    if (!override_path || override_path->empty()) {
+        return false;
+    }
+    if (override_path->is_absolute()) {
+        add_location_candidate(report, role, candidate_source::explicit_option, *override_path, true);
+        return true;
+    }
+
+    add_location_candidate(
+        report,
+        role,
+        candidate_source::explicit_option,
+        *override_path,
+        false,
+        {make_diagnostic(
+            severity::error,
+            std::string(diagnostic_code::override_relative_ignored),
+            "Explicit location override must be absolute",
             *override_path)});
     return false;
 }
@@ -587,10 +639,13 @@ void append_site_directory_candidates(
     path_list_options list_options;
     list_options.separator = ':';
     auto parsed = parse_path_list(raw, list_options);
-    for (auto candidate : parsed.candidates) {
+    for (auto entry : parsed.candidates) {
+        path_candidate candidate;
         candidate.family = family;
-        candidate.source = candidate.selected ? candidate_source::site_default : candidate_source::environment;
+        candidate.source = entry.selected ? candidate_source::site_default : candidate_source::environment;
         candidate.selected = false;
+        candidate.path = std::move(entry.path);
+        candidate.diagnostics = std::move(entry.diagnostics);
         if (candidate.source == candidate_source::site_default) {
             candidate.path /= app_leaf;
         }
@@ -740,6 +795,7 @@ void select_user_directory(
     }
 }
 
+#if defined(_WIN32)
 void select_user_directory_candidate(
     resolver_report& report,
     path_family family,
@@ -761,6 +817,7 @@ void select_user_directory_candidate(
         add_candidate(report, family, candidate_source::fallback, home / fallback_leaf, true);
     }
 }
+#endif
 
 std::filesystem::path temp_directory(std::vector<diagnostic>& diagnostics)
 {
@@ -860,18 +917,23 @@ std::string_view to_string(path_family value)
         return "templates";
     case path_family::public_share:
         return "public_share";
-    case path_family::executable:
-        return "executable";
-    case path_family::executable_directory:
-        return "executable_directory";
-    case path_family::install_prefix:
-        return "install_prefix";
-    case path_family::resources:
-        return "resources";
-    case path_family::plugin_search:
-        return "plugin_search";
     case path_family::runtime:
         return "runtime";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(location_role value)
+{
+    switch (value) {
+    case location_role::executable:
+        return "executable";
+    case location_role::executable_directory:
+        return "executable_directory";
+    case location_role::install_prefix:
+        return "install_prefix";
+    case location_role::resources:
+        return "resources";
     }
     return "unknown";
 }
@@ -897,6 +959,8 @@ std::string_view to_string(candidate_source value)
         return "site_default";
     case candidate_source::platform_default:
         return "platform_default";
+    case candidate_source::wine_prefix:
+        return "wine_prefix";
     case candidate_source::fallback:
         return "fallback";
     }
@@ -990,9 +1054,9 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
     select_absolute_override(report, path_family::cache, options.cache_override);
     select_absolute_override(report, path_family::temp, options.temp_override);
     select_absolute_override(report, path_family::runtime, options.runtime_override);
-    select_absolute_override(report, path_family::resources, options.resource_root);
-    select_absolute_override(report, path_family::install_prefix, options.install_prefix);
-    select_absolute_override(report, path_family::executable, options.executable_path);
+    select_absolute_location_override(report, location_role::resources, options.resource_root);
+    select_absolute_location_override(report, location_role::install_prefix, options.install_prefix);
+    select_absolute_location_override(report, location_role::executable, options.executable_path);
     append_legacy_config_candidates(report, options.legacy_config_files);
 
 #if defined(_WIN32)
@@ -1111,10 +1175,10 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
         }
     }
 
-    if (report.selected.find(path_family::executable) == report.selected.end()) {
+    if (report.selected_locations.find(location_role::executable) == report.selected_locations.end()) {
         auto executable_diagnostics = std::vector<diagnostic>{};
         if (auto executable = actual_executable_path(executable_diagnostics)) {
-            add_candidate(report, path_family::executable, candidate_source::executable_relative, *executable, true, std::move(executable_diagnostics));
+            add_location_candidate(report, location_role::executable, candidate_source::executable_relative, *executable, true, std::move(executable_diagnostics));
         } else {
             for (auto& item : executable_diagnostics) {
                 append_report_diagnostic(report, std::move(item));
@@ -1122,24 +1186,25 @@ resolver_report resolve_app_paths(const app_identity& identity, const resolver_o
         }
     }
 
-    const auto executable = report.selected.find(path_family::executable);
-    if (executable != report.selected.end()) {
-        add_candidate(report, path_family::executable_directory, candidate_source::executable_relative, executable->second.parent_path(), true);
+    const auto executable = report.selected_locations.find(location_role::executable);
+    if (executable != report.selected_locations.end()) {
+        add_location_candidate(report, location_role::executable_directory, candidate_source::executable_relative, executable->second.parent_path(), true);
     }
 
-    const auto executable_directory = report.selected.find(path_family::executable_directory);
-    if (report.selected.find(path_family::install_prefix) == report.selected.end() && executable_directory != report.selected.end()) {
+    const auto executable_directory = report.selected_locations.find(location_role::executable_directory);
+    if (report.selected_locations.find(location_role::install_prefix) == report.selected_locations.end() &&
+        executable_directory != report.selected_locations.end()) {
         const auto directory = executable_directory->second;
         const auto prefix = directory.filename() == "bin" ? directory.parent_path() : directory;
-        add_candidate(report, path_family::install_prefix, candidate_source::executable_relative, prefix, true);
+        add_location_candidate(report, location_role::install_prefix, candidate_source::executable_relative, prefix, true);
     }
 
-    if (report.selected.find(path_family::resources) == report.selected.end()) {
-        const auto install_prefix = report.selected.find(path_family::install_prefix);
-        if (install_prefix != report.selected.end()) {
-            add_candidate(report, path_family::resources, candidate_source::executable_relative, install_prefix->second / "share" / application, true);
-        } else if (executable_directory != report.selected.end()) {
-            add_candidate(report, path_family::resources, candidate_source::executable_relative, executable_directory->second, true);
+    if (report.selected_locations.find(location_role::resources) == report.selected_locations.end()) {
+        const auto install_prefix = report.selected_locations.find(location_role::install_prefix);
+        if (install_prefix != report.selected_locations.end()) {
+            add_location_candidate(report, location_role::resources, candidate_source::executable_relative, install_prefix->second / "share" / application, true);
+        } else if (executable_directory != report.selected_locations.end()) {
+            add_location_candidate(report, location_role::resources, candidate_source::executable_relative, executable_directory->second, true);
         }
     }
 
@@ -1307,16 +1372,22 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                           std::optional<plugin_path_kind> kind,
                           const std::optional<std::string>& environment_variable,
                           std::vector<std::filesystem::path> defaults) {
-        path_list_report combined;
+        std::vector<plugin_path_candidate> candidates;
+        std::vector<diagnostic> diagnostics;
 
         if (environment_variable) {
             if (const auto value = environment_value(options.environment, options.use_process_environment, *environment_variable)) {
                 auto parsed = parse_path_list(*value, options.list_options);
                 for (auto& candidate : parsed.candidates) {
-                    candidate.source = candidate_source::environment;
-                    combined.candidates.push_back(std::move(candidate));
+                    plugin_path_candidate plugin_candidate;
+                    plugin_candidate.set_name = name;
+                    plugin_candidate.kind = kind;
+                    plugin_candidate.path = std::move(candidate.path);
+                    plugin_candidate.selected = candidate.selected;
+                    plugin_candidate.diagnostics = std::move(candidate.diagnostics);
+                    plugin_candidate.source = candidate_source::environment;
+                    candidates.push_back(std::move(plugin_candidate));
                 }
-                combined.paths.insert(combined.paths.end(), parsed.paths.begin(), parsed.paths.end());
             }
         }
 
@@ -1325,8 +1396,9 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
             if (path.empty()) {
                 continue;
             }
-            path_candidate candidate;
-            candidate.family = path_family::plugin_search;
+            plugin_path_candidate candidate;
+            candidate.set_name = name;
+            candidate.kind = kind;
             candidate.source = candidate_source::fallback;
             candidate.path = path.lexically_normal();
             candidate.selected = !options.list_options.require_absolute || candidate.path.is_absolute();
@@ -1337,7 +1409,7 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                     "Relative default path-list entry was ignored",
                     candidate.path));
             }
-            combined.candidates.push_back(std::move(candidate));
+            candidates.push_back(std::move(candidate));
         }
 
         if (kind && options.include_wine_prefix_defaults) {
@@ -1350,12 +1422,13 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                 }
             }
             for (const auto& path : wine_plugin_defaults(*kind, wine_prefix.value_or(std::filesystem::path{}))) {
-                path_candidate candidate;
-                candidate.family = path_family::plugin_search;
-                candidate.source = candidate_source::fallback;
+                plugin_path_candidate candidate;
+                candidate.set_name = name;
+                candidate.kind = kind;
+                candidate.source = candidate_source::wine_prefix;
                 candidate.path = path.lexically_normal();
                 candidate.selected = !options.list_options.require_absolute || candidate.path.is_absolute();
-                combined.candidates.push_back(std::move(candidate));
+                candidates.push_back(std::move(candidate));
             }
         }
 
@@ -1363,7 +1436,7 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
         plugin_path_set set;
         set.name = std::move(name);
         set.kind = kind;
-        for (auto& candidate : combined.candidates) {
+        for (auto& candidate : candidates) {
             const auto normalized = normalize_for_duplicate_check(candidate.path);
             if (candidate.selected && options.list_options.drop_duplicates && !seen.insert(normalized).second) {
                 candidate.selected = false;
@@ -1378,12 +1451,12 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                 set.paths.push_back(candidate.path);
             }
             for (const auto& item : candidate.diagnostics) {
-                combined.diagnostics.push_back(item);
+                diagnostics.push_back(item);
             }
             report.candidates.push_back(std::move(candidate));
         }
 
-        report.diagnostics.insert(report.diagnostics.end(), combined.diagnostics.begin(), combined.diagnostics.end());
+        report.diagnostics.insert(report.diagnostics.end(), diagnostics.begin(), diagnostics.end());
         report.sets.push_back(std::move(set));
     };
 

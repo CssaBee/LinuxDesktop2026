@@ -8,22 +8,22 @@ of carrying compatibility scaffolding.
 
 **Blocked by:** 44 - Audit Paths Root Overlap.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Path-list parse results expose entry candidates without requiring callers
+- [x] Path-list parse results expose entry candidates without requiring callers
   to treat them as selected application path families.
-- [ ] Plugin path-set results expose rejected, duplicate, default, environment,
+- [x] Plugin path-set results expose rejected, duplicate, default, environment,
   and Wine-prefix entries without relying on a fake selected path family.
-- [ ] `plugin_search` is removed from public application path-family
+- [x] `plugin_search` is removed from public application path-family
   vocabularies wherever it only existed to label path-list/plugin-set
   candidates.
-- [ ] C and C++ callers retain clear owned-report/freeing rules after the result
+- [x] C and C++ callers retain clear owned-report/freeing rules after the result
   vocabulary changes.
-- [ ] Existing examples and FlavorTests that inspect path-list or plugin-set
+- [x] Existing examples and FlavorTests that inspect path-list or plugin-set
   diagnostics are migrated to the new vocabulary.
-- [ ] No transitional duplicate fields, aliases, or compatibility adapters are
+- [x] No transitional duplicate fields, aliases, or compatibility adapters are
   left behind after tests and examples are migrated.
-- [ ] API stability notes and friction notes call out the intentional break and
+- [x] API stability notes and friction notes call out the intentional break and
   the reason: plugin search roots are path sets, not application path families.
 
 ## Breaking Change

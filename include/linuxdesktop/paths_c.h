@@ -40,12 +40,14 @@ enum ld_paths_path_family {
     LD_PATHS_FAMILY_VIDEOS = 10,
     LD_PATHS_FAMILY_TEMPLATES = 11,
     LD_PATHS_FAMILY_PUBLIC_SHARE = 12,
-    LD_PATHS_FAMILY_EXECUTABLE = 13,
-    LD_PATHS_FAMILY_EXECUTABLE_DIRECTORY = 14,
-    LD_PATHS_FAMILY_INSTALL_PREFIX = 15,
-    LD_PATHS_FAMILY_RESOURCES = 16,
-    LD_PATHS_FAMILY_PLUGIN_SEARCH = 17,
-    LD_PATHS_FAMILY_RUNTIME = 18
+    LD_PATHS_FAMILY_RUNTIME = 13
+};
+
+enum ld_paths_location_role {
+    LD_PATHS_LOCATION_EXECUTABLE = 0,
+    LD_PATHS_LOCATION_EXECUTABLE_DIRECTORY = 1,
+    LD_PATHS_LOCATION_INSTALL_PREFIX = 2,
+    LD_PATHS_LOCATION_RESOURCES = 3
 };
 
 enum ld_paths_candidate_source {
@@ -58,7 +60,8 @@ enum ld_paths_candidate_source {
     LD_PATHS_SOURCE_LEGACY = 6,
     LD_PATHS_SOURCE_SITE_DEFAULT = 7,
     LD_PATHS_SOURCE_FALLBACK = 8,
-    LD_PATHS_SOURCE_PLATFORM_DEFAULT = 9
+    LD_PATHS_SOURCE_PLATFORM_DEFAULT = 9,
+    LD_PATHS_SOURCE_WINE_PREFIX = 10
 };
 
 enum ld_paths_plugin_path_kind {
@@ -90,8 +93,30 @@ struct ld_paths_selected_path {
     char* path;
 };
 
+struct ld_paths_selected_location {
+    int role;
+    char* path;
+};
+
 struct ld_paths_candidate {
     int family;
+    int source;
+    char* path;
+    int selected;
+    struct ld_paths_diagnostic* diagnostics;
+    size_t diagnostic_count;
+};
+
+struct ld_paths_location_candidate {
+    int role;
+    int source;
+    char* path;
+    int selected;
+    struct ld_paths_diagnostic* diagnostics;
+    size_t diagnostic_count;
+};
+
+struct ld_paths_path_list_candidate {
     int source;
     char* path;
     int selected;
@@ -131,8 +156,12 @@ struct ld_paths_resolver_options {
 struct ld_paths_resolver_report {
     struct ld_paths_selected_path* selected;
     size_t selected_count;
+    struct ld_paths_selected_location* selected_locations;
+    size_t selected_location_count;
     struct ld_paths_candidate* candidates;
     size_t candidate_count;
+    struct ld_paths_location_candidate* location_candidates;
+    size_t location_candidate_count;
     struct ld_paths_diagnostic* diagnostics;
     size_t diagnostic_count;
 };
@@ -146,7 +175,7 @@ struct ld_paths_path_list_options {
 struct ld_paths_path_list_report {
     char** paths;
     size_t path_count;
-    struct ld_paths_candidate* candidates;
+    struct ld_paths_path_list_candidate* candidates;
     size_t candidate_count;
     struct ld_paths_diagnostic* diagnostics;
     size_t diagnostic_count;
@@ -158,6 +187,17 @@ struct ld_paths_plugin_path_set {
     int has_kind;
     char** paths;
     size_t path_count;
+};
+
+struct ld_paths_plugin_path_candidate {
+    char* set_name;
+    int kind;
+    int has_kind;
+    int source;
+    char* path;
+    int selected;
+    struct ld_paths_diagnostic* diagnostics;
+    size_t diagnostic_count;
 };
 
 struct ld_paths_plugin_path_options {
@@ -175,7 +215,7 @@ struct ld_paths_plugin_path_options {
 struct ld_paths_plugin_path_report {
     struct ld_paths_plugin_path_set* sets;
     size_t set_count;
-    struct ld_paths_candidate* candidates;
+    struct ld_paths_plugin_path_candidate* candidates;
     size_t candidate_count;
     struct ld_paths_diagnostic* diagnostics;
     size_t diagnostic_count;
@@ -209,6 +249,8 @@ LD_PATHS_API void ld_paths_free_plugin_path_report(struct ld_paths_plugin_path_r
 LD_PATHS_API const char* ld_paths_severity_name(int severity);
 
 LD_PATHS_API const char* ld_paths_path_family_name(int family);
+
+LD_PATHS_API const char* ld_paths_location_role_name(int role);
 
 LD_PATHS_API const char* ld_paths_candidate_source_name(int source);
 

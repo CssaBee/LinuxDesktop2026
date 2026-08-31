@@ -598,7 +598,7 @@ BootstrapPlan ApplicationBootstrap::prepare(
 
     const auto paths = ldp::resolve_app_paths({"Walnut", specification.name}, options);
 
-    plan.resource_root = paths.selected.at(ldp::path_family::resources);
+    plan.resource_root = paths.selected_locations.at(ldp::location_role::resources);
     plan.config_root = paths.selected.at(ldp::path_family::config);
     plan.diagnostics = to_walnut_diagnostics(paths.diagnostics);
     return plan;

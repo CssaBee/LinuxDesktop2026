@@ -96,8 +96,8 @@ BootstrapPlan ApplicationBootstrap::prepare(
     plan.width = specification.width;
     plan.height = specification.height;
     plan.entry_point = launch.distribution_mode ? EntryPointKind::WindowsMain : EntryPointKind::ConsoleMain;
-    plan.executable_root = paths.selected.at(ldp::path_family::executable_directory);
-    plan.resource_root = paths.selected.at(ldp::path_family::resources);
+    plan.executable_root = paths.selected_locations.at(ldp::location_role::executable_directory);
+    plan.resource_root = paths.selected_locations.at(ldp::location_role::resources);
     plan.config_root = paths.selected.at(ldp::path_family::config);
     plan.vulkan_sdk = lookup_path(environment.environment, "VULKAN_SDK");
     plan.required_instance_extensions = environment.required_instance_extensions;

@@ -341,6 +341,10 @@ Acceptable mechanism vocabulary:
 - `ld_paths::resolve_app_paths()` is acceptable inside the bootstrap adapter
   because Walnut needs executable-adjacent resources and an ordinary config root,
   but does not need settings, migration, desktop effects, or watch vocabulary.
+- Current friction is lower after the path API cleanup: Walnut now reads
+  executable/resource values through `selected_locations` and config through
+  ordinary `selected` path families, so the adapter no longer depends on
+  resource locations masquerading as user roots.
 
 Product-boundary leakage:
 
@@ -360,6 +364,21 @@ Helper assessment:
 - This slice is useful negative evidence for `root_request_builder`: graphics
   app bootstrap with executable-adjacent assets reads more naturally with direct
   path resolver options than with the settings-oriented root helper.
+
+## ld_paths Surface
+
+Current friction:
+
+- The deliberate pre-1.0 break is complete for task 45 and task 46:
+  path-list candidates, plugin path-set candidates, resolver path candidates,
+  and executable/install/resource location candidates are separate public
+  vocabularies in both C++ and C.
+- `path_family` is now ordinary user/platform roots only. Plugin search roots
+  are path sets, and executable/install/resource values are `location_role`
+  entries available from `ld_paths` alone.
+- This keeps Walnut/OpenRGB direct-path adapters lightweight while giving future
+  `ld_root` work clean install/resource inputs instead of inheriting
+  compatibility-shaped path-family names.
 
 ## OpenIPC Dashboard
 

@@ -29,7 +29,12 @@ result model must make them distinct before C/Rust consumers or a future
 
 `ld_paths` should resolve path families and explain how it resolved them.
 
-It should not own application payloads. A caller may use `ld_paths` to find `config`, `cache`, `state`, `documents`, `resources`, or `vst3` search roots, but parsing JSON/XML/INI, copying model files, migrating old settings, registering file types, or loading plugins remains outside this module.
+It should not own application payloads. A caller may use `ld_paths` to find
+`config`, `cache`, `state`, `documents`, executable-adjacent `resources`, or
+`vst3` search roots, but parsing JSON/XML/INI, copying model files, migrating
+old settings, registering file types, or loading plugins remains outside this
+module. User path families, executable/install/resource locations, and plugin
+path sets are deliberately separate public result shapes.
 
 ## Platform Promise
 
@@ -70,9 +75,8 @@ Implement:
 - `LinuxDesktop2026::ld_paths` namespaced target,
 - app identity,
 - resolver options,
-- standard root report for config, data, state, cache, temp, documents, desktop, downloads, music, pictures, videos, templates, and public share,
-- executable path and executable directory,
-- resource root and install prefix options,
+- standard root report for config, data, state, cache, temp, runtime, documents, desktop, downloads, music, pictures, videos, templates, and public share,
+- executable path, executable directory, install prefix, and resource root as location roles,
 - source-labeled candidate reporting,
 - Linux XDG Base Directory behavior,
 - Windows Known Folder behavior in the public model,
@@ -171,11 +175,11 @@ Exit bar:
 
 Remaining before public prototype announcement:
 
-- split path-list/plugin-set candidates away from resolver path-family
-  candidates and remove the misleading `plugin_search` family from the public
-  result model,
-- move executable, install-prefix, and resource entries into a distinct public
-  location/provenance result before `ld_root` consumes them,
+- path-list/plugin-set candidates use direct entry/set vocabulary rather than
+  resolver path-family candidates,
+- executable, install-prefix, and resource entries use distinct public
+  location/provenance results for `ld_paths` callers and future `ld_root`
+  consumers,
 - run the Windows 10/11 UTF-8 path, executable-root, unavailable-folder, Known Folder fallback, and plugin-default verification checklist,
 - and decide whether custom plugin path sets need C ABI exposure in the first public cut.
 

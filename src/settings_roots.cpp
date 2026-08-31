@@ -29,6 +29,14 @@ std::filesystem::path selected_path_or_empty(
     return item == report.selected.end() ? std::filesystem::path{} : item->second;
 }
 
+std::filesystem::path selected_location_or_empty(
+    const ld_paths::resolver_report& report,
+    ld_paths::location_role role)
+{
+    const auto item = report.selected_locations.find(role);
+    return item == report.selected_locations.end() ? std::filesystem::path{} : item->second;
+}
+
 ld_paths::resolver_options path_options_from_root_options(const root_options& options)
 {
     ld_paths::resolver_options result;
@@ -46,7 +54,7 @@ void apply_default_roots_from_paths(root_report& report, const ld_paths::resolve
     report.roots.data = selected_path_or_empty(paths, ld_paths::path_family::data);
     report.roots.state = selected_path_or_empty(paths, ld_paths::path_family::state);
     report.roots.cache = selected_path_or_empty(paths, ld_paths::path_family::cache);
-    report.roots.resources = selected_path_or_empty(paths, ld_paths::path_family::resources);
+    report.roots.resources = selected_location_or_empty(paths, ld_paths::location_role::resources);
     report.roots.runtime = selected_path_or_empty(paths, ld_paths::path_family::runtime);
 }
 
@@ -480,7 +488,7 @@ root_report resolve_app_roots(const app_identity& identity, const root_options& 
     path_identity.application = identity.application;
     const auto path_report = ld_paths::resolve_app_paths(path_identity, path_options_from_root_options(options));
     report.diagnostics.insert(report.diagnostics.end(), path_report.diagnostics.begin(), path_report.diagnostics.end());
-    report.roots.resources = selected_path_or_empty(path_report, ld_paths::path_family::resources);
+    report.roots.resources = selected_location_or_empty(path_report, ld_paths::location_role::resources);
 
     report.portable = options.portable;
 

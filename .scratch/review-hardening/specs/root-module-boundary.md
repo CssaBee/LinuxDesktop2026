@@ -128,17 +128,16 @@ the proposed `ld_root` boundary.
 | Path-list parsing and joining | Generic path-list behavior | Stay in `ld_paths`. This supports environment-shaped search lists and should not move to root topology. |
 | Typed plugin path sets and Wine-prefix-aware plugin defaults | Domain-specific path-set behavior | Stay in `ld_paths`. Carla-style evidence supports search-root discovery, not plugin loading, plugin ABI, or app-owned root topology. |
 | Custom plugin path sets | Path-set behavior, not root topology | Stay in `ld_paths`. A caller-defined plugin ecosystem is still a search list; it should not be confused with named app roots such as Notepad++ plugin config. |
-| Executable path, executable directory, install prefix, and resources | Path-location behavior with future interaction point | Keep in `ld_paths`, but plan a breaking-shape audit before public prototype announcement. Walnut and PrusaSlicer need executable-adjacent resources directly; Notepad++ and qBittorrent need install-adjacent inputs for root topology. These should feed `ld_root`, not move wholesale into it. |
-| `path_family::plugin_search` inside resolver/path-list candidate reports | Misleading public shape | Plan a pre-1.0 breaking cleanup. A plugin search set is not a selected application path family, and C/Rust bindings should not inherit that fake family just because the internal candidate type is reused. |
+| Executable path, executable directory, install prefix, and resources | Path-location behavior with future interaction point | Stay in `ld_paths` as explicit location roles, separate from ordinary path families. Walnut and PrusaSlicer need executable-adjacent resources directly; Notepad++ and qBittorrent need install-adjacent inputs for root topology. These feed `ld_root` later, but do not move wholesale into it. |
+| Path-list and plugin path-set candidates | Path-list/path-set behavior | Stay in `ld_paths` with direct candidate vocabulary. A plugin search set is not a selected application path family, and C/Rust bindings no longer inherit a fake family just because reports need diagnostics. |
 | Settings named roots, component roots, portable/local overlays, config layers, hydration, and writes | Root topology or settings lifecycle | Do not move into `ld_paths`. Positive `ld_root` evidence comes from Notepad++, qBittorrent, and KiCad; settings lifecycle remains in `ld_settings`. |
 | Service/data-root profiles and project-keyed roots | Product-owned policy | Do not move into `ld_paths` or `ld_root` yet. OpenIPC Dashboard and KiCad project backups remain negative or limited evidence. |
 
 The audit does not justify merging broad `ld_paths` behavior into `ld_root`.
-It does justify planning a pre-public breaking cleanup of the `ld_paths` result
-shape: the current enum mixes platform families, executable/install locations,
-resources, and a synthetic plugin-search marker. That cleanup should happen
-before a public `ld_root` module is added, otherwise `ld_root` would either
-duplicate the muddle or encode compatibility around it.
+Tasks 45 and 46 completed the pre-public cleanup of the `ld_paths` result
+shape: ordinary path families, executable/install/resource locations, path-list
+candidates, and plugin path-set candidates are distinct public concepts before
+a public `ld_root` module is added.
 
 ## User Stories
 
@@ -191,11 +190,10 @@ duplicate the muddle or encode compatibility around it.
 - Audit `ld_paths` separately for internal organization and unjustified overlap,
   but do not merge plugin path sets, path-list parsing, or directory creation
   into `ld_root` without repeated evidence.
-- Treat `path_family::plugin_search` as a pre-1.0 API-shape problem: plugin
-  path-set reports should not pretend that search lists are selected
-  application root families.
-- Keep executable/resource/install location discovery in `ld_paths`, but plan a
-  clearer public result shape before asking `ld_root` to consume those values.
+- Keep plugin path-set reports separate from selected application root-family
+  candidates.
+- Keep executable/resource/install location discovery in `ld_paths` through
+  explicit location roles before asking `ld_root` to consume those values.
 - Use `API_FRICTION.md`, in-tree FlavorTests, and the Notepad++ cross-port proof
   as the evidence baseline.
 
@@ -221,13 +219,11 @@ duplicate the muddle or encode compatibility around it.
 - Broad `ld_paths` public redesign without new FlavorTest or maintained
   consumer evidence.
 
-The task 44 audit removes preserve-before-break caution for the next root/path
-hardening tickets. `path_family::plugin_search` is already misleading in the
-public C++ and C result vocabulary, executable/resource/install locations are
-not ordinary user path families, and the module is still pre-public-prototype.
-Tasks 45 and 46 should take the direct breaking changes needed to make those
-concepts honest. Tasks 47 and 48 should then finish the public `ld_root` and
-contracted `ld_settings` boundary without leaving deprecated aliases,
+The task 44 audit removed preserve-before-break caution for the root/path
+hardening tickets. Tasks 45 and 46 took the direct breaking changes needed to
+make those concepts honest while the module is still pre-public-prototype.
+Tasks 47 and 48 should now finish the public `ld_root` and contracted
+`ld_settings` boundary without leaving deprecated aliases,
 duplicated public structs, or temporary adapter layers behind.
 
 The intended final dependency shape is:

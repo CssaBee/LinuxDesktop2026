@@ -180,7 +180,7 @@ bool ResourceManager::SetupConfigurationDirectory(const RuntimeEnvironment& envi
     }
 
     const auto report = ldp::resolve_app_paths(identity, options);
-    paths_.resources_dir = report.selected.at(ldp::path_family::resources);
+    paths_.resources_dir = report.selected_locations.at(ldp::location_role::resources);
     paths_.config_dir = report.selected.at(ldp::path_family::config);
     paths_.profiles_dir = paths_.config_dir / "profiles";
     return true;

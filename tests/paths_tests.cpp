@@ -51,6 +51,15 @@ std::filesystem::path selected_path(const ld::resolver_report& report, ld::path_
     return item->second;
 }
 
+std::filesystem::path selected_location(const ld::resolver_report& report, ld::location_role role)
+{
+    const auto item = report.selected_locations.find(role);
+    if (item == report.selected_locations.end()) {
+        fail(std::string("missing selected location for ") + std::string(ld::to_string(role)));
+    }
+    return item->second;
+}
+
 bool has_selected_candidate(const ld::resolver_report& report, ld::path_family family, ld::candidate_source source)
 {
     for (const auto& candidate : report.candidates) {
@@ -65,6 +74,16 @@ bool has_candidate(const ld::resolver_report& report, ld::path_family family, ld
 {
     for (const auto& candidate : report.candidates) {
         if (candidate.family == family && candidate.source == source) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_selected_location_candidate(const ld::resolver_report& report, ld::location_role role, ld::candidate_source source)
+{
+    for (const auto& candidate : report.location_candidates) {
+        if (candidate.role == role && candidate.source == source && candidate.selected) {
             return true;
         }
     }
@@ -136,9 +155,11 @@ void stringifies_public_enums()
     require(ld::to_string(ld::path_family::public_share) == "public_share", "public share should stringify");
     require(ld::to_string(ld::path_family::templates) == "templates", "templates path family should stringify");
     require(ld::to_string(ld::path_family::runtime) == "runtime", "runtime path family should stringify");
+    require(ld::to_string(ld::location_role::resources) == "resources", "location role should stringify");
     require(ld::to_string(ld::candidate_source::known_folder) == "known_folder", "candidate source should stringify");
     require(ld::to_string(ld::candidate_source::xdg_base_dir) == "xdg_base_dir", "XDG base dir should stringify");
     require(ld::to_string(ld::candidate_source::platform_default) == "platform_default", "platform default source should stringify");
+    require(ld::to_string(ld::candidate_source::wine_prefix) == "wine_prefix", "Wine-prefix source should stringify");
     require(ld::to_string(ld::directory_action::would_create) == "would_create", "directory action should stringify");
     require(ld::to_string(ld::plugin_path_kind::vst3) == "vst3", "plugin path kind should stringify");
 }
@@ -516,14 +537,16 @@ void resolves_executable_install_resource_and_temp_paths()
 
     require(selected_path(report, ld::path_family::temp) == fixture_path({"tmp"}),
         "temp override should be selected");
-    require(selected_path(report, ld::path_family::executable) == fixture_path({"opt", "linuxdesktop2026", "bin", "paths-tests"}),
+    require(selected_location(report, ld::location_role::executable) == fixture_path({"opt", "linuxdesktop2026", "bin", "paths-tests"}),
         "injected executable path should be selected");
-    require(selected_path(report, ld::path_family::executable_directory) == fixture_path({"opt", "linuxdesktop2026", "bin"}),
+    require(selected_location(report, ld::location_role::executable_directory) == fixture_path({"opt", "linuxdesktop2026", "bin"}),
         "executable directory should derive from executable path");
-    require(selected_path(report, ld::path_family::install_prefix) == fixture_path({"opt", "linuxdesktop2026"}),
+    require(selected_location(report, ld::location_role::install_prefix) == fixture_path({"opt", "linuxdesktop2026"}),
         "install prefix should derive from a bin executable directory");
-    require(selected_path(report, ld::path_family::resources) == fixture_path({"opt", "linuxdesktop2026", "share", "paths-tests"}),
+    require(selected_location(report, ld::location_role::resources) == fixture_path({"opt", "linuxdesktop2026", "share", "paths-tests"}),
         "resource root should derive from install prefix");
+    require(!report.selected.empty() && !report.selected_locations.empty(),
+        "ordinary path-family selections and locations should be reported separately");
 }
 
 void honors_absolute_explicit_options()
@@ -543,11 +566,11 @@ void honors_absolute_explicit_options()
         "absolute config override should win");
     require(selected_path(report, ld::path_family::runtime) == fixture_path({"override", "runtime"}),
         "absolute runtime override should win");
-    require(selected_path(report, ld::path_family::resources) == fixture_path({"override", "resources"}),
+    require(selected_location(report, ld::location_role::resources) == fixture_path({"override", "resources"}),
         "absolute resource root should win");
-    require(selected_path(report, ld::path_family::install_prefix) == fixture_path({"override", "prefix"}),
+    require(selected_location(report, ld::location_role::install_prefix) == fixture_path({"override", "prefix"}),
         "absolute install prefix should win");
-    require(has_selected_candidate(report, ld::path_family::resources, ld::candidate_source::explicit_option),
+    require(has_selected_location_candidate(report, ld::location_role::resources, ld::candidate_source::explicit_option),
         "explicit resource candidate should be source-labeled");
 }
 
@@ -630,6 +653,9 @@ void parses_and_joins_path_lists_with_diagnostics()
     require(report.paths.size() == 2, "path list should keep absolute unique entries");
     require(report.paths[0] == first, "first path should be preserved");
     require(report.paths[1] == normalized_second, "second path should be normalized");
+    require(report.candidates.size() == 5, "path-list entries should have direct candidates");
+    require(report.candidates[0].selected && report.candidates[0].source == ld::candidate_source::environment,
+        "path-list candidates should not carry application path-family vocabulary");
     require(has_path_list_diagnostic(report, ld::diagnostic_code::path_list_relative_ignored),
         "relative path-list entries should be diagnosed");
     require(has_path_list_diagnostic(report, ld::diagnostic_code::path_list_empty_entry_ignored),
@@ -658,6 +684,10 @@ void resolves_typed_plugin_path_sets()
     require(vst3.paths.size() == 2 || vst3.paths.size() == 4,
         "VST3 should include env path and platform defaults");
     require(vst3.paths[0] == fixture_path({"vendor", "vst3"}), "environment plugin path should win ordering");
+    require(report.candidates[0].set_name == "vst3" && report.candidates[0].kind &&
+            *report.candidates[0].kind == ld::plugin_path_kind::vst3 &&
+            report.candidates[0].source == ld::candidate_source::environment,
+        "plugin candidates should carry direct set vocabulary");
 #if defined(_WIN32)
     require(vst3.paths[1] == "C:/Program Files/Common Files/VST3", "VST3 should include Windows default");
 #else
@@ -703,6 +733,10 @@ void resolves_wine_and_custom_plugin_path_sets()
     const auto& clap = plugin_set(report, "clap");
     require(std::find(clap.paths.begin(), clap.paths.end(), fixture_path({"wine", "prefix", "drive_c", "Program Files", "Common Files", "CLAP"})) != clap.paths.end(),
         "CLAP should include Wine-prefix default when requested");
+    require(std::find_if(report.candidates.begin(), report.candidates.end(), [](const ld::plugin_path_candidate& candidate) {
+                return candidate.set_name == "clap" && candidate.source == ld::candidate_source::wine_prefix && candidate.selected;
+            }) != report.candidates.end(),
+        "Wine-prefix plugin candidates should be source-labeled");
 
     const auto& sampler = plugin_set(report, "sampler-bank");
     require(!sampler.kind, "custom plugin set should not claim a built-in kind");

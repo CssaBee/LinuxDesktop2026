@@ -8,22 +8,22 @@ API has no compatibility-shaped debt.
 
 **Blocked by:** 45 - Split Path-List Candidate Vocabulary.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Config, data, state, cache, runtime, temp, and user directories remain the
+- [x] Config, data, state, cache, runtime, temp, and user directories remain the
   ordinary platform path families.
-- [ ] Executable path, executable directory, install prefix, and resources are
+- [x] Executable path, executable directory, install prefix, and resources are
   reported as location/provenance values with source-labeled candidates.
-- [ ] Those location/provenance values are removed from the ordinary public
+- [x] Those location/provenance values are removed from the ordinary public
   path-family enum/result map once examples and tests use the clearer result
   shape.
-- [ ] Walnut and OpenIPC Dashboard continue to read naturally through direct
+- [x] Walnut and OpenIPC Dashboard continue to read naturally through direct
   path resolution for their simple desktop/default profile cases.
-- [ ] Notepad++ and qBittorrent can pass install-adjacent/resource locations on
+- [x] Notepad++ and qBittorrent can pass install-adjacent/resource locations on
   to root topology without duplicating platform discovery.
-- [ ] The C ABI is updated to the same model without old aliases, duplicate
+- [x] The C ABI is updated to the same model without old aliases, duplicate
   selected-path entries, or compatibility shims.
-- [ ] Docs describe the minimal dependency rule: executable/resource discovery
+- [x] Docs describe the minimal dependency rule: executable/resource discovery
   remains available from `ld_paths` alone, while named app-owned child roots are
   resolved by `ld_root` only when callers need that topology.
 

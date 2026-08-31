@@ -58,12 +58,14 @@ enum class path_family {
     videos,
     templates,
     public_share,
+    runtime
+};
+
+enum class location_role {
     executable,
     executable_directory,
     install_prefix,
-    resources,
-    plugin_search,
-    runtime
+    resources
 };
 
 enum class candidate_source {
@@ -76,11 +78,20 @@ enum class candidate_source {
     legacy,
     site_default,
     fallback,
-    platform_default
+    platform_default,
+    wine_prefix
 };
 
 struct path_candidate {
     path_family family = path_family::config;
+    candidate_source source = candidate_source::fallback;
+    std::filesystem::path path;
+    bool selected = false;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct location_candidate {
+    location_role role = location_role::resources;
     candidate_source source = candidate_source::fallback;
     std::filesystem::path path;
     bool selected = false;
@@ -122,7 +133,9 @@ struct resolver_options {
 
 struct resolver_report {
     std::map<path_family, std::filesystem::path> selected;
+    std::map<location_role, std::filesystem::path> selected_locations;
     std::vector<path_candidate> candidates;
+    std::vector<location_candidate> location_candidates;
     std::vector<diagnostic> diagnostics;
 };
 
@@ -161,9 +174,16 @@ struct path_list_options {
     std::optional<char> separator;
 };
 
+struct path_list_candidate {
+    candidate_source source = candidate_source::environment;
+    std::filesystem::path path;
+    bool selected = false;
+    std::vector<diagnostic> diagnostics;
+};
+
 struct path_list_report {
     std::vector<std::filesystem::path> paths;
-    std::vector<path_candidate> candidates;
+    std::vector<path_list_candidate> candidates;
     std::vector<diagnostic> diagnostics;
 };
 
@@ -210,15 +230,25 @@ struct plugin_path_set {
     std::vector<std::filesystem::path> paths;
 };
 
+struct plugin_path_candidate {
+    std::string set_name;
+    std::optional<plugin_path_kind> kind;
+    candidate_source source = candidate_source::fallback;
+    std::filesystem::path path;
+    bool selected = false;
+    std::vector<diagnostic> diagnostics;
+};
+
 struct plugin_path_report {
     std::vector<plugin_path_set> sets;
-    std::vector<path_candidate> candidates;
+    std::vector<plugin_path_candidate> candidates;
     std::vector<diagnostic> diagnostics;
 };
 
 plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options = {});
 
 std::string_view to_string(path_family value);
+std::string_view to_string(location_role value);
 std::string_view to_string(candidate_source value);
 std::string_view to_string(directory_action value);
 std::string_view to_string(plugin_path_kind value);

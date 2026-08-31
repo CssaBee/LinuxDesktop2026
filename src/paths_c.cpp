@@ -70,9 +70,22 @@ int family_to_c(ld::path_family value)
     return static_cast<int>(value);
 }
 
+ld::location_role location_role_from_c(int value)
+{
+    if (value < LD_PATHS_LOCATION_EXECUTABLE || value > LD_PATHS_LOCATION_RESOURCES) {
+        return ld::location_role::resources;
+    }
+    return static_cast<ld::location_role>(value);
+}
+
+int location_role_to_c(ld::location_role value)
+{
+    return static_cast<int>(value);
+}
+
 ld::candidate_source source_from_c(int value)
 {
-    if (value < LD_PATHS_SOURCE_EXPLICIT_OPTION || value > LD_PATHS_SOURCE_PLATFORM_DEFAULT) {
+    if (value < LD_PATHS_SOURCE_EXPLICIT_OPTION || value > LD_PATHS_SOURCE_WINE_PREFIX) {
         return ld::candidate_source::fallback;
     }
     return static_cast<ld::candidate_source>(value);
@@ -170,6 +183,103 @@ bool fill_candidates(const std::vector<ld::path_candidate>& source, ld_paths_can
     return true;
 }
 
+bool fill_location_candidate(const ld::location_candidate& source, ld_paths_location_candidate& target)
+{
+    target.role = location_role_to_c(source.role);
+    target.source = source_to_c(source.source);
+    target.path = duplicate_path(source.path);
+    target.selected = source.selected ? 1 : 0;
+    return target.path && fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count);
+}
+
+bool fill_location_candidates(
+    const std::vector<ld::location_candidate>& source,
+    ld_paths_location_candidate*& candidates,
+    size_t& count)
+{
+    candidates = allocate_array<ld_paths_location_candidate>(source.size());
+    count = source.size();
+    if (source.empty()) {
+        return true;
+    }
+    if (!candidates) {
+        count = 0;
+        return false;
+    }
+
+    for (size_t i = 0; i < source.size(); ++i) {
+        if (!fill_location_candidate(source[i], candidates[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool fill_path_list_candidate(const ld::path_list_candidate& source, ld_paths_path_list_candidate& target)
+{
+    target.source = source_to_c(source.source);
+    target.path = duplicate_path(source.path);
+    target.selected = source.selected ? 1 : 0;
+    return target.path && fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count);
+}
+
+bool fill_path_list_candidates(
+    const std::vector<ld::path_list_candidate>& source,
+    ld_paths_path_list_candidate*& candidates,
+    size_t& count)
+{
+    candidates = allocate_array<ld_paths_path_list_candidate>(source.size());
+    count = source.size();
+    if (source.empty()) {
+        return true;
+    }
+    if (!candidates) {
+        count = 0;
+        return false;
+    }
+
+    for (size_t i = 0; i < source.size(); ++i) {
+        if (!fill_path_list_candidate(source[i], candidates[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool fill_plugin_path_candidate(const ld::plugin_path_candidate& source, ld_paths_plugin_path_candidate& target)
+{
+    target.set_name = duplicate_string(source.set_name);
+    target.has_kind = source.kind ? 1 : 0;
+    target.kind = source.kind ? plugin_kind_to_c(*source.kind) : -1;
+    target.source = source_to_c(source.source);
+    target.path = duplicate_path(source.path);
+    target.selected = source.selected ? 1 : 0;
+    return target.set_name && target.path && fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count);
+}
+
+bool fill_plugin_path_candidates(
+    const std::vector<ld::plugin_path_candidate>& source,
+    ld_paths_plugin_path_candidate*& candidates,
+    size_t& count)
+{
+    candidates = allocate_array<ld_paths_plugin_path_candidate>(source.size());
+    count = source.size();
+    if (source.empty()) {
+        return true;
+    }
+    if (!candidates) {
+        count = 0;
+        return false;
+    }
+
+    for (size_t i = 0; i < source.size(); ++i) {
+        if (!fill_plugin_path_candidate(source[i], candidates[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void free_candidate(ld_paths_candidate& candidate)
 {
     std::free(candidate.path);
@@ -182,6 +292,64 @@ void free_candidates(ld_paths_candidate*& candidates, size_t& count)
     if (candidates) {
         for (size_t i = 0; i < count; ++i) {
             free_candidate(candidates[i]);
+        }
+    }
+    std::free(candidates);
+    candidates = nullptr;
+    count = 0;
+}
+
+void free_location_candidate(ld_paths_location_candidate& candidate)
+{
+    std::free(candidate.path);
+    free_diagnostics(candidate.diagnostics, candidate.diagnostic_count);
+    candidate = {};
+}
+
+void free_location_candidates(ld_paths_location_candidate*& candidates, size_t& count)
+{
+    if (candidates) {
+        for (size_t i = 0; i < count; ++i) {
+            free_location_candidate(candidates[i]);
+        }
+    }
+    std::free(candidates);
+    candidates = nullptr;
+    count = 0;
+}
+
+void free_path_list_candidate(ld_paths_path_list_candidate& candidate)
+{
+    std::free(candidate.path);
+    free_diagnostics(candidate.diagnostics, candidate.diagnostic_count);
+    candidate = {};
+}
+
+void free_path_list_candidates(ld_paths_path_list_candidate*& candidates, size_t& count)
+{
+    if (candidates) {
+        for (size_t i = 0; i < count; ++i) {
+            free_path_list_candidate(candidates[i]);
+        }
+    }
+    std::free(candidates);
+    candidates = nullptr;
+    count = 0;
+}
+
+void free_plugin_path_candidate(ld_paths_plugin_path_candidate& candidate)
+{
+    std::free(candidate.set_name);
+    std::free(candidate.path);
+    free_diagnostics(candidate.diagnostics, candidate.diagnostic_count);
+    candidate = {};
+}
+
+void free_plugin_path_candidates(ld_paths_plugin_path_candidate*& candidates, size_t& count)
+{
+    if (candidates) {
+        for (size_t i = 0; i < count; ++i) {
+            free_plugin_path_candidate(candidates[i]);
         }
     }
     std::free(candidates);
@@ -370,7 +538,23 @@ int ld_paths_resolve_app_paths(
             ++index;
         }
 
+        report->selected_locations = allocate_array<ld_paths_selected_location>(resolved.selected_locations.size());
+        report->selected_location_count = resolved.selected_locations.size();
+        if (resolved.selected_locations.size() && !report->selected_locations) {
+            return 0;
+        }
+        index = 0;
+        for (const auto& item : resolved.selected_locations) {
+            report->selected_locations[index].role = location_role_to_c(item.first);
+            report->selected_locations[index].path = duplicate_path(item.second);
+            if (!report->selected_locations[index].path) {
+                return 0;
+            }
+            ++index;
+        }
+
         return fill_candidates(resolved.candidates, report->candidates, report->candidate_count) &&
+            fill_location_candidates(resolved.location_candidates, report->location_candidates, report->location_candidate_count) &&
             fill_diagnostics(resolved.diagnostics, report->diagnostics, report->diagnostic_count);
     } catch (const std::exception&) {
         ld_paths_free_resolver_report(report);
@@ -389,7 +573,14 @@ void ld_paths_free_resolver_report(ld_paths_resolver_report* report)
         }
     }
     std::free(report->selected);
+    if (report->selected_locations) {
+        for (size_t i = 0; i < report->selected_location_count; ++i) {
+            std::free(report->selected_locations[i].path);
+        }
+    }
+    std::free(report->selected_locations);
     free_candidates(report->candidates, report->candidate_count);
+    free_location_candidates(report->location_candidates, report->location_candidate_count);
     free_diagnostics(report->diagnostics, report->diagnostic_count);
     *report = {};
 }
@@ -410,7 +601,7 @@ int ld_paths_parse_path_list(
         const auto list_options = path_list_options_from_c(options ? *options : defaults);
         const auto parsed = ld::parse_path_list(value, list_options);
         return fill_string_array(parsed.paths, report->paths, report->path_count) &&
-            fill_candidates(parsed.candidates, report->candidates, report->candidate_count) &&
+            fill_path_list_candidates(parsed.candidates, report->candidates, report->candidate_count) &&
             fill_diagnostics(parsed.diagnostics, report->diagnostics, report->diagnostic_count);
     } catch (const std::exception&) {
         ld_paths_free_path_list_report(report);
@@ -424,7 +615,7 @@ void ld_paths_free_path_list_report(ld_paths_path_list_report* report)
         return;
     }
     free_string_array(report->paths, report->path_count);
-    free_candidates(report->candidates, report->candidate_count);
+    free_path_list_candidates(report->candidates, report->candidate_count);
     free_diagnostics(report->diagnostics, report->diagnostic_count);
     *report = {};
 }
@@ -470,7 +661,7 @@ int ld_paths_resolve_plugin_path_sets(
             }
         }
 
-        return fill_candidates(resolved.candidates, report->candidates, report->candidate_count) &&
+        return fill_plugin_path_candidates(resolved.candidates, report->candidates, report->candidate_count) &&
             fill_diagnostics(resolved.diagnostics, report->diagnostics, report->diagnostic_count);
     } catch (const std::exception&) {
         ld_paths_free_plugin_path_report(report);
@@ -489,7 +680,7 @@ void ld_paths_free_plugin_path_report(ld_paths_plugin_path_report* report)
         }
     }
     std::free(report->sets);
-    free_candidates(report->candidates, report->candidate_count);
+    free_plugin_path_candidates(report->candidates, report->candidate_count);
     free_diagnostics(report->diagnostics, report->diagnostic_count);
     *report = {};
 }
@@ -511,6 +702,11 @@ const char* ld_paths_severity_name(int severity)
 const char* ld_paths_path_family_name(int family)
 {
     return ld::to_string(family_from_c(family)).data();
+}
+
+const char* ld_paths_location_role_name(int role)
+{
+    return ld::to_string(location_role_from_c(role)).data();
 }
 
 const char* ld_paths_candidate_source_name(int source)

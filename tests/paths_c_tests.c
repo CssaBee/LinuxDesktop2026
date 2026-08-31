@@ -52,6 +52,17 @@ static const char* selected_path(const struct ld_paths_resolver_report* report, 
     return NULL;
 }
 
+static const char* selected_location(const struct ld_paths_resolver_report* report, int role)
+{
+    size_t i;
+    for (i = 0; i < report->selected_location_count; ++i) {
+        if (report->selected_locations[i].role == role) {
+            return report->selected_locations[i].path;
+        }
+    }
+    return NULL;
+}
+
 static int has_candidate(
     const struct ld_paths_resolver_report* report,
     int family,
@@ -63,6 +74,23 @@ static int has_candidate(
         if (report->candidates[i].family == family &&
             report->candidates[i].source == source &&
             report->candidates[i].selected == selected) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int has_location_candidate(
+    const struct ld_paths_resolver_report* report,
+    int role,
+    int source,
+    int selected)
+{
+    size_t i;
+    for (i = 0; i < report->location_candidate_count; ++i) {
+        if (report->location_candidates[i].role == role &&
+            report->location_candidates[i].source == source &&
+            report->location_candidates[i].selected == selected) {
             return 1;
         }
     }
@@ -105,8 +133,10 @@ int main(void)
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG), "config") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES), "templates") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_RUNTIME), "runtime") != 0 ||
+        strcmp(ld_paths_location_role_name(LD_PATHS_LOCATION_RESOURCES), "resources") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR), "xdg_base_dir") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_PLATFORM_DEFAULT), "platform_default") != 0 ||
+        strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_WINE_PREFIX), "wine_prefix") != 0 ||
         strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0) {
         fprintf(stderr,
             "name smoke failed: config=%s templates=%s source=%s plugin=%s\n",
@@ -175,14 +205,15 @@ int main(void)
     );
     if (!selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG) ||
         strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG), expected_config) != 0 ||
-        !selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES) ||
-        strcmp(selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES), expected_resources) != 0 ||
+        !selected_location(&resolver_report, LD_PATHS_LOCATION_RESOURCES) ||
+        strcmp(selected_location(&resolver_report, LD_PATHS_LOCATION_RESOURCES), expected_resources) != 0 ||
+        !has_location_candidate(&resolver_report, LD_PATHS_LOCATION_RESOURCES, LD_PATHS_SOURCE_EXECUTABLE_RELATIVE, 1) ||
         resolver_report.candidate_count == 0) {
         fprintf(stderr,
             "resolver smoke failed: config=%s expected=%s resources=%s expected=%s candidates=%zu\n",
             selected_path(&resolver_report, LD_PATHS_FAMILY_CONFIG),
             expected_config,
-            selected_path(&resolver_report, LD_PATHS_FAMILY_RESOURCES),
+            selected_location(&resolver_report, LD_PATHS_LOCATION_RESOURCES),
             expected_resources,
             resolver_report.candidate_count);
         ld_paths_free_resolver_report(&resolver_report);
@@ -297,6 +328,7 @@ int main(void)
         list_report.path_count != 2 ||
         strcmp(list_report.paths[0], list_one) != 0 ||
         strcmp(list_report.paths[1], list_two) != 0 ||
+        list_report.candidate_count != 4 ||
         list_report.diagnostic_count < 2) {
         ld_paths_free_path_list_report(&list_report);
         return EXIT_FAILURE;
@@ -330,7 +362,11 @@ int main(void)
     const struct ld_paths_plugin_path_set* lv2 = plugin_set(&plugin_report, "lv2");
     if (!vst3 || vst3->has_kind != 1 || vst3->kind != LD_PATHS_PLUGIN_VST3 ||
         vst3->path_count == 0 || strcmp(vst3->paths[0], plugin_vendor) != 0 ||
-        !lv2 || lv2->path_count == 0) {
+        !lv2 || lv2->path_count == 0 ||
+        plugin_report.candidate_count == 0 ||
+        !plugin_report.candidates[0].set_name ||
+        strcmp(plugin_report.candidates[0].set_name, "vst3") != 0 ||
+        plugin_report.candidates[0].source != LD_PATHS_SOURCE_ENVIRONMENT) {
         ld_paths_free_plugin_path_report(&plugin_report);
         return EXIT_FAILURE;
     }

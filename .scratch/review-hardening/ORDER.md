@@ -6,13 +6,13 @@ list below.
 
 ## Current Order
 
-- `45` - Split Path-List Candidate Vocabulary
-- `46` - Separate Path Families From Location Roles
 - `47` - Add Public Root Topology Surface
 - `48` - Contract Settings-Owned Root Builder
 
 ## Implemented
 
+- `46` - Separate Path Families From Location Roles
+- `45` - Split Path-List Candidate Vocabulary
 - `44` - Audit Paths Root Overlap
 - `43` - Extract Settings Root Internals
 - `42` - Design Root Module Boundary

@@ -17,6 +17,19 @@ static void print_selected_path(
     }
 }
 
+static void print_selected_location(
+    const struct ld_paths_resolver_report* report,
+    int role)
+{
+    size_t i;
+    for (i = 0; i < report->selected_location_count; ++i) {
+        if (report->selected_locations[i].role == role) {
+            printf("%s: %s\n", ld_paths_location_role_name(role), report->selected_locations[i].path);
+            return;
+        }
+    }
+}
+
 int main(int argc, char** argv)
 {
     const char* application = argc > 1 ? argv[1] : "paths-c-demo";
@@ -41,7 +54,7 @@ int main(int argc, char** argv)
     print_selected_path(&report, LD_PATHS_FAMILY_CONFIG);
     print_selected_path(&report, LD_PATHS_FAMILY_DATA);
     print_selected_path(&report, LD_PATHS_FAMILY_CACHE);
-    print_selected_path(&report, LD_PATHS_FAMILY_RESOURCES);
+    print_selected_location(&report, LD_PATHS_LOCATION_RESOURCES);
     ld_paths_free_resolver_report(&report);
 
     int kinds[2] = {LD_PATHS_PLUGIN_LV2, LD_PATHS_PLUGIN_VST3};

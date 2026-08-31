@@ -57,7 +57,14 @@ ld_paths_version_patch()
 ld_paths_version_string()
 ```
 
-The `ld_paths` C ABI currently covers root resolution reports, candidate reports, path-list parsing reports, and typed plugin path-set reports. Returned strings and arrays are owned by the report and must be released with the matching `ld_paths_free_*_report` function. Do not broaden this surface until release-candidate API evidence exists.
+The `ld_paths` C ABI currently covers root resolution reports, location reports,
+path-list parsing reports, and typed plugin path-set reports. Returned strings
+and arrays are owned by the report and must be released with the matching
+`ld_paths_free_*_report` function. Resolver candidates, location candidates,
+path-list candidates, and plugin path candidates use distinct structs so C
+bindings do not have to treat plugin search roots or executable-adjacent
+locations as application path families. Do not broaden this surface until
+release-candidate API evidence exists.
 
 The C resolver options expose platform defaults as flat borrowed-string fields:
 `xdg_config_home_default`, `xdg_data_home_default`, `xdg_state_home_default`,
@@ -73,6 +80,13 @@ Task 04 adds runtime root selection to `ld_paths` and settings-owned
 home/environment injection controls to `ld_settings` root options. These are
 pre-1.0 C and C++ surface changes made to correct the ADR 0012 module boundary;
 existing C enum values are preserved and new C option fields are appended.
+
+Task 45 removes the synthetic plugin-search path family and gives path-list and
+plugin path-set reports direct candidate vocabulary. Task 46 removes
+executable, executable-directory, install-prefix, and resources from the
+ordinary path-family model and reports them as `location_role` values instead.
+These are intentional pre-1.0 C and C++ breaking changes: no compatibility
+aliases or duplicate selected-path entries remain.
 
 Task 19 moves C++ autostart and managed/enforced policy implementation to
 `ld_desktop`. Task 20 moves migration planning/execution and app-settings
