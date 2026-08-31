@@ -116,6 +116,11 @@ _Avoid_: Unit test result, implementation gate, pass/fail criterion
 The tolerated amount of LinuxDesktop2026-specific vocabulary that a product-shaped seam may expose before the API needs a narrower convenience layer or the abstraction should be rejected.
 _Avoid_: Boilerplate count, style preference, mandatory metric
 
+**Product-owned diagnostic**:
+A warning, error, or status item expressed in the adopting application's own
+vocabulary, even when it is derived from LinuxDesktop2026 internal reports.
+_Avoid_: Raw library diagnostic, passthrough report, generic status dump
+
 **Desktop integration effect**:
 A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
 _Avoid_: Settings file, GUI toolkit feature, installer only

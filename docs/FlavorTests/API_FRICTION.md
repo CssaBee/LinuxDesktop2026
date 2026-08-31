@@ -38,8 +38,8 @@ Current global pain:
   also makes accidental public-header coupling visible when a flavor pulls in a
   broader module than its product shape really needs.
 - Diagnostics are generic across modules. That is useful at the adapter edge,
-  but any product-facing state still needs translation to product warnings,
-  logs, prompts, or status flags.
+  and `ld_core` carries severity plus library-owned handling flags for logging,
+  status display, and user prompts.
 - Cross-module workflows expose module ownership directly in user code. Calls
   such as `linuxdesktop::root::request_builder` followed by
   `linuxdesktop::settings::write_with_backup` make the dependency story
@@ -59,12 +59,15 @@ Fit:
   config writes.
 - `linuxdesktop::migration` fits the legacy config import mechanic when the raw
   plan stays behind the Notepad++ adapter.
+- `ld_core` provides product-diagnostic translation helpers so adapters can map
+  shared severity, codes, messages, related paths, and diagnostic handling flags
+  into product-owned diagnostics without hand-copying each report shape.
+  `"app_local-denied-privileged-install"` becomes a Notepad++ diagnostic with
+  `handling.prompt_user = true`, so the adapter does not need a parallel
+  disposition vocabulary or diagnostic-code table.
 
 Friction:
 
-- The cross-port still exposes `std::vector<linuxdesktop::diagnostic>` on
-  `SettingsLayout`. That is acceptable proof code, but it is not upstreamable
-  product surface.
 - Local config needs both requested and active state. The API exposes that, but
   product code must keep the two flags straight or it will blur "marker exists"
   with "portable mode accepted."
@@ -77,9 +80,11 @@ Friction:
 
 Leakage:
 
-- `notepadpp_settings_backend.hpp` returns LinuxDesktop2026 diagnostics,
-  hydrate reports, write reports, and migration plans directly. The proof is
-  still more LinuxDesktop2026-shaped than a real Notepad++ patch should be.
+- `notepadpp_settings_backend.hpp` exposes Notepad++ result structs, but their
+  fields still mirror LinuxDesktop2026 decisions closely: copied defaults,
+  validated write backup, and dry-run import actions. That is honest evidence,
+  but still asks the product adapter to translate library mechanics into
+  application behavior names.
 - The CMake dependency list in the cross-port is honest enough:
   `ld_root`, `ld_settings`, and `ld_migration`. It does not need `ld_paths`
   directly because `ld_root` carries that dependency.
@@ -324,11 +329,8 @@ Current desired dependency shape:
 - Link `LinuxDesktop2026::ld_desktop` for desktop effects such as autostart
   integration.
 
-Current leakage to fix in the evidence harness:
+Evidence harness guardrails:
 
-- Cross-port examples should avoid returning LinuxDesktop2026 reports directly
-  from product-shaped public methods. They may print or inspect diagnostics in
-  proof code, but adapter headers should prefer product diagnostics.
 - Future FlavorTests should continue using generated public path defaults. No
   private path-default helpers should be added to make tests easier than real
   installed users' code.

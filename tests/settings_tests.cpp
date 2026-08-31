@@ -108,6 +108,112 @@ void settings_diagnostics_use_shared_core_vocabulary()
     require(ld::to_string(settings_diagnostic.level) == "warning", "settings severity alias should stringify");
 }
 
+enum class product_severity {
+    note,
+    caution,
+    stop
+};
+
+struct product_diagnostic {
+    product_severity severity = product_severity::note;
+    linuxdesktop::diagnostic_handling handling;
+    std::string code;
+    std::string message;
+    std::filesystem::path related_path;
+};
+
+void core_diagnostics_translate_to_product_vocabulary()
+{
+    const linuxdesktop::product_diagnostic_severity_map<product_severity> severities{
+        product_severity::note,
+        product_severity::caution,
+        product_severity::stop,
+    };
+    const auto make_product = [](product_severity severity,
+                                  std::string code,
+                                  std::string message,
+                                  std::filesystem::path related_path) {
+        product_diagnostic result;
+        result.severity = severity;
+        result.code = std::move(code);
+        result.message = std::move(message);
+        result.related_path = std::move(related_path);
+        return result;
+    };
+
+    const linuxdesktop::diagnostic warning{
+        linuxdesktop::severity::warning,
+        "app_local-denied-privileged-install",
+        "Portable marker exists, but install root is privileged",
+        "/opt/notepad++"};
+    const auto translated = linuxdesktop::make_product_diagnostic<product_diagnostic>(
+        warning,
+        severities,
+        make_product,
+        {"npp."});
+
+    require(translated.severity == product_severity::caution, "warning severity should map to product caution");
+    require(translated.code == "npp.app_local-denied-privileged-install", "diagnostic code should accept product prefix");
+    require(translated.message == warning.message, "diagnostic message should be preserved");
+    require(translated.related_path == warning.path, "diagnostic path should be preserved");
+
+    const std::vector<linuxdesktop::diagnostic> source{
+        warning,
+        {linuxdesktop::severity::error, "write-failed", "Could not write config.xml", "/tmp/config.xml"},
+    };
+    const auto translated_all = linuxdesktop::make_product_diagnostics<product_diagnostic>(
+        source,
+        severities,
+        make_product,
+        {"npp."});
+
+    require(translated_all.size() == 2, "diagnostic vectors should translate without changing count");
+    require(translated_all[1].severity == product_severity::stop, "error severity should map to product stop");
+    require(translated_all[1].code == "npp.write-failed", "vector translation should preserve product prefix");
+}
+
+void core_diagnostics_classify_product_disposition()
+{
+    const linuxdesktop::product_diagnostic_severity_map<product_severity> severities{
+        product_severity::note,
+        product_severity::caution,
+        product_severity::stop,
+    };
+    const auto make_product = [](product_severity severity,
+                                  std::string code,
+                                  std::string message,
+                                  std::filesystem::path related_path,
+                                  linuxdesktop::diagnostic_handling handling) {
+        return product_diagnostic{
+            severity,
+            handling,
+            std::move(code),
+            std::move(message),
+            std::move(related_path)};
+    };
+
+    const std::vector<linuxdesktop::diagnostic> source{
+        {linuxdesktop::severity::warning, "app_local-denied-privileged-install", "Use per-user settings", "/opt/notepad++"},
+        {linuxdesktop::severity::warning, "temp-cleaned", "temporary file was cleaned", "/home/user/config.tmp"},
+        {linuxdesktop::severity::error, "write-failed", "Could not write config.xml", "/home/user/config.xml"},
+    };
+    const auto translated = linuxdesktop::make_classified_product_diagnostics<product_diagnostic>(
+        source,
+        severities,
+        make_product,
+        {"npp."});
+
+    require(translated.size() == 3, "classified diagnostics should preserve count");
+    require(linuxdesktop::to_string(linuxdesktop::disposition_for_diagnostic(source[0])) == "prompt",
+        "core should classify privileged local config as prompt-worthy");
+    require(translated[0].handling.prompt_user,
+        "core code classification should mark privileged local config as prompt-worthy");
+    require(translated[1].handling.log && !translated[1].handling.status_visible && !translated[1].handling.prompt_user,
+        "core code classification should keep cleanup diagnostics log-only");
+    require(translated[2].handling.prompt_user, "error diagnostics should default to prompt-worthy");
+    require(translated[0].code == "npp.app_local-denied-privileged-install", "classified diagnostics should keep product code prefix");
+}
+
 void writes_absolute_settings_override()
 {
     const auto root = test_root() / "override";
@@ -1164,6 +1270,8 @@ int main()
     const std::vector<std::pair<const char*, void (*)()>> tests = {
         {"exposes_cpp_version", exposes_cpp_version},
         {"settings_diagnostics_use_shared_core_vocabulary", settings_diagnostics_use_shared_core_vocabulary},
+        {"core_diagnostics_translate_to_product_vocabulary", core_diagnostics_translate_to_product_vocabulary},
+        {"core_diagnostics_classify_product_disposition", core_diagnostics_classify_product_disposition},
         {"writes_absolute_settings_override", writes_absolute_settings_override},
         {"rejects_relative_settings_override", rejects_relative_settings_override},
         {"denies_portable_under_privileged_install_root", denies_portable_under_privileged_install_root},

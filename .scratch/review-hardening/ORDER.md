@@ -6,10 +6,11 @@ list below.
 
 ## Current Order
 
-No root/path hardening tickets are currently queued in this batch.
+No active hardening tickets are queued.
 
 ## Implemented
 
+- `49` - Add Product-Owned Diagnostic Boundaries
 - `48` - Contract Settings-Owned Root Builder
 - `47` - Add Public Root Topology Surface
 - `46` - Separate Path Families From Location Roles
@@ -91,6 +92,15 @@ path lists, directory helpers, and plugin search roots; `ld_root` is enough for
 user-owned and app-owned root topology; `ld_settings` is only needed for
 settings/config lifecycle. Dependency edges should follow that same order and
 users should not bring in a higher-level module to get lower-level behavior.
+
+Task 49 adds the shared core affordance for product diagnostics and keeps those
+diagnostics on the product side of the maintained Notepad++ evidence:
+LinuxDesktop2026 reports remain internal adapter inputs, while public cross-port
+headers expose Notepad++-owned diagnostic severity, handling flags, status
+codes, operation summaries, and migration/write/default-hydration decisions.
+`ld_core` owns the library-code handling hints, so the maintained consumer
+branch does not teach users to bring LinuxDesktop2026 report types or diagnostic
+catalogs into product APIs just to surface warnings, prompts, or errors.
 
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`
