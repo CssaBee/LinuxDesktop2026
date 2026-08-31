@@ -117,7 +117,7 @@ target_include_directories(ld_settings
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop)
+target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop LinuxDesktop2026::ld_root)
 
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
@@ -125,7 +125,6 @@ endif()
 
 target_link_libraries(ld_migration PUBLIC LinuxDesktop2026::ld_paths)
 target_link_libraries(ld_desktop PRIVATE LinuxDesktop2026::ld_paths)
-target_link_libraries(ld_settings PRIVATE LinuxDesktop2026::ld_root)
 
 add_library(ld_watch
     src/watch.cpp

@@ -273,7 +273,7 @@ void delegates_platform_defaults_to_paths()
 #if defined(_WIN32)
     require(report.roots.config == root / "home" / "AppData" / "Roaming" / "LinuxDesktop2026" / "settings-tests",
         "settings config root should use Windows platform defaults");
-    require(report.roots.cache == root / "home" / "AppData" / "Local" / "LinuxDesktop2026" / "settings-tests",
+    require(report.roots.cache == root / "home" / "AppData" / "Local" / "LinuxDesktop2026" / "settings-tests" / "cache",
         "settings cache root should use Windows local platform defaults");
 #else
     require(report.roots.config == root / "home" / ".config" / "LinuxDesktop2026" / "settings-tests",

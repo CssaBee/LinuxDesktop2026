@@ -40,9 +40,10 @@ Current global pain:
 - Diagnostics are generic across modules. That is useful at the adapter edge,
   but any product-facing state still needs translation to product warnings,
   logs, prompts, or status flags.
-- Examples and FlavorTests use direct C++ namespace names such as
-  `linuxdesktop::root` and `linuxdesktop::settings` at public API call sites.
-  That keeps the evidence code aligned with what users include and link.
+- Cross-module workflows expose module ownership directly in user code. Calls
+  such as `linuxdesktop::root::request_builder` followed by
+  `linuxdesktop::settings::write_with_backup` make the dependency story
+  explicit, but users still have to know which module owns each operation.
 
 ## Notepad++
 

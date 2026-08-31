@@ -82,8 +82,19 @@ endif()
 
 set(ld2026_executable_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
 
+get_filename_component(ld2026_install_library_dir "${LD2026_PACKAGE_DIR}/../.." ABSOLUTE)
+if(WIN32)
+    set(ld2026_shared_library_env "PATH=${ld2026_install_library_dir};$ENV{PATH}")
+elseif(APPLE)
+    set(ld2026_shared_library_env "DYLD_LIBRARY_PATH=${ld2026_install_library_dir}:$ENV{DYLD_LIBRARY_PATH}")
+else()
+    set(ld2026_shared_library_env "LD_LIBRARY_PATH=${ld2026_install_library_dir}:$ENV{LD_LIBRARY_PATH}")
+endif()
+
 execute_process(
-    COMMAND "${ld2026_consumer_runtime_dir}/ld_settings_consumer${ld2026_executable_suffix}"
+    COMMAND "${CMAKE_COMMAND}" -E env
+        "${ld2026_shared_library_env}"
+        "${ld2026_consumer_runtime_dir}/ld_settings_consumer${ld2026_executable_suffix}"
     RESULT_VARIABLE run_result
 )
 if(NOT run_result EQUAL 0)
@@ -91,7 +102,9 @@ if(NOT run_result EQUAL 0)
 endif()
 
 execute_process(
-    COMMAND "${ld2026_consumer_runtime_dir}/ld_paths_c_consumer${ld2026_executable_suffix}"
+    COMMAND "${CMAKE_COMMAND}" -E env
+        "${ld2026_shared_library_env}"
+        "${ld2026_consumer_runtime_dir}/ld_paths_c_consumer${ld2026_executable_suffix}"
     RESULT_VARIABLE run_paths_c_result
 )
 if(NOT run_paths_c_result EQUAL 0)
