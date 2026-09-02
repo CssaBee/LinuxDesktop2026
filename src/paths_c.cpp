@@ -104,9 +104,36 @@ ld::plugin_path_kind plugin_kind_from_c(int value)
     return static_cast<ld::plugin_path_kind>(value);
 }
 
+ld::plugin_asset_path_kind plugin_asset_kind_from_c(int value)
+{
+    if (value < LD_PATHS_PLUGIN_ASSET_SF2 || value > LD_PATHS_PLUGIN_ASSET_SFZ) {
+        return ld::plugin_asset_path_kind::sf2;
+    }
+    return static_cast<ld::plugin_asset_path_kind>(value);
+}
+
 int plugin_kind_to_c(ld::plugin_path_kind value)
 {
     return static_cast<int>(value);
+}
+
+int plugin_asset_kind_to_c(ld::plugin_asset_path_kind value)
+{
+    return static_cast<int>(value);
+}
+
+int plugin_category_to_c(ld::plugin_path_category value)
+{
+    return static_cast<int>(value);
+}
+
+ld::plugin_path_category plugin_category_from_c(int value)
+{
+    if (value < LD_PATHS_PLUGIN_CATEGORY_EXECUTABLE_PLUGIN ||
+        value > LD_PATHS_PLUGIN_CATEGORY_RESOURCE) {
+        return ld::plugin_path_category::application_extension;
+    }
+    return static_cast<ld::plugin_path_category>(value);
 }
 
 template <typename T>
@@ -251,6 +278,9 @@ bool fill_plugin_path_candidate(const ld::plugin_path_candidate& source, ld_path
     target.set_name = duplicate_string(source.set_name);
     target.has_kind = source.kind ? 1 : 0;
     target.kind = source.kind ? plugin_kind_to_c(*source.kind) : -1;
+    target.has_asset_kind = source.asset_kind ? 1 : 0;
+    target.asset_kind = source.asset_kind ? plugin_asset_kind_to_c(*source.asset_kind) : -1;
+    target.category = plugin_category_to_c(source.category);
     target.source = source_to_c(source.source);
     target.path = duplicate_path(source.path);
     target.selected = source.selected ? 1 : 0;
@@ -489,6 +519,8 @@ void ld_paths_plugin_path_options_init(ld_paths_plugin_path_options* options)
     }
     *options = {};
     options->use_process_environment = 1;
+    options->include_default_kinds = 1;
+    options->include_default_asset_kinds = 1;
     ld_paths_path_list_options_init(&options->list_options);
 }
 
@@ -640,9 +672,14 @@ int ld_paths_resolve_plugin_path_sets(
         plugin_options.include_wine_prefix_defaults = input.include_wine_prefix_defaults != 0;
         plugin_options.environment = environment_from_c(input.environment, input.environment_count);
         plugin_options.use_process_environment = input.use_process_environment != 0;
+        plugin_options.include_default_kinds = input.include_default_kinds != 0;
+        plugin_options.include_default_asset_kinds = input.include_default_asset_kinds != 0;
         plugin_options.list_options = path_list_options_from_c(input.list_options);
         for (size_t i = 0; i < input.kind_count; ++i) {
             plugin_options.kinds.push_back(plugin_kind_from_c(input.kinds[i]));
+        }
+        for (size_t i = 0; i < input.asset_kind_count; ++i) {
+            plugin_options.asset_kinds.push_back(plugin_asset_kind_from_c(input.asset_kinds[i]));
         }
 
         const auto resolved = ld::resolve_plugin_path_sets(plugin_options);
@@ -655,6 +692,11 @@ int ld_paths_resolve_plugin_path_sets(
             report->sets[i].name = duplicate_string(resolved.sets[i].name);
             report->sets[i].has_kind = resolved.sets[i].kind ? 1 : 0;
             report->sets[i].kind = resolved.sets[i].kind ? plugin_kind_to_c(*resolved.sets[i].kind) : -1;
+            report->sets[i].has_asset_kind = resolved.sets[i].asset_kind ? 1 : 0;
+            report->sets[i].asset_kind = resolved.sets[i].asset_kind
+                ? plugin_asset_kind_to_c(*resolved.sets[i].asset_kind)
+                : -1;
+            report->sets[i].category = plugin_category_to_c(resolved.sets[i].category);
             if (!report->sets[i].name ||
                 !fill_string_array(resolved.sets[i].paths, report->sets[i].paths, report->sets[i].path_count)) {
                 return 0;
@@ -717,6 +759,16 @@ const char* ld_paths_candidate_source_name(int source)
 const char* ld_paths_plugin_path_kind_name(int kind)
 {
     return ld::to_string(plugin_kind_from_c(kind)).data();
+}
+
+const char* ld_paths_plugin_asset_path_kind_name(int kind)
+{
+    return ld::to_string(plugin_asset_kind_from_c(kind)).data();
+}
+
+const char* ld_paths_plugin_path_category_name(int category)
+{
+    return ld::to_string(plugin_category_from_c(category)).data();
 }
 
 int ld_paths_version_major(void)

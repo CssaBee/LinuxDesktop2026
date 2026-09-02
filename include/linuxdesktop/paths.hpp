@@ -202,24 +202,63 @@ enum class plugin_path_kind {
     vst2,
     vst3,
     clap,
-    sf2,
-    sfz,
+    audio_unit,
+    aax,
     jsfx
+};
+
+enum class plugin_asset_path_kind {
+    sf2,
+    sfz
+};
+
+enum class plugin_path_category {
+    executable_plugin,
+    asset_library,
+    application_extension,
+    toolkit_plugin,
+    resource
+};
+
+enum class platform_support {
+    current,
+    windows,
+    macos,
+    linux_os,
+    bsd,
+    unix_like,
+    any
+};
+
+struct named_plugin_path_set {
+    std::string name;
+    std::optional<std::string> environment_variable;
+    std::vector<std::filesystem::path> defaults;
+    plugin_path_category category = plugin_path_category::application_extension;
+    std::vector<std::string> extensions;
+    std::vector<platform_support> platforms;
 };
 
 struct custom_plugin_path_set {
     std::string name;
     std::optional<std::string> environment_variable;
     std::vector<std::filesystem::path> defaults;
+    plugin_path_category category = plugin_path_category::application_extension;
+    std::vector<std::string> extensions;
+    std::vector<platform_support> platforms;
 };
 
 struct plugin_path_options {
     std::vector<plugin_path_kind> kinds;
+    std::vector<plugin_asset_path_kind> asset_kinds;
+    std::vector<named_plugin_path_set> named_sets;
     std::vector<custom_plugin_path_set> custom_sets;
     std::map<std::string, std::string> environment;
     std::optional<std::filesystem::path> home_directory;
     std::optional<std::filesystem::path> wine_prefix;
     bool use_process_environment = true;
+    bool include_default_kinds = true;
+    bool include_default_asset_kinds = true;
     bool include_wine_prefix_defaults = false;
     path_list_options list_options;
 };
@@ -227,12 +266,18 @@ struct plugin_path_options {
 struct plugin_path_set {
     std::string name;
     std::optional<plugin_path_kind> kind;
+    std::optional<plugin_asset_path_kind> asset_kind;
+    plugin_path_category category = plugin_path_category::executable_plugin;
+    std::vector<std::string> extensions;
+    std::vector<platform_support> platforms;
     std::vector<std::filesystem::path> paths;
 };
 
 struct plugin_path_candidate {
     std::string set_name;
     std::optional<plugin_path_kind> kind;
+    std::optional<plugin_asset_path_kind> asset_kind;
+    plugin_path_category category = plugin_path_category::executable_plugin;
     candidate_source source = candidate_source::fallback;
     std::filesystem::path path;
     bool selected = false;
@@ -252,5 +297,8 @@ std::string_view to_string(location_role value);
 std::string_view to_string(candidate_source value);
 std::string_view to_string(directory_action value);
 std::string_view to_string(plugin_path_kind value);
+std::string_view to_string(plugin_asset_path_kind value);
+std::string_view to_string(plugin_path_category value);
+std::string_view to_string(platform_support value);
 
 } // namespace linuxdesktop::paths

@@ -57,13 +57,16 @@ int main(int argc, char** argv)
     print_selected_location(&report, LD_PATHS_LOCATION_RESOURCES);
     ld_paths_free_resolver_report(&report);
 
-    int kinds[2] = {LD_PATHS_PLUGIN_LV2, LD_PATHS_PLUGIN_VST3};
+    int kinds[3] = {LD_PATHS_PLUGIN_LV2, LD_PATHS_PLUGIN_VST3, LD_PATHS_PLUGIN_AAX};
+    int asset_kinds[1] = {LD_PATHS_PLUGIN_ASSET_SF2};
     struct ld_paths_plugin_path_options plugin_options;
     struct ld_paths_plugin_path_report plugin_report;
     memset(&plugin_report, 0, sizeof(plugin_report));
     ld_paths_plugin_path_options_init(&plugin_options);
     plugin_options.kinds = kinds;
-    plugin_options.kind_count = 2;
+    plugin_options.kind_count = 3;
+    plugin_options.asset_kinds = asset_kinds;
+    plugin_options.asset_kind_count = 1;
     plugin_options.home_directory = "/tmp/linuxdesktop2026-paths-c-demo/home";
     plugin_options.use_process_environment = 0;
 

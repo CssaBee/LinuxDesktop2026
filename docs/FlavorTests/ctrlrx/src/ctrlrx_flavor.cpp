@@ -96,16 +96,14 @@ PluginExportPlan CtrlrSettings::planPluginExport(
     const RuntimeEnvironment& environment,
     PluginFormat format) const
 {
-    const auto home = environment.home_directory.value_or(std::filesystem::path{});
-
     linuxdesktop::paths::plugin_path_options options;
     options.environment = environment.environment;
     options.home_directory = environment.home_directory;
     options.use_process_environment = false;
-    options.kinds = {linuxdesktop::paths::plugin_path_kind::vst3};
-    options.custom_sets = {
-        {"au", std::nullopt, {home / "Library" / "Audio" / "Plug-Ins" / "Components"}},
-        {"aax", std::nullopt, {home / "Library" / "Application Support" / "Avid" / "Audio" / "Plug-Ins"}},
+    options.kinds = {
+        linuxdesktop::paths::plugin_path_kind::vst3,
+        linuxdesktop::paths::plugin_path_kind::audio_unit,
+        linuxdesktop::paths::plugin_path_kind::aax,
     };
 
     const auto plugins = linuxdesktop::paths::resolve_plugin_path_sets(options);
@@ -117,7 +115,7 @@ PluginExportPlan CtrlrSettings::planPluginExport(
         output_root = first_path_for(plugins, "vst3");
         break;
     case PluginFormat::AudioUnit:
-        output_root = first_path_for(plugins, "au");
+        output_root = first_path_for(plugins, "audio_unit");
         break;
     case PluginFormat::Aax:
         output_root = first_path_for(plugins, "aax");

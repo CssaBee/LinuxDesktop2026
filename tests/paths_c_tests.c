@@ -137,7 +137,10 @@ int main(void)
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_XDG_BASE_DIR), "xdg_base_dir") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_PLATFORM_DEFAULT), "platform_default") != 0 ||
         strcmp(ld_paths_candidate_source_name(LD_PATHS_SOURCE_WINE_PREFIX), "wine_prefix") != 0 ||
-        strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0) {
+        strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_VST3), "vst3") != 0 ||
+        strcmp(ld_paths_plugin_path_kind_name(LD_PATHS_PLUGIN_AUDIO_UNIT), "audio_unit") != 0 ||
+        strcmp(ld_paths_plugin_asset_path_kind_name(LD_PATHS_PLUGIN_ASSET_SF2), "sf2") != 0 ||
+        strcmp(ld_paths_plugin_path_category_name(LD_PATHS_PLUGIN_CATEGORY_TOOLKIT_PLUGIN), "toolkit_plugin") != 0) {
         fprintf(stderr,
             "name smoke failed: config=%s templates=%s source=%s plugin=%s\n",
             ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG),
@@ -335,9 +338,12 @@ int main(void)
     }
     ld_paths_free_path_list_report(&list_report);
 
-    int kinds[2];
+    int kinds[3];
     kinds[0] = LD_PATHS_PLUGIN_VST3;
     kinds[1] = LD_PATHS_PLUGIN_LV2;
+    kinds[2] = LD_PATHS_PLUGIN_AAX;
+    int asset_kinds[1];
+    asset_kinds[0] = LD_PATHS_PLUGIN_ASSET_SF2;
     struct ld_paths_environment_entry plugin_env[1];
     plugin_env[0].name = "VST3_PATH";
     plugin_env[0].value = plugin_env_value;
@@ -347,7 +353,9 @@ int main(void)
     memset(&plugin_report, 0, sizeof(plugin_report));
     ld_paths_plugin_path_options_init(&plugin_options);
     plugin_options.kinds = kinds;
-    plugin_options.kind_count = 2;
+    plugin_options.kind_count = 3;
+    plugin_options.asset_kinds = asset_kinds;
+    plugin_options.asset_kind_count = 1;
     plugin_options.home_directory = plugin_home;
     plugin_options.environment = plugin_env;
     plugin_options.environment_count = 1;
@@ -360,12 +368,20 @@ int main(void)
     }
     const struct ld_paths_plugin_path_set* vst3 = plugin_set(&plugin_report, "vst3");
     const struct ld_paths_plugin_path_set* lv2 = plugin_set(&plugin_report, "lv2");
+    const struct ld_paths_plugin_path_set* sf2 = plugin_set(&plugin_report, "sf2");
     if (!vst3 || vst3->has_kind != 1 || vst3->kind != LD_PATHS_PLUGIN_VST3 ||
+        vst3->has_asset_kind != 0 ||
+        vst3->category != LD_PATHS_PLUGIN_CATEGORY_EXECUTABLE_PLUGIN ||
         vst3->path_count == 0 || strcmp(vst3->paths[0], plugin_vendor) != 0 ||
         !lv2 || lv2->path_count == 0 ||
+        !sf2 || sf2->has_kind != 0 || sf2->has_asset_kind != 1 ||
+        sf2->asset_kind != LD_PATHS_PLUGIN_ASSET_SF2 ||
+        sf2->category != LD_PATHS_PLUGIN_CATEGORY_ASSET_LIBRARY ||
         plugin_report.candidate_count == 0 ||
         !plugin_report.candidates[0].set_name ||
         strcmp(plugin_report.candidates[0].set_name, "vst3") != 0 ||
+        plugin_report.candidates[0].has_asset_kind != 0 ||
+        plugin_report.candidates[0].category != LD_PATHS_PLUGIN_CATEGORY_EXECUTABLE_PLUGIN ||
         plugin_report.candidates[0].source != LD_PATHS_SOURCE_ENVIRONMENT) {
         ld_paths_free_plugin_path_report(&plugin_report);
         return EXIT_FAILURE;

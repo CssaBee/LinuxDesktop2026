@@ -9,9 +9,13 @@ Read each section as a boundary check:
 
 - Fit: LinuxDesktop2026 vocabulary that belongs at the product adapter edge.
 - Friction: places where the caller still has to know too much, translate too
-  much, or pull in more shape than the product naturally has.
+  much, duplicate request/lookup names, or work around a missing or awkward
+  LinuxDesktop2026 API.
 - Leakage: LinuxDesktop2026 concepts that escape into product-facing types,
-  CMake linkage, long-lived state, or tests in a way real users would feel.
+  CMake linkage, long-lived state, or tests in a way real users would feel and
+  that should be removed or contained.
+- Boundary notes: acceptable product/toolkit ownership that should stay outside
+  LinuxDesktop2026 unless repeated evidence justifies a new helper.
 
 ## Cross-Cutting State
 
@@ -85,9 +89,12 @@ Leakage:
   validated write backup, and dry-run import actions. That is honest evidence,
   but still asks the product adapter to translate library mechanics into
   application behavior names.
-- The CMake dependency list in the cross-port is honest enough:
-  `ld_root`, `ld_settings`, and `ld_migration`. It does not need `ld_paths`
-  directly because `ld_root` carries that dependency.
+
+Boundary notes:
+
+- The CMake dependency list in the cross-port is `ld_root`, `ld_settings`, and
+  `ld_migration`. The cross-port does not link `ld_paths` directly because
+  `ld_root` carries that dependency.
 
 ## Audacity
 
@@ -97,15 +104,10 @@ Fit:
   file and validation, LinuxDesktop2026 owns backup and atomic replace
   mechanics.
 
-Friction:
+Boundary notes:
 
-- The helper is good for writes only. Audacity's probing and warning loop stays
-  product code, so there is no broader settings-root proof here.
-
-Leakage:
-
-- The public product seam exposes Audacity-shaped write results. The
-  LinuxDesktop2026 write report stays inside the adapter.
+- Audacity's probing and warning loop stays product code. This slice proves
+  common write mechanics, not broader settings-root adoption.
 
 ## qBittorrent
 
@@ -118,17 +120,17 @@ Fit:
 
 Friction:
 
-- The product policy branch remains outside the builder: command-line profile
-  roots win, otherwise an executable-adjacent `profile` directory activates
-  portable mode. That is the right ownership, but it means the adapter still has
-  meaningful product branching around the LinuxDesktop2026 call.
 - Log placement is a named root request and lookup pair. The lookup is still
   string keyed.
 
-Leakage:
+Boundary notes:
 
-- No product-facing qBittorrent result type needs LinuxDesktop2026 root names.
-  `SpecialFolder` stays product-shaped.
+- qBittorrent owns the policy branch where command-line profile roots win,
+  otherwise an executable-adjacent `profile` directory activates portable mode.
+  LinuxDesktop2026 should not hide that precedence unless another product
+  repeats the same shape.
+- `SpecialFolder` stays product-shaped and does not expose LinuxDesktop2026
+  root names.
 
 ## KeePassXC
 
@@ -143,15 +145,15 @@ Fit:
 Friction:
 
 - KeePassXC has enough XDG and roaming/local vocabulary that the raw options
-  object is clearer than the fluent builder. That is a sign the builder should
-  stay optional, not become the blessed path for all root consumers.
+  object is clearer than the fluent builder. The API does not clearly signal
+  when callers should prefer raw options over `request_builder`.
 - The product still needs to translate generic portable/root diagnostics into
   KeePassXC prompts or warnings.
 - The local-settings root uses LinuxDesktop2026 purpose and ownership terms in
-  the adapter. That is acceptable, but it does not map one-to-one to
-  KeePassXC's own naming.
+  the adapter, so KeePassXC still has to map those terms back to its own
+  naming.
 
-Leakage:
+Boundary notes:
 
 - The public migration result is product-shaped. Raw `migration_plan` does not
   cross the KeePassXC seam.
@@ -166,12 +168,13 @@ Fit:
 
 Friction:
 
-- Project backup placement remains KiCad policy. A generic backup named root can
-  provide a base, but keyed-by-project fallback logic should stay in KiCad.
+- LinuxDesktop2026 can provide a generic backup named root for KiCad, but there
+  is no helper for keyed-by-project fallback paths. The adapter still owns that
+  lookup logic.
 - The named-root request/lookup pattern is readable for three roots, but it
   would get noisy for a larger KiCad component map.
 
-Leakage:
+Boundary notes:
 
 - No public KiCad result type currently exposes LinuxDesktop2026 reports.
 
@@ -195,7 +198,7 @@ Friction:
   FreeCAD refactor. A future helper would need to model product environment
   precedence directly to earn its place.
 
-Leakage:
+Boundary notes:
 
 - Public FreeCAD migration state is product-shaped. The raw copy-directory plan
   stays private.
@@ -213,7 +216,7 @@ Friction:
 
 - `hydrate_options` is still LinuxDesktop2026-shaped at a point where the
   product thinks in vendor bundles, model roots, target roots, and merge
-  metadata. It is acceptable, but it is not especially graceful.
+  metadata.
 - Vendor profile metadata is product-specific enough that a generic helper
   should not try to hide parsing or merge policy.
 
@@ -237,12 +240,12 @@ Fit:
 
 Friction:
 
-- The JSON wrapper is product glue, not generic settings topology. If more
-  slices repeat it, a JSON-oriented write helper may be justified.
+- LinuxDesktop2026 has no JSON-oriented write helper. OpenRGB wraps
+  `write_common_config()` locally to get validated JSON saves.
 - Autostart remains verbose because executable, arguments, working directory,
   enabled state, dry-run mode, and write permission are all explicit.
 
-Leakage:
+Boundary notes:
 
 - Public OpenRGB result types are product-shaped. Desktop effect reports and
   path diagnostics stay inside the adapter.
@@ -255,15 +258,12 @@ Fit:
 - `write_with_backup()` fits `config_save_safe()` because OBS intentionally
   keeps C-shaped buffers and integer status conventions.
 
-Friction:
+Boundary notes:
 
-- This slice deliberately uses the lower-level write API. The convenience write
+- OBS deliberately uses the lower-level write API because the convenience write
   facade would be less representative of OBS's actual C boundary.
-- OBS is good evidence that LinuxDesktop2026 can stay private, but it does not
-  prove the C ABI is broad enough for general adoption.
-
-Leakage:
-
+- This slice is evidence that LinuxDesktop2026 can stay private, but it does
+  not prove the C ABI is broad enough for general adoption.
 - No product-facing OBS boundary exposes LinuxDesktop2026 types.
 
 ## Walnut
@@ -275,15 +275,11 @@ Fit:
 - Walnut keeps renderer startup, GPU selection, distribution-mode entry point,
   headless/test launch, and image lookup in product vocabulary.
 
-Friction:
+Boundary notes:
 
 - Walnut is negative evidence for forcing `linuxdesktop::root` into simple
   graphics bootstrap. Direct path resolver options are easier to read here.
-- Diagnostics still need product translation into `StartupDiagnostic`, but the
-  translation is straightforward.
-
-Leakage:
-
+- Diagnostics translate directly into product-owned `StartupDiagnostic`.
 - No product-facing Walnut seam exposes LinuxDesktop2026 paths reports.
 - The FlavorTest harness links Walnut to `ld_paths` only, matching the source
   dependency.
@@ -302,11 +298,11 @@ Friction:
 - LinuxDesktop2026 does not currently model "one absolute root selects an
   app-owned service profile with named child layout." That may be a future
   helper if another product repeats the shape.
+
+Boundary notes:
+
 - Dashboard's Qt lifecycle, QSettings mechanics, QML startup, redaction policy,
   and event-loop ownership remain outside the LinuxDesktop2026 abstraction.
-
-Leakage:
-
 - Public Dashboard result types use Dashboard vocabulary. LinuxDesktop2026 path
   diagnostics stay inside the adapter.
 - The FlavorTest harness links Dashboard to `ld_paths` only, matching the
@@ -324,7 +320,7 @@ Fit:
 - Executable-relative `gamecontrollerdb.txt` and ROM-relative `.sym`/`.noi`
   lookup stay in Gearcoleco code.
 
-Boundary fit:
+Boundary notes:
 
 - Gearcoleco owns the product-facing phrase for portable mode: store
   configuration, state, cache, and related user files beside the emulator
@@ -333,9 +329,6 @@ Boundary fit:
 - The root builder uses LinuxDesktop2026 portable-root vocabulary. Gearcoleco's
   adapter maps that vocabulary to emulator startup semantics at the product
   boundary.
-
-Leakage:
-
 - Product-facing startup results expose Gearcoleco concepts. LinuxDesktop2026
   root and hydration reports stay inside the adapter.
 
@@ -346,22 +339,19 @@ Fit:
 - `linuxdesktop::paths::resolve_app_paths()` fits ordinary CtrlrX resource,
   config, data, and cache roots without competing with JUCE.
 - `write_common_config()` fits standalone preference saves to `Ctrlr.settings`.
-- `resolve_plugin_path_sets()` fits exported plugin destinations for VST3 and
-  named custom plugin formats while CtrlrX keeps format and panel-ID policy.
+- `resolve_plugin_path_sets()` fits exported plugin destinations for VST3,
+  Audio Unit, and AAX while CtrlrX keeps format and panel-ID policy.
 
-Friction:
+Boundary notes:
 
-- Audio plugin destinations mix standard path kinds and custom sets. VST3 can
-  use a first-class LinuxDesktop2026 kind, while AU and AAX remain string-named
-  custom sets in the adapter.
-- The standalone-versus-plugin guard is product policy and must wrap the
-  settings write. LinuxDesktop2026 cannot tell whether a plugin instance should
-  mutate global application preferences.
-
-Leakage:
-
-- Public CtrlrX results do not expose LinuxDesktop2026 reports. Plugin path set
-  names are still repeated between request and lookup inside the adapter.
+- The standalone-versus-plugin guard is product policy and wraps the settings
+  write. LinuxDesktop2026 should not decide whether a plugin instance mutates
+  global application preferences.
+- CtrlrX chooses when a plugin export is allowed and which target format the
+  user selected. LinuxDesktop2026 resolves search-root sets; JUCE and CtrlrX
+  own export semantics and host compatibility rules.
+- Public CtrlrX results do not expose LinuxDesktop2026 reports. Plugin path
+  kind lookup stays inside the adapter.
 
 ## SmartServoFramework
 
@@ -374,13 +364,13 @@ Fit:
 
 Friction:
 
-- Serial access, driver installation, and OS permission checks remain outside
-  LinuxDesktop2026. That is correct, but it means the hardware-facing startup
-  pain is only adjacent to the library rather than reduced by it.
-- Device profile filenames are product policy. The adapter still has to sanitize
-  device names at the settings-write boundary.
+- LinuxDesktop2026 provides no hardware-companion startup helper for serial
+  access, driver installation, or OS permission checks. The hardware-facing
+  startup pain is only adjacent to the library.
+- LinuxDesktop2026 has no reusable device-profile filename helper. The adapter
+  still has to sanitize device names at the settings-write boundary.
 
-Leakage:
+Boundary notes:
 
 - Public SmartServoGui diagnostics are product-owned. LinuxDesktop2026 only
   contributes translated path and write diagnostics behind the GUI seam.
@@ -397,15 +387,15 @@ Fit:
 
 Friction:
 
-- KickCAT is a boundary challenge more than an adoption slice. Network
-  interface selection, real-time mode, embedded targets, and bus launch policy
-  are not LinuxDesktop2026 responsibilities.
 - ESI XML lookup is partly resource-root shaped and partly domain-shaped. A
   generic path helper can provide search roots, but product code still owns
   validation, device matching, and launch consequences.
 
-Leakage:
+Boundary notes:
 
+- KickCAT is a boundary challenge more than an adoption slice. Network
+  interface selection, real-time mode, embedded targets, and bus launch policy
+  are not LinuxDesktop2026 responsibilities.
 - Public KickCAT tool results expose tool and master-launch vocabulary.
   LinuxDesktop2026 reports stay inside the optional tooling adapter.
 

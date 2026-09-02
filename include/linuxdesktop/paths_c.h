@@ -71,9 +71,22 @@ enum ld_paths_plugin_path_kind {
     LD_PATHS_PLUGIN_VST2 = 3,
     LD_PATHS_PLUGIN_VST3 = 4,
     LD_PATHS_PLUGIN_CLAP = 5,
-    LD_PATHS_PLUGIN_SF2 = 6,
-    LD_PATHS_PLUGIN_SFZ = 7,
+    LD_PATHS_PLUGIN_AUDIO_UNIT = 6,
+    LD_PATHS_PLUGIN_AAX = 7,
     LD_PATHS_PLUGIN_JSFX = 8
+};
+
+enum ld_paths_plugin_asset_path_kind {
+    LD_PATHS_PLUGIN_ASSET_SF2 = 0,
+    LD_PATHS_PLUGIN_ASSET_SFZ = 1
+};
+
+enum ld_paths_plugin_path_category {
+    LD_PATHS_PLUGIN_CATEGORY_EXECUTABLE_PLUGIN = 0,
+    LD_PATHS_PLUGIN_CATEGORY_ASSET_LIBRARY = 1,
+    LD_PATHS_PLUGIN_CATEGORY_APPLICATION_EXTENSION = 2,
+    LD_PATHS_PLUGIN_CATEGORY_TOOLKIT_PLUGIN = 3,
+    LD_PATHS_PLUGIN_CATEGORY_RESOURCE = 4
 };
 
 struct ld_paths_diagnostic {
@@ -185,6 +198,9 @@ struct ld_paths_plugin_path_set {
     char* name;
     int kind;
     int has_kind;
+    int asset_kind;
+    int has_asset_kind;
+    int category;
     char** paths;
     size_t path_count;
 };
@@ -193,6 +209,9 @@ struct ld_paths_plugin_path_candidate {
     char* set_name;
     int kind;
     int has_kind;
+    int asset_kind;
+    int has_asset_kind;
+    int category;
     int source;
     char* path;
     int selected;
@@ -203,12 +222,16 @@ struct ld_paths_plugin_path_candidate {
 struct ld_paths_plugin_path_options {
     const int* kinds;
     size_t kind_count;
+    const int* asset_kinds;
+    size_t asset_kind_count;
     const char* home_directory;
     const char* wine_prefix;
     int include_wine_prefix_defaults;
     const struct ld_paths_environment_entry* environment;
     size_t environment_count;
     int use_process_environment;
+    int include_default_kinds;
+    int include_default_asset_kinds;
     struct ld_paths_path_list_options list_options;
 };
 
@@ -255,6 +278,10 @@ LD_PATHS_API const char* ld_paths_location_role_name(int role);
 LD_PATHS_API const char* ld_paths_candidate_source_name(int source);
 
 LD_PATHS_API const char* ld_paths_plugin_path_kind_name(int kind);
+
+LD_PATHS_API const char* ld_paths_plugin_asset_path_kind_name(int kind);
+
+LD_PATHS_API const char* ld_paths_plugin_path_category_name(int category);
 
 LD_PATHS_API int ld_paths_version_major(void);
 

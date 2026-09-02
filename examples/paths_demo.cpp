@@ -104,7 +104,8 @@ void print_plugin_sets(const linuxdesktop::paths::plugin_path_report& report)
 
     std::cout << "plugin path sets: " << report.sets.size() << "\n";
     for (const auto& set : report.sets) {
-        std::cout << "  " << set.name << ": " << set.paths.size() << " roots\n";
+        std::cout << "  " << set.name << " [" << ld::to_string(set.category) << "]: "
+                  << set.paths.size() << " roots\n";
         for (const auto& path : set.paths) {
             std::cout << "    " << path.string() << "\n";
         }
@@ -138,7 +139,22 @@ int main(int argc, char** argv)
         print_diagnostics(report.diagnostics);
 
         ld::plugin_path_options plugin_options;
-        plugin_options.kinds = {ld::plugin_path_kind::lv2, ld::plugin_path_kind::vst3, ld::plugin_path_kind::clap};
+        plugin_options.kinds = {
+            ld::plugin_path_kind::lv2,
+            ld::plugin_path_kind::vst3,
+            ld::plugin_path_kind::clap,
+            ld::plugin_path_kind::audio_unit,
+            ld::plugin_path_kind::aax,
+        };
+        plugin_options.asset_kinds = {ld::plugin_asset_path_kind::sf2, ld::plugin_asset_path_kind::sfz};
+        plugin_options.named_sets = {
+            {"obs-module",
+                "OBS_PLUGIN_PATH",
+                {},
+                ld::plugin_path_category::application_extension,
+                {".so", ".dll", ".dylib"},
+                {ld::platform_support::any}},
+        };
         plugin_options.include_wine_prefix_defaults = true;
         const auto plugins = ld::resolve_plugin_path_sets(plugin_options);
         print_plugin_sets(plugins);

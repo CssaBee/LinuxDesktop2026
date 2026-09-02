@@ -6,12 +6,12 @@ list below.
 
 ## Current Order
 
-- `51` - Harden Plugin Path Kind Taxonomy
 - `52` - Adopt Invasive Hardening Test Posture
 - `53` - Expand Adversarial Hardening Tests
 
 ## Implemented
 
+- `51` - Harden Plugin Path Kind Taxonomy
 - `50` - Add Portable Root Request API
 - `49` - Add Product-Owned Diagnostic Boundaries
 - `48` - Contract Settings-Owned Root Builder
@@ -111,6 +111,15 @@ selected by explicit product policy, command-line switches, or marker files.
 call sites. C++ users no longer have to model a product's portable mode as a
 generic app-root override plus separate marker policy, while the C ABI keeps its
 existing names and maps them into the C++ request internally.
+
+Task 51 splits executable plugin ecosystems from plugin-adjacent asset/library
+ecosystems. `ld_paths` owns built-in executable plugin kinds for LADSPA, DSSI,
+LV2, VST2, VST3, CLAP, Audio Unit, AAX, and JSFX; SF2 and SFZ move to asset
+path kinds. Product-owned, toolkit-owned, and investigation-only ecosystems use
+named plugin path sets with category, extension, platform, environment, and
+default-root metadata instead of growing the built-in enum. CtrlrX now uses the
+settled VST3/Audio Unit/AAX path API, and tests include a Qt side-by-side
+counterexample.
 
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`

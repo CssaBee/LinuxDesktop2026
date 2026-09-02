@@ -257,9 +257,17 @@ std::vector<plugin_path_kind> default_plugin_kinds()
         plugin_path_kind::vst2,
         plugin_path_kind::vst3,
         plugin_path_kind::clap,
-        plugin_path_kind::sf2,
-        plugin_path_kind::sfz,
+        plugin_path_kind::audio_unit,
+        plugin_path_kind::aax,
         plugin_path_kind::jsfx,
+    };
+}
+
+std::vector<plugin_asset_path_kind> default_plugin_asset_kinds()
+{
+    return {
+        plugin_asset_path_kind::sf2,
+        plugin_asset_path_kind::sfz,
     };
 }
 
@@ -278,12 +286,23 @@ std::string plugin_environment_variable(plugin_path_kind kind)
         return "VST3_PATH";
     case plugin_path_kind::clap:
         return "CLAP_PATH";
-    case plugin_path_kind::sf2:
-        return "SF2_PATH";
-    case plugin_path_kind::sfz:
-        return "SFZ_PATH";
+    case plugin_path_kind::audio_unit:
+        return "AU_PATH";
+    case plugin_path_kind::aax:
+        return "AAX_PATH";
     case plugin_path_kind::jsfx:
         return "JSFX_PATH";
+    }
+    return {};
+}
+
+std::string plugin_asset_environment_variable(plugin_asset_path_kind kind)
+{
+    switch (kind) {
+    case plugin_asset_path_kind::sf2:
+        return "SF2_PATH";
+    case plugin_asset_path_kind::sfz:
+        return "SFZ_PATH";
     }
     return {};
 }
@@ -308,10 +327,10 @@ std::vector<std::filesystem::path> plugin_defaults(plugin_path_kind kind, const 
         return {"C:/Program Files/Common Files/VST3"};
     case plugin_path_kind::clap:
         return {"C:/Program Files/Common Files/CLAP"};
-    case plugin_path_kind::sf2:
-        return {"C:/Program Files/SF2"};
-    case plugin_path_kind::sfz:
-        return {"C:/Program Files/SFZ"};
+    case plugin_path_kind::audio_unit:
+        return {};
+    case plugin_path_kind::aax:
+        return {"C:/Program Files/Common Files/Avid/Audio/Plug-Ins"};
     case plugin_path_kind::jsfx:
         return {};
     }
@@ -329,15 +348,101 @@ std::vector<std::filesystem::path> plugin_defaults(plugin_path_kind kind, const 
         return {home_path(".vst3"), "/usr/local/lib/vst3", "/usr/lib/vst3"};
     case plugin_path_kind::clap:
         return {home_path(".clap"), "/usr/local/lib/clap", "/usr/lib/clap"};
-    case plugin_path_kind::sf2:
-        return {home_path(".sounds/sf2"), "/usr/local/share/sounds/sf2", "/usr/share/sounds/sf2"};
-    case plugin_path_kind::sfz:
-        return {home_path(".sounds/sfz"), "/usr/local/share/sounds/sfz", "/usr/share/sounds/sfz"};
+    case plugin_path_kind::audio_unit:
+#if defined(__APPLE__)
+        if (home.empty()) {
+            return {"/Library/Audio/Plug-Ins/Components"};
+        }
+        return {home / "Library" / "Audio" / "Plug-Ins" / "Components", "/Library/Audio/Plug-Ins/Components"};
+#else
+        return {};
+#endif
+    case plugin_path_kind::aax:
+#if defined(__APPLE__)
+        if (home.empty()) {
+            return {"/Library/Application Support/Avid/Audio/Plug-Ins"};
+        }
+        return {home / "Library" / "Application Support" / "Avid" / "Audio" / "Plug-Ins",
+            "/Library/Application Support/Avid/Audio/Plug-Ins"};
+#else
+        return {};
+#endif
     case plugin_path_kind::jsfx:
         return {home_path(".config/REAPER/Effects")};
     }
 #endif
     return {};
+}
+
+std::vector<std::filesystem::path> plugin_asset_defaults(plugin_asset_path_kind kind, const std::filesystem::path& home)
+{
+    const auto home_path = [&](const char* leaf) {
+        return home.empty() ? std::filesystem::path{} : home / leaf;
+    };
+
+#if defined(_WIN32)
+    switch (kind) {
+    case plugin_asset_path_kind::sf2:
+        return {"C:/Program Files/SF2"};
+    case plugin_asset_path_kind::sfz:
+        return {"C:/Program Files/SFZ"};
+    }
+#else
+    switch (kind) {
+    case plugin_asset_path_kind::sf2:
+        return {home_path(".sounds/sf2"), "/usr/local/share/sounds/sf2", "/usr/share/sounds/sf2"};
+    case plugin_asset_path_kind::sfz:
+        return {home_path(".sounds/sfz"), "/usr/local/share/sounds/sfz", "/usr/share/sounds/sfz"};
+    }
+#endif
+    return {};
+}
+
+std::vector<std::string> plugin_extensions(plugin_path_kind kind)
+{
+    switch (kind) {
+    case plugin_path_kind::ladspa:
+    case plugin_path_kind::dssi:
+        return {".so"};
+    case plugin_path_kind::lv2:
+        return {".lv2"};
+    case plugin_path_kind::vst2:
+        return {".dll", ".so", ".vst"};
+    case plugin_path_kind::vst3:
+        return {".vst3"};
+    case plugin_path_kind::clap:
+        return {".clap"};
+    case plugin_path_kind::audio_unit:
+        return {".component"};
+    case plugin_path_kind::aax:
+        return {".aaxplugin"};
+    case plugin_path_kind::jsfx:
+        return {".jsfx"};
+    }
+    return {};
+}
+
+std::vector<std::string> plugin_asset_extensions(plugin_asset_path_kind kind)
+{
+    switch (kind) {
+    case plugin_asset_path_kind::sf2:
+        return {".sf2"};
+    case plugin_asset_path_kind::sfz:
+        return {".sfz"};
+    }
+    return {};
+}
+
+std::vector<platform_support> plugin_platforms(plugin_path_kind kind)
+{
+    switch (kind) {
+    case plugin_path_kind::audio_unit:
+        return {platform_support::macos};
+    case plugin_path_kind::aax:
+        return {platform_support::windows, platform_support::macos};
+    default:
+        return {platform_support::any};
+    }
 }
 
 std::vector<std::filesystem::path> wine_plugin_defaults(plugin_path_kind kind, const std::filesystem::path& wine_prefix)
@@ -355,6 +460,8 @@ std::vector<std::filesystem::path> wine_plugin_defaults(plugin_path_kind kind, c
         return {common_files / "VST3"};
     case plugin_path_kind::clap:
         return {common_files / "CLAP"};
+    case plugin_path_kind::aax:
+        return {common_files / "Avid" / "Audio" / "Plug-Ins"};
     default:
         return {};
     }
@@ -1022,12 +1129,61 @@ std::string_view to_string(plugin_path_kind value)
         return "vst3";
     case plugin_path_kind::clap:
         return "clap";
-    case plugin_path_kind::sf2:
-        return "sf2";
-    case plugin_path_kind::sfz:
-        return "sfz";
+    case plugin_path_kind::audio_unit:
+        return "audio_unit";
+    case plugin_path_kind::aax:
+        return "aax";
     case plugin_path_kind::jsfx:
         return "jsfx";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(plugin_asset_path_kind value)
+{
+    switch (value) {
+    case plugin_asset_path_kind::sf2:
+        return "sf2";
+    case plugin_asset_path_kind::sfz:
+        return "sfz";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(plugin_path_category value)
+{
+    switch (value) {
+    case plugin_path_category::executable_plugin:
+        return "executable_plugin";
+    case plugin_path_category::asset_library:
+        return "asset_library";
+    case plugin_path_category::application_extension:
+        return "application_extension";
+    case plugin_path_category::toolkit_plugin:
+        return "toolkit_plugin";
+    case plugin_path_category::resource:
+        return "resource";
+    }
+    return "unknown";
+}
+
+std::string_view to_string(platform_support value)
+{
+    switch (value) {
+    case platform_support::current:
+        return "current";
+    case platform_support::windows:
+        return "windows";
+    case platform_support::macos:
+        return "macos";
+    case platform_support::linux_os:
+        return "linux";
+    case platform_support::bsd:
+        return "bsd";
+    case platform_support::unix_like:
+        return "unix_like";
+    case platform_support::any:
+        return "any";
     }
     return "unknown";
 }
@@ -1370,8 +1526,12 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
 
     auto append_set = [&](std::string name,
                           std::optional<plugin_path_kind> kind,
+                          std::optional<plugin_asset_path_kind> asset_kind,
+                          plugin_path_category category,
                           const std::optional<std::string>& environment_variable,
-                          std::vector<std::filesystem::path> defaults) {
+                          std::vector<std::filesystem::path> defaults,
+                          std::vector<std::string> extensions = {},
+                          std::vector<platform_support> platforms = {}) {
         std::vector<plugin_path_candidate> candidates;
         std::vector<diagnostic> diagnostics;
 
@@ -1382,6 +1542,8 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                     plugin_path_candidate plugin_candidate;
                     plugin_candidate.set_name = name;
                     plugin_candidate.kind = kind;
+                    plugin_candidate.asset_kind = asset_kind;
+                    plugin_candidate.category = category;
                     plugin_candidate.path = std::move(candidate.path);
                     plugin_candidate.selected = candidate.selected;
                     plugin_candidate.diagnostics = std::move(candidate.diagnostics);
@@ -1399,6 +1561,8 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
             plugin_path_candidate candidate;
             candidate.set_name = name;
             candidate.kind = kind;
+            candidate.asset_kind = asset_kind;
+            candidate.category = category;
             candidate.source = candidate_source::fallback;
             candidate.path = path.lexically_normal();
             candidate.selected = !options.list_options.require_absolute || candidate.path.is_absolute();
@@ -1425,6 +1589,8 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
                 plugin_path_candidate candidate;
                 candidate.set_name = name;
                 candidate.kind = kind;
+                candidate.asset_kind = asset_kind;
+                candidate.category = category;
                 candidate.source = candidate_source::wine_prefix;
                 candidate.path = path.lexically_normal();
                 candidate.selected = !options.list_options.require_absolute || candidate.path.is_absolute();
@@ -1436,6 +1602,10 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
         plugin_path_set set;
         set.name = std::move(name);
         set.kind = kind;
+        set.asset_kind = asset_kind;
+        set.category = category;
+        set.extensions = std::move(extensions);
+        set.platforms = std::move(platforms);
         for (auto& candidate : candidates) {
             const auto normalized = normalize_for_duplicate_check(candidate.path);
             if (candidate.selected && options.list_options.drop_duplicates && !seen.insert(normalized).second) {
@@ -1460,17 +1630,58 @@ plugin_path_report resolve_plugin_path_sets(const plugin_path_options& options)
         report.sets.push_back(std::move(set));
     };
 
-    const auto kinds = options.kinds.empty() ? default_plugin_kinds() : options.kinds;
+    const auto kinds = options.kinds.empty() && options.include_default_kinds
+        ? default_plugin_kinds()
+        : options.kinds;
     for (const auto kind : kinds) {
         append_set(
             std::string(to_string(kind)),
             kind,
+            std::nullopt,
+            plugin_path_category::executable_plugin,
             plugin_environment_variable(kind),
-            plugin_defaults(kind, home));
+            plugin_defaults(kind, home),
+            plugin_extensions(kind),
+            plugin_platforms(kind));
+    }
+
+    const auto asset_kinds = options.asset_kinds.empty() && options.include_default_asset_kinds
+        ? default_plugin_asset_kinds()
+        : options.asset_kinds;
+    for (const auto kind : asset_kinds) {
+        append_set(
+            std::string(to_string(kind)),
+            std::nullopt,
+            kind,
+            plugin_path_category::asset_library,
+            plugin_asset_environment_variable(kind),
+            plugin_asset_defaults(kind, home),
+            plugin_asset_extensions(kind),
+            {platform_support::any});
+    }
+
+    for (const auto& named : options.named_sets) {
+        append_set(
+            named.name,
+            std::nullopt,
+            std::nullopt,
+            named.category,
+            named.environment_variable,
+            named.defaults,
+            named.extensions,
+            named.platforms);
     }
 
     for (const auto& custom : options.custom_sets) {
-        append_set(custom.name, std::nullopt, custom.environment_variable, custom.defaults);
+        append_set(
+            custom.name,
+            std::nullopt,
+            std::nullopt,
+            custom.category,
+            custom.environment_variable,
+            custom.defaults,
+            custom.extensions,
+            custom.platforms);
     }
 
     return report;

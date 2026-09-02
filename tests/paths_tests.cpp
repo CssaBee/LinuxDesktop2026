@@ -162,6 +162,10 @@ void stringifies_public_enums()
     require(ld::to_string(ld::candidate_source::wine_prefix) == "wine_prefix", "Wine-prefix source should stringify");
     require(ld::to_string(ld::directory_action::would_create) == "would_create", "directory action should stringify");
     require(ld::to_string(ld::plugin_path_kind::vst3) == "vst3", "plugin path kind should stringify");
+    require(ld::to_string(ld::plugin_path_kind::audio_unit) == "audio_unit", "Audio Unit plugin path kind should stringify");
+    require(ld::to_string(ld::plugin_asset_path_kind::sf2) == "sf2", "plugin asset path kind should stringify");
+    require(ld::to_string(ld::plugin_path_category::toolkit_plugin) == "toolkit_plugin", "plugin path category should stringify");
+    require(ld::to_string(ld::platform_support::macos) == "macos", "plugin platform support should stringify");
 }
 
 void resolves_linux_xdg_base_directories_from_injected_environment()
@@ -671,16 +675,29 @@ void resolves_typed_plugin_path_sets()
     ld::plugin_path_options options;
     options.use_process_environment = false;
     options.home_directory = fixture_path({"home"});
-    options.kinds = {ld::plugin_path_kind::vst3, ld::plugin_path_kind::lv2};
+    options.kinds = {
+        ld::plugin_path_kind::vst3,
+        ld::plugin_path_kind::lv2,
+        ld::plugin_path_kind::audio_unit,
+        ld::plugin_path_kind::aax,
+    };
+    options.asset_kinds = {ld::plugin_asset_path_kind::sf2, ld::plugin_asset_path_kind::sfz};
     options.list_options.separator = ';';
     options.environment["VST3_PATH"] = fixture_path({"vendor", "vst3"}).string() + ";" +
         fixture_path({"vendor", "vst3", "..", "vst3"}).string() + ";relative";
+    options.environment["AU_PATH"] = fixture_path({"vendor", "components"}).string();
+    options.environment["AAX_PATH"] = fixture_path({"vendor", "aax"}).string();
 
     const auto report = ld::resolve_plugin_path_sets(options);
 
     const auto& vst3 = plugin_set(report, "vst3");
     require(vst3.kind && *vst3.kind == ld::plugin_path_kind::vst3,
         "typed plugin set should preserve its kind");
+    require(!vst3.asset_kind, "executable plugin set should not claim an asset kind");
+    require(vst3.category == ld::plugin_path_category::executable_plugin,
+        "typed plugin set should report executable plugin category");
+    require(std::find(vst3.extensions.begin(), vst3.extensions.end(), ".vst3") != vst3.extensions.end(),
+        "typed plugin set should expose expected extension metadata");
     require(vst3.paths.size() == 2 || vst3.paths.size() == 4,
         "VST3 should include env path and platform defaults");
     require(vst3.paths[0] == fixture_path({"vendor", "vst3"}), "environment plugin path should win ordering");
@@ -705,6 +722,30 @@ void resolves_typed_plugin_path_sets()
     require(lv2.paths[0] == fixture_path({"home", ".lv2"}), "LV2 should include home default");
     require(lv2.paths[1] == "/usr/local/lib/lv2", "LV2 should include local system default");
 #endif
+
+    const auto& audio_unit = plugin_set(report, "audio_unit");
+    require(audio_unit.kind && *audio_unit.kind == ld::plugin_path_kind::audio_unit,
+        "Audio Unit should be a first-class executable plugin kind");
+    require(audio_unit.category == ld::plugin_path_category::executable_plugin,
+        "Audio Unit should report executable plugin category");
+    require(audio_unit.paths[0] == fixture_path({"vendor", "components"}),
+        "Audio Unit environment path should resolve when provided");
+
+    const auto& aax = plugin_set(report, "aax");
+    require(aax.kind && *aax.kind == ld::plugin_path_kind::aax,
+        "AAX should be a first-class executable plugin kind");
+    require(aax.paths[0] == fixture_path({"vendor", "aax"}),
+        "AAX environment path should resolve when provided");
+
+    const auto& sf2 = plugin_set(report, "sf2");
+    require(!sf2.kind && sf2.asset_kind && *sf2.asset_kind == ld::plugin_asset_path_kind::sf2,
+        "SF2 should resolve as an asset-library path kind");
+    require(sf2.category == ld::plugin_path_category::asset_library,
+        "SF2 should report asset-library category");
+
+    const auto& sfz = plugin_set(report, "sfz");
+    require(!sfz.kind && sfz.asset_kind && *sfz.asset_kind == ld::plugin_asset_path_kind::sfz,
+        "SFZ should resolve as an asset-library path kind");
 }
 
 void resolves_wine_and_custom_plugin_path_sets()
@@ -715,13 +756,17 @@ void resolves_wine_and_custom_plugin_path_sets()
     options.wine_prefix = fixture_path({"wine", "prefix"});
     options.include_wine_prefix_defaults = true;
     options.kinds = {ld::plugin_path_kind::vst2, ld::plugin_path_kind::clap};
+    options.include_default_asset_kinds = false;
     options.list_options.separator = ';';
 
-    ld::custom_plugin_path_set custom;
-    custom.name = "sampler-bank";
-    custom.environment_variable = "SAMPLER_BANK_PATH";
-    custom.defaults = {fixture_path({"opt", "sampler", "banks"})};
-    options.custom_sets = {custom};
+    ld::named_plugin_path_set sampler_request;
+    sampler_request.name = "sampler-bank";
+    sampler_request.environment_variable = "SAMPLER_BANK_PATH";
+    sampler_request.defaults = {fixture_path({"opt", "sampler", "banks"})};
+    sampler_request.category = ld::plugin_path_category::asset_library;
+    sampler_request.extensions = {".sf2", ".sfz"};
+    sampler_request.platforms = {ld::platform_support::any};
+    options.named_sets = {sampler_request};
     options.environment["SAMPLER_BANK_PATH"] = fixture_path({"library", "banks"}).string();
 
     const auto report = ld::resolve_plugin_path_sets(options);
@@ -740,9 +785,60 @@ void resolves_wine_and_custom_plugin_path_sets()
 
     const auto& sampler = plugin_set(report, "sampler-bank");
     require(!sampler.kind, "custom plugin set should not claim a built-in kind");
+    require(!sampler.asset_kind, "named plugin set should not claim a built-in asset kind");
+    require(sampler.category == ld::plugin_path_category::asset_library,
+        "named plugin set should preserve product-owned category");
+    require(sampler.extensions.size() == 2 && sampler.extensions[0] == ".sf2",
+        "named plugin set should preserve extension metadata");
     require(sampler.paths.size() == 2, "custom plugin set should include environment and defaults");
     require(sampler.paths[0] == fixture_path({"library", "banks"}), "custom environment path should be first");
     require(sampler.paths[1] == fixture_path({"opt", "sampler", "banks"}), "custom default path should follow");
+}
+
+void named_plugin_path_sets_cover_product_and_toolkit_owned_ecosystems()
+{
+    ld::plugin_path_options options;
+    options.use_process_environment = false;
+    options.home_directory = fixture_path({"home"});
+    options.kinds = {};
+    options.asset_kinds = {};
+    options.include_default_kinds = false;
+    options.include_default_asset_kinds = false;
+    options.list_options.separator = ';';
+
+    ld::named_plugin_path_set obs;
+    obs.name = "obs-module";
+    obs.environment_variable = "OBS_PLUGIN_PATH";
+    obs.defaults = {fixture_path({"home", ".config", "obs-studio", "plugins"})};
+    obs.category = ld::plugin_path_category::application_extension;
+    obs.extensions = {".so", ".dll", ".dylib"};
+    obs.platforms = {ld::platform_support::any};
+
+    ld::named_plugin_path_set qt;
+    qt.name = "qt-platforms";
+    qt.defaults = {fixture_path({"app", "plugins", "platforms"})};
+    qt.category = ld::plugin_path_category::toolkit_plugin;
+    qt.platforms = {ld::platform_support::any};
+
+    options.named_sets = {obs, qt};
+    options.environment["OBS_PLUGIN_PATH"] = fixture_path({"vendor", "obs"}).string() + ";" +
+        fixture_path({"vendor", "obs"}).string();
+
+    const auto report = ld::resolve_plugin_path_sets(options);
+
+    const auto& obs_set = plugin_set(report, "obs-module");
+    require(obs_set.paths.size() == 2, "named OBS set should include env and default paths");
+    require(obs_set.category == ld::plugin_path_category::application_extension,
+        "named OBS set should keep product-owned extension category");
+    require(obs_set.extensions.size() == 3, "named OBS set should carry extension metadata");
+    require(has_plugin_diagnostic(report, ld::diagnostic_code::path_list_duplicate_ignored),
+        "named plugin sets should reuse path-list duplicate diagnostics");
+
+    const auto& qt_set = plugin_set(report, "qt-platforms");
+    require(qt_set.category == ld::plugin_path_category::toolkit_plugin,
+        "Qt counterexample should stay toolkit-owned metadata, not a built-in enum");
+    require(!qt_set.kind && !qt_set.asset_kind,
+        "Qt counterexample should not claim LinuxDesktop2026 built-in semantics");
 }
 
 } // namespace
@@ -770,6 +866,7 @@ int main()
         parses_and_joins_path_lists_with_diagnostics();
         resolves_typed_plugin_path_sets();
         resolves_wine_and_custom_plugin_path_sets();
+        named_plugin_path_sets_cover_product_and_toolkit_owned_ecosystems();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;
