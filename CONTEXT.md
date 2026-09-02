@@ -203,6 +203,14 @@ _Avoid_: First-class plugin path kind, dynamic loader replacement, deployment la
 The operating-system behavior needed to run, signal, supervise, or communicate with a long-running background process.
 _Avoid_: Ordinary process launch, single-instance GUI activation
 
+**Watcher lifecycle**:
+The caller-visible lifetime rules for an `ld_watch` watcher, including start, callback delivery, callback mutation, watch removal, stop, destruction, worker shutdown, and post-stop behavior.
+_Avoid_: Service lifecycle, daemon lifecycle, thread cleanup
+
+**Settled-file readiness**:
+An opt-in watcher behavior that delays delivery for file create, modify, and rename-new events until debounce and file stability checks say the app can safely process the file, or until a diagnostic timeout is reached.
+_Avoid_: Settlement, debounce only, task trigger
+
 **Platform-library monorepo**:
 A single repository containing the general-purpose platform libraries, examples, tests, and shared build infrastructure while module boundaries are still evolving.
 _Avoid_: Separate repo per module, Notepad++ fork

@@ -6,12 +6,13 @@ list below.
 
 ## Current Order
 
-- `58` - Run ld_watch Lifecycle And Settlement Discovery
-- `59` - Add Adversarial CI And ThreadSanitizer Evidence
 - `60` - Narrow And Harden Migration Filesystem Semantics
+- `61` - Clean Up ld_watch Settled-File Option Initializers
 
 ## Implemented
 
+- `58` - Run ld_watch Lifecycle And Settled-File Discovery
+- `59` - Add Adversarial CI And ThreadSanitizer Evidence
 - `57` - Fix Watch Callback Self-Destruction Lifecycle
 - `56` - Fix Watch Settle Worker Permanent Exit
 - `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
@@ -156,7 +157,15 @@ run the wider watcher discovery needed before adding concurrency CI evidence.
 
 The settings fixture work is deliberately after the watcher lifecycle fixes. It
 is important, but it depends on the module-boundary cleanup more than it blocks
-the immediate process-termination and lost-settlement risks. The migration
-ticket stays in the same batch because the review found a real promise gap, but
-it is ordered after the watcher and settings evidence unless current consumers
-make migration semantics urgent.
+the immediate process-termination and lost settled-file readiness risks. The
+migration ticket stays in the same batch because the review found a real
+promise gap, but it is ordered after the watcher and settings evidence unless
+current consumers make migration semantics urgent.
+
+Task 58 completed the focused watcher lifecycle and settled-file readiness
+discovery pass. Fresh debug builds covered deterministic simulated-backend
+tests, native Linux `inotify` smoke tests, and libuv-preferred watcher tests.
+All focused watcher tests passed locally. The pass did not find a blocking
+runtime defect, but it did expose repeated settled-file option aggregate
+initializer warnings in `tests/watch_tests.cpp`; task 61 tracks that cleanup
+after the currently ordered migration hardening work.
