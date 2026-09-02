@@ -88,6 +88,115 @@ bool path_exists_noerror(const std::filesystem::path& path)
     return std::filesystem::exists(path, ec);
 }
 
+void append_regular_file_metadata_note(
+    const std::filesystem::path& path,
+    std::vector<diagnostic>& diagnostics)
+{
+    std::error_code ec;
+    const auto count = std::filesystem::hard_link_count(path, ec);
+    if (!ec && count > 1) {
+        diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "migration-hard-link-topology-not-preserved",
+            "Migration copies this regular file as independent app settings data; hard-link topology is not preserved",
+            path));
+    }
+}
+
+void append_unsupported_object_diagnostic(
+    const std::filesystem::path& path,
+    std::vector<diagnostic>& diagnostics)
+{
+    diagnostics.push_back(make_diagnostic(
+        severity::error,
+        "migration-source-unsupported-object",
+        "Migration supports only regular files and directories containing regular files or subdirectories",
+        path));
+}
+
+void append_source_object_model_diagnostics(
+    const migration_action& action,
+    std::vector<diagnostic>& diagnostics)
+{
+    if (!is_file_action(action.kind) || action.source_path.empty()) {
+        return;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(action.source_path, ec)) {
+        return;
+    }
+
+    const auto root_status = std::filesystem::symlink_status(action.source_path, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-source-status-failed",
+            ec.message(),
+            action.source_path));
+        return;
+    }
+    if (std::filesystem::is_symlink(root_status)) {
+        append_unsupported_object_diagnostic(action.source_path, diagnostics);
+        return;
+    }
+    if (std::filesystem::is_regular_file(root_status)) {
+        append_regular_file_metadata_note(action.source_path, diagnostics);
+        return;
+    }
+    if (!std::filesystem::is_directory(root_status)) {
+        append_unsupported_object_diagnostic(action.source_path, diagnostics);
+        return;
+    }
+
+    if (!is_directory_action(action.kind)) {
+        return;
+    }
+
+    auto iterator = std::filesystem::recursive_directory_iterator(action.source_path, std::filesystem::directory_options::none, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-source-scan-failed",
+            ec.message(),
+            action.source_path));
+        return;
+    }
+
+    for (const auto end = std::filesystem::recursive_directory_iterator(); iterator != end; iterator.increment(ec)) {
+        if (ec) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-source-scan-failed",
+                ec.message(),
+                action.source_path));
+            return;
+        }
+
+        const auto entry_status = iterator->symlink_status(ec);
+        if (ec) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-source-status-failed",
+                ec.message(),
+                iterator->path()));
+            return;
+        }
+        if (std::filesystem::is_symlink(entry_status)) {
+            append_unsupported_object_diagnostic(iterator->path(), diagnostics);
+            return;
+        }
+        if (std::filesystem::is_regular_file(entry_status)) {
+            append_regular_file_metadata_note(iterator->path(), diagnostics);
+            continue;
+        }
+        if (!std::filesystem::is_directory(entry_status)) {
+            append_unsupported_object_diagnostic(iterator->path(), diagnostics);
+            return;
+        }
+    }
+}
+
 void record_after_paths(migration_action_result& result)
 {
     result.source_exists_after = path_exists_noerror(result.action.source_path);
@@ -137,6 +246,21 @@ void append_file_action_diagnostics(
                 "Migration source kind does not match the action",
                 action.source_path));
         }
+    }
+    append_source_object_model_diagnostics(action, diagnostics);
+    if (action.kind == migration_action_kind::move_file) {
+        diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "migration-file-move-atomic-rename-only",
+            "File moves use atomic rename only; cross-device copy/remove fallback is not supported",
+            action.source_path));
+    }
+    if (action.kind == migration_action_kind::move_directory) {
+        diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "migration-directory-move-best-effort",
+            "Directory moves copy supported entries, then remove the source tree; concurrent mutation and full rollback are not guaranteed",
+            action.source_path));
     }
     if (!action.target_path.empty() && std::filesystem::exists(action.target_path, ec) && !options.overwrite_existing) {
         diagnostics.push_back(make_diagnostic(
@@ -503,12 +627,15 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             }
             if (ec) {
                 report.ok = false;
-                result.rollback_available = path_exists_noerror(action.target_path) && !result.target_existed_before;
+                result.rollback_available = is_directory_action(action.kind) &&
+                    path_exists_noerror(action.target_path) &&
+                    !result.target_existed_before;
                 result.state = result.rollback_available
                     ? migration_action_state::partially_executed
                     : migration_action_state::rollback_missing;
                 if (result.rollback_available) {
                     result.rollback_attempted = true;
+                    result.rollback_path = action.target_path;
                     std::error_code rollback_ec;
                     std::filesystem::remove_all(action.target_path, rollback_ec);
                     result.rollback_succeeded = !rollback_ec;
@@ -523,8 +650,10 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
                 }
                 result.diagnostics.push_back(make_diagnostic(
                     severity::error,
-                    "migration-move-cleanup-failed",
-                    ec.message(),
+                    is_directory_action(action.kind) ? "migration-move-cleanup-failed" : "migration-file-move-failed",
+                    is_directory_action(action.kind)
+                        ? ec.message()
+                        : "Atomic file move failed; cross-device copy/remove fallback is not supported: " + ec.message(),
                     action.source_path));
                 record_after_paths(result);
                 report.actions.push_back(std::move(result));

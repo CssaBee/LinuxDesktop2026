@@ -39,7 +39,7 @@ See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 | `ld_paths` | `LinuxDesktop2026::ld_paths` | Active prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
 | `ld_watch` | `LinuxDesktop2026::ld_watch` | Active prototype | File watching with native Linux and Windows backends, optional libuv, bounded event delivery, recursive-watch honesty, and settled-file behavior. |
 | `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Extraction in progress | Desktop/session integration effects such as autostart and managed/enforced policy, with the broader desktop-effect scope still being completed. |
-| `ld_migration` | `LinuxDesktop2026::ld_migration` | Extraction in progress | Dry-run-first migration planning/execution and app-settings Registry snapshot/import/export compatibility. |
+| `ld_migration` | `LinuxDesktop2026::ld_migration` | Extraction in progress | Dry-run-first application-settings migration for regular files/directories and app-settings Registry snapshot/import/export compatibility. |
 
 `ld_settings` no longer owns desktop effects or migration behavior. New callers
 should use `ld_desktop` and `ld_migration` directly for those responsibilities.

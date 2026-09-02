@@ -278,6 +278,147 @@ void execute_moves_file_with_permission()
     require(read_file(target) == "state", "file move should preserve content");
 }
 
+void file_move_failure_does_not_copy_remove_fallback()
+{
+    const auto root = test_root();
+    const auto source = root / "old" / "state.bin";
+    const auto target = root / "missing-parent" / "state.bin";
+    std::filesystem::create_directories(source.parent_path());
+    {
+        std::ofstream file(source);
+        file << "state";
+    }
+
+    ld::options plan_options;
+    plan_options.allow_dangerous = true;
+    plan_options.create_parent_directories = false;
+    const auto plan = ld::plan_move_file(source, target, plan_options);
+    require(has_diagnostic(plan.diagnostics, "migration-file-move-atomic-rename-only"),
+        "file move plan should document atomic rename semantics");
+
+    ld::options execute_options;
+    execute_options.dry_run = false;
+    execute_options.allow_dangerous = true;
+    execute_options.create_parent_directories = false;
+    const auto report = ld::execute_migration_plan(plan, execute_options);
+
+    require(!report.ok, "failed file move should fail the report");
+    require(report.actions.size() == 1, "failed file move should report the action");
+    require(report.actions[0].state == ld::migration_action_state::rollback_missing,
+        "failed atomic file move should not claim rollback is available");
+    require(!report.actions[0].rollback_attempted,
+        "failed atomic file move should not attempt copy-target rollback");
+    require(has_diagnostic(report.actions[0].diagnostics, "migration-file-move-failed"),
+        "failed atomic file move should report the narrow move diagnostic");
+    require(std::filesystem::exists(source), "failed atomic file move should keep source");
+    require(!std::filesystem::exists(target), "failed atomic file move should not create target through fallback");
+}
+
+void directory_move_reports_best_effort_semantics()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    std::filesystem::create_directories(source / "subdir");
+    {
+        std::ofstream file(source / "subdir" / "settings.ini");
+        file << "copied=true\n";
+    }
+
+    ld::options plan_options;
+    plan_options.allow_dangerous = true;
+    const auto plan = ld::plan_move_directory(source, target, plan_options);
+    require(has_diagnostic(plan.diagnostics, "migration-directory-move-best-effort"),
+        "directory move plan should document best-effort copy/remove semantics");
+
+    ld::options execute_options;
+    execute_options.dry_run = false;
+    execute_options.allow_dangerous = true;
+    const auto report = ld::execute_migration_plan(plan, execute_options);
+
+    require(report.ok, "directory move should still succeed for supported app settings trees");
+    require(report.actions[0].state == ld::migration_action_state::executed,
+        "directory move should report executed state");
+    require(has_diagnostic(report.actions[0].diagnostics, "migration-directory-move-best-effort"),
+        "directory move execution should preserve best-effort diagnostics");
+    require(!std::filesystem::exists(source), "directory move should remove source after copy");
+    require(read_file(target / "subdir" / "settings.ini").find("copied=true") != std::string::npos,
+        "directory move should copy supported nested files");
+}
+
+void symlink_sources_are_unsupported()
+{
+    const auto root = test_root();
+    const auto real_source = root / "old" / "config.xml";
+    const auto symlink_source = root / "old" / "config-link.xml";
+    const auto target = root / "new" / "config.xml";
+    std::filesystem::create_directories(real_source.parent_path());
+    {
+        std::ofstream file(real_source);
+        file << "<Config />\n";
+    }
+
+    std::error_code ec;
+    std::filesystem::create_symlink(real_source, symlink_source, ec);
+    if (ec) {
+        return;
+    }
+
+    const auto plan = ld::plan_copy_file(symlink_source, target);
+    require(has_diagnostic(plan.diagnostics, "migration-source-unsupported-object"),
+        "symlink file sources should be rejected");
+    require(has_error_diagnostic(plan.diagnostics), "symlink file source diagnostic should be an error");
+}
+
+void directory_symlinks_are_unsupported()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    const auto real_file = source / "settings.ini";
+    const auto linked_file = source / "linked-settings.ini";
+    std::filesystem::create_directories(source);
+    {
+        std::ofstream file(real_file);
+        file << "copied=true\n";
+    }
+
+    std::error_code ec;
+    std::filesystem::create_symlink(real_file, linked_file, ec);
+    if (ec) {
+        return;
+    }
+
+    const auto plan = ld::plan_copy_directory(source, target);
+    require(has_diagnostic(plan.diagnostics, "migration-source-unsupported-object"),
+        "directory migration should reject symlink entries");
+    require(has_error_diagnostic(plan.diagnostics), "directory symlink diagnostic should be an error");
+}
+
+void hard_link_topology_reports_not_preserved()
+{
+    const auto root = test_root();
+    const auto source = root / "old" / "config.xml";
+    const auto linked_source = root / "old" / "same-config.xml";
+    const auto target = root / "new" / "config.xml";
+    std::filesystem::create_directories(source.parent_path());
+    {
+        std::ofstream file(source);
+        file << "<Config />\n";
+    }
+
+    std::error_code ec;
+    std::filesystem::create_hard_link(source, linked_source, ec);
+    if (ec) {
+        return;
+    }
+
+    const auto plan = ld::plan_copy_file(source, target);
+    require(has_diagnostic(plan.diagnostics, "migration-hard-link-topology-not-preserved"),
+        "hard-linked regular files should warn that topology is not preserved");
+    require(!has_error_diagnostic(plan.diagnostics), "hard-link topology warning should not block content migration");
+}
+
 void rooted_paths_resolve_through_ld_paths()
 {
     const auto root = test_root();
@@ -590,6 +731,11 @@ int main()
         {"move_execution_requires_dangerous_permission", move_execution_requires_dangerous_permission},
         {"execute_copies_directory", execute_copies_directory},
         {"execute_moves_file_with_permission", execute_moves_file_with_permission},
+        {"file_move_failure_does_not_copy_remove_fallback", file_move_failure_does_not_copy_remove_fallback},
+        {"directory_move_reports_best_effort_semantics", directory_move_reports_best_effort_semantics},
+        {"symlink_sources_are_unsupported", symlink_sources_are_unsupported},
+        {"directory_symlinks_are_unsupported", directory_symlinks_are_unsupported},
+        {"hard_link_topology_reports_not_preserved", hard_link_topology_reports_not_preserved},
         {"rooted_paths_resolve_through_ld_paths", rooted_paths_resolve_through_ld_paths},
         {"plan_copy_infers_source_kind", plan_copy_infers_source_kind},
         {"plan_copy_missing_source_reports_diagnostic", plan_copy_missing_source_reports_diagnostic},

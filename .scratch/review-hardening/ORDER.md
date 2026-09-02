@@ -6,11 +6,11 @@ list below.
 
 ## Current Order
 
-- `60` - Narrow And Harden Migration Filesystem Semantics
 - `61` - Clean Up ld_watch Settled-File Option Initializers
 
 ## Implemented
 
+- `60` - Narrow And Harden Migration Filesystem Semantics
 - `58` - Run ld_watch Lifecycle And Settled-File Discovery
 - `59` - Add Adversarial CI And ThreadSanitizer Evidence
 - `57` - Fix Watch Callback Self-Destruction Lifecycle

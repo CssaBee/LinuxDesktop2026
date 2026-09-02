@@ -4,9 +4,9 @@ Status: initial C++ extraction complete; additional hardening remains required
 before ship-candidate status.
 
 `ld_migration` owns planning, explaining, executing, and reporting application
-state moves. `linuxdesktop::settings` keeps only the settings-specific API; the
-owning implementation and Registry snapshot/import/export compatibility data
-live in `ld_migration`.
+settings state moves. `linuxdesktop::settings` keeps only the settings-specific
+API; the owning implementation and Registry snapshot/import/export
+compatibility data live in `ld_migration`.
 The old `ld_settings` migration and Registry facade has been removed.
 
 ## Scope
@@ -15,8 +15,8 @@ The extracted module covers these responsibility groups at the C++ ownership
 boundary:
 
 - migration planning,
-- file copy and move execution,
-- directory copy and move execution,
+- regular-file copy and atomic-rename move execution,
+- directory copy and best-effort copy-then-source-cleanup move execution,
 - explicit dry-run previews,
 - per-action before/after reporting,
 - rollback reporting where practical,
@@ -44,19 +44,33 @@ cleanup.
   policy actions into migration execution.
 - Treat Registry snapshots as compatibility data for application state, not as a
   general Registry abstraction.
+- Treat filesystem migration as application settings migration, not rsync-grade
+  filesystem replication. Supported sources are regular files and directories
+  containing regular files or subdirectories. Symlinks and special files are
+  rejected. File content is copied, but ownership, permissions, timestamps,
+  xattrs, ACLs, sparse extents, and hard-link topology are not replicated as
+  filesystem metadata.
+- Treat file moves as atomic rename operations. Cross-device copy/remove
+  fallback is not supported.
+- Treat directory moves as best-effort copy plus source-tree cleanup. Partial
+  copy failures block the action before cleanup; cleanup failures are reported
+  with rollback details where the copied target can be removed. Concurrent
+  source mutation, destination substitution, disk-full behavior, and complete
+  rollback remain outside the supported guarantee.
 
 ## Validation Required
 
 Before `ld_migration` is a ship candidate, tests and examples must cover:
 
 - dry-run plans for every action kind,
-- file and directory copy/move success paths,
+- file and directory copy/move success paths within the supported object model,
 - missing source, wrong source kind, existing target, and parent creation
   failures,
 - hostile paths, including relative escape attempts and target collisions,
 - destructive action denial by default,
 - explicit permission paths for dangerous actions,
-- partial-failure reporting,
+- partial-failure reporting, including failed atomic file moves without
+  copy/remove fallback,
 - rollback reporting for action kinds that can reasonably be reversed,
 - JSON and `.reg` snapshot round trips for app-settings Registry compatibility,
 - import denial without explicit permission,

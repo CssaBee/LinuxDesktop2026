@@ -419,7 +419,8 @@ Current desired dependency shape:
 - Link `LinuxDesktop2026::ld_settings` when the caller needs settings
   hydration, settings layers, or validated settings writes.
 - Link `LinuxDesktop2026::ld_migration` when the caller needs dry-run
-  copy/move/import planning.
+  application-settings copy/move/import planning for regular files,
+  directories, or app-settings Registry snapshots.
 - Link `LinuxDesktop2026::ld_desktop` for desktop effects such as autostart
   integration.
 

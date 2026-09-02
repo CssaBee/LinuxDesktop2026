@@ -45,6 +45,10 @@ enum class migration_action_state {
 };
 
 struct migration_action {
+    // Filesystem actions are for app-owned settings state: regular files and
+    // directories containing regular files/subdirectories. Symlinks, special
+    // files, ownership, permissions, timestamps, xattrs, ACLs, sparse extents,
+    // and hard-link topology are not replicated as filesystem metadata.
     migration_action_kind kind = migration_action_kind::copy_file;
     std::string name;
     std::filesystem::path source_path;
@@ -136,6 +140,7 @@ struct migration_action_result {
     bool rollback_available = false;
     bool rollback_attempted = false;
     bool rollback_succeeded = false;
+    std::filesystem::path rollback_path;
     std::vector<diagnostic> diagnostics;
 };
 
