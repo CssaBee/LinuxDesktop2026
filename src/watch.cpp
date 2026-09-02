@@ -306,6 +306,23 @@ private:
         watch_event event;
     };
 
+    enum class settle_status {
+        deliver,
+        skip,
+        shutdown
+    };
+
+    struct settle_result {
+        settle_status status = settle_status::skip;
+        watch_event event;
+    };
+
+    enum class settle_wait_result {
+        ready,
+        canceled,
+        shutdown
+    };
+
     void run()
     {
         for (;;) {
@@ -345,21 +362,34 @@ private:
         return !stopped_ && watches_.find(id.value) != watches_.end();
     }
 
-    bool is_stopped_for_settle() const
+    bool is_current_settle_task_locked(const std::string& key, std::uint64_t generation) const
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return stopped_;
+        const auto it = settle_generations_.find(key);
+        return it != settle_generations_.end() && it->second == generation;
     }
 
-    bool wait_for_settle_delay(std::chrono::milliseconds delay) const
+    settle_wait_result wait_for_settle_delay(
+        std::chrono::milliseconds delay,
+        const std::string& key,
+        std::uint64_t generation) const
     {
-        if (delay.count() <= 0) {
-            return !is_stopped_for_settle();
-        }
         std::unique_lock<std::mutex> lock(mutex_);
-        return !settle_cv_.wait_for(lock, delay, [this] {
-            return stopped_;
+        if (stopped_) {
+            return settle_wait_result::shutdown;
+        }
+        if (!is_current_settle_task_locked(key, generation)) {
+            return settle_wait_result::canceled;
+        }
+        if (delay.count() <= 0) {
+            return settle_wait_result::ready;
+        }
+        const auto interrupted = settle_cv_.wait_for(lock, delay, [this, &key, generation] {
+            return stopped_ || !is_current_settle_task_locked(key, generation);
         });
+        if (!interrupted) {
+            return settle_wait_result::ready;
+        }
+        return stopped_ ? settle_wait_result::shutdown : settle_wait_result::canceled;
     }
 
     bool needs_settle(const watch_event& event) const
@@ -424,37 +454,61 @@ private:
                 settle_queue_.pop_front();
             }
 
-            auto event = apply_settle_policy(std::move(task.event));
-            if (!event.has_value()) {
+            const auto status = current_settle_status(task.key, task.generation);
+            if (status == settle_status::shutdown) {
                 return;
             }
-            if (is_current_settle_task(task.key, task.generation)) {
-                deliver(std::move(*event));
+            if (status == settle_status::skip) {
+                continue;
+            }
+
+            auto result = apply_settle_policy(task.key, task.generation, std::move(task.event));
+            if (result.status == settle_status::shutdown) {
+                return;
+            }
+            if (result.status == settle_status::deliver && is_current_settle_task(task.key, task.generation)) {
+                deliver(std::move(result.event));
             }
         }
+    }
+
+    settle_status current_settle_status(const std::string& key, std::uint64_t generation) const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (stopped_) {
+            return settle_status::shutdown;
+        }
+        return is_current_settle_task_locked(key, generation) ? settle_status::deliver : settle_status::skip;
     }
 
     bool is_current_settle_task(const std::string& key, std::uint64_t generation) const
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        const auto it = settle_generations_.find(key);
-        return !stopped_ && it != settle_generations_.end() && it->second == generation;
+        return !stopped_ && is_current_settle_task_locked(key, generation);
     }
 
-    std::optional<watch_event> apply_settle_policy(watch_event event) const
+    settle_result apply_settle_policy(
+        const std::string& key,
+        std::uint64_t generation,
+        watch_event event) const
     {
         const auto options = options_for(event.source);
         if (!options.has_value() || !options->settle.has_value()) {
-            return std::nullopt;
+            return {settle_status::skip, std::move(event)};
         }
 
         const auto settle = *options->settle;
-        if (!wait_for_settle_delay(settle.debounce_for)) {
-            return std::nullopt;
+        switch (wait_for_settle_delay(settle.debounce_for, key, generation)) {
+        case settle_wait_result::ready:
+            break;
+        case settle_wait_result::canceled:
+            return {settle_status::skip, std::move(event)};
+        case settle_wait_result::shutdown:
+            return {settle_status::shutdown, std::move(event)};
         }
         const auto started_at = std::chrono::steady_clock::now();
         if (settle.stable_for.count() <= 0) {
-            return event;
+            return {settle_status::deliver, std::move(event)};
         }
 
         std::error_code ec;
@@ -465,7 +519,7 @@ private:
                 std::string(diagnostic_code::settle_timeout),
                 ec.message(),
                 event.path.absolute));
-            return event;
+            return {settle_status::deliver, std::move(event)};
         }
         auto last_write = std::filesystem::last_write_time(event.path.absolute, ec);
         if (ec) {
@@ -474,7 +528,7 @@ private:
                 std::string(diagnostic_code::settle_timeout),
                 ec.message(),
                 event.path.absolute));
-            return event;
+            return {settle_status::deliver, std::move(event)};
         }
 
         auto stable_for = std::chrono::milliseconds{0};
@@ -488,10 +542,15 @@ private:
                     std::string(diagnostic_code::settle_timeout),
                     "File did not become stable before the settle timeout",
                     event.path.absolute));
-                return event;
+                return {settle_status::deliver, std::move(event)};
             }
-            if (!wait_for_settle_delay(poll_interval)) {
-                return std::nullopt;
+            switch (wait_for_settle_delay(poll_interval, key, generation)) {
+            case settle_wait_result::ready:
+                break;
+            case settle_wait_result::canceled:
+                return {settle_status::skip, std::move(event)};
+            case settle_wait_result::shutdown:
+                return {settle_status::shutdown, std::move(event)};
             }
             const auto size = std::filesystem::file_size(event.path.absolute, ec);
             if (ec) {
@@ -500,7 +559,7 @@ private:
                     std::string(diagnostic_code::settle_timeout),
                     ec.message(),
                     event.path.absolute));
-                return event;
+                return {settle_status::deliver, std::move(event)};
             }
             const auto write_time = std::filesystem::last_write_time(event.path.absolute, ec);
             if (ec) {
@@ -509,7 +568,7 @@ private:
                     std::string(diagnostic_code::settle_timeout),
                     ec.message(),
                     event.path.absolute));
-                return event;
+                return {settle_status::deliver, std::move(event)};
             }
             if (size == last_size && write_time == last_write) {
                 stable_for += poll_interval;
@@ -525,7 +584,7 @@ private:
             std::string(diagnostic_code::settle_ready),
             "File size and mtime are stable",
             event.path.absolute));
-        return event;
+        return {settle_status::deliver, std::move(event)};
     }
 
     void deliver(watch_event event)

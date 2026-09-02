@@ -776,6 +776,86 @@ void remove_watch_cancels_pending_settled_file_event()
     require(!received.has_value(), "removed watch should cancel pending settled-file event");
 }
 
+void removed_settled_watch_does_not_stop_future_settlement()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "cancel.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    {
+        std::ofstream output(root / "later.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{200}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto canceled_report = watcher.add_watch(options);
+    require(canceled_report.ok, "first settled-file watch should start");
+
+    backend->push(backend->event_for(canceled_report.id, ld::event_kind::modified, "cancel.txt"));
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    require(watcher.remove_watch(canceled_report.id), "watch removal should succeed");
+
+    const auto later_report = watcher.add_watch(options);
+    require(later_report.ok, "later settled-file watch should start");
+    backend->push(backend->event_for(later_report.id, ld::event_kind::modified, "later.txt"));
+
+    const auto received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "later settled-file event should arrive after removing earlier watch");
+    require(received->path.root_relative == std::filesystem::path("later.txt"),
+        "later settled-file event should come from the later watch");
+}
+
+void stale_settled_generation_does_not_stop_future_settlement()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "stale.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    {
+        std::ofstream output(root / "next.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{75}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    auto stale = backend->event_for(report.id, ld::event_kind::modified, "stale.txt");
+    stale.diagnostics.push_back(diagnostic(
+        linuxdesktop::severity::info,
+        "test.stale",
+        "stale event"));
+    auto fresh = backend->event_for(report.id, ld::event_kind::modified, "stale.txt");
+    fresh.diagnostics.push_back(diagnostic(
+        linuxdesktop::severity::info,
+        "test.fresh",
+        "fresh event"));
+
+    backend->push(std::move(stale));
+    backend->push(std::move(fresh));
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "next.txt"));
+
+    auto received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "fresh settled-file event should arrive after stale generation is skipped");
+    require(has_diagnostic(received->diagnostics, "test.fresh"), "fresh generation should be delivered");
+    require(!has_diagnostic(received->diagnostics, "test.stale"), "stale generation should not be delivered");
+
+    received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "next settled-file event should arrive after stale generation is skipped");
+    require(received->path.root_relative == std::filesystem::path("next.txt"),
+        "worker should continue to unrelated settled work after stale generation");
+}
+
 void settled_file_large_batch_delivers_all_paths()
 {
     const auto root = test_root();
@@ -833,6 +913,8 @@ int main()
         settled_file_events_coalesce_by_source_and_path();
         settled_file_timeout_reports_diagnostic();
         remove_watch_cancels_pending_settled_file_event();
+        removed_settled_watch_does_not_stop_future_settlement();
+        stale_settled_generation_does_not_stop_future_settlement();
         settled_file_large_batch_delivers_all_paths();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";

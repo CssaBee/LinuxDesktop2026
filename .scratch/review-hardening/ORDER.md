@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `56` - Fix Watch Settle Worker Permanent Exit
 - `57` - Fix Watch Callback Self-Destruction Lifecycle
 - `58` - Run ld_watch Lifecycle And Settlement Discovery
 - `59` - Add Adversarial CI And ThreadSanitizer Evidence
@@ -14,6 +13,7 @@ list below.
 
 ## Implemented
 
+- `56` - Fix Watch Settle Worker Permanent Exit
 - `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
 - `54` - Reconcile Review Claim And Module Boundary Docs
 - `53` - Expand Adversarial Hardening Tests
