@@ -9,14 +9,13 @@ autostart and managed/enforced policy implementation lives in
 `linuxdesktop::desktop`; callers should use `ld_desktop` directly for those
 effects. Registry-equivalent desktop/system behavior belongs in `ld_desktop`.
 The matching C ABI lives in `linuxdesktop/desktop_c.h` and the
-`ld_desktop` C library surface. Any `ld_settings` dependency on `ld_desktop`
-exists only as a bounded transition surface and must be removed by
-release-candidate cleanup.
+`ld_desktop` C library surface. `ld_settings` does not publicly depend on
+`ld_desktop`.
 
 ## Scope
 
-The extracted module must cover these responsibility groups before the current
-`ld_settings` effect surface can be treated as resolved:
+The extracted module must cover these responsibility groups before
+`ld_desktop` can be treated as the stable desktop integration surface:
 
 - autostart entries,
 - desktop entries,
@@ -80,11 +79,9 @@ Before `ld_desktop` is a ship candidate, tests and examples must cover:
 
 ## Extraction Rule
 
-When this module is introduced, remove, move, or provide documented pre-1.0
-migration guidance for the matching C ABI entry points. Do not leave stable
-callers believing that `ld_settings` owns desktop integration.
+When this module grows, keep C++ and C desktop-effect entry points under the
+`ld_desktop` headers and library target. Do not leave callers believing that
+`ld_settings` owns desktop integration.
 
-The C ABI remains intentionally unchanged until release-candidate status. Its
-`ld_settings_*` desktop-effect entry points are documentable migration points,
-not stable ownership claims, and they must not become a permanent compatibility
-layer.
+The old `ld_settings` desktop-effect facade has been removed; there are no
+`ld_settings_*` desktop-effect C ABI entry points in the current code.

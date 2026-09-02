@@ -14,7 +14,7 @@ expanded `ld_settings` beyond a standard-path resolver.
 ADR 0012 narrows `ld_settings` to toolkit-neutral settings/config behavior.
 Generic path policy moves to `ld_paths`; desktop integration effects move to
 `ld_desktop`; migration planning/execution and app-settings Registry
-migration compatibility move to the planned `ld_migration`.
+migration compatibility move to `ld_migration`.
 
 Even in that broader prototype, `ld_settings` did not parse every
 application's settings payload. Applications kept ownership of XML, JSON, INI,
@@ -251,8 +251,8 @@ Rules:
 
 Hydration copies missing defaults. Migration moves or transforms existing user state. Keep them separate.
 
-ADR 0012 moves migration planning/execution to the planned `ld_migration`
-module. `ld_settings` may describe settings bundles and participate in
+ADR 0012 moves migration planning/execution to the `ld_migration` module.
+`ld_settings` may describe settings bundles and participate in
 migrations, but it should not own the stable migration engine.
 
 ```cpp
@@ -367,7 +367,7 @@ The prototype inventory includes:
 - `export_tree_reg`,
 - `import_tree_reg`.
 
-Safety rules while this remains in `ld_settings`:
+Historical prototype safety rules:
 
 - default access is read-only,
 - writes to HKLM require explicit permission and real platform capability,
@@ -379,8 +379,8 @@ Safety rules while this remains in `ld_settings`:
 ## Effects API Prototype
 
 ADR 0012 moves desktop integration effects to the `ld_desktop` module.
-The current `linuxdesktop::settings::effects` surface is a temporary pre-1.0
-compatibility facade over `ld_desktop`, not a stable settings responsibility.
+The old `linuxdesktop::settings::effects` surface has been removed from code;
+this section remains only as prototype inventory for `ld_desktop`.
 
 Only these effects are first-scope:
 
@@ -549,19 +549,25 @@ Implemented in the current C++ sample:
 - portable levels,
 - string names for public root/layer enums,
 - C++ lookup helpers for named roots, component roots, component-local roots, and config layers,
-- existing C ABI exposure for named roots, component roots, config layers, and portable levels,
-- dry-run-first migration plans with file/directory copy and move execution,
+- existing C ABI exposure for named roots, component roots, config layers, and portable levels.
+
+Implemented in extracted modules:
+
+- `ld_migration` dry-run-first migration plans with file/directory copy and move execution,
+- canonical JSON Registry snapshot serialization/parsing,
+- `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
+- Registry tree JSON/`.reg` import/export wrappers,
+- `ld_desktop` autostart effect API with dry-run-first writes,
+- Linux XDG Autostart `.desktop` write/query/remove support,
+- `ld_desktop` managed/enforced policy effect API with dry-run-first writes,
+- Linux dconf/GSettings-compatible defaults and lock-file generation without GLib.
+
+Historical prototype inventory, removed from `ld_settings`:
+
 - raw `ld_settings::registry` C++ API for read, write, delete, and enumeration,
 - Windows Registry backend seed using Win32 Registry APIs,
 - structured unsupported diagnostics for raw Registry calls on non-Windows platforms,
-- canonical JSON Registry snapshot serialization/parsing,
-- `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
-- Registry tree JSON/`.reg` import/export wrappers over the raw Registry API,
-- `ld_desktop` autostart effect API with dry-run-first writes,
-- Linux XDG Autostart `.desktop` write/query/remove support,
 - Windows `CurrentVersion\Run` autostart backend shape over the raw Registry API,
-- `ld_desktop` managed/enforced policy effect API with dry-run-first writes,
-- Linux dconf/GSettings-compatible defaults and lock-file generation without GLib,
 - Windows `Software\Policies` backend shape over the raw Registry API.
 
 The next code work should harden module boundaries, write safety, and Windows
