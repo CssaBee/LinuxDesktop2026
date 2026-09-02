@@ -148,8 +148,9 @@ using event_callback = std::function<void(const watch_event&)>;
 
 // Callbacks run on the watcher delivery thread or backend-owned delivery path.
 // They are not promised on a UI thread. Callbacks may call stop(), remove_watch(),
-// and set_callback() from inside the callback, but they must not destroy the
-// watcher object that is currently invoking them.
+// set_callback(), or destroy the watcher facade from inside the callback.
+// Destroying the facade stops the watcher and waits for worker threads other than
+// the callback's current delivery thread.
 // Callback exceptions are caught, mark the stream degraded, and fall back to
 // queued delivery with a diagnostic error event.
 
@@ -209,7 +210,7 @@ private:
 #endif
 
     class impl;
-    std::unique_ptr<impl> impl_;
+    std::shared_ptr<impl> impl_;
 };
 
 std::string_view to_string(event_kind value);

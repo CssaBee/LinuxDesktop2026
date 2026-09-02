@@ -5,6 +5,7 @@
 #include <deque>
 #include <exception>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -149,21 +150,13 @@ std::string_view to_string(backend_kind value)
     return "unknown";
 }
 
-class watcher::impl {
+class watcher::impl : public std::enable_shared_from_this<watcher::impl> {
 public:
-    explicit impl(std::shared_ptr<detail::watch_backend> backend)
-        : backend_(std::move(backend))
+    static std::shared_ptr<impl> create(std::shared_ptr<detail::watch_backend> backend)
     {
-        if (backend_) {
-            worker_ = std::thread([this] {
-                run();
-            });
-            settle_worker_ = std::thread([this] {
-                run_settle();
-            });
-        } else {
-            state_ = stream_state::stopped;
-        }
+        auto instance = std::shared_ptr<impl>(new impl(std::move(backend)));
+        instance->start_threads();
+        return instance;
     }
 
     ~impl()
@@ -229,12 +222,21 @@ public:
         }
         cv_.notify_all();
         settle_cv_.notify_all();
-        if (worker_.joinable() && worker_.get_id() != current_thread) {
-            worker_.join();
+        std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
+        join_or_detach_for_stop(worker_, current_thread);
+        join_or_detach_for_stop(settle_worker_, current_thread);
+    }
+
+    void join_or_detach_for_stop(std::thread& worker, std::thread::id current_thread)
+    {
+        if (!worker.joinable()) {
+            return;
         }
-        if (settle_worker_.joinable() && settle_worker_.get_id() != current_thread) {
-            settle_worker_.join();
+        if (worker.get_id() == current_thread) {
+            worker.detach();
+            return;
         }
+        worker.join();
     }
 
     void set_callback(event_callback callback)
@@ -300,6 +302,28 @@ public:
     }
 
 private:
+    explicit impl(std::shared_ptr<detail::watch_backend> backend)
+        : backend_(std::move(backend))
+    {
+        if (!backend_) {
+            state_ = stream_state::stopped;
+        }
+    }
+
+    void start_threads()
+    {
+        if (!backend_) {
+            return;
+        }
+        auto self = shared_from_this();
+        worker_ = std::thread([self] {
+            self->run();
+        });
+        settle_worker_ = std::thread([self] {
+            self->run_settle();
+        });
+    }
+
     struct settle_task {
         std::string key;
         std::uint64_t generation = 0;
@@ -655,6 +679,7 @@ private:
     }
 
     mutable std::mutex mutex_;
+    std::mutex lifecycle_mutex_;
     std::condition_variable cv_;
     mutable std::condition_variable settle_cv_;
     std::shared_ptr<detail::watch_backend> backend_;
@@ -672,20 +697,34 @@ private:
 };
 
 watcher::watcher()
-    : impl_(std::make_unique<impl>(detail::make_native_backend()))
+    : impl_(impl::create(detail::make_native_backend()))
 {
 }
 
 watcher::watcher(std::shared_ptr<detail::watch_backend> backend)
-    : impl_(std::make_unique<impl>(std::move(backend)))
+    : impl_(impl::create(std::move(backend)))
 {
 }
 
-watcher::~watcher() = default;
+watcher::~watcher()
+{
+    if (impl_) {
+        impl_->stop();
+    }
+}
 
 watcher::watcher(watcher&&) noexcept = default;
 
-watcher& watcher::operator=(watcher&&) noexcept = default;
+watcher& watcher::operator=(watcher&& other) noexcept
+{
+    if (this != &other) {
+        if (impl_) {
+            impl_->stop();
+        }
+        impl_ = std::move(other.impl_);
+    }
+    return *this;
+}
 
 start_report watcher::add_watch(const watch_options& options)
 {

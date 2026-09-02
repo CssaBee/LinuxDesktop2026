@@ -6,13 +6,13 @@ list below.
 
 ## Current Order
 
-- `57` - Fix Watch Callback Self-Destruction Lifecycle
 - `58` - Run ld_watch Lifecycle And Settlement Discovery
 - `59` - Add Adversarial CI And ThreadSanitizer Evidence
 - `60` - Narrow And Harden Migration Filesystem Semantics
 
 ## Implemented
 
+- `57` - Fix Watch Callback Self-Destruction Lifecycle
 - `56` - Fix Watch Settle Worker Permanent Exit
 - `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
 - `54` - Reconcile Review Claim And Module Boundary Docs
