@@ -6,10 +6,11 @@ list below.
 
 ## Current Order
 
-- `53` - Expand Adversarial Hardening Tests
+No active hardening tickets remain in this sequence.
 
 ## Implemented
 
+- `53` - Expand Adversarial Hardening Tests
 - `52` - Adopt Invasive Hardening Test Posture
 - `51` - Harden Plugin Path Kind Taxonomy
 - `50` - Add Portable Root Request API
@@ -127,6 +128,13 @@ cleanup after partial failures, C ABI nested ownership, cross-module diagnostic
 propagation, root/path selection explanation, and migration before/after action
 traces as caller-visible behavior. The posture is recorded in ADR 0014 and
 stays local, deterministic, and fast enough for normal CTest runs.
+
+Task 53 completes the adversarial follow-through for that posture. The normal
+suite now exercises malformed root requests, hostile product-owned plugin path
+sets, desktop integration identifier sanitization, malformed integration output
+roots, migration destination collisions, and hostile Registry snapshot imports.
+Rejected or degraded operations keep diagnostics so product adapters can
+translate failures instead of reverse-engineering silent normalization.
 
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`

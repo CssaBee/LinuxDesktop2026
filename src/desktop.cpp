@@ -77,9 +77,16 @@ std::filesystem::path config_base_directory(std::vector<diagnostic>& diagnostics
     return selected->second.parent_path();
 }
 
-std::string sanitize_autostart_id(std::string value)
+std::string sanitize_autostart_id(const std::string& value, std::vector<diagnostic>& diagnostics)
 {
-    return sanitize_segment(std::move(value), "application") + ".desktop";
+    auto sanitized = sanitize_segment(value, "application");
+    if (sanitized != value) {
+        diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "autostart-id-sanitized",
+            "Autostart id contained filename separators and was sanitized"));
+    }
+    return sanitized + ".desktop";
 }
 
 std::string desktop_escape(const std::string& value)
@@ -163,6 +170,14 @@ std::filesystem::path user_autostart_directory(std::vector<diagnostic>& diagnost
 std::filesystem::path autostart_directory(const autostart_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
 {
     if (options.autostart_directory_override.has_value()) {
+        if (!options.autostart_directory_override->is_absolute()) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "autostart-directory-relative",
+                "Autostart directory override must be absolute",
+                *options.autostart_directory_override));
+            return {};
+        }
         return *options.autostart_directory_override;
     }
     if (!entry.user_scope) {
@@ -177,7 +192,7 @@ std::filesystem::path autostart_path(const autostart_entry& entry, const apply_o
     if (directory.empty()) {
         return {};
     }
-    return directory / sanitize_autostart_id(entry.id);
+    return directory / sanitize_autostart_id(entry.id, diagnostics);
 }
 
 std::string desktop_file_content(const autostart_entry& entry)
@@ -213,9 +228,16 @@ bool desktop_file_hidden(const std::string& content)
     return false;
 }
 
-std::string sanitize_policy_file_id(std::string value)
+std::string sanitize_policy_file_id(const std::string& value, std::vector<diagnostic>& diagnostics)
 {
-    return sanitize_segment(std::move(value), "policy") + ".conf";
+    auto sanitized = sanitize_segment(value, "policy");
+    if (sanitized != value) {
+        diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "policy-id-sanitized",
+            "Policy id contained filename separators and was sanitized"));
+    }
+    return sanitized + ".conf";
 }
 
 std::string policy_group_name(const policy_entry& entry)
@@ -284,6 +306,14 @@ std::filesystem::path user_policy_base_directory(std::vector<diagnostic>& diagno
 std::filesystem::path policy_defaults_directory(const policy_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
 {
     if (options.policy_defaults_directory_override.has_value()) {
+        if (!options.policy_defaults_directory_override->is_absolute()) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "policy-defaults-directory-relative",
+                "Policy defaults directory override must be absolute",
+                *options.policy_defaults_directory_override));
+            return {};
+        }
         return *options.policy_defaults_directory_override;
     }
     if (!entry.user_scope) {
@@ -299,6 +329,14 @@ std::filesystem::path policy_defaults_directory(const policy_entry& entry, const
 std::filesystem::path policy_locks_directory(const policy_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
 {
     if (options.policy_locks_directory_override.has_value()) {
+        if (!options.policy_locks_directory_override->is_absolute()) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "policy-locks-directory-relative",
+                "Policy locks directory override must be absolute",
+                *options.policy_locks_directory_override));
+            return {};
+        }
         return *options.policy_locks_directory_override;
     }
     if (!entry.user_scope) {
@@ -313,7 +351,7 @@ std::filesystem::path policy_defaults_path(const policy_entry& entry, const appl
     if (directory.empty()) {
         return {};
     }
-    return directory / sanitize_policy_file_id(entry.id);
+    return directory / sanitize_policy_file_id(entry.id, diagnostics);
 }
 
 std::filesystem::path policy_lock_path(const policy_entry& entry, const apply_options& options, std::vector<diagnostic>& diagnostics)
@@ -322,7 +360,7 @@ std::filesystem::path policy_lock_path(const policy_entry& entry, const apply_op
     if (directory.empty()) {
         return {};
     }
-    return directory / sanitize_policy_file_id(entry.id);
+    return directory / sanitize_policy_file_id(entry.id, diagnostics);
 }
 
 bool has_policy_lock(const std::string& content, const policy_entry& entry)
@@ -607,6 +645,13 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
+    std::filesystem::path lock_path;
+    if (entry.enforced) {
+        lock_path = policy_lock_path(entry, options, report.diagnostics);
+        if (lock_path.empty() || has_error(report.diagnostics)) {
+            return report;
+        }
+    }
     if (options.dry_run) {
         report.ok = true;
         report.value = entry.value;
@@ -629,10 +674,6 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
         return report;
     }
     if (entry.enforced) {
-        const auto lock_path = policy_lock_path(entry, options, report.diagnostics);
-        if (lock_path.empty() || has_error(report.diagnostics)) {
-            return report;
-        }
         std::filesystem::create_directories(lock_path.parent_path(), ec);
         if (ec) {
             report.diagnostics.push_back(make_diagnostic(severity::error, "policy-lock-create-directory-failed", ec.message(), lock_path.parent_path()));

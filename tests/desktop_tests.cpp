@@ -107,6 +107,70 @@ void autostart_dry_run_does_not_write()
     require(has_diagnostic(report.diagnostics, "autostart-dry-run"), "desktop autostart dry-run should include a diagnostic");
 }
 
+void autostart_reports_sanitized_ids_and_escaped_arguments()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "autostart-sanitized";
+    auto entry = autostart_entry_for_tests();
+    entry.id = "linuxdesktop2026/desktop:tests";
+    entry.display_name = "LinuxDesktop2026\nDesktop Tests";
+    entry.arguments = {"--profile", "O'Brien"};
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root;
+
+    const auto report = ld::apply_autostart(entry, options);
+
+    require(report.ok, "desktop autostart should accept sanitized ids");
+    require(report.path.has_value(), "desktop autostart should report sanitized path");
+    require(report.path->filename() == "linuxdesktop2026-desktop-tests.desktop",
+        "desktop autostart should sanitize path separators in ids");
+    require(has_diagnostic(report.diagnostics, "autostart-id-sanitized"),
+        "desktop autostart should diagnose sanitized ids");
+    const auto content = read_file(*report.path);
+    require(content.find("Name=LinuxDesktop2026\\nDesktop Tests") != std::string::npos,
+        "desktop autostart should escape desktop-file newlines");
+    require(content.find("Exec=/usr/bin/ld-desktop-test --profile 'O'\\\\''Brien'") != std::string::npos,
+        "desktop autostart should shell-quote arguments with apostrophes");
+#endif
+}
+
+void autostart_rejects_relative_or_file_backed_output_directory()
+{
+#if !defined(_WIN32)
+    auto entry = autostart_entry_for_tests();
+
+    ld::apply_options relative;
+    relative.dry_run = false;
+    relative.allow_desktop_integration_write = true;
+    relative.autostart_directory_override = "relative-autostart";
+
+    const auto relative_report = ld::apply_autostart(entry, relative);
+    require(!relative_report.ok, "desktop autostart should reject relative output directories");
+    require(has_diagnostic(relative_report.diagnostics, "autostart-directory-relative"),
+        "desktop autostart should diagnose relative output directories");
+
+    const auto root = test_root() / "autostart-output-file";
+    std::filesystem::create_directories(root.parent_path());
+    {
+        std::ofstream file(root);
+        file << "not a directory\n";
+    }
+
+    ld::apply_options file_backed;
+    file_backed.dry_run = false;
+    file_backed.allow_desktop_integration_write = true;
+    file_backed.autostart_directory_override = root;
+
+    const auto file_report = ld::apply_autostart(entry, file_backed);
+    require(!file_report.ok, "desktop autostart should reject file-backed output directories");
+    require(has_diagnostic(file_report.diagnostics, "autostart-create-directory-failed"),
+        "desktop autostart should diagnose file-backed output directories");
+#endif
+}
+
 void autostart_linux_writes_queries_and_removes_desktop_file()
 {
 #if !defined(_WIN32)
@@ -202,6 +266,54 @@ void policy_write_requires_explicit_permission()
     require(has_diagnostic(report.diagnostics, "policy-write-denied"), "desktop policy write should require allow_policy_write");
 }
 
+void policy_reports_sanitized_ids_and_rejects_malformed_directories()
+{
+#if !defined(_WIN32)
+    auto entry = policy_entry_for_tests();
+    entry.id = "desktop/tests:theme";
+    entry.enforced = true;
+
+    const auto root = test_root() / "policy-sanitized";
+    ld::apply_options sanitized;
+    sanitized.dry_run = false;
+    sanitized.allow_policy_write = true;
+    sanitized.policy_defaults_directory_override = root / "defaults";
+    sanitized.policy_locks_directory_override = root / "locks";
+
+    const auto sanitized_report = ld::apply_policy(entry, sanitized);
+    require(sanitized_report.ok, "desktop policy should accept sanitized ids");
+    require(sanitized_report.path.has_value(), "desktop policy should report sanitized defaults path");
+    require(sanitized_report.path->filename() == "desktop-tests-theme.conf",
+        "desktop policy should sanitize path separators in ids");
+    require(has_diagnostic(sanitized_report.diagnostics, "policy-id-sanitized"),
+        "desktop policy should diagnose sanitized ids");
+
+    ld::apply_options relative_defaults;
+    relative_defaults.dry_run = false;
+    relative_defaults.allow_policy_write = true;
+    relative_defaults.policy_defaults_directory_override = "relative-defaults";
+    const auto relative_defaults_report = ld::apply_policy(policy_entry_for_tests(), relative_defaults);
+    require(!relative_defaults_report.ok, "desktop policy should reject relative defaults directories");
+    require(has_diagnostic(relative_defaults_report.diagnostics, "policy-defaults-directory-relative"),
+        "desktop policy should diagnose relative defaults directories");
+
+    ld::apply_options relative_locks;
+    relative_locks.dry_run = false;
+    relative_locks.allow_policy_write = true;
+    relative_locks.policy_defaults_directory_override = root / "relative-lock-defaults";
+    relative_locks.policy_locks_directory_override = "relative-locks";
+    auto enforced = policy_entry_for_tests();
+    enforced.enforced = true;
+
+    const auto relative_locks_report = ld::apply_policy(enforced, relative_locks);
+    require(!relative_locks_report.ok, "desktop policy should reject relative lock directories");
+    require(has_diagnostic(relative_locks_report.diagnostics, "policy-locks-directory-relative"),
+        "desktop policy should diagnose relative lock directories");
+    require(!std::filesystem::exists(root / "relative-lock-defaults" / "desktop-tests-theme.conf"),
+        "desktop policy should not write defaults before rejecting malformed lock directories");
+#endif
+}
+
 void policy_linux_writes_queries_and_removes_dconf_files()
 {
 #if !defined(_WIN32)
@@ -239,10 +351,13 @@ int main()
 {
     capability_report_covers_extraction_scope();
     autostart_dry_run_does_not_write();
+    autostart_reports_sanitized_ids_and_escaped_arguments();
+    autostart_rejects_relative_or_file_backed_output_directory();
     autostart_linux_writes_queries_and_removes_desktop_file();
     autostart_linux_removal_only_deletes_generated_entry();
     autostart_linux_routes_config_home_through_paths();
     policy_write_requires_explicit_permission();
+    policy_reports_sanitized_ids_and_rejects_malformed_directories();
     policy_linux_writes_queries_and_removes_dconf_files();
     return EXIT_SUCCESS;
 }

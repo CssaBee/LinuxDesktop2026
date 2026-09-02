@@ -841,6 +841,48 @@ void named_plugin_path_sets_cover_product_and_toolkit_owned_ecosystems()
         "Qt counterexample should not claim LinuxDesktop2026 built-in semantics");
 }
 
+void named_plugin_path_sets_diagnose_hostile_product_inputs()
+{
+    ld::plugin_path_options options;
+    options.use_process_environment = false;
+    options.home_directory = fixture_path({"home"});
+    options.kinds = {};
+    options.asset_kinds = {};
+    options.include_default_kinds = false;
+    options.include_default_asset_kinds = false;
+    options.list_options.separator = ';';
+
+    ld::named_plugin_path_set extension_set;
+    extension_set.name = "product-extension";
+    extension_set.environment_variable = "PRODUCT_EXTENSION_PATH";
+    extension_set.defaults = {"relative-default", fixture_path({"defaults", "extensions"})};
+    extension_set.category = ld::plugin_path_category::application_extension;
+    extension_set.extensions = {".so"};
+    extension_set.platforms = {ld::platform_support::any};
+
+    options.named_sets = {extension_set};
+    options.environment["PRODUCT_EXTENSION_PATH"] = fixture_path({"vendor", "extensions"}).string() + ";relative-env;" +
+        fixture_path({"vendor", "extensions"}).string();
+
+    const auto report = ld::resolve_plugin_path_sets(options);
+    const auto& product = plugin_set(report, "product-extension");
+
+    require(product.paths.size() == 2, "hostile product plugin inputs should keep only usable unique paths");
+    require(product.paths[0] == fixture_path({"vendor", "extensions"}),
+        "valid product plugin environment paths should keep ordering");
+    require(product.paths[1] == fixture_path({"defaults", "extensions"}),
+        "valid product plugin defaults should remain after rejected defaults");
+    require(has_plugin_diagnostic(report, ld::diagnostic_code::path_list_relative_ignored),
+        "relative product plugin inputs should be diagnosed");
+    require(has_plugin_diagnostic(report, ld::diagnostic_code::path_list_duplicate_ignored),
+        "duplicate product plugin inputs should be diagnosed");
+    require(std::find_if(report.candidates.begin(), report.candidates.end(), [](const ld::plugin_path_candidate& candidate) {
+                return candidate.set_name == "product-extension" && !candidate.selected &&
+                    candidate.path == std::filesystem::path("relative-default");
+            }) != report.candidates.end(),
+        "rejected product plugin defaults should remain visible as candidates");
+}
+
 } // namespace
 
 int main()
@@ -867,6 +909,7 @@ int main()
         resolves_typed_plugin_path_sets();
         resolves_wine_and_custom_plugin_path_sets();
         named_plugin_path_sets_cover_product_and_toolkit_owned_ecosystems();
+        named_plugin_path_sets_diagnose_hostile_product_inputs();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;

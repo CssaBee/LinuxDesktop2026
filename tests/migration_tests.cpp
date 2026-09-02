@@ -162,6 +162,42 @@ void execute_overwrite_records_before_and_after_state()
     require(read_file(target).find("new") != std::string::npos, "migration overwrite should replace target content");
 }
 
+void execute_blocks_destination_collision_without_overwrite()
+{
+    const auto root = test_root();
+    const auto source = root / "old" / "config.xml";
+    const auto target = root / "new" / "config.xml";
+    std::filesystem::create_directories(source.parent_path());
+    std::filesystem::create_directories(target.parent_path());
+    {
+        std::ofstream file(source);
+        file << "<Config copied=\"new\" />\n";
+    }
+    {
+        std::ofstream file(target);
+        file << "<Config copied=\"old\" />\n";
+    }
+
+    const auto plan = ld::plan_copy_file(source, target);
+    require(has_diagnostic(plan.diagnostics, "migration-target-exists"),
+        "migration plan should diagnose destination collisions");
+
+    ld::options execute_options;
+    execute_options.dry_run = false;
+    const auto report = ld::execute_migration_plan(plan, execute_options);
+
+    require(!report.ok, "migration execution should reject invalid collision plans");
+    require(report.actions.size() == 1, "migration collision execution should still report the action");
+    require(report.actions[0].state == ld::migration_action_state::blocked,
+        "migration collision execution should mark the action blocked");
+    require(report.actions[0].source_existed_before, "migration collision should record source before state");
+    require(report.actions[0].target_existed_before, "migration collision should record target before state");
+    require(report.actions[0].source_exists_after, "migration collision should preserve source");
+    require(report.actions[0].target_exists_after, "migration collision should preserve target");
+    require(read_file(target).find("old") != std::string::npos,
+        "migration collision should not overwrite target without permission");
+}
+
 void move_execution_requires_dangerous_permission()
 {
     const auto root = test_root();
@@ -447,6 +483,101 @@ void registry_import_requires_explicit_permission()
         "Registry JSON import should require allow_import");
 }
 
+void registry_json_rejects_hostile_import_shapes()
+{
+    namespace reg = linuxdesktop::migration::registry;
+
+    const std::string root =
+        "\"root\":{\"hive\":\"current_user\",\"subkey\":\"Software\\\\LinuxDesktop2026\\\\migration-tests\",\"view\":\"native\"}";
+
+    const auto missing_format = reg::parse_snapshot_json("{" + root + ",\"values\":[]}");
+    require(!missing_format.ok, "Registry JSON parser should reject missing format markers");
+    require(has_diagnostic(missing_format.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose missing format markers");
+
+    const auto malformed_values = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root + ",\"values\":{}}");
+    require(!malformed_values.ok, "Registry JSON parser should reject non-array values");
+    require(has_diagnostic(malformed_values.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON parser should diagnose malformed values arrays");
+
+    const auto truncated_values = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\"}");
+    require(!truncated_values.ok, "Registry JSON parser should reject truncated values arrays");
+    require(has_diagnostic(truncated_values.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON parser should diagnose truncated values arrays");
+
+    const auto invalid_hex = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"type\":\"string\",\"data_hex\":\"abc\"}]}");
+    require(!invalid_hex.ok, "Registry JSON parser should reject odd-length hex payloads");
+    require(has_diagnostic(invalid_hex.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose invalid value payloads");
+
+    reg::key destination;
+    destination.subkey = "Software\\LinuxDesktop2026\\migration-tests";
+    const auto imported = reg::import_tree_json(destination,
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root + ",\"values\":{}}");
+    require(!imported.ok, "Registry JSON import should reject malformed snapshots before permission checks");
+    require(has_diagnostic(imported.diagnostics, "registry-json-values-invalid"),
+        "Registry JSON import should propagate parse diagnostics");
+}
+
+void registry_reg_rejects_hostile_import_shapes()
+{
+    namespace reg = linuxdesktop::migration::registry;
+
+    const auto value_before_key = reg::parse_snapshot_reg("\"Name\"=\"Alice\"\n");
+    require(!value_before_key.ok, ".reg parser should reject values before a key");
+    require(has_diagnostic(value_before_key.diagnostics, "registry-reg-value-invalid"),
+        ".reg parser should diagnose values before a key");
+
+    const auto unknown_hive = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n[HKEY_NOT_REAL\\Software\\LinuxDesktop2026]\n");
+    require(!unknown_hive.ok, ".reg parser should reject unknown hives");
+    require(has_diagnostic(unknown_hive.diagnostics, "registry-reg-hive-invalid"),
+        ".reg parser should diagnose unknown hives");
+
+    const auto multiple_hives = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Alice\"\n\n"
+        "[HKEY_LOCAL_MACHINE\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Bob\"\n");
+    require(!multiple_hives.ok, ".reg parser should reject multiple hive snapshots");
+    require(has_diagnostic(multiple_hives.diagnostics, "registry-reg-multiple-hives"),
+        ".reg parser should diagnose multiple hives");
+
+    const auto outside_root = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Alice\"\n\n"
+        "[HKEY_CURRENT_USER\\Software\\OtherProduct]\n"
+        "\"Name\"=\"Mallory\"\n");
+    require(!outside_root.ok, ".reg parser should reject keys outside the first root");
+    require(has_diagnostic(outside_root.diagnostics, "registry-reg-outside-root"),
+        ".reg parser should diagnose keys outside the first root");
+
+    const auto invalid_dword = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Flags\"=dword:zzzzzzzz\n");
+    require(!invalid_dword.ok, ".reg parser should reject malformed DWORD data");
+    require(has_diagnostic(invalid_dword.diagnostics, "registry-reg-value-data-invalid"),
+        ".reg parser should diagnose malformed DWORD data");
+
+    reg::key destination;
+    destination.subkey = "Software\\LinuxDesktop2026";
+    const auto imported = reg::import_tree_reg(destination,
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Flags\"=dword:zzzzzzzz\n");
+    require(!imported.ok, ".reg import should reject malformed snapshots before permission checks");
+    require(has_diagnostic(imported.diagnostics, "registry-reg-value-data-invalid"),
+        ".reg import should propagate parse diagnostics");
+}
+
 } // namespace
 
 int main()
@@ -455,6 +586,7 @@ int main()
         {"plan_is_dry_run_first", plan_is_dry_run_first},
         {"execute_copies_file", execute_copies_file},
         {"execute_overwrite_records_before_and_after_state", execute_overwrite_records_before_and_after_state},
+        {"execute_blocks_destination_collision_without_overwrite", execute_blocks_destination_collision_without_overwrite},
         {"move_execution_requires_dangerous_permission", move_execution_requires_dangerous_permission},
         {"execute_copies_directory", execute_copies_directory},
         {"execute_moves_file_with_permission", execute_moves_file_with_permission},
@@ -465,6 +597,8 @@ int main()
         {"registry_json_snapshot_round_trips", registry_json_snapshot_round_trips},
         {"registry_reg_snapshot_round_trips", registry_reg_snapshot_round_trips},
         {"registry_import_requires_explicit_permission", registry_import_requires_explicit_permission},
+        {"registry_json_rejects_hostile_import_shapes", registry_json_rejects_hostile_import_shapes},
+        {"registry_reg_rejects_hostile_import_shapes", registry_reg_rejects_hostile_import_shapes},
     };
 
     int failures = 0;

@@ -285,6 +285,52 @@ void reports_root_creation_failures()
         "root creation failures should come from ld_paths diagnostics");
 }
 
+void rejects_malformed_named_and_component_roots()
+{
+    const auto root = test_root();
+
+    ld::options options;
+    options.app_root_override = root / "app";
+    options.create_directories = false;
+    options.named_roots = {
+        ld::make_log_root_request("", ld::ownership_kind::user_local, "Logs"),
+        ld::make_log_root_request("logs", ld::ownership_kind::user_local, "Logs"),
+        ld::make_profiles_root_request("logs", ld::ownership_kind::user_roaming, "Profiles"),
+        ld::make_config_root_request("absolute", ld::ownership_kind::user_roaming, root / "outside"),
+    };
+    options.component_roots = {
+        ld::make_component_root_request(
+            "",
+            ld::component_kind::plugin,
+            {ld::make_component_config_root_request("config", ld::ownership_kind::user_roaming, "Config")}),
+        ld::make_component_root_request(
+            "renderer",
+            ld::component_kind::embedded_tool,
+            {
+                ld::make_component_config_root_request("config", ld::ownership_kind::user_roaming, "Config"),
+                ld::make_component_state_root_request("config", ld::ownership_kind::user_local, "State"),
+                ld::make_component_data_root_request("absolute", ld::ownership_kind::user_roaming, root / "outside"),
+            }),
+    };
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.named_roots.size() == 4, "malformed named root requests should stay visible in report");
+    require(has_diagnostic(report.named_roots[0].diagnostics, "named-root-name-empty"),
+        "empty named-root names should be diagnosed");
+    require(has_diagnostic(report.named_roots[2].diagnostics, "named-root-duplicate"),
+        "duplicate named-root names should be diagnosed");
+    require(has_diagnostic(report.named_roots[3].diagnostics, "named-root-relative-path-absolute"),
+        "absolute named-root relative paths should be diagnosed");
+    require(report.component_roots.size() == 2, "malformed component roots should stay visible in report");
+    require(has_diagnostic(report.component_roots[0].diagnostics, "component-root-name-empty"),
+        "empty component names should be diagnosed");
+    require(has_diagnostic(report.component_roots[1].roots[1].diagnostics, "named-root-duplicate"),
+        "duplicate component child roots should be diagnosed");
+    require(has_diagnostic(report.component_roots[1].roots[2].diagnostics, "named-root-relative-path-absolute"),
+        "absolute component child relative paths should be diagnosed");
+}
+
 void stringifies_public_root_vocabulary()
 {
     require(ld::to_string(ld::portable_root_level::settings_only) == "settings_only",
@@ -307,6 +353,7 @@ int main()
         {"explicit_portable_root_does_not_need_marker_file", explicit_portable_root_does_not_need_marker_file},
         {"settings_only_portable_root_keeps_machine_local_roots", settings_only_portable_root_keeps_machine_local_roots},
         {"reports_root_creation_failures", reports_root_creation_failures},
+        {"rejects_malformed_named_and_component_roots", rejects_malformed_named_and_component_roots},
         {"stringifies_public_root_vocabulary", stringifies_public_root_vocabulary},
     };
 
