@@ -112,6 +112,14 @@ _Avoid_: Toy example, mock-only compatibility test, benchmark suite
 A later critique/defense pass over completed flavor tests that judges how well the refactor blends into the original product shape.
 _Avoid_: Unit test result, implementation gate, pass/fail criterion
 
+**Invasive unit test**:
+A unit-level test that deliberately inspects or stresses internal state transitions, filesystem side effects, ABI ownership, cleanup behavior, or backend edge cases while staying hermetic.
+_Avoid_: White-box curiosity test, broad integration test
+
+**Adversarial unit test**:
+A unit-level test built from hostile or malformed inputs, permission failures, races, corrupted state, path trickery, unusual environment variables, boundary values, or caller misuse.
+_Avoid_: Happy-path regression test, security audit
+
 **Framework tax budget**:
 The tolerated amount of LinuxDesktop2026-specific vocabulary that a product-shaped seam may expose before the API needs a narrower convenience layer or the abstraction should be rejected.
 _Avoid_: Boilerplate count, style preference, mandatory metric
@@ -158,6 +166,8 @@ An app-owned root selected by a product's portable-mode policy, such as a
 command-line flag, executable-adjacent marker file, or explicit product setting,
 where the application stores settings and related user files beside an
 application-owned location instead of ordinary user profile roots.
+In `ld_root`, this is represented by `portable_root_request`; `ld_settings`
+forwards the same request when settings lifecycle code needs it.
 _Avoid_: Generic override, hidden fallback, test-only executable path
 
 **First-class plugin path kind**:

@@ -25,9 +25,9 @@ struct app_identity {
     std::string application;
 };
 
-enum class app_local_level {
+enum class portable_root_level {
     off,
-    config_only,
+    settings_only,
     profile,
     clean
 };
@@ -99,6 +99,17 @@ struct component_root_group {
     component_kind kind = component_kind::custom;
     std::vector<named_root> roots;
     std::vector<diagnostic> diagnostics;
+};
+
+struct portable_root_request {
+    std::optional<std::filesystem::path> root;
+    std::optional<std::filesystem::path> marker;
+    bool requested = false;
+    portable_root_level level = portable_root_level::profile;
+    bool allow = true;
+    bool deny_in_privileged_install = false;
+    bool allow_user_config_override = false;
+    std::vector<std::filesystem::path> privileged_install_roots;
 };
 
 inline named_root_request make_named_root_request(
@@ -216,14 +227,9 @@ struct options {
     std::map<std::string, std::string> environment;
     std::optional<std::filesystem::path> app_root_override;
     std::optional<std::filesystem::path> user_config_override;
-    std::optional<std::filesystem::path> app_local_marker;
-    std::vector<std::filesystem::path> privileged_install_roots;
-    bool allow_app_local_root = true;
-    bool deny_app_local_root_in_privileged_install = false;
-    bool allow_user_config_for_app_local_root = false;
+    std::optional<portable_root_request> portable_root;
     bool create_directories = true;
     bool use_process_environment = true;
-    app_local_level app_local = app_local_level::config_only;
     std::vector<named_root_request> named_roots;
     std::vector<component_root_request> component_roots;
 };
@@ -241,11 +247,11 @@ struct app_roots {
 
 struct report {
     app_roots roots;
-    bool app_local_requested = false;
-    bool app_local_active = false;
+    bool portable_root_requested = false;
+    bool portable_root_active = false;
     bool app_root_override_active = false;
     bool user_config_override_active = false;
-    app_local_level app_local = app_local_level::off;
+    portable_root_level portable_root = portable_root_level::off;
     std::vector<named_root> named_roots;
     std::vector<component_root_group> component_roots;
     std::vector<diagnostic> diagnostics;
@@ -264,12 +270,7 @@ public:
     request_builder& use_process_environment(bool enabled);
     request_builder& app_root_override(std::optional<std::filesystem::path> path);
     request_builder& user_config_override(std::optional<std::filesystem::path> path);
-    request_builder& app_local_marker(std::optional<std::filesystem::path> path);
-    request_builder& app_local(app_local_level level);
-    request_builder& allow_app_local_root(bool enabled);
-    request_builder& deny_app_local_root_in_privileged_install(bool enabled);
-    request_builder& allow_user_config_for_app_local_root(bool enabled);
-    request_builder& privileged_install_roots(std::vector<std::filesystem::path> roots);
+    request_builder& portable_root(portable_root_request request);
     request_builder& create_directories(bool enabled);
     request_builder& named_root(named_root_request request);
     request_builder& component_roots(component_root_request request);
@@ -284,7 +285,7 @@ private:
     options options_;
 };
 
-std::string_view to_string(app_local_level value);
+std::string_view to_string(portable_root_level value);
 std::string_view to_string(purpose_kind value);
 std::string_view to_string(ownership_kind value);
 std::string_view to_string(component_kind value);

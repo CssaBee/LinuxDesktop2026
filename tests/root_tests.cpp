@@ -123,6 +123,11 @@ void builder_preserves_options()
     const auto app = root / "app-root";
     const auto user_config = root / "user-config";
 
+    ld::portable_root_request portable;
+    portable.marker = install / "local.marker";
+    portable.level = ld::portable_root_level::profile;
+    portable.allow_user_config_override = true;
+
     const auto report = ld::request_builder()
         .app("BuilderOrg", "BuilderApp")
         .resource_root(install)
@@ -131,9 +136,7 @@ void builder_preserves_options()
         .use_process_environment(false)
         .app_root_override(app)
         .user_config_override(user_config)
-        .app_local_marker(install / "local.marker")
-        .app_local(ld::app_local_level::profile)
-        .allow_user_config_for_app_local_root(true)
+        .portable_root(portable)
         .create_directories(false)
         .named_root(ld::make_log_root_request("logs", ld::ownership_kind::user_local, "Logs"))
         .resolve();
@@ -182,7 +185,7 @@ void helper_factories_match_explicit_request_shapes()
         "component helper should preserve child root ownership");
 }
 
-void activates_app_local_root_from_install_adjacent_marker()
+void activates_portable_root_from_install_adjacent_marker()
 {
     const auto root = test_root();
     const auto install = root / "install";
@@ -195,16 +198,71 @@ void activates_app_local_root_from_install_adjacent_marker()
 
     ld::options options;
     options.resource_root = install;
-    options.app_local_marker = marker;
-    options.app_local = ld::app_local_level::profile;
+    ld::portable_root_request portable;
+    portable.marker = marker;
+    portable.level = ld::portable_root_level::profile;
+    options.portable_root = portable;
 
     const auto report = ld::resolve_app_roots(identity(), options);
 
-    require(report.app_local_requested, "app-local marker should be reported as requested");
-    require(report.app_local_active, "existing app-local marker should activate app-local roots");
+    require(report.portable_root_requested, "portable marker should be reported as requested");
+    require(report.portable_root_active, "existing portable marker should activate portable roots");
     require(report.roots.resources == install, "resource root should remain install-adjacent");
-    require(report.roots.config == install, "app-local config should live beside the marker");
-    require(report.roots.session == install / "sessions", "session root should live under app-local state");
+    require(report.roots.config == install, "portable config should live beside the marker");
+    require(report.roots.session == install / "sessions", "session root should live under portable state");
+}
+
+void explicit_portable_root_does_not_need_marker_file()
+{
+    const auto root = test_root();
+    const auto install = root / "install";
+    std::filesystem::create_directories(install);
+
+    ld::portable_root_request portable;
+    portable.root = install;
+    portable.marker = install / "portable.marker";
+    portable.requested = true;
+
+    ld::options options;
+    options.resource_root = install;
+    options.portable_root = portable;
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.portable_root_requested, "explicit portable request should be recorded");
+    require(report.portable_root_active, "explicit portable request should activate the supplied root");
+    require(report.roots.config == install, "explicit portable root should supply config");
+    require(report.roots.data == install, "portable profile should supply data by default");
+}
+
+void settings_only_portable_root_keeps_machine_local_roots()
+{
+    const auto root = test_root();
+    const auto install = root / "install";
+    const auto marker = install / "portable.marker";
+    std::filesystem::create_directories(install);
+    {
+        std::ofstream marker_file(marker);
+        marker_file << "local\n";
+    }
+
+    ld::portable_root_request portable;
+    portable.marker = marker;
+    portable.level = ld::portable_root_level::settings_only;
+
+    ld::options options;
+    options.resource_root = install;
+    options.home_directory = root / "home";
+    options.platform_defaults = ld_paths::platform_path_defaults::xdg(root / "home", root / "run");
+    options.use_process_environment = false;
+    options.portable_root = portable;
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.portable_root_active, "settings-only portable request should activate");
+    require(report.roots.config == install, "settings-only portable root should move config");
+    require(report.roots.data != install, "settings-only portable root should keep data on platform roots");
+    require(report.roots.state != install, "settings-only portable root should keep state on platform roots");
 }
 
 void reports_root_creation_failures()
@@ -229,7 +287,8 @@ void reports_root_creation_failures()
 
 void stringifies_public_root_vocabulary()
 {
-    require(ld::to_string(ld::app_local_level::config_only) == "config_only", "app-local level should stringify");
+    require(ld::to_string(ld::portable_root_level::settings_only) == "settings_only",
+        "portable-root level should stringify");
     require(ld::to_string(ld::purpose_kind::plugin_config) == "plugin_config", "root purpose should stringify");
     require(ld::to_string(ld::ownership_kind::user_local) == "user_local", "root ownership should stringify");
     require(ld::to_string(ld::component_kind::plugin) == "plugin", "component kind should stringify");
@@ -244,7 +303,9 @@ int main()
         {"resolves_component_roots", resolves_component_roots},
         {"builder_preserves_options", builder_preserves_options},
         {"helper_factories_match_explicit_request_shapes", helper_factories_match_explicit_request_shapes},
-        {"activates_app_local_root_from_install_adjacent_marker", activates_app_local_root_from_install_adjacent_marker},
+        {"activates_portable_root_from_install_adjacent_marker", activates_portable_root_from_install_adjacent_marker},
+        {"explicit_portable_root_does_not_need_marker_file", explicit_portable_root_does_not_need_marker_file},
+        {"settings_only_portable_root_keeps_machine_local_roots", settings_only_portable_root_keeps_machine_local_roots},
         {"reports_root_creation_failures", reports_root_creation_failures},
         {"stringifies_public_root_vocabulary", stringifies_public_root_vocabulary},
     };

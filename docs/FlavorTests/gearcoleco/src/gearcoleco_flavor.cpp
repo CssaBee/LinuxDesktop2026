@@ -56,8 +56,11 @@ std::vector<std::filesystem::path> symbol_candidates_for(const std::filesystem::
 StartupPlan DesktopFrontend::prepare(const RuntimeEnvironment& environment, const LaunchOptions& options) const
 {
     const auto portable_marker = environment.executable_directory / "portable.ini";
-    const bool marker_exists = std::filesystem::exists(portable_marker);
-    const bool portable_requested = options.portable || marker_exists;
+    linuxdesktop::root::portable_root_request portable_root;
+    portable_root.root = environment.executable_directory;
+    portable_root.marker = portable_marker;
+    portable_root.requested = options.portable;
+    portable_root.level = linuxdesktop::root::portable_root_level::profile;
 
     linuxdesktop::settings::root_builder builder;
     builder.app("Gearcoleco", "Gearcoleco")
@@ -65,24 +68,20 @@ StartupPlan DesktopFrontend::prepare(const RuntimeEnvironment& environment, cons
         .home_directory(environment.home_directory)
         .environment(environment.environment)
         .use_process_environment(false)
-        .portable(linuxdesktop::settings::portable_level::profile);
+        .portable(linuxdesktop::settings::portable_level::profile)
+        .portable_root(portable_root);
 
     if (environment.home_directory) {
         builder.platform_defaults(linuxdesktop2026::generated::platform_path_defaults_for_home(
             *environment.home_directory,
             environment.runtime_directory));
     }
-    if (portable_requested) {
-        builder.settings_override(environment.executable_directory);
-    } else {
-        builder.portable_marker(portable_marker);
-    }
 
     const auto roots = builder.resolve();
 
     StartupPlan plan;
-    plan.portable_requested = portable_requested || roots.portable_requested;
-    plan.portable_active = roots.settings_override_active || roots.portable_active;
+    plan.portable_requested = roots.portable_requested;
+    plan.portable_active = roots.portable_active;
     plan.config_root = roots.roots.config;
     plan.data_root = roots.roots.data;
     plan.controller_database = environment.executable_directory / "gamecontrollerdb.txt";

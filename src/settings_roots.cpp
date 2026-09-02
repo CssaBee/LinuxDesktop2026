@@ -18,19 +18,19 @@ namespace {
 
 namespace ld_root = linuxdesktop::root;
 
-ld_root::app_local_level to_root_app_local_level(portable_level value)
+ld_root::portable_root_level to_root_portable_root_level(portable_level value)
 {
     switch (value) {
     case portable_level::off:
-        return ld_root::app_local_level::off;
+        return ld_root::portable_root_level::off;
     case portable_level::profile:
-        return ld_root::app_local_level::profile;
+        return ld_root::portable_root_level::profile;
     case portable_level::clean:
-        return ld_root::app_local_level::clean;
+        return ld_root::portable_root_level::clean;
     case portable_level::settings_only:
-        return ld_root::app_local_level::config_only;
+        return ld_root::portable_root_level::settings_only;
     }
-    return ld_root::app_local_level::config_only;
+    return ld_root::portable_root_level::settings_only;
 }
 
 ld_root::options to_options(const root_options& options)
@@ -42,14 +42,21 @@ ld_root::options to_options(const root_options& options)
     result.environment = options.environment;
     result.app_root_override = options.settings_override;
     result.user_config_override = options.sync_config_override;
-    result.app_local_marker = options.portable_marker;
-    result.privileged_install_roots = options.privileged_install_roots;
-    result.allow_app_local_root = options.allow_portable_root;
-    result.deny_app_local_root_in_privileged_install = options.deny_portable_root_in_privileged_install;
-    result.allow_user_config_for_app_local_root = options.allow_sync_config_for_portable_root;
+    if (options.portable_root) {
+        result.portable_root = options.portable_root;
+    } else if (options.portable_marker && !options.portable_marker->empty()) {
+        ld_root::portable_root_request portable;
+        portable.marker = options.portable_marker;
+        portable.requested = true;
+        portable.level = to_root_portable_root_level(options.portable);
+        portable.allow = options.allow_portable_root;
+        portable.deny_in_privileged_install = options.deny_portable_root_in_privileged_install;
+        portable.allow_user_config_override = options.allow_sync_config_for_portable_root;
+        portable.privileged_install_roots = options.privileged_install_roots;
+        result.portable_root = std::move(portable);
+    }
     result.create_directories = options.create_directories;
     result.use_process_environment = options.use_process_environment;
-    result.app_local = to_root_app_local_level(options.portable);
     return result;
 }
 
@@ -258,8 +265,8 @@ root_report resolve_settings_roots(const app_identity& identity, const root_opti
     const auto root_result = ld_root::resolve_app_roots(root_identity, to_options(options));
 
     result.roots = root_result.roots;
-    result.portable_requested = root_result.app_local_requested;
-    result.portable_active = root_result.app_local_active;
+    result.portable_requested = root_result.portable_root_requested;
+    result.portable_active = root_result.portable_root_active;
     result.settings_override_active = root_result.app_root_override_active;
     result.sync_config_override_active = root_result.user_config_override_active;
     result.portable = options.portable;
@@ -275,14 +282,12 @@ root_report resolve_settings_roots(const app_identity& identity, const root_opti
         } else if (diagnostic.code == "user-config-override-ignored") {
             diagnostic.code = "sync-config-override-ignored";
             diagnostic.message = "Sync config override was ignored because settings override is active";
-        } else if (diagnostic.code == "user-config-override-ignored-app-local") {
+        } else if (diagnostic.code == "user-config-override-ignored-portable") {
             diagnostic.code = "sync-config-override-ignored-portable";
             diagnostic.message = "Sync config override was ignored because portable root is active";
-        } else if (diagnostic.code == "app_local-denied-privileged-install") {
-            diagnostic.code = "portable-denied-privileged-install";
+        } else if (diagnostic.code == "portable-denied-privileged-install") {
             diagnostic.message = "Portable marker exists, but install root is privileged";
-        } else if (diagnostic.code == "app_local-denied") {
-            diagnostic.code = "portable-denied";
+        } else if (diagnostic.code == "portable-denied") {
             diagnostic.message = "Portable marker exists, but portable roots are disabled";
         } else if (diagnostic.code == "app_local-marker-missing") {
             diagnostic.code = "portable-marker-missing";

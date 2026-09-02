@@ -119,16 +119,19 @@ SaveResult to_save_result(const linuxdesktop::settings::write_report& report)
 
 bool NppParameters::load(const startup_environment& environment)
 {
+    linuxdesktop::root::portable_root_request portable_root;
+    portable_root.marker = environment.install_root / "doLocalConf.xml";
+    portable_root.level = linuxdesktop::root::portable_root_level::profile;
+    portable_root.allow_user_config_override = environment.allow_cloud_for_local_config;
+    portable_root.deny_in_privileged_install = true;
+    portable_root.privileged_install_roots = environment.privileged_install_roots;
+
     const linuxdesktop::root::report report = linuxdesktop::root::request_builder()
         .app("notepad-plus-plus", "Notepad++")
         .resource_root(environment.install_root)
         .app_root_override(environment.command_line_settings_dir)
         .user_config_override(environment.cloud_choice_dir)
-        .app_local_marker(environment.install_root / "doLocalConf.xml")
-        .app_local(linuxdesktop::root::app_local_level::profile)
-        .allow_user_config_for_app_local_root(environment.allow_cloud_for_local_config)
-        .deny_app_local_root_in_privileged_install(true)
-        .privileged_install_roots(environment.privileged_install_roots)
+        .portable_root(portable_root)
         .named_root(linuxdesktop::root::make_plugin_config_root_request(
             "plugin-config",
             linuxdesktop::root::ownership_kind::user_roaming,
@@ -138,14 +141,14 @@ bool NppParameters::load(const startup_environment& environment)
     state_.npp_path = report.roots.resources;
     state_.user_path = report.roots.config;
     state_.session_path = report.roots.session;
-    if (report.app_root_override_active || report.app_local_active) {
+    if (report.app_root_override_active || report.portable_root_active) {
         state_.session_path = report.roots.config;
     }
     state_.user_plugin_config_dir = report.roots.plugin_config;
     if (const auto* plugin_config = linuxdesktop::root::find_named_root(report, "plugin-config")) {
         state_.user_plugin_config_dir = plugin_config->path;
     }
-    state_.is_local = report.app_local_active;
+    state_.is_local = report.portable_root_active;
     state_.command_line_override_active = report.app_root_override_active;
     state_.cloud_override_active = report.user_config_override_active;
     state_.diagnostics = report.diagnostics;

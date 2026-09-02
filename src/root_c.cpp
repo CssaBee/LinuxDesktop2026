@@ -63,31 +63,31 @@ int severity_to_c(ld::severity value)
     return LD_ROOT_SEVERITY_ERROR;
 }
 
-ld::app_local_level app_local_level_from_c(int value)
+ld::portable_root_level app_local_level_from_c(int value)
 {
     switch (value) {
     case LD_ROOT_APP_LOCAL_OFF:
-        return ld::app_local_level::off;
+        return ld::portable_root_level::off;
     case LD_ROOT_APP_LOCAL_PROFILE:
-        return ld::app_local_level::profile;
+        return ld::portable_root_level::profile;
     case LD_ROOT_APP_LOCAL_CLEAN:
-        return ld::app_local_level::clean;
+        return ld::portable_root_level::clean;
     case LD_ROOT_APP_LOCAL_CONFIG_ONLY:
     default:
-        return ld::app_local_level::config_only;
+        return ld::portable_root_level::settings_only;
     }
 }
 
-int app_local_level_to_c(ld::app_local_level value)
+int app_local_level_to_c(ld::portable_root_level value)
 {
     switch (value) {
-    case ld::app_local_level::off:
+    case ld::portable_root_level::off:
         return LD_ROOT_APP_LOCAL_OFF;
-    case ld::app_local_level::profile:
+    case ld::portable_root_level::profile:
         return LD_ROOT_APP_LOCAL_PROFILE;
-    case ld::app_local_level::clean:
+    case ld::portable_root_level::clean:
         return LD_ROOT_APP_LOCAL_CLEAN;
-    case ld::app_local_level::config_only:
+    case ld::portable_root_level::settings_only:
         return LD_ROOT_APP_LOCAL_CONFIG_ONLY;
     }
     return LD_ROOT_APP_LOCAL_CONFIG_ONLY;
@@ -232,11 +232,11 @@ std::map<std::string, std::string> environment_from_c(const ld_root_environment_
 bool fill_report(const ld::report& source, ld_root_report& target)
 {
     target = {};
-    target.app_local_requested = source.app_local_requested ? 1 : 0;
-    target.app_local_active = source.app_local_active ? 1 : 0;
+    target.app_local_requested = source.portable_root_requested ? 1 : 0;
+    target.app_local_active = source.portable_root_active ? 1 : 0;
     target.app_root_override_active = source.app_root_override_active ? 1 : 0;
     target.user_config_override_active = source.user_config_override_active ? 1 : 0;
-    target.app_local_level = app_local_level_to_c(source.app_local);
+    target.app_local_level = app_local_level_to_c(source.portable_root);
     if (!assign_path(target.resources, source.roots.resources) ||
         !assign_path(target.config, source.roots.config) ||
         !assign_path(target.data, source.roots.data) ||
@@ -300,22 +300,25 @@ int ld_root_resolve_app_roots(const ld_root_options* options, ld_root_report* re
         root_options.resource_root = optional_path(options->resource_root);
         root_options.app_root_override = optional_path(options->app_root_override);
         root_options.user_config_override = optional_path(options->user_config_override);
-        root_options.app_local_marker = optional_path(options->app_local_marker);
         root_options.home_directory = optional_path(options->home_directory);
         root_options.environment = environment_from_c(options->environment, options->environment_count);
-        root_options.allow_app_local_root = options->allow_app_local_root != 0;
-        root_options.deny_app_local_root_in_privileged_install =
-            options->deny_app_local_root_in_privileged_install != 0;
-        root_options.allow_user_config_for_app_local_root =
-            options->allow_user_config_for_app_local_root != 0;
         root_options.create_directories = options->create_directories != 0;
         root_options.use_process_environment = options->use_process_environment != 0;
-        root_options.app_local = app_local_level_from_c(options->app_local_level);
-        for (size_t index = 0; index != options->privileged_install_root_count; ++index) {
-            const char* path = options->privileged_install_roots ? options->privileged_install_roots[index] : nullptr;
-            if (path && path[0]) {
-                root_options.privileged_install_roots.emplace_back(path);
+
+        if (options->app_local_marker && options->app_local_marker[0]) {
+            ld::portable_root_request portable;
+            portable.marker = optional_path(options->app_local_marker);
+            portable.level = app_local_level_from_c(options->app_local_level);
+            portable.allow = options->allow_app_local_root != 0;
+            portable.deny_in_privileged_install = options->deny_app_local_root_in_privileged_install != 0;
+            portable.allow_user_config_override = options->allow_user_config_for_app_local_root != 0;
+            for (size_t index = 0; index != options->privileged_install_root_count; ++index) {
+                const char* path = options->privileged_install_roots ? options->privileged_install_roots[index] : nullptr;
+                if (path && path[0]) {
+                    portable.privileged_install_roots.emplace_back(path);
+                }
             }
+            root_options.portable_root = std::move(portable);
         }
         for (size_t index = 0; index != options->named_root_count; ++index) {
             const auto& source = options->named_roots[index];

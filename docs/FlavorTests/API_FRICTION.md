@@ -53,7 +53,7 @@ Fit:
   `linuxdesktop2026_generate_path_defaults()`, and passes generated platform
   defaults into `linuxdesktop::root::options`.
 - `linuxdesktop::root` fits the main layout decision: install resources,
-  command-line settings directory, cloud settings directory, app-local marker,
+  command-line settings directory, cloud settings directory, portable marker,
   privileged install policy, session root, and plugin config root.
 - `linuxdesktop::settings` fits default XML hydration and common validated
   config writes.
@@ -62,7 +62,7 @@ Fit:
 - `ld_core` provides product-diagnostic translation helpers so adapters can map
   shared severity, codes, messages, related paths, and diagnostic handling flags
   into product-owned diagnostics without hand-copying each report shape.
-  `"app_local-denied-privileged-install"` becomes a Notepad++ diagnostic with
+  `"portable-denied-privileged-install"` becomes a Notepad++ diagnostic with
   `handling.prompt_user = true`, so the adapter does not need a parallel
   disposition vocabulary or diagnostic-code table.
 
@@ -145,7 +145,7 @@ Friction:
 - KeePassXC has enough XDG and roaming/local vocabulary that the raw options
   object is clearer than the fluent builder. That is a sign the builder should
   stay optional, not become the blessed path for all root consumers.
-- The product still needs to translate generic app-local/root diagnostics into
+- The product still needs to translate generic portable/root diagnostics into
   KeePassXC prompts or warnings.
 - The local-settings root uses LinuxDesktop2026 purpose and ownership terms in
   the adapter. That is acceptable, but it does not map one-to-one to
@@ -324,14 +324,15 @@ Fit:
 - Executable-relative `gamecontrollerdb.txt` and ROM-relative `.sym`/`.noi`
   lookup stay in Gearcoleco code.
 
-Friction:
+Boundary fit:
 
-- The command-line portable switch is represented as a settings-root override,
-  while marker-based portable mode is represented as a portable marker. That is
-  accurate enough, but the two ways of asking for the same product behavior are
-  visible in adapter code.
-- The root builder still uses LinuxDesktop2026 portable vocabulary instead of a
-  product phrase like "store everything beside the emulator binary."
+- Gearcoleco owns the product-facing phrase for portable mode: store
+  configuration, state, cache, and related user files beside the emulator
+  binary. LinuxDesktop2026 supplies one `portable_root_request` for that policy
+  without taking over product wording.
+- The root builder uses LinuxDesktop2026 portable-root vocabulary. Gearcoleco's
+  adapter maps that vocabulary to emulator startup semantics at the product
+  boundary.
 
 Leakage:
 
@@ -416,7 +417,7 @@ Current desired dependency shape:
   executable/install/resource locations, path lists, plugin path sets, and
   lightweight bootstrap adapters.
 - Link `LinuxDesktop2026::ld_root` when the caller needs user/app-owned root
-  topology, app-local or portable policy, overrides, named roots, or component
+  topology, portable policy, overrides, named roots, or component
   roots.
 - Link `LinuxDesktop2026::ld_settings` when the caller needs settings
   hydration, settings layers, or validated settings writes.

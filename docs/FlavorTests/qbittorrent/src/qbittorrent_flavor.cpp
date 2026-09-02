@@ -23,22 +23,24 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     portable_mode_enabled_ = !args.profile_dir.has_value() && std::filesystem::is_directory(portable_profile_path);
     relative_fastresume_paths_ = args.relative_fastresume_paths || portable_mode_enabled_;
 
+    linuxdesktop::root::portable_root_request portable_root;
+    portable_root.root = portable_profile_path;
+    portable_root.marker = portable_profile_path;
+    portable_root.level = linuxdesktop::root::portable_root_level::profile;
+
     auto builder = linuxdesktop::root::request_builder()
         .app("qBittorrent", "qBittorrent" + configurationSuffix())
         .resource_root(environment.executable_dir)
         .home_directory(environment.home_directory)
         .environment(environment.variables)
         .use_process_environment(false)
-        .app_local(linuxdesktop::root::app_local_level::profile)
-        .app_local_marker(portable_profile_path)
+        .portable_root(portable_root)
         .named_root(linuxdesktop::root::make_log_root_request(
             "logs",
             linuxdesktop::root::ownership_kind::user_local,
             "logs"));
     if (args.profile_dir) {
         builder.app_root_override(*args.profile_dir);
-    } else if (portable_mode_enabled_) {
-        builder.app_root_override(portable_profile_path);
     }
 
     const auto report = builder.resolve();

@@ -88,7 +88,6 @@ bool Config::open(const RuntimeEnvironment& environment)
     options.home_directory = environment.home_directory;
     options.environment = environment.variables;
     options.use_process_environment = false;
-    options.app_local = linuxdesktop::root::app_local_level::profile;
     if (environment.portable_config_dir) {
         options.app_root_override = *environment.portable_config_dir;
     }

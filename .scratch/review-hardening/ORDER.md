@@ -6,11 +6,13 @@ list below.
 
 ## Current Order
 
-- `50` - Add Portable Root Request API
 - `51` - Harden Plugin Path Kind Taxonomy
+- `52` - Adopt Invasive Hardening Test Posture
+- `53` - Expand Adversarial Hardening Tests
 
 ## Implemented
 
+- `50` - Add Portable Root Request API
 - `49` - Add Product-Owned Diagnostic Boundaries
 - `48` - Contract Settings-Owned Root Builder
 - `47` - Add Public Root Topology Surface
@@ -102,6 +104,13 @@ codes, operation summaries, and migration/write/default-hydration decisions.
 `ld_core` owns the library-code handling hints, so the maintained consumer
 branch does not teach users to bring LinuxDesktop2026 report types or diagnostic
 catalogs into product APIs just to surface warnings, prompts, or errors.
+
+Task 50 gives `ld_root` one portable-root request shape for app-owned roots
+selected by explicit product policy, command-line switches, or marker files.
+`ld_settings` forwards that request only as a convenience for settings lifecycle
+call sites. C++ users no longer have to model a product's portable mode as a
+generic app-root override plus separate marker policy, while the C ABI keeps its
+existing names and maps them into the C++ request internally.
 
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`

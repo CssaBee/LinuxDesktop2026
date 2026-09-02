@@ -246,11 +246,11 @@ std::vector<std::filesystem::path> default_privileged_install_roots()
 #endif
 }
 
-bool is_under_privileged_install_root(const std::filesystem::path& path, const options& options)
+bool is_under_privileged_install_root(const std::filesystem::path& path, const portable_root_request& request)
 {
-    const auto roots = options.privileged_install_roots.empty()
+    const auto roots = request.privileged_install_roots.empty()
         ? default_privileged_install_roots()
-        : options.privileged_install_roots;
+        : request.privileged_install_roots;
 
     for (const auto& root : roots) {
         if (!root.empty() && path_is_at_or_under(path, root)) {
@@ -435,39 +435,9 @@ request_builder& request_builder::user_config_override(std::optional<std::filesy
     return *this;
 }
 
-request_builder& request_builder::app_local_marker(std::optional<std::filesystem::path> path)
+request_builder& request_builder::portable_root(portable_root_request request)
 {
-    options_.app_local_marker = std::move(path);
-    return *this;
-}
-
-request_builder& request_builder::app_local(app_local_level level)
-{
-    options_.app_local = level;
-    return *this;
-}
-
-request_builder& request_builder::allow_app_local_root(bool enabled)
-{
-    options_.allow_app_local_root = enabled;
-    return *this;
-}
-
-request_builder& request_builder::deny_app_local_root_in_privileged_install(bool enabled)
-{
-    options_.deny_app_local_root_in_privileged_install = enabled;
-    return *this;
-}
-
-request_builder& request_builder::allow_user_config_for_app_local_root(bool enabled)
-{
-    options_.allow_user_config_for_app_local_root = enabled;
-    return *this;
-}
-
-request_builder& request_builder::privileged_install_roots(std::vector<std::filesystem::path> roots)
-{
-    options_.privileged_install_roots = std::move(roots);
+    options_.portable_root = std::move(request);
     return *this;
 }
 
@@ -489,16 +459,16 @@ request_builder& request_builder::component_roots(component_root_request request
     return *this;
 }
 
-std::string_view to_string(app_local_level value)
+std::string_view to_string(portable_root_level value)
 {
     switch (value) {
-    case app_local_level::off:
+    case portable_root_level::off:
         return "off";
-    case app_local_level::config_only:
-        return "config_only";
-    case app_local_level::profile:
+    case portable_root_level::settings_only:
+        return "settings_only";
+    case portable_root_level::profile:
         return "profile";
-    case app_local_level::clean:
+    case portable_root_level::clean:
         return "clean";
     }
     return "unknown";
@@ -596,8 +566,6 @@ report resolve_app_roots(const app_identity& identity, const options& options)
     report.diagnostics.insert(report.diagnostics.end(), path_report.diagnostics.begin(), path_report.diagnostics.end());
     report.roots.resources = selected_location_or_empty(path_report, ld_paths::location_role::resources);
 
-    report.app_local = options.app_local;
-
     if (options.app_root_override && !options.app_root_override->empty()) {
         if (options.app_root_override->is_absolute()) {
             report.app_root_override_active = true;
@@ -615,42 +583,78 @@ report resolve_app_roots(const app_identity& identity, const options& options)
         }
     }
 
-    report.app_local_requested = options.app_local_marker.has_value() && !options.app_local_marker->empty();
-    if (!report.app_root_override_active && report.app_local_requested) {
-        const auto marker = *options.app_local_marker;
-        std::error_code ec;
-        if (std::filesystem::exists(marker, ec)) {
-            if (options.allow_app_local_root && options.app_local != app_local_level::off) {
-                const auto app_local_root = marker.parent_path();
-                const auto privileged_path = !report.roots.resources.empty() ? report.roots.resources : app_local_root;
-                if (options.deny_app_local_root_in_privileged_install &&
-                    is_under_privileged_install_root(privileged_path, options)) {
-                    report.diagnostics.push_back(detail::make_diagnostic(
-                        severity::warning,
-                        "app_local-denied-privileged-install",
-                        "App-local marker exists, but install root is privileged",
-                        privileged_path));
-                } else {
-                    report.app_local_active = true;
-                    report.roots.config = app_local_root;
-                    report.roots.data = app_local_root;
-                    report.roots.state = app_local_root;
-                    report.roots.cache = app_local_root / "cache";
-                    report.roots.runtime = std::filesystem::path{};
-                }
+    if (options.portable_root) {
+        const auto& request = *options.portable_root;
+        report.portable_root = request.level;
+        bool marker_exists = false;
+        if (request.marker && !request.marker->empty()) {
+            std::error_code ec;
+            marker_exists = std::filesystem::exists(*request.marker, ec);
+        }
+        report.portable_root_requested = request.requested || marker_exists;
+    }
+
+    if (!report.app_root_override_active && options.portable_root && report.portable_root_requested) {
+        const auto& request = *options.portable_root;
+        std::filesystem::path portable_root;
+        bool marker_exists = false;
+        if (request.marker && !request.marker->empty()) {
+            std::error_code ec;
+            marker_exists = std::filesystem::exists(*request.marker, ec);
+        }
+
+        if (request.root && !request.root->empty()) {
+            portable_root = *request.root;
+        } else if (marker_exists && request.marker && !request.marker->empty()) {
+            portable_root = request.marker->parent_path();
+        }
+
+        if (portable_root.empty()) {
+            if (request.marker && !request.marker->empty()) {
+                report.diagnostics.push_back(detail::make_diagnostic(
+                    severity::info,
+                    "portable-marker-missing",
+                    "Portable marker was requested but does not exist",
+                    *request.marker));
             } else {
                 report.diagnostics.push_back(detail::make_diagnostic(
                     severity::warning,
-                    "app_local-denied",
-                    "App-local marker exists, but app-local roots are disabled",
-                    marker));
+                    "portable-root-missing",
+                    "Portable root was requested but no root or marker path was provided"));
+            }
+        } else if (!portable_root.is_absolute()) {
+            report.diagnostics.push_back(detail::make_diagnostic(
+                severity::error,
+                "portable-root-relative",
+                "Portable root must be absolute",
+                portable_root));
+        } else if (request.allow && request.level != portable_root_level::off) {
+            const auto privileged_path = !report.roots.resources.empty() ? report.roots.resources : portable_root;
+            if (request.deny_in_privileged_install && is_under_privileged_install_root(privileged_path, request)) {
+                report.diagnostics.push_back(detail::make_diagnostic(
+                    severity::warning,
+                    "portable-denied-privileged-install",
+                    "Portable root was requested, but install root is privileged",
+                    privileged_path));
+            } else {
+                report.portable_root_active = true;
+                if (request.level == portable_root_level::settings_only) {
+                    apply_default_roots_from_paths(report, path_report);
+                    report.roots.config = portable_root;
+                } else {
+                    report.roots.config = portable_root;
+                    report.roots.data = portable_root;
+                    report.roots.state = portable_root;
+                    report.roots.cache = portable_root / "cache";
+                    report.roots.runtime = std::filesystem::path{};
+                }
             }
         } else {
             report.diagnostics.push_back(detail::make_diagnostic(
-                severity::info,
-                "app_local-marker-missing",
-                "App-local marker was requested but does not exist",
-                marker));
+                severity::warning,
+                "portable-denied",
+                "Portable root was requested, but portable roots are disabled",
+                portable_root));
         }
     }
 
@@ -665,11 +669,12 @@ report resolve_app_roots(const app_identity& identity, const options& options)
                 "user-config-override-ignored",
                 "User config override was ignored because app root override is active",
                 *options.user_config_override));
-        } else if (report.app_local_active && !options.allow_user_config_for_app_local_root) {
+        } else if (report.portable_root_active &&
+            options.portable_root && !options.portable_root->allow_user_config_override) {
             report.diagnostics.push_back(detail::make_diagnostic(
                 severity::info,
-                "user-config-override-ignored-app-local",
-                "User config override was ignored because app-local root is active",
+                "user-config-override-ignored-portable",
+                "User config override was ignored because portable root is active",
                 *options.user_config_override));
         } else if (options.user_config_override->is_absolute()) {
             report.user_config_override_active = true;

@@ -83,8 +83,9 @@ struct root_options {
     // Moves config/plugin config only; state and sessions stay machine-local.
     std::optional<std::filesystem::path> sync_config_override;
 
-    // Activates app-local roots when the marker exists and policy allows it.
+    // Activates portable roots when the marker exists and policy allows it.
     std::optional<std::filesystem::path> portable_marker;
+    std::optional<linuxdesktop::root::portable_root_request> portable_root;
 
     // Used when portable roots must be denied under protected install locations.
     std::vector<std::filesystem::path> privileged_install_roots;
@@ -168,6 +169,12 @@ public:
     root_builder& portable_marker(std::optional<std::filesystem::path> path)
     {
         options_.portable_marker = std::move(path);
+        return *this;
+    }
+
+    root_builder& portable_root(linuxdesktop::root::portable_root_request request)
+    {
+        options_.portable_root = std::move(request);
         return *this;
     }
 
