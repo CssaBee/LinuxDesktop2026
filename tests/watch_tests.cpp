@@ -366,6 +366,7 @@ void supports_callback_delivery()
     require(seen.front().kind == ld::event_kind::modified, "callback should receive event kind");
     lock.unlock();
     require(watcher.poll() == std::nullopt, "callback-delivered events should not also be queued");
+    watcher.stop();
 }
 
 void callback_stop_and_remove_are_safe()
@@ -679,7 +680,11 @@ void captures_settled_file_options_in_start_path()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{25}, std::chrono::milliseconds{50}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{25},
+        std::chrono::milliseconds{50},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
     require(report.capabilities.settled_file_helper, "backend should report settled-file capability");
@@ -704,7 +709,11 @@ void settled_file_wait_does_not_block_raw_delivery()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{500}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{500},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
@@ -731,7 +740,11 @@ void settled_file_events_coalesce_by_source_and_path()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{25}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{25},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
@@ -799,7 +812,11 @@ void remove_watch_cancels_pending_settled_file_event()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{200}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{200},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
@@ -822,7 +839,11 @@ void stop_cancels_pending_settled_file_event()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{500}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{500},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
@@ -877,7 +898,11 @@ void removed_settled_watch_does_not_stop_future_settlement()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{200}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{200},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto canceled_report = watcher.add_watch(options);
     require(canceled_report.ok, "first settled-file watch should start");
 
@@ -911,7 +936,11 @@ void stale_settled_generation_does_not_stop_future_settlement()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{75}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{75},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
@@ -954,7 +983,11 @@ void settled_file_large_batch_delivers_all_paths()
 
     ld::watch_options options;
     options.path = root;
-    options.settle = ld::settle_options{std::chrono::milliseconds{0}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
     const auto report = watcher.add_watch(options);
     require(report.ok, "settled-file watch should start");
 
