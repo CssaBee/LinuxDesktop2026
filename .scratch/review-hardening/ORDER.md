@@ -6,11 +6,11 @@ list below.
 
 ## Current Order
 
-- `52` - Adopt Invasive Hardening Test Posture
 - `53` - Expand Adversarial Hardening Tests
 
 ## Implemented
 
+- `52` - Adopt Invasive Hardening Test Posture
 - `51` - Harden Plugin Path Kind Taxonomy
 - `50` - Add Portable Root Request API
 - `49` - Add Product-Owned Diagnostic Boundaries
@@ -121,5 +121,13 @@ default-root metadata instead of growing the built-in enum. CtrlrX now uses the
 settled VST3/Audio Unit/AAX path API, and tests include a Qt side-by-side
 counterexample.
 
+Task 52 makes invasive hardening tests an explicit posture for the active
+modules. The normal suite treats generated file content, directory lifecycle,
+cleanup after partial failures, C ABI nested ownership, cross-module diagnostic
+propagation, root/path selection explanation, and migration before/after action
+traces as caller-visible behavior. The posture is recorded in ADR 0014 and
+stays local, deterministic, and fast enough for normal CTest runs.
+
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`
+ADR: `docs/adr/0014-adopt-invasive-and-adversarial-hardening-tests.md`

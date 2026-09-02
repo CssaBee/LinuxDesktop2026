@@ -127,6 +127,41 @@ void execute_copies_file()
     require(read_file(target).find("copied") != std::string::npos, "target should contain copied file");
 }
 
+void execute_overwrite_records_before_and_after_state()
+{
+    const auto root = test_root();
+    const auto source = root / "old" / "config.xml";
+    const auto target = root / "new" / "config.xml";
+    std::filesystem::create_directories(source.parent_path());
+    std::filesystem::create_directories(target.parent_path());
+    {
+        std::ofstream file(source);
+        file << "<Config copied=\"new\" />\n";
+    }
+    {
+        std::ofstream file(target);
+        file << "<Config copied=\"old\" />\n";
+    }
+
+    ld::options plan_options;
+    plan_options.overwrite_existing = true;
+    const auto plan = ld::plan_copy_file(source, target, plan_options);
+
+    ld::options execute_options;
+    execute_options.dry_run = false;
+    execute_options.overwrite_existing = true;
+    const auto report = ld::execute_migration_plan(plan, execute_options);
+
+    require(report.ok, "migration overwrite execution should succeed when overwrite_existing is true");
+    require(report.actions.size() == 1, "migration overwrite execution should report one action");
+    require(report.actions[0].target_existed_before, "migration overwrite should record existing target before execution");
+    require(report.actions[0].source_existed_before, "migration overwrite should record existing source before execution");
+    require(report.actions[0].source_exists_after, "migration overwrite should leave copy source in place");
+    require(report.actions[0].target_exists_after, "migration overwrite should keep target after execution");
+    require(report.actions[0].executed, "migration overwrite should mark action executed");
+    require(read_file(target).find("new") != std::string::npos, "migration overwrite should replace target content");
+}
+
 void move_execution_requires_dangerous_permission()
 {
     const auto root = test_root();
@@ -419,6 +454,7 @@ int main()
     const std::vector<std::pair<std::string, void (*)()>> tests = {
         {"plan_is_dry_run_first", plan_is_dry_run_first},
         {"execute_copies_file", execute_copies_file},
+        {"execute_overwrite_records_before_and_after_state", execute_overwrite_records_before_and_after_state},
         {"move_execution_requires_dangerous_permission", move_execution_requires_dangerous_permission},
         {"execute_copies_directory", execute_copies_directory},
         {"execute_moves_file_with_permission", execute_moves_file_with_permission},

@@ -144,6 +144,35 @@ void autostart_linux_writes_queries_and_removes_desktop_file()
 #endif
 }
 
+void autostart_linux_removal_only_deletes_generated_entry()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "autostart-isolation";
+    const auto entry = autostart_entry_for_tests();
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root;
+
+    const auto applied = ld::apply_autostart(entry, options);
+    require(applied.ok, "desktop Linux autostart write should succeed before isolated removal");
+    require(applied.path.has_value(), "desktop Linux autostart write should report generated path");
+
+    const auto sibling = root / "other-product.desktop";
+    {
+        std::ofstream file(sibling);
+        file << "[Desktop Entry]\nName=Other Product\n";
+    }
+
+    const auto removed = ld::remove_autostart(entry, options);
+    require(removed.ok, "desktop Linux autostart isolated remove should succeed");
+    require(!std::filesystem::exists(*applied.path), "desktop Linux autostart remove should delete generated entry");
+    require(read_file(sibling).find("Other Product") != std::string::npos,
+        "desktop Linux autostart remove should leave sibling desktop entries untouched");
+#endif
+}
+
 void autostart_linux_routes_config_home_through_paths()
 {
 #if !defined(_WIN32)
@@ -201,6 +230,8 @@ void policy_linux_writes_queries_and_removes_dconf_files()
     const auto removed = ld::remove_policy(entry, options);
     require(removed.ok, "desktop Linux policy removal should succeed");
     require(!std::filesystem::exists(*applied.path), "desktop Linux policy removal should remove defaults file");
+    require(!std::filesystem::exists(root / "locks" / "desktop-tests-theme.conf"),
+        "desktop Linux policy removal should remove matching lock file");
 #endif
 }
 
@@ -209,6 +240,7 @@ int main()
     capability_report_covers_extraction_scope();
     autostart_dry_run_does_not_write();
     autostart_linux_writes_queries_and_removes_desktop_file();
+    autostart_linux_removal_only_deletes_generated_entry();
     autostart_linux_routes_config_home_through_paths();
     policy_write_requires_explicit_permission();
     policy_linux_writes_queries_and_removes_dconf_files();
