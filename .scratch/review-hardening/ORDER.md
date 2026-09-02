@@ -10,11 +10,11 @@ list below.
 - `57` - Fix Watch Callback Self-Destruction Lifecycle
 - `58` - Run ld_watch Lifecycle And Settlement Discovery
 - `59` - Add Adversarial CI And ThreadSanitizer Evidence
-- `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
 - `60` - Narrow And Harden Migration Filesystem Semantics
 
 ## Implemented
 
+- `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
 - `54` - Reconcile Review Claim And Module Boundary Docs
 - `53` - Expand Adversarial Hardening Tests
 - `52` - Adopt Invasive Hardening Test Posture

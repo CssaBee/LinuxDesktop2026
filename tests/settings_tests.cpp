@@ -89,6 +89,74 @@ ld::app_identity identity()
     return value;
 }
 
+struct settings_root_topology {
+    std::filesystem::path root;
+    std::filesystem::path home;
+    std::filesystem::path config_family;
+    std::filesystem::path data_family;
+    std::filesystem::path state_family;
+    std::filesystem::path cache_family;
+    std::filesystem::path runtime_family;
+    std::filesystem::path install_family;
+    std::filesystem::path resource_root;
+    std::filesystem::path portable_root;
+    std::filesystem::path settings_override;
+    std::filesystem::path sync_config_override;
+
+    explicit settings_root_topology(std::filesystem::path base)
+        : root(std::move(base))
+        , home(root / "home")
+        , config_family(root / "fs-config")
+        , data_family(root / "fs-data")
+        , state_family(root / "fs-state")
+        , cache_family(root / "fs-cache")
+        , runtime_family(root / "fs-runtime")
+        , install_family(root / "fs-install")
+        , resource_root(install_family / "resources")
+        , portable_root(root / "fs-portable" / "portable-profile")
+        , settings_override(root / "fs-settings-override" / "profile")
+        , sync_config_override(root / "fs-sync-config" / "profile")
+    {
+    }
+};
+
+settings_root_topology settings_root_resolution_multi_filesystem_fixture()
+{
+    return settings_root_topology{test_root() / "multi-filesystem-roots"};
+}
+
+ld_paths::platform_path_defaults separated_platform_defaults(const settings_root_topology& topology)
+{
+    ld_paths::platform_path_defaults defaults;
+#if defined(_WIN32)
+    defaults.windows_roaming_appdata = topology.config_family / "roaming";
+    defaults.windows_local_appdata = topology.state_family / "local";
+    defaults.xdg_runtime_dir = topology.runtime_family / "runtime";
+#else
+    defaults.xdg_config_home = topology.config_family / "xdg-config";
+    defaults.xdg_data_home = topology.data_family / "xdg-data";
+    defaults.xdg_state_home = topology.state_family / "xdg-state";
+    defaults.xdg_cache_home = topology.cache_family / "xdg-cache";
+    defaults.xdg_runtime_dir = topology.runtime_family / "xdg-runtime";
+#endif
+    return defaults;
+}
+
+ld::root_options separated_root_options(const settings_root_topology& topology)
+{
+    ld::root_options options;
+    options.resource_root = topology.resource_root;
+    options.home_directory = topology.home;
+    options.platform_defaults = separated_platform_defaults(topology);
+    options.use_process_environment = false;
+    return options;
+}
+
+std::filesystem::path app_leaf()
+{
+    return std::filesystem::path{"LinuxDesktop2026"} / "settings-tests";
+}
+
 void exposes_cpp_version()
 {
     require(ld::version_major == 0, "C++ version major should match project version");
@@ -388,6 +456,227 @@ void delegates_platform_defaults_to_paths()
         "settings data root should use XDG platform defaults");
     require(report.roots.runtime == root / "runtime" / "settings-tests",
         "settings runtime root should use XDG runtime platform defaults");
+#endif
+}
+
+void resolves_settings_roots_across_separated_platform_families()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    auto options = separated_root_options(topology);
+
+    const auto report = ld::resolve_settings_roots(identity(), options);
+
+    require(!has_error_diagnostic(report.diagnostics),
+        "separated platform root families should resolve without error diagnostics");
+    require(report.roots.resources == topology.resource_root, "resource root should use the install/resource family");
+#if defined(_WIN32)
+    require(report.roots.config == topology.config_family / "roaming" / app_leaf(),
+        "Windows config root should use the separated roaming family");
+    require(report.roots.data == topology.config_family / "roaming" / app_leaf(),
+        "Windows data root should use the separated roaming family");
+    require(report.roots.state == topology.state_family / "local" / app_leaf() / "state",
+        "Windows state root should use the separated local family");
+    require(report.roots.cache == topology.state_family / "local" / app_leaf() / "cache",
+        "Windows cache root should use the separated local family");
+    require(report.roots.runtime == topology.runtime_family / "runtime" / "settings-tests",
+        "Windows runtime root should use the injected runtime default");
+#else
+    require(report.roots.config == topology.config_family / "xdg-config" / app_leaf(),
+        "XDG config root should use the separated config family");
+    require(report.roots.data == topology.data_family / "xdg-data" / app_leaf(),
+        "XDG data root should use the separated data family");
+    require(report.roots.state == topology.state_family / "xdg-state" / app_leaf(),
+        "XDG state root should use the separated state family");
+    require(report.roots.cache == topology.cache_family / "xdg-cache" / app_leaf(),
+        "XDG cache root should use the separated cache family");
+    require(report.roots.runtime == topology.runtime_family / "xdg-runtime" / "settings-tests",
+        "XDG runtime root should use the separated runtime family");
+#endif
+    require(report.roots.session == report.roots.state / "sessions",
+        "session root should report its state-root ownership");
+    require(report.roots.plugin_config == report.roots.config / "plugins" / "Config",
+        "plugin config root should report its config-root ownership");
+    require(std::filesystem::is_directory(report.roots.config), "config root should be created");
+    require(std::filesystem::is_directory(report.roots.data), "data root should be created");
+    require(std::filesystem::is_directory(report.roots.state), "state root should be created");
+    require(std::filesystem::is_directory(report.roots.cache), "cache root should be created");
+    require(std::filesystem::is_directory(report.roots.session), "session root should be created");
+    require(std::filesystem::is_directory(report.roots.plugin_config), "plugin config root should be created");
+    require(std::filesystem::is_directory(report.roots.runtime), "runtime root should be created");
+}
+
+void separated_roots_ignore_process_environment()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    auto options = separated_root_options(topology);
+#if defined(_WIN32)
+    options.environment["APPDATA"] = "";
+    options.environment["LOCALAPPDATA"] = "";
+#else
+    options.environment["XDG_CONFIG_HOME"] = "";
+    options.environment["XDG_DATA_HOME"] = "";
+    options.environment["XDG_STATE_HOME"] = "";
+    options.environment["XDG_CACHE_HOME"] = "";
+    options.environment["XDG_RUNTIME_DIR"] = "";
+#endif
+    options.create_directories = false;
+
+    const auto report = ld::resolve_settings_roots(identity(), options);
+
+    require(!has_error_diagnostic(report.diagnostics),
+        "empty injected environment should not force process environment reads");
+#if defined(_WIN32)
+    require(report.roots.config == topology.config_family / "roaming" / app_leaf(),
+        "disabled process environment should keep Windows platform config defaults");
+#else
+    require(report.roots.config == topology.config_family / "xdg-config" / app_leaf(),
+        "disabled process environment should keep XDG platform config defaults");
+    require(report.roots.data == topology.data_family / "xdg-data" / app_leaf(),
+        "disabled process environment should keep XDG platform data defaults");
+#endif
+}
+
+void settings_overrides_resolve_across_separated_families()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    auto settings_options = separated_root_options(topology);
+    settings_options.settings_override = topology.settings_override;
+
+    const auto settings_report = ld::resolve_settings_roots(identity(), settings_options);
+
+    require(settings_report.settings_override_active, "absolute settings override should activate");
+    require(settings_report.roots.config == topology.settings_override,
+        "settings override should own config on its override family");
+    require(settings_report.roots.data == topology.settings_override,
+        "settings override should own data on its override family");
+    require(settings_report.roots.state == topology.settings_override,
+        "settings override should own state on its override family");
+    require(settings_report.roots.cache == topology.settings_override / "cache",
+        "settings override should own cache below its override family");
+    require(settings_report.roots.session == topology.settings_override / "sessions",
+        "settings override should report session below its override family");
+
+    auto sync_options = separated_root_options(topology);
+    sync_options.sync_config_override = topology.sync_config_override;
+    const auto sync_report = ld::resolve_settings_roots(identity(), sync_options);
+
+    require(sync_report.sync_config_override_active, "absolute sync config override should activate");
+    require(sync_report.roots.config == topology.sync_config_override,
+        "sync config override should own config on its override family");
+    require(sync_report.roots.plugin_config == topology.sync_config_override / "plugins" / "Config",
+        "sync config override should move plugin config with config");
+    require(sync_report.roots.state != topology.sync_config_override,
+        "sync config override should keep state on a machine-local family");
+    require(sync_report.roots.session == sync_report.roots.state / "sessions",
+        "sync config override should keep sessions under state");
+}
+
+void portable_roots_resolve_across_separated_families()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    std::filesystem::create_directories(topology.portable_root);
+    const auto marker = topology.portable_root / "portable.marker";
+    {
+        std::ofstream marker_file(marker);
+        marker_file << "portable\n";
+    }
+
+    auto options = separated_root_options(topology);
+    options.portable_marker = marker;
+    options.portable = ld::portable_level::profile;
+
+    const auto report = ld::resolve_settings_roots(identity(), options);
+
+    require(report.portable_requested, "portable marker should be reported as requested");
+    require(report.portable_active, "portable profile root should activate from the separated portable family");
+    require(report.roots.resources == topology.resource_root, "portable mode should keep the resource root report");
+    require(report.roots.config == topology.portable_root, "portable profile should own config");
+    require(report.roots.data == topology.portable_root, "portable profile should own data");
+    require(report.roots.state == topology.portable_root, "portable profile should own state");
+    require(report.roots.cache == topology.portable_root / "cache", "portable profile should own cache");
+    require(report.roots.runtime.empty(), "portable profile should not report a runtime root");
+    require(report.roots.session == topology.portable_root / "sessions", "portable profile should own sessions");
+}
+
+void settings_root_resolution_reports_hostile_roots()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    auto relative_options = separated_root_options(topology);
+    relative_options.create_directories = false;
+#if defined(_WIN32)
+    relative_options.environment["APPDATA"] = "relative-roaming";
+#else
+    relative_options.environment["XDG_CONFIG_HOME"] = "relative-config";
+#endif
+
+    const auto relative_report = ld::resolve_settings_roots(identity(), relative_options);
+
+    require(has_diagnostic(relative_report.diagnostics, "paths.environment.relative_ignored"),
+        "relative injected environment roots should be diagnosed");
+#if defined(_WIN32)
+    require(relative_report.roots.config == topology.config_family / "roaming" / app_leaf(),
+        "relative Windows environment root should fall through to platform defaults");
+#else
+    require(relative_report.roots.config == topology.config_family / "xdg-config" / app_leaf(),
+        "relative XDG environment root should fall through to platform defaults");
+#endif
+
+    const auto file_root = topology.sync_config_override;
+    std::filesystem::create_directories(file_root.parent_path());
+    {
+        std::ofstream file(file_root);
+        file << "not a directory\n";
+    }
+
+    auto collision_options = separated_root_options(topology);
+    collision_options.sync_config_override = file_root;
+    const auto collision_report = ld::resolve_settings_roots(identity(), collision_options);
+
+    require(collision_report.sync_config_override_active,
+        "absolute sync config override should remain visible even when creation fails");
+    require(has_diagnostic(collision_report.diagnostics, "paths.directory.exists_as_file"),
+        "file-as-directory sync root should report the generic directory diagnostic");
+    require(collision_report.roots.config == file_root,
+        "file-as-directory sync root should stay visible in the root report");
+
+    auto missing_runtime_options = separated_root_options(topology);
+    missing_runtime_options.platform_defaults->xdg_runtime_dir.reset();
+    missing_runtime_options.create_directories = false;
+    const auto missing_runtime_report = ld::resolve_settings_roots(identity(), missing_runtime_options);
+
+    require(missing_runtime_report.roots.runtime.empty(), "missing runtime root should be reported as empty");
+    require(missing_runtime_report.roots.session == missing_runtime_report.roots.state / "sessions",
+        "missing runtime root should not affect session ownership");
+}
+
+void portable_root_policy_denial_stays_reportable()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    std::filesystem::create_directories(topology.portable_root);
+    const auto marker = topology.portable_root / "portable.marker";
+    {
+        std::ofstream marker_file(marker);
+        marker_file << "portable\n";
+    }
+
+    auto options = separated_root_options(topology);
+    options.resource_root = topology.install_family / "privileged" / "app";
+    options.portable_marker = marker;
+    options.privileged_install_roots = {topology.install_family / "privileged"};
+    options.deny_portable_root_in_privileged_install = true;
+
+    const auto report = ld::resolve_settings_roots(identity(), options);
+
+    require(report.portable_requested, "denied portable marker should stay reportable");
+    require(!report.portable_active, "portable root should be denied under the privileged install family");
+    require(has_diagnostic(report.diagnostics, "portable-denied-privileged-install"),
+        "portable policy denial should expose a diagnostic");
+#if defined(_WIN32)
+    require(report.roots.config == topology.config_family / "roaming" / app_leaf(),
+        "denied portable root should fall back to Windows platform config roots");
+#else
+    require(report.roots.config == topology.config_family / "xdg-config" / app_leaf(),
+        "denied portable root should fall back to XDG platform config roots");
 #endif
 }
 
@@ -1280,6 +1569,12 @@ int main()
         {"settings_override_wins_over_sync_override", settings_override_wins_over_sync_override},
         {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
         {"delegates_platform_defaults_to_paths", delegates_platform_defaults_to_paths},
+        {"resolves_settings_roots_across_separated_platform_families", resolves_settings_roots_across_separated_platform_families},
+        {"separated_roots_ignore_process_environment", separated_roots_ignore_process_environment},
+        {"settings_overrides_resolve_across_separated_families", settings_overrides_resolve_across_separated_families},
+        {"portable_roots_resolve_across_separated_families", portable_roots_resolve_across_separated_families},
+        {"settings_root_resolution_reports_hostile_roots", settings_root_resolution_reports_hostile_roots},
+        {"portable_root_policy_denial_stays_reportable", portable_root_policy_denial_stays_reportable},
         {"reports_path_directory_failure_for_generic_root_creation", reports_path_directory_failure_for_generic_root_creation},
         {"resolves_settings_layers", resolves_settings_layers},
         {"root_builder_preserves_root_options", root_builder_preserves_root_options},
