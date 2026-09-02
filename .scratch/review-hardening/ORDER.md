@@ -6,10 +6,16 @@ list below.
 
 ## Current Order
 
-No active hardening tickets remain in this sequence.
+- `56` - Fix Watch Settle Worker Permanent Exit
+- `57` - Fix Watch Callback Self-Destruction Lifecycle
+- `58` - Run ld_watch Lifecycle And Settlement Discovery
+- `59` - Add Adversarial CI And ThreadSanitizer Evidence
+- `55` - Add Settings Root Resolution Multi-Filesystem Fixtures
+- `60` - Narrow And Harden Migration Filesystem Semantics
 
 ## Implemented
 
+- `54` - Reconcile Review Claim And Module Boundary Docs
 - `53` - Expand Adversarial Hardening Tests
 - `52` - Adopt Invasive Hardening Test Posture
 - `51` - Harden Plugin Path Kind Taxonomy
@@ -139,3 +145,18 @@ translate failures instead of reverse-engineering silent normalization.
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`
 ADR: `docs/adr/0014-adopt-invasive-and-adversarial-hardening-tests.md`
+
+## Review-Derived Hardening Batch
+
+The September 2026 external review opened a new hardening batch after the
+original FlavorTest/root-path sequence. The batch keeps confirmed defects ahead
+of broad cleanup: first reconcile the documentation and dependency graph so the
+ledger is trustworthy, then fix the two live watcher lifecycle defects, then
+run the wider watcher discovery needed before adding concurrency CI evidence.
+
+The settings fixture work is deliberately after the watcher lifecycle fixes. It
+is important, but it depends on the module-boundary cleanup more than it blocks
+the immediate process-termination and lost-settlement risks. The migration
+ticket stays in the same batch because the review found a real promise gap, but
+it is ordered after the watcher and settings evidence unless current consumers
+make migration semantics urgent.

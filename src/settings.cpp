@@ -1,7 +1,5 @@
 #include "settings_internal.hpp"
 
-#include "linuxdesktop/desktop.hpp"
-
 #include <algorithm>
 #include <cerrno>
 #include <cstdlib>

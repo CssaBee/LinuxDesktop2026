@@ -110,3 +110,13 @@ execute_process(
 if(NOT run_paths_c_result EQUAL 0)
     message(FATAL_ERROR "Running C ld_paths install-tree consumer failed with ${run_paths_c_result}")
 endif()
+
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E env
+        "${ld2026_shared_library_env}"
+        "${ld2026_consumer_runtime_dir}/ld_paths_consumer${ld2026_executable_suffix}"
+    RESULT_VARIABLE run_paths_result
+)
+if(NOT run_paths_result EQUAL 0)
+    message(FATAL_ERROR "Running C++ ld_paths install-tree consumer failed with ${run_paths_result}")
+endif()

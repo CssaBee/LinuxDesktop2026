@@ -28,7 +28,10 @@ Read each section as a boundary check:
   `ld_settings`.
 - `ld_settings` is settings-lifecycle specific: default hydration, common config
   writes, and settings-layer reporting. Generic named roots belong in `ld_root`,
-  not here.
+  not here. The installed package enforces that boundary: a settings-only
+  consumer links only `LinuxDesktop2026::ld_settings`, and the install-tree
+  fixture fails configure if `ld_settings` exposes `ld_desktop` through its
+  CMake interface.
 - `ld_migration` is intentionally separate. Flavor adapters should keep raw
   migration plans private and return product-shaped migration decisions.
 - The public CMake path-default generator is necessary integration surface, not
@@ -48,6 +51,10 @@ Current global pain:
   such as `linuxdesktop::root::request_builder` followed by
   `linuxdesktop::settings::write_with_backup` make the dependency story
   explicit, but users still have to know which module owns each operation.
+- Transitive desktop linkage is not an acceptable shortcut for cross-module
+  ergonomics. Callers that need desktop effects should link `ld_desktop`
+  directly, even when settings, paths, migration, and desktop work happen in
+  the same product adapter.
 
 ## Notepad++
 
@@ -421,3 +428,7 @@ Evidence harness guardrails:
 - Future FlavorTests should continue using generated public path defaults. No
   private path-default helpers should be added to make tests easier than real
   installed users' code.
+- Install-tree consumers should stay module-specific enough to catch accidental
+  public-header or CMake interface coupling. In particular, the settings
+  consumer should not include `desktop`, `paths`, or `watch` headers just to
+  prove package consumption.

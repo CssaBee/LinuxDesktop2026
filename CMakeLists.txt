@@ -117,7 +117,7 @@ target_include_directories(ld_settings
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_desktop LinuxDesktop2026::ld_root)
+target_link_libraries(ld_settings PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_root)
 
 if(WIN32)
     target_link_libraries(ld_settings PRIVATE shell32 ole32)
@@ -217,7 +217,12 @@ if(LD2026_BUILD_TESTS)
     add_executable(ld_settings_tests
         tests/settings_tests.cpp
     )
-    target_link_libraries(ld_settings_tests PRIVATE LinuxDesktop2026::ld_settings LinuxDesktop2026::ld_migration)
+    target_link_libraries(ld_settings_tests
+        PRIVATE
+            LinuxDesktop2026::ld_settings
+            LinuxDesktop2026::ld_desktop
+            LinuxDesktop2026::ld_migration
+    )
 
     add_test(NAME ld_settings_tests COMMAND ld_settings_tests)
 

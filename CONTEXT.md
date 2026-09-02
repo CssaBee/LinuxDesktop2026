@@ -170,6 +170,17 @@ In `ld_root`, this is represented by `portable_root_request`; `ld_settings`
 forwards the same request when settings lifecycle code needs it.
 _Avoid_: Generic override, hidden fallback, test-only executable path
 
+**Settings root resolution multi-filesystem fixture**:
+A settings/root test topology that deliberately separates config, data, state,
+cache, runtime, install, resource, portable, and override locations so
+`ld_settings` proves its settings-specific lifecycle behavior without assuming
+all roots live under one temporary directory or one filesystem-like policy.
+It covers injected platform defaults, process-environment suppression,
+file-as-directory collisions, relative/hostile environment values, and
+cross-device or cross-mount behavior only where `ld_settings` actually mutates
+files.
+_Avoid_: One temp-folder test, generic path test, migration engine test
+
 **First-class plugin path kind**:
 A LinuxDesktop2026-owned plugin search-root kind for a plugin ecosystem with
 documented discovery conventions that are useful outside one product family.
