@@ -120,7 +120,8 @@ int main(int argc, char** argv)
             file.settle = ld::settle_options{
                 std::chrono::milliseconds{100},
                 std::chrono::milliseconds{250},
-                std::chrono::milliseconds{50}};
+                std::chrono::milliseconds{50},
+                std::nullopt};
             const auto file_report = watcher.add_watch(file);
             std::cout << "file watch: " << (file_report.ok ? "ok" : "failed") << "\n";
             print_diagnostics(file_report.diagnostics);
