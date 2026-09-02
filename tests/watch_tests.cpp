@@ -810,6 +810,57 @@ void remove_watch_cancels_pending_settled_file_event()
     require(!received.has_value(), "removed watch should cancel pending settled-file event");
 }
 
+void stop_cancels_pending_settled_file_event()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "stop.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{std::chrono::milliseconds{500}, std::chrono::milliseconds{0}, std::chrono::milliseconds{10}};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "stop.txt"));
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    watcher.stop();
+
+    const auto received = watcher.wait_for(std::chrono::milliseconds{1});
+    require(!received.has_value(), "stopped watcher should cancel pending settled-file event");
+    require(watcher.state() == ld::stream_state::stopped, "stopped watcher should report stopped state");
+}
+
+void repeated_add_remove_start_stays_usable()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+
+    for (int i = 0; i < 64; ++i) {
+        const auto report = watcher.add_watch(options);
+        require(report.ok, "repeated watch should start");
+        require(watcher.remove_watch(report.id), "repeated watch should remove");
+    }
+
+    const auto final_report = watcher.add_watch(options);
+    require(final_report.ok, "watcher should accept a final watch after churn");
+
+    backend->push(backend->event_for(final_report.id, ld::event_kind::modified, "after-churn.txt"));
+
+    const auto received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "watcher should deliver after repeated add/remove churn");
+    require(received->path.root_relative == std::filesystem::path("after-churn.txt"),
+        "watcher should preserve paths after repeated add/remove churn");
+}
+
 void removed_settled_watch_does_not_stop_future_settlement()
 {
     const auto root = test_root();
@@ -948,6 +999,8 @@ int main()
         settled_file_events_coalesce_by_source_and_path();
         settled_file_timeout_reports_diagnostic();
         remove_watch_cancels_pending_settled_file_event();
+        stop_cancels_pending_settled_file_event();
+        repeated_add_remove_start_stays_usable();
         removed_settled_watch_does_not_stop_future_settlement();
         stale_settled_generation_does_not_stop_future_settlement();
         settled_file_large_batch_delivers_all_paths();

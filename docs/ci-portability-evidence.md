@@ -20,6 +20,11 @@ explicit symbol-export policy and should stay out of routine CI until the
 project is ready to make that decision.
 
 The sanitizer workflow runs ASan/UBSan on Ubuntu with both GCC and Clang.
+The watcher ThreadSanitizer lane is a separate Ubuntu/Clang job that builds only
+the deterministic `ld_watch_tests` hardening target with the optional libuv
+backend disabled. That lane is race evidence for the portable watcher
+lifecycle, queue, callback, and settled-file code; it does not replace the
+ASan/UBSan suite.
 
 ## Watcher Coverage
 
@@ -30,6 +35,36 @@ when libuv is available.
 Windows CI runs the Windows watcher smoke target explicitly. That proves the
 hosted-runner shape, not every filesystem corner case on supported Windows
 versions.
+
+## Adversarial Watcher Evidence
+
+The ordinary `ld_watch_tests` CTest target is the first adversarial watcher
+hardening target. It uses the simulated backend so CI can deterministically run
+callback and lifecycle cases without relying on platform event timing.
+
+| Case | Ordinary CTest | ThreadSanitizer CI | Backend CI |
+| --- | --- | --- | --- |
+| Callback calls `stop` and `remove_watch` | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Callback releases the last watcher facade owner | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Callback replacement affects later events | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Callback exception fallback to queued error event | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Pull queue overflow emits degraded rescan guidance | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Raw delivery while settled-file work is pending | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Remove-watch cancels pending settled-file delivery | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Stop cancels pending settled-file delivery | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Repeated add/remove/start leaves watcher usable | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Removed settled watch does not stop future settlement | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Stale settled generation does not stop future settlement | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Large settled-file batch preserves every path | `ld_watch_tests` | `ld_watch_tests` | Not backend-specific |
+| Native Linux event mapping, recursion, replace, churn | `ld_watch_inotify_tests` on Linux | Not isolated yet | Main Linux matrix |
+| Preferred libuv backend smoke | `ld_watch_libuv_tests` when libuv is preferred | Not isolated yet | `watcher-libuv` |
+| Native Windows watcher smoke | `ld_watch_windows_tests` on Windows | Not available in hosted CI | Main Windows matrix |
+
+Still-discovery cases from task 58 remain outside the sanitizer lane until they
+are deterministic enough for CI: stop while a real backend is shutting down,
+queue overflow during concurrent watch removal, repeated add/remove/start stress
+across real backends, pull/callback mode switching under backend churn, and
+head-of-line blocking when one file never stabilizes.
 
 ## Maintained Consumer Proof
 
@@ -59,6 +94,8 @@ if it stays stable enough to be useful.
   rules are relying on static-link assumptions.
 - A sanitizer failure blocks confidence in the affected module until reproduced
   or explained.
+- A watcher ThreadSanitizer failure blocks confidence in callback, settlement,
+  queueing, or shutdown lifecycle behavior until reproduced or explained.
 - A consumer-proof failure should be recorded in
   `docs/consumer-branches/notepadpp-settings-proof.md` before new public API
   vocabulary is added.

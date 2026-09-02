@@ -311,6 +311,7 @@ if(LD2026_BUILD_TESTS)
     target_link_libraries(ld_watch_tests PRIVATE LinuxDesktop2026::ld_watch)
 
     add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
+    set_tests_properties(ld_watch_tests PROPERTIES LABELS "watch;adversarial;tsan")
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT LD2026_WATCH_PREFER_LIBUV)
         add_executable(ld_watch_inotify_tests
@@ -319,6 +320,7 @@ if(LD2026_BUILD_TESTS)
         target_link_libraries(ld_watch_inotify_tests PRIVATE LinuxDesktop2026::ld_watch)
 
         add_test(NAME ld_watch_inotify_tests COMMAND ld_watch_inotify_tests)
+        set_tests_properties(ld_watch_inotify_tests PROPERTIES LABELS "watch;backend;linux")
     endif()
 
     if(WIN32)
@@ -328,6 +330,7 @@ if(LD2026_BUILD_TESTS)
         target_link_libraries(ld_watch_windows_tests PRIVATE LinuxDesktop2026::ld_watch)
 
         add_test(NAME ld_watch_windows_tests COMMAND ld_watch_windows_tests)
+        set_tests_properties(ld_watch_windows_tests PROPERTIES LABELS "watch;backend;windows")
     endif()
 
     if(TARGET PkgConfig::LIBUV AND LD2026_WATCH_PREFER_LIBUV)
@@ -337,6 +340,7 @@ if(LD2026_BUILD_TESTS)
         target_link_libraries(ld_watch_libuv_tests PRIVATE LinuxDesktop2026::ld_watch)
 
         add_test(NAME ld_watch_libuv_tests COMMAND ld_watch_libuv_tests)
+        set_tests_properties(ld_watch_libuv_tests PROPERTIES LABELS "watch;backend;libuv")
     endif()
 
     add_test(NAME ld_settings_install_tree_consumer

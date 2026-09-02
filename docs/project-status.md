@@ -38,7 +38,8 @@ boundaries, but it is not a production-stable release.
 - FlavorTests now use shared platform-path fixtures instead of product-local
   `#if WIN32` path branches.
 - CI covers Ubuntu, Fedora, Windows/MSVC, shared-library Linux builds,
-  sanitizer lanes, FlavorTests, and optional libuv watcher coverage.
+  ASan/UBSan sanitizer lanes, deterministic `ld_watch` ThreadSanitizer coverage,
+  FlavorTests, and optional libuv watcher coverage.
 - The Notepad++ proof workflow is manual until the proof branch is available on
   GitHub and has at least one observed green run.
 

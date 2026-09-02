@@ -134,6 +134,38 @@ jobs:
       - name: Test
         run: ctest --test-dir ${{ matrix['build-dir'] }} --output-on-failure
 
+  watcher-thread-sanitizer:
+    name: Watcher ThreadSanitizer
+    runs-on: ubuntu-latest
+    env:
+      CFLAGS: -O1 -g -fsanitize=thread -fno-omit-frame-pointer
+      CXXFLAGS: -O1 -g -fsanitize=thread -fno-omit-frame-pointer
+      LDFLAGS: -fsanitize=thread
+      TSAN_OPTIONS: halt_on_error=1 history_size=7
+
+    steps:
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang ninja-build
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-watcher-tsan -G Ninja
+          -DLD2026_BUILD_TESTS=ON
+          -DLD2026_BUILD_EXAMPLES=OFF
+          -DLD2026_WATCH_ENABLE_LIBUV=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build watcher hardening target
+        run: cmake --build build-watcher-tsan --target ld_watch_tests
+
+      - name: Test watcher hardening target
+        run: ctest --test-dir build-watcher-tsan -R '^ld_watch_tests$' --output-on-failure
+
   watcher-libuv:
     name: Watcher libuv backend
     runs-on: ubuntu-latest

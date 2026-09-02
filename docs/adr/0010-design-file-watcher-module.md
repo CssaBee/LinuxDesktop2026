@@ -200,7 +200,7 @@ The first `watcher` object owns backend resources and an internal event queue.
 - `set_callback` installs process-local callback delivery; passing an empty callback returns future events to `poll`/`wait` delivery.
 - Callbacks are invoked from the watcher delivery thread or caller-pumped backend thread, never promised on a UI thread.
 - Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
-- Callbacks may call `stop`, `remove_watch`, and `set_callback` from inside the callback. They must not destroy the watcher object that is currently invoking them.
+- Callbacks may call `stop`, `remove_watch`, `set_callback`, or destroy the watcher facade from inside the callback. Destroying the facade stops the watcher and waits for worker threads other than the callback's current delivery thread.
 - Callback exceptions are caught, degrade the stream, and fall back to queued delivery with a diagnostic error event rather than escaping the delivery thread.
 - Internal event queues are bounded. If pull-mode delivery falls behind, the watcher discards queued events, emits a degraded overflow event with rescan guidance, and resumes once the queue is drained.
 
