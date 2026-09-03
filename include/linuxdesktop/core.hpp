@@ -150,6 +150,7 @@ inline diagnostic_disposition disposition_for_diagnostic_code(std::string_view c
             "directory-create-failed",
             "named-root-name-empty",
             "named-root-relative-path-absolute",
+            "named-root-relative-path-traversal",
             "named-root-base-empty",
             "named-root-duplicate",
             "component-root-name-empty",

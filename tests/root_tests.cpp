@@ -331,6 +331,30 @@ void rejects_malformed_named_and_component_roots()
         "absolute component child relative paths should be diagnosed");
 }
 
+void rejects_named_root_path_traversal()
+{
+    const auto root = test_root();
+
+    ld::options options;
+    options.app_root_override = root / "app";
+    options.create_directories = false;
+    options.named_roots = {
+        ld::make_log_root_request("parent-name", ld::ownership_kind::user_local, "../logs"),
+        ld::make_profiles_root_request("nested-parent", ld::ownership_kind::user_roaming, "profiles/../../escape"),
+        ld::make_cache_root_request("mixed-parent", ld::ownership_kind::ephemeral, "cache/../still-rejected"),
+        ld::make_config_root_request("..", ld::ownership_kind::user_roaming),
+    };
+
+    const auto report = ld::resolve_app_roots(identity(), options);
+
+    require(report.named_roots.size() == 4, "traversal named root requests should stay visible in report");
+    for (const auto& named_root : report.named_roots) {
+        require(has_diagnostic(named_root.diagnostics, "named-root-relative-path-traversal"),
+            "named-root traversal should be diagnosed");
+        require(named_root.path.empty(), "rejected traversal named roots should not expose escaped paths");
+    }
+}
+
 void stringifies_public_root_vocabulary()
 {
     require(ld::to_string(ld::portable_root_level::settings_only) == "settings_only",
@@ -354,6 +378,7 @@ int main()
         {"settings_only_portable_root_keeps_machine_local_roots", settings_only_portable_root_keeps_machine_local_roots},
         {"reports_root_creation_failures", reports_root_creation_failures},
         {"rejects_malformed_named_and_component_roots", rejects_malformed_named_and_component_roots},
+        {"rejects_named_root_path_traversal", rejects_named_root_path_traversal},
         {"stringifies_public_root_vocabulary", stringifies_public_root_vocabulary},
     };
 

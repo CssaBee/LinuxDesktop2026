@@ -5,14 +5,14 @@ base directory through `..` path segments.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Reject explicit `relative_path` values containing parent-directory
+- [x] Reject explicit `relative_path` values containing parent-directory
   traversal.
-- [ ] Ensure default relative paths derived from `name` cannot become `..`.
-- [ ] After combining base and relative path, verify the result is at or under
+- [x] Ensure default relative paths derived from `name` cannot become `..`.
+- [x] After combining base and relative path, verify the result is at or under
   the chosen base.
-- [ ] Add adversarial tests for `name=".."`, nested `../`, and mixed normal
+- [x] Add adversarial tests for `name=".."`, nested `../`, and mixed normal
   segments.
 
 ## Review Anchor

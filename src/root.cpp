@@ -145,6 +145,18 @@ std::filesystem::path default_relative_path(const named_root_request& request)
     }
 }
 
+bool path_contains_parent_reference(const std::filesystem::path& path)
+{
+    for (const auto& part : path) {
+        if (part == "..") {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool path_is_at_or_under(const std::filesystem::path& candidate, const std::filesystem::path& root);
+
 named_root resolve_named_root(const named_root_request& request, const app_roots& roots, bool create_directories)
 {
     named_root result;
@@ -169,6 +181,14 @@ named_root resolve_named_root(const named_root_request& request, const app_roots
             relative));
         return result;
     }
+    if (path_contains_parent_reference(relative)) {
+        result.diagnostics.push_back(detail::make_diagnostic(
+            severity::error,
+            "named-root-relative-path-traversal",
+            "Named root relative_path must not contain parent-directory traversal",
+            relative));
+        return result;
+    }
 
     const auto base = base_path_for(roots, request.ownership, request.purpose);
     if (base.empty()) {
@@ -180,6 +200,15 @@ named_root resolve_named_root(const named_root_request& request, const app_roots
     }
 
     result.path = relative.empty() ? base : base / relative;
+    if (!path_is_at_or_under(result.path, base)) {
+        result.diagnostics.push_back(detail::make_diagnostic(
+            severity::error,
+            "named-root-relative-path-traversal",
+            "Named root path must stay under its selected base",
+            result.path));
+        result.path.clear();
+        return result;
+    }
     if (create_directories && request.create) {
         result.created = detail::create_directory_for_root(result.path, result.diagnostics);
     }
