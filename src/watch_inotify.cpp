@@ -193,8 +193,18 @@ public:
             inotify_rm_watch(fd_, it->second.wd);
         }
         watches_by_id_.erase(id.value);
-        pending_moves_.clear();
-        ready_events_.clear();
+        for (auto it = pending_moves_.begin(); it != pending_moves_.end();) {
+            if (it->first.first == id.value) {
+                it = pending_moves_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        ready_events_.erase(
+            std::remove_if(ready_events_.begin(), ready_events_.end(), [id](const watch_event& event) {
+                return event.source.value == id.value;
+            }),
+            ready_events_.end());
         return true;
     }
 

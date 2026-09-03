@@ -1,5 +1,6 @@
 #include "linuxdesktop/watch.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
@@ -476,6 +477,48 @@ void native_same_directory_watches_fan_out_and_remove_independently()
     collector.wait_for_path_and_tag(ld::event_kind::created, after_remove, "second");
 }
 
+void native_remove_watch_preserves_queued_events_for_surviving_watch()
+{
+    const auto root = test_root();
+    event_collector collector;
+    ld::watcher watcher;
+
+    ld::watch_options first;
+    first.path = root;
+    first.caller_tag = "first";
+    const auto first_report = watcher.add_watch(first);
+    require(first_report.ok, "first directory watch should start for queued-event removal test");
+
+    ld::watch_options second;
+    second.path = root;
+    second.caller_tag = "second";
+    const auto second_report = watcher.add_watch(second);
+    require(second_report.ok, "second directory watch should start for queued-event removal test");
+
+    std::atomic_bool removed_from_callback{false};
+    watcher.set_callback([&](const ld::watch_event& event) {
+        bool expected = false;
+        if (event.kind == ld::event_kind::created &&
+            removed_from_callback.compare_exchange_strong(expected, true)) {
+            if (!watcher.remove_watch(event.source)) {
+                removed_from_callback = false;
+            }
+            return;
+        }
+        collector.push(event);
+    });
+
+    const auto shared = root / "shared-after-callback-remove.txt";
+    writes_file(shared, "one");
+
+    const auto surviving = collector.wait_for_path(ld::event_kind::created, shared);
+    require(removed_from_callback.load(), "callback should remove the first delivered watch");
+    require(surviving.source.value == first_report.id.value || surviving.source.value == second_report.id.value,
+        "surviving event should come from one of the same-directory watches");
+    require(surviving.caller_tag == "first" || surviving.caller_tag == "second",
+        "surviving event should retain one same-directory caller tag");
+}
+
 } // namespace
 
 int main()
@@ -493,6 +536,7 @@ int main()
         native_recursive_emulation_skips_duplicate_existing_directories();
         native_remove_and_rename_churn_preserves_watch();
         native_same_directory_watches_fan_out_and_remove_independently();
+        native_remove_watch_preserves_queued_events_for_surviving_watch();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;

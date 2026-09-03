@@ -5,14 +5,14 @@ by the removed watch.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Replace `pending_moves_.clear()` with removal of entries whose watch id
+- [x] Replace `pending_moves_.clear()` with removal of entries whose watch id
   matches the removed watch.
-- [ ] Replace `ready_events_.clear()` with filtering of events sourced from
+- [x] Replace `ready_events_.clear()` with filtering of events sourced from
   the removed watch.
-- [ ] Keep `stop()` as the path that clears all backend state.
-- [ ] Add a two-watch regression test where removing one watch does not erase
+- [x] Keep `stop()` as the path that clears all backend state.
+- [x] Add a two-watch regression test where removing one watch does not erase
   pending move or ready-event state for the surviving watch.
 
 ## Review Anchor
