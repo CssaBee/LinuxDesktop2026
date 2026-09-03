@@ -6,6 +6,8 @@ This is the evidence ledger for the first maintained consumer branch.
 
 - External repository name: `LinuxDesktop2026-crossport-notepadpp`
 - Local checkout: `../LinuxDesktop2026-crossport-notepadpp`
+- Remote: private GitHub repository
+  `https://github.com/CssaBee/LinuxDesktop2026-crossport-notepadpp.git`
 - Branch name: `linuxdesktop2026-settings-proof`
 - Application base: upstream-shaped Notepad++ source
 - Initial upstream base commit: `c057c0802`
@@ -125,14 +127,14 @@ not satisfy this ticket by itself.
   GitHub Actions workflow
 - Build result: manual workflow added but not yet observed on GitHub Actions
 - Test result: manual workflow added but not yet observed on GitHub Actions
-- CI path: `.github/workflows/notepadpp-proof.yml` checks out the proof branch
-  after it is available on GitHub, installs the current LinuxDesktop2026
-  checkout, and runs
+- CI path: `.github/workflows/notepadpp-proof.yml` checks out the private
+  `CssaBee/LinuxDesktop2026-crossport-notepadpp` proof branch, installs the
+  current LinuxDesktop2026 checkout, and runs
   `linuxdesktop2026_notepadpp_settings_proof`
 - API friction found: none from the CI wiring itself
 - Disposition: satisfies the documented maintained-consumer CI-path requirement;
-  the branch still needs remote availability, observed green CI, and
-  rebase-cadence entries before task 15 can close
+  the branch still needs observed green CI and rebase-cadence entries before
+  task 15 can close
 
 ### 2026-08-30 Platform Defaults Rebase
 
@@ -152,6 +154,27 @@ not satisfy this ticket by itself.
 - Disposition: platform-default friction became a LinuxDesktop2026 API fix; the
   proof branch now uses generated consumer code instead of private path-default
   helpers or host environment injection
+
+### 2026-08-31 Private Remote And Topology Proof
+
+- LinuxDesktop2026 base commit: `9cc6900`
+- Cross-port branch commits: `30fcfe004`, `e1e1ea2db`, `de576a462`
+- Remote state: `origin` points at private GitHub repository
+  `CssaBee/LinuxDesktop2026-crossport-notepadpp`, with
+  `origin/linuxdesktop2026-settings-proof` at `de576a462`
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: normal CMake package consumption from the proof branch
+- Build result: not re-run for this ledger update
+- Test result: not re-run for this ledger update
+- Evidence added: the proof branch now uses generated platform defaults,
+  consumes the `ld_root` topology shape for Notepad++ root behavior, and keeps
+  user-facing diagnostic handling in product-owned Notepad++ proof code
+- API friction found: the proof continued to move through LinuxDesktop2026 API
+  reshaping without needing product-side replacement headers or private path
+  helpers; observed CI remains unproven
+- Disposition: the remote is no longer missing, but it is private. This
+  satisfies private crossport existence evidence only; public release evidence
+  still requires an observed green workflow run and later maintenance entries.
 
 ## API Pain Log
 

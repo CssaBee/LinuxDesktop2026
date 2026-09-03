@@ -26,7 +26,7 @@ boundaries, but it is not a production-stable release.
 | `active` | `ld_watch` | Public C++ watcher prototype with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded event delivery, recursive-watch diagnostics, and settled-file behavior. |
 | `active` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy; broader desktop entries, icons, MIME/file associations, protocols, and desktop database behavior remain before ship-candidate status. |
 | `active` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and directories containing regular files/subdirectories; symlinks, special files, ownership, permissions, timestamps, xattrs, ACLs, sparse extents, and hard-link topology are not replicated as filesystem metadata. App-settings Registry snapshot/import/export compatibility is present; broader rollback and adversarial hardening remain before ship-candidate status. |
-| `blocked` | Maintained consumer proof | The Notepad++ proof branch exists locally and has passed local package-consumption tests. It still needs remote availability, observed CI, rebase-cadence evidence, and at least one later maintenance entry. |
+| `blocked` | Maintained consumer proof | The Notepad++ proof branch exists in `../LinuxDesktop2026-crossport-notepadpp` and has a private GitHub remote at `CssaBee/LinuxDesktop2026-crossport-notepadpp`. Local package-consumption, private-remote, and rebase evidence exists through generated platform defaults, `ld_root` topology use, and product-owned diagnostics. It still needs observed CI and ongoing rebase-cadence evidence before this gate is validated. |
 
 ## Validation Status
 
@@ -40,8 +40,9 @@ boundaries, but it is not a production-stable release.
 - CI covers Ubuntu, Fedora, Windows/MSVC, shared-library Linux builds,
   ASan/UBSan sanitizer lanes, deterministic `ld_watch` ThreadSanitizer coverage,
   FlavorTests, and optional libuv watcher coverage.
-- The Notepad++ proof workflow is manual until the proof branch is available on
-  GitHub and has at least one observed green run.
+- The Notepad++ proof workflow is manual. The proof branch is available on a
+  private GitHub remote, but the workflow still needs at least one observed
+  green run before it becomes release evidence.
 
 ## Public-Claim Boundaries
 
@@ -58,9 +59,10 @@ boundaries, but it is not a production-stable release.
 ## Remaining Validation Before Public Prototype Announcement
 
 - Observe green Windows CI after the platform-path fixture cleanup.
-- Observe at least one green Notepad++ proof workflow run after the external
-  proof branch is pushed.
-- Record rebase/dependency/include/link friction for the Notepad++ proof branch.
+- Observe at least one green Notepad++ proof workflow run against the private
+  `CssaBee/LinuxDesktop2026-crossport-notepadpp` proof branch.
+- Keep recording rebase/dependency/include/link friction for the Notepad++
+  proof branch as it is maintained.
 - Complete deeper Windows verification for `ld_paths`, especially UTF-8 paths,
   executable-root behavior, unavailable Known Folder fallback, and plugin
   defaults.

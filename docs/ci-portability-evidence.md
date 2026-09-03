@@ -82,7 +82,7 @@ settings API ergonomics. It is not evidence for full Notepad++ native Linux UI
 parity, plugin ABI compatibility, printing, shell integration, or broad file
 watching.
 
-Keep it manual until the proof branch exists on GitHub and has at least one
+Keep it manual while the proof branch is private and until it has at least one
 observed green run. After that, promote it to a scheduled or pull-request lane
 if it stays stable enough to be useful.
 

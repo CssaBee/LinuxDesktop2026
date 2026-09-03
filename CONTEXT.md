@@ -211,6 +211,25 @@ _Avoid_: Service lifecycle, daemon lifecycle, thread cleanup
 An opt-in watcher behavior that delays delivery for file create, modify, and rename-new events until debounce and file stability checks say the app can safely process the file, or until a diagnostic timeout is reached.
 _Avoid_: Settlement, debounce only, task trigger
 
+**Settled-file scheduler**:
+The internal watcher mechanism that tracks pending settled-file readiness work,
+coalesces repeated source/path events, chooses when each path should next be
+polled or delivered, and prevents one unsettled path from delaying unrelated
+ready paths.
+_Avoid_: Worker thread, settle queue
+
+**Review blind spot**:
+A class of defect or risk that survived prior hardening because the review
+process lacked a specific adversarial question, workload shape, source anchor,
+or consumer-evidence check.
+_Avoid_: Reviewer mistake, one-off miss
+
+**Validation-state drift**:
+A mismatch between public-facing documents, status ledgers, and actual proof
+evidence when fast-moving validation claims are repeated in more than one
+place.
+_Avoid_: Documentation typo, GitHub cache issue
+
 **Platform-library monorepo**:
 A single repository containing the general-purpose platform libraries, examples, tests, and shared build infrastructure while module boundaries are still evolving.
 _Avoid_: Separate repo per module, Notepad++ fork

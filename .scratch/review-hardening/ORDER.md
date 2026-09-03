@@ -6,10 +6,33 @@ list below.
 
 ## Current Order
 
-No review-derived hardening tickets are currently ordered.
+- `67` - Reject Named-Root Path Traversal
+- `65` - Scope Inotify Remove-Watch Pending State
+- `66` - Gate Watch Test Hooks Behind CMake Option
+- `84` - Preserve Unrelated Events On Watch Queue Overflow
+- `62` - Bound And Coalesce Settled-File Readiness Work
+- `63` - Replace Blocking Settle FIFO With Deadline Scheduler
+- `64` - Protect Watch Self-Stop Ownership Invariant
+- `69` - Share Durable File Write Primitive With Desktop
+- `70` - Make Dconf Policy Activation Honest
+- `68` - Enforce Enum String Exhaustiveness
+- `71` - Replace Or Formally Scope Migration JSON Parser
+- `72` - Formally Scope Reg File Compatibility
+- `73` - Decide Settings Interprocess Write Contract
+- `74` - Rename Or Split Migration Move Semantics
+- `75` - Split Migration Internals By Responsibility
+- `76` - Finish Maintained Consumer Proof Evidence
+- `77` - Centralize Dynamic Public Validation State
+- `78` - Pin FetchContent Example
+- `79` - Measure Framework Tax In Maintained Proof
+- `81` - Add Coverage Failure-Mode And Watch Performance Evidence
+- `80` - Decompose Root CMake Before Next Module Wave
+- `82` - Reduce Bus Factor And Write Governance
+- `83` - Run Review Blind-Spot Retrospective
 
 ## Implemented
 
+- `85` - Update Project Status For Private Crossport Proof
 - `61` - Clean Up ld_watch Settled-File Option Initializers
 - `60` - Narrow And Harden Migration Filesystem Semantics
 - `58` - Run ld_watch Lifecycle And Settled-File Discovery
@@ -43,12 +66,49 @@ No review-derived hardening tickets are currently ordered.
 
 ## Rationale
 
-The next pass resolves remaining FlavorTest product-boundary leaks before
-treating the current APIs as ready for maintained consumer validation. Migration
-result translation, the common write audit, the experimental root-request
-builder pass, and the maintained-branch contract are complete, so the sequence
-can move to broader portability evidence while the first external branch is
-created and kept building.
+The September 3, 2026 review pass reopens the hardening lane with two inputs:
+the broad technical review and the cache-busted re-review of current `main`.
+Where the reviews conflict, the current-source check and the cache-busted
+review win; already-addressed findings are not reopened.
+
+The now-completed ledger-truth fix taught the maintained-consumer proof state to
+distinguish "private remote exists" from "public proof evidence" so future
+review does not reason from stale status. The remaining order starts with
+correctness and security items: defects that can corrupt state, erase unrelated
+watcher backend or delivery state, or expose test-only behavior in ordinary
+builds. The settled-file scheduler follows because it is now the largest live
+`ld_watch` design risk: raw delivery is bounded, but settled-file readiness can
+still allocate unbounded stale work and block unrelated ready paths.
+
+Desktop write durability and dconf activation are ordered together because they
+are both end-to-end desktop-effect truth problems: generating a file is not the
+same thing as durably installing or activating an effect. Enum exhaustiveness
+comes next as a cheap guardrail against future silent diagnostic drift.
+
+Parser scope, settings interprocess semantics, and migration naming come after
+the immediate data-loss/security defects because they mostly decide contracts.
+Those contracts should be settled before internally splitting `ld_migration`,
+otherwise the split risks preserving unclear behavior in nicer files.
+
+Maintained-consumer evidence and public validation-state cleanup follow because
+they answer the project's central strategic question: whether these APIs lower
+real integration cost over time. FetchContent pinning is small but public-facing
+and should happen in the same documentation honesty pass. Framework-tax metrics
+then give ticket 17 real evidence instead of intuition.
+
+Coverage, failure-mode, and performance evidence are intentionally after the
+watcher scheduler work so measurements target the intended shape. CMake
+decomposition and bus-factor/governance are real sustainability work, but they
+should not displace immediate correctness fixes. The retrospective stays in the
+batch because the user asked the hard question directly: the process needs to
+explain why boundedness, activation, parser scope, and public-claim drift
+survived previous review.
+
+The older FlavorTest/root-path rationale below is retained as historical context
+for implemented tickets. Migration result translation, the common write audit,
+the experimental root-request builder pass, and the maintained-branch contract
+are complete; the active order above is now governed by the September 3 review
+batch.
 
 Walnut and OpenIPC Dashboard now stay concrete without a separate intake
 template gate: each candidate ticket must name its own source-anchored seam
