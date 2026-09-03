@@ -6,10 +6,11 @@ list below.
 
 ## Current Order
 
-- `61` - Clean Up ld_watch Settled-File Option Initializers
+No review-derived hardening tickets are currently ordered.
 
 ## Implemented
 
+- `61` - Clean Up ld_watch Settled-File Option Initializers
 - `60` - Narrow And Harden Migration Filesystem Semantics
 - `58` - Run ld_watch Lifecycle And Settled-File Discovery
 - `59` - Add Adversarial CI And ThreadSanitizer Evidence

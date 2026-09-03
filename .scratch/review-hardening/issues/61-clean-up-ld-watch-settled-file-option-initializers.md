@@ -5,18 +5,26 @@ from settled-file readiness tests without changing watcher behavior.
 
 **Blocked by:** None. This is a non-blocking cleanup found during task 58.
 
-**Status:** proposed
+**Status:** implemented
 
-- [ ] Replace aggregate initializers for `linuxdesktop::watch::settle_options`
+- [x] Replace aggregate initializers for `linuxdesktop::watch::settle_options`
   in `tests/watch_tests.cpp` with explicit field assignment or a local helper
   that names `debounce_for`, `stable_for`, `poll_interval`, and
   `timeout_after`.
-- [ ] Keep existing settled-file readiness scenarios behaviorally unchanged:
+- [x] Keep existing settled-file readiness scenarios behaviorally unchanged:
   readiness, raw delivery while settle work is pending, coalescing, timeout
   diagnostics, remove-watch cancellation, stale generation handling, and large
   batch delivery.
-- [ ] Verify the focused watcher build no longer emits the initializer
+- [x] Verify the focused watcher build no longer emits the initializer
   warnings.
+
+## Implementation Notes
+
+The current settled-file readiness tests initialize all four `settle_options`
+fields explicitly, including `timeout_after`, so the aggregate initializer shape
+matches the public struct. A focused rebuild compiles `tests/watch_tests.cpp`
+without the previous `-Wmissing-field-initializers` noise, and the watcher test
+suite keeps the same behavioral coverage.
 
 ## Review Anchor
 
