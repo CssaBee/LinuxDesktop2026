@@ -424,23 +424,26 @@ void callback_last_owner_release_is_safe()
     const auto report = watcher->add_watch(options);
     require(report.ok, "watch should start");
 
-    std::mutex mutex;
-    std::condition_variable cv;
-    bool callback_survived_release = false;
+    struct callback_sync {
+        std::mutex mutex;
+        std::condition_variable cv;
+        bool callback_survived_release = false;
+    };
+    auto sync = std::make_shared<callback_sync>();
 
-    watcher->set_callback([&](const ld::watch_event&) {
+    watcher->set_callback([&, sync](const ld::watch_event&) {
         watcher.reset();
         {
-            std::lock_guard<std::mutex> lock(mutex);
-            callback_survived_release = true;
+            std::lock_guard<std::mutex> lock(sync->mutex);
+            sync->callback_survived_release = true;
         }
-        cv.notify_all();
+        sync->cv.notify_all();
     });
 
     backend->push(backend->event_for(report.id, ld::event_kind::modified, "destroy.txt"));
 
-    std::unique_lock<std::mutex> lock(mutex);
-    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return callback_survived_release; }),
+    std::unique_lock<std::mutex> lock(sync->mutex);
+    require(sync->cv.wait_for(lock, std::chrono::seconds(2), [&] { return sync->callback_survived_release; }),
         "callback should survive releasing the last watcher facade owner");
     require(!watcher.has_value(), "callback should release the watcher facade");
 }
