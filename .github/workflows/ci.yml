@@ -76,6 +76,7 @@ jobs:
           cmake -S . -B ${{ matrix['build-dir'] }} -G Ninja
           -DLD2026_BUILD_TESTS=ON
           -DLD2026_BUILD_EXAMPLES=ON
+          -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
           -DCMAKE_BUILD_TYPE=${{ matrix['build-type'] }}
           -DBUILD_SHARED_LIBS=${{ matrix['shared-libs'] }}
           ${{ matrix['compiler-options'] }}
@@ -125,6 +126,7 @@ jobs:
           cmake -S . -B ${{ matrix['build-dir'] }} -G Ninja
           -DLD2026_BUILD_TESTS=ON
           -DLD2026_BUILD_EXAMPLES=ON
+          -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
           -DCMAKE_BUILD_TYPE=Debug
           ${{ matrix['compiler-options'] }}
 
@@ -156,6 +158,7 @@ jobs:
           -DLD2026_BUILD_TESTS=ON
           -DLD2026_BUILD_EXAMPLES=OFF
           -DLD2026_WATCH_ENABLE_LIBUV=OFF
+          -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
           -DCMAKE_BUILD_TYPE=Debug
           -DCMAKE_C_COMPILER=clang
           -DCMAKE_CXX_COMPILER=clang++
@@ -178,7 +181,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y pkg-config libuv1-dev
 
       - name: Configure
-        run: cmake -S . -B build-libuv -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON -DLD2026_WATCH_PREFER_LIBUV=ON
+        run: cmake -S . -B build-libuv -G Ninja -DLD2026_BUILD_TESTS=ON -DLD2026_BUILD_EXAMPLES=ON -DLD2026_WATCH_PREFER_LIBUV=ON -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
 
       - name: Build
         run: cmake --build build-libuv

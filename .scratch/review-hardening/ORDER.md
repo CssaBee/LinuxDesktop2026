@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `66` - Gate Watch Test Hooks Behind CMake Option
 - `84` - Preserve Unrelated Events On Watch Queue Overflow
 - `62` - Bound And Coalesce Settled-File Readiness Work
 - `63` - Replace Blocking Settle FIFO With Deadline Scheduler
@@ -30,6 +29,7 @@ list below.
 
 ## Implemented
 
+- `66` - Gate Watch Test Hooks Behind CMake Option
 - `65` - Scope Inotify Remove-Watch Pending State
 - `67` - Reject Named-Root Path Traversal
 - `85` - Update Project Status For Private Crossport Proof

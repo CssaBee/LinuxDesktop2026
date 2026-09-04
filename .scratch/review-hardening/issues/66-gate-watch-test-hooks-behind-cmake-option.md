@@ -5,14 +5,14 @@ test-build option enables them.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Add a CMake option for watcher test hooks, defaulting off for normal
+- [x] Add a CMake option for watcher test hooks, defaulting off for normal
   library builds.
-- [ ] Define `LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS` only for test targets
+- [x] Define `LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS` only for test targets
   or explicitly opted-in builds.
-- [ ] Keep deterministic simulated-backend tests working under the test option.
-- [ ] Add a build assertion or compile check showing release/library targets do
+- [x] Keep deterministic simulated-backend tests working under the test option.
+- [x] Add a build assertion or compile check showing release/library targets do
   not receive test-only hook code by default.
 
 ## Review Anchor

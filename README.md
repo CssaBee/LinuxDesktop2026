@@ -62,13 +62,16 @@ cmake -S . -B build \
   -DLD2026_BUILD_EXAMPLES=ON \
   -DLD2026_BUILD_TESTS=ON \
   -DLD2026_WATCH_ENABLE_LIBUV=ON \
-  -DLD2026_WATCH_PREFER_LIBUV=OFF
+  -DLD2026_WATCH_PREFER_LIBUV=OFF \
+  -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
 ```
 
 `ld_watch` uses native Linux `inotify` on Linux and native
 `ReadDirectoryChangesW` on Windows by default. The libuv backend is optional and
 is most appropriate for applications that already own a libuv event loop and
-only need coarse file-change notifications.
+only need coarse file-change notifications. `LD2026_WATCH_ENABLE_TEST_HOOKS`
+keeps the simulated-backend watcher tests available while leaving normal
+library builds free of test-only backend injection hooks.
 
 ## Examples
 

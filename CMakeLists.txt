@@ -9,6 +9,7 @@ option(LD2026_BUILD_EXAMPLES "Build LinuxDesktop2026 examples" ON)
 option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
 option(LD2026_WATCH_ENABLE_LIBUV "Enable the optional libuv watcher backend when libuv is available" ON)
 option(LD2026_WATCH_PREFER_LIBUV "Prefer libuv over the native inotify backend for ld_watch" OFF)
+option(LD2026_WATCH_ENABLE_TEST_HOOKS "Compile ld_watch test-only backend injection hooks" OFF)
 set(LD2026_CONFIG_HAS_LIBUV OFF)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
@@ -142,6 +143,17 @@ target_include_directories(ld_watch
 )
 
 target_link_libraries(ld_watch PUBLIC LinuxDesktop2026::ld_core)
+
+if(LD2026_WATCH_ENABLE_TEST_HOOKS)
+    target_compile_definitions(ld_watch PRIVATE LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+endif()
+
+if(NOT LD2026_WATCH_ENABLE_TEST_HOOKS)
+    get_target_property(ld2026_watch_compile_definitions ld_watch COMPILE_DEFINITIONS)
+    if(ld2026_watch_compile_definitions MATCHES "(^|;)LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS(;|$)")
+        message(FATAL_ERROR "ld_watch received test-only hooks while LD2026_WATCH_ENABLE_TEST_HOOKS is OFF")
+    endif()
+endif()
 
 if(WIN32)
     target_sources(ld_watch PRIVATE src/watch_windows.cpp)
@@ -304,14 +316,25 @@ if(LD2026_BUILD_TESTS)
         add_test(NAME ld_settings_rust_ffi_smoke COMMAND ld_settings_rust_ffi_smoke)
     endif()
 
-    add_executable(ld_watch_tests
-        tests/watch_tests.cpp
+    add_executable(ld_watch_public_header_no_test_hooks
+        tests/watch_public_header_no_test_hooks.cpp
     )
-    target_include_directories(ld_watch_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(ld_watch_tests PRIVATE LinuxDesktop2026::ld_watch)
+    target_link_libraries(ld_watch_public_header_no_test_hooks PRIVATE LinuxDesktop2026::ld_watch)
 
-    add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
-    set_tests_properties(ld_watch_tests PROPERTIES LABELS "watch;adversarial;tsan")
+    add_test(NAME ld_watch_public_header_no_test_hooks COMMAND ld_watch_public_header_no_test_hooks)
+    set_tests_properties(ld_watch_public_header_no_test_hooks PROPERTIES LABELS "watch;public-header")
+
+    if(LD2026_WATCH_ENABLE_TEST_HOOKS)
+        add_executable(ld_watch_tests
+            tests/watch_tests.cpp
+        )
+        target_include_directories(ld_watch_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        target_compile_definitions(ld_watch_tests PRIVATE LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+        target_link_libraries(ld_watch_tests PRIVATE LinuxDesktop2026::ld_watch)
+
+        add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
+        set_tests_properties(ld_watch_tests PROPERTIES LABELS "watch;adversarial;tsan")
+    endif()
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT LD2026_WATCH_PREFER_LIBUV)
         add_executable(ld_watch_inotify_tests

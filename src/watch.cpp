@@ -701,10 +701,12 @@ watcher::watcher()
 {
 }
 
+#if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
 watcher::watcher(std::shared_ptr<detail::watch_backend> backend)
     : impl_(impl::create(std::move(backend)))
 {
 }
+#endif
 
 watcher::~watcher()
 {
@@ -773,10 +775,12 @@ stream_state watcher::state() const
 
 namespace detail {
 
+#if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend)
 {
     return watcher(std::move(backend));
 }
+#endif
 
 } // namespace detail
 
