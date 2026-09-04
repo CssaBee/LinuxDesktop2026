@@ -140,9 +140,17 @@ std::filesystem::path default_relative_path(const named_root_request& request)
         return "managed";
     case purpose_kind::enforced_config:
         return "enforced";
-    default:
+    case purpose_kind::resources:
+    case purpose_kind::config:
+    case purpose_kind::data:
+    case purpose_kind::state:
+    case purpose_kind::cache:
+    case purpose_kind::runtime:
+    case purpose_kind::session:
+    case purpose_kind::custom:
         return {};
     }
+    return {};
 }
 
 bool path_contains_parent_reference(const std::filesystem::path& path)

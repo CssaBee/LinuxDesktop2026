@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <sstream>
 #include <system_error>
 #include <utility>
 
@@ -409,6 +410,14 @@ diagnostic unsupported_backend_diagnostic(effect_kind kind)
         "This desktop integration backend is not implemented on this platform yet");
 }
 
+diagnostic dconf_activation_required_diagnostic()
+{
+    return make_diagnostic(
+        severity::warning,
+        "policy-dconf-activation-required",
+        "dconf-compatible policy source files were generated, but ld_desktop does not activate the dconf database; install them into a system dconf profile and run dconf update before treating policy as active");
+}
+
 } // namespace
 
 std::string_view to_string(effect_kind value)
@@ -445,6 +454,8 @@ std::string_view to_string(capability_state value)
         return "unsupported";
     case capability_state::backend_missing:
         return "backend_missing";
+    case capability_state::backend_limited:
+        return "backend_limited";
     case capability_state::sandbox_limited:
         return "sandbox_limited";
     case capability_state::permission_denied:
@@ -476,12 +487,17 @@ capability_report query_capabilities(const apply_options& options)
         item.state = capability_state::backend_missing;
         item.diagnostics.push_back(unsupported_backend_diagnostic(kind));
 #else
-        if (kind == effect_kind::autostart || kind == effect_kind::managed_policy) {
+        if (kind == effect_kind::autostart) {
             item.state = capability_state::supported;
             item.can_query = true;
-            item.can_write_user =
-                kind == effect_kind::managed_policy ? options.allow_policy_write : options.allow_desktop_integration_write;
+            item.can_write_user = options.allow_desktop_integration_write;
             item.can_write_global = item.can_write_user && options.allow_global_write;
+        } else if (kind == effect_kind::managed_policy) {
+            item.state = capability_state::backend_limited;
+            item.can_query = true;
+            item.can_write_user = options.allow_policy_write;
+            item.can_write_global = item.can_write_user && options.allow_global_write;
+            item.diagnostics.push_back(dconf_activation_required_diagnostic());
         } else {
             item.state = capability_state::backend_missing;
             item.diagnostics.push_back(unsupported_backend_diagnostic(kind));
@@ -653,6 +669,7 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
         report.ok = true;
         report.value = entry.value;
         report.diagnostics.push_back(make_diagnostic(severity::info, "policy-dry-run", "Managed/enforced policy file was planned but not written", *report.path));
+        report.diagnostics.push_back(dconf_activation_required_diagnostic());
         return report;
     }
 
@@ -683,6 +700,7 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
     }
     report.ok = true;
     report.value = entry.value;
+    report.diagnostics.push_back(dconf_activation_required_diagnostic());
     return report;
 #endif
 }
@@ -709,6 +727,7 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
     if (options.dry_run) {
         report.ok = true;
         report.diagnostics.push_back(make_diagnostic(severity::info, "policy-dry-run", "Managed/enforced policy file removal was planned but not applied", *report.path));
+        report.diagnostics.push_back(dconf_activation_required_diagnostic());
         return report;
     }
 
@@ -731,6 +750,7 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
         }
     }
     report.ok = true;
+    report.diagnostics.push_back(dconf_activation_required_diagnostic());
     return report;
 #endif
 }
@@ -755,6 +775,7 @@ policy_report query_policy(const policy_entry& entry, const apply_options& optio
     if (!std::filesystem::exists(*report.path, ec)) {
         report.ok = true;
         report.present = false;
+        report.diagnostics.push_back(dconf_activation_required_diagnostic());
         return report;
     }
     std::error_code read_ec;
@@ -777,6 +798,7 @@ policy_report query_policy(const policy_entry& entry, const apply_options& optio
         }
         report.enforced = has_policy_lock(lock_content, entry);
     }
+    report.diagnostics.push_back(dconf_activation_required_diagnostic());
     return report;
 #endif
 }

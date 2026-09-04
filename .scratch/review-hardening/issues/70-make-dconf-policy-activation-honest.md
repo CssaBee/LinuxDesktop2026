@@ -5,15 +5,20 @@
 
 **Blocked by:** 69 - Share Durable File Write Primitive With Desktop.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Decide whether `ld_desktop` invokes `dconf update`, reports manual
+- [x] Decide whether `ld_desktop` invokes `dconf update`, reports manual
   activation as required, or marks managed policy as backend-limited.
-- [ ] If activation is implemented, use an explicit process execution path with
-  diagnostics for missing tools, permission failure, and nonzero exit.
-- [ ] If activation is not implemented, adjust `query_capabilities()` and apply
+- [x] Leave the activation process-execution branch unimplemented because this
+  fix chooses explicit backend-limited reporting instead.
+- [x] If activation is not implemented, adjust `query_capabilities()` and apply
   diagnostics so callers cannot mistake file generation for active policy.
-- [ ] Add tests for capability reporting and apply diagnostics.
+- [x] Add tests for capability reporting and apply diagnostics.
+
+Implementation note: activation is not implemented. Linux managed/enforced
+policy remains a dconf-compatible source-file generation backend, and reports
+`backend_limited` plus `policy-dconf-activation-required` diagnostics.
+The activation-specific process-execution branch is intentionally not added.
 
 ## Review Anchor
 

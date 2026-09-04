@@ -436,13 +436,20 @@ std::vector<std::string> plugin_asset_extensions(plugin_asset_path_kind kind)
 std::vector<platform_support> plugin_platforms(plugin_path_kind kind)
 {
     switch (kind) {
+    case plugin_path_kind::ladspa:
+    case plugin_path_kind::dssi:
+    case plugin_path_kind::lv2:
+    case plugin_path_kind::vst2:
+    case plugin_path_kind::vst3:
+    case plugin_path_kind::clap:
+    case plugin_path_kind::jsfx:
+        return {platform_support::any};
     case plugin_path_kind::audio_unit:
         return {platform_support::macos};
     case plugin_path_kind::aax:
         return {platform_support::windows, platform_support::macos};
-    default:
-        return {platform_support::any};
     }
+    return {platform_support::any};
 }
 
 std::vector<std::filesystem::path> wine_plugin_defaults(plugin_path_kind kind, const std::filesystem::path& wine_prefix)
@@ -454,6 +461,12 @@ std::vector<std::filesystem::path> wine_plugin_defaults(plugin_path_kind kind, c
     const auto program_files = wine_prefix / "drive_c" / "Program Files";
     const auto common_files = program_files / "Common Files";
     switch (kind) {
+    case plugin_path_kind::ladspa:
+    case plugin_path_kind::dssi:
+    case plugin_path_kind::lv2:
+    case plugin_path_kind::audio_unit:
+    case plugin_path_kind::jsfx:
+        return {};
     case plugin_path_kind::vst2:
         return {program_files / "VstPlugins", program_files / "Steinberg" / "VstPlugins"};
     case plugin_path_kind::vst3:
@@ -462,9 +475,8 @@ std::vector<std::filesystem::path> wine_plugin_defaults(plugin_path_kind kind, c
         return {common_files / "CLAP"};
     case plugin_path_kind::aax:
         return {common_files / "Avid" / "Audio" / "Plug-Ins"};
-    default:
-        return {};
     }
+    return {};
 }
 
 void add_candidate(
@@ -702,9 +714,18 @@ std::optional<std::filesystem::path> platform_default_base(
             options.platform_defaults->xdg_runtime_dir,
             family,
             "xdg_runtime_dir");
-    default:
+    case path_family::temp:
+    case path_family::documents:
+    case path_family::desktop:
+    case path_family::downloads:
+    case path_family::music:
+    case path_family::pictures:
+    case path_family::videos:
+    case path_family::templates:
+    case path_family::public_share:
         return std::nullopt;
     }
+    return std::nullopt;
 }
 
 void select_base_directory(

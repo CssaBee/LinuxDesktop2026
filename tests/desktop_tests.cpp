@@ -106,6 +106,26 @@ void capability_report_covers_extraction_scope()
     require(find_capability(report, ld::effect_kind::managed_policy) != nullptr, "capabilities should include managed policy");
 }
 
+void managed_policy_capability_reports_dconf_activation_limit()
+{
+#if !defined(_WIN32)
+    ld::apply_options options;
+    options.allow_policy_write = true;
+    options.allow_global_write = true;
+
+    const auto report = ld::query_capabilities(options);
+    const auto* capability = find_capability(report, ld::effect_kind::managed_policy);
+    require(capability != nullptr, "capabilities should include managed policy");
+    require(capability->state == ld::capability_state::backend_limited,
+        "managed policy should report dconf activation as backend-limited");
+    require(capability->can_query, "managed policy should still expose generated-file query support");
+    require(capability->can_write_user, "managed policy should still allow staged user policy writes");
+    require(capability->can_write_global, "managed policy should still allow staged global policy writes with permission");
+    require(has_diagnostic(capability->diagnostics, "policy-dconf-activation-required"),
+        "managed policy capability should diagnose manual dconf activation");
+#endif
+}
+
 void autostart_dry_run_does_not_write()
 {
     const auto root = test_root() / "autostart-dry-run";
@@ -370,11 +390,15 @@ void policy_linux_writes_queries_and_removes_dconf_files()
     const auto applied = ld::apply_policy(entry, options);
     require(applied.ok, "desktop Linux policy write should succeed");
     require(applied.path.has_value(), "desktop Linux policy write should report defaults path");
+    require(has_diagnostic(applied.diagnostics, "policy-dconf-activation-required"),
+        "desktop policy write should diagnose that dconf activation is still manual");
     require(read_file(*applied.path).find("[org/linuxdesktop2026/desktop-tests]") != std::string::npos, "desktop policy file should include dconf group");
     require(read_file(*applied.path).find("theme='dark'") != std::string::npos, "desktop policy file should include value");
 
     const auto queried = ld::query_policy(entry, options);
     require(queried.ok, "desktop Linux policy query should succeed");
+    require(has_diagnostic(queried.diagnostics, "policy-dconf-activation-required"),
+        "desktop policy query should diagnose that it reads generated files, not active dconf state");
     require(queried.present, "desktop Linux policy query should report present value");
     require(queried.enforced, "desktop Linux policy query should report lock file");
     require(queried.value.has_value() && *queried.value == "'dark'", "desktop Linux policy query should return value literal");
@@ -441,6 +465,7 @@ void policy_atomic_write_cleans_temp_after_lock_replace_failure()
 int main()
 {
     capability_report_covers_extraction_scope();
+    managed_policy_capability_reports_dconf_activation_limit();
     autostart_dry_run_does_not_write();
     autostart_reports_sanitized_ids_and_escaped_arguments();
     autostart_rejects_relative_or_file_backed_output_directory();

@@ -158,7 +158,13 @@ Implementation status:
 
 - Initial C++ policy effect API now exists as `apply_policy`, `query_policy`, and `remove_policy`.
 - Linux emits dconf/GSettings-compatible defaults and locks without a GLib dependency.
-- Windows routes to `Software\Policies` through the raw Registry backend shape.
+- Linux policy activation remains caller/admin-owned: `ld_desktop` does not run
+  `dconf update`, so capability and apply/query reports diagnose the generated
+  files as backend-limited until they are installed into an active system dconf
+  profile.
+- Windows policy support still needs a raw Registry backend; current
+  `ld_desktop` reports backend-missing on Windows rather than claiming active
+  policy support.
 - Real Windows verification is still required before this can be called shippable.
 
 Source anchors:

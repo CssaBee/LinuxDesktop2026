@@ -537,6 +537,42 @@ void registry_json_snapshot_round_trips()
     require(parsed.item->values[0].item.bytes == value.item.bytes, "Registry JSON bytes should round-trip");
 }
 
+void registry_json_snapshot_accepts_scoped_subset()
+{
+    namespace reg = linuxdesktop::migration::registry;
+
+    const auto parsed = reg::parse_snapshot_json(R"json(
+{
+  "values": [
+    {
+      "data_hex": "41 42,43",
+      "type": "string",
+      "name": "Name\tWith\"Quote",
+      "key_path": "Profiles\\Default"
+    }
+  ],
+  "root": {
+    "view": "registry_64",
+    "subkey": "Software\\LinuxDesktop2026\nmigration-tests",
+    "hive": "current_user"
+  },
+  "format": "linuxdesktop.settings.registry.snapshot.v1"
+}
+)json");
+
+    require(parsed.ok, "Registry JSON subset should allow reordered fields and supported escapes");
+    require(parsed.item.has_value(), "Registry JSON subset should produce a snapshot");
+    require(parsed.item->root.registry_view == reg::view::registry_64, "Registry JSON view should parse");
+    require(parsed.item->root.subkey == "Software\\LinuxDesktop2026\nmigration-tests",
+        "Registry JSON subkey should unescape newline and backslash");
+    require(parsed.item->values.size() == 1, "Registry JSON subset should parse values");
+    require(parsed.item->values[0].key_path == "Profiles\\Default", "Registry JSON key path should unescape backslash");
+    require(parsed.item->values[0].item.name == "Name\tWith\"Quote",
+        "Registry JSON value name should unescape tab and quote");
+    require(parsed.item->values[0].item.bytes == std::vector<std::byte>{std::byte{'A'}, std::byte{'B'}, std::byte{'C'}},
+        "Registry JSON hex should tolerate separators");
+}
+
 void registry_reg_snapshot_round_trips()
 {
     namespace reg = linuxdesktop::migration::registry;
@@ -665,6 +701,46 @@ void registry_json_rejects_hostile_import_shapes()
         "Registry JSON import should propagate parse diagnostics");
 }
 
+void registry_json_rejects_out_of_scope_json()
+{
+    namespace reg = linuxdesktop::migration::registry;
+
+    const std::string root =
+        "\"root\":{\"hive\":\"current_user\",\"subkey\":\"Software\\\\LinuxDesktop2026\\\\migration-tests\",\"view\":\"native\"}";
+
+    const auto non_object = reg::parse_snapshot_json("[]");
+    require(!non_object.ok, "Registry JSON parser should reject non-object documents");
+    require(has_diagnostic(non_object.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose non-object documents");
+
+    const auto nested_search_trick = reg::parse_snapshot_json(
+        "{\"metadata\":{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"}," + root + ",\"values\":[]}");
+    require(!nested_search_trick.ok, "Registry JSON parser should reject nested format search tricks");
+    require(has_diagnostic(nested_search_trick.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose unsupported top-level fields");
+
+    const auto unicode_escape = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"N\\u0061me\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!unicode_escape.ok, "Registry JSON parser should reject unsupported Unicode escapes");
+    require(has_diagnostic(unicode_escape.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose unsupported value escapes");
+
+    const auto slash_escape = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\\/Leaf\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!slash_escape.ok, "Registry JSON parser should reject unsupported slash escapes");
+    require(has_diagnostic(slash_escape.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose unsupported slash escapes");
+
+    const auto nested_value_field = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":{\"text\":\"Name\"},\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!nested_value_field.ok, "Registry JSON parser should reject nested value fields");
+    require(has_diagnostic(nested_value_field.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose nested value fields");
+}
+
 void registry_reg_rejects_hostile_import_shapes()
 {
     namespace reg = linuxdesktop::migration::registry;
@@ -741,9 +817,11 @@ int main()
         {"plan_copy_missing_source_reports_diagnostic", plan_copy_missing_source_reports_diagnostic},
         {"dangerous_actions_are_denied_by_default", dangerous_actions_are_denied_by_default},
         {"registry_json_snapshot_round_trips", registry_json_snapshot_round_trips},
+        {"registry_json_snapshot_accepts_scoped_subset", registry_json_snapshot_accepts_scoped_subset},
         {"registry_reg_snapshot_round_trips", registry_reg_snapshot_round_trips},
         {"registry_import_requires_explicit_permission", registry_import_requires_explicit_permission},
         {"registry_json_rejects_hostile_import_shapes", registry_json_rejects_hostile_import_shapes},
+        {"registry_json_rejects_out_of_scope_json", registry_json_rejects_out_of_scope_json},
         {"registry_reg_rejects_hostile_import_shapes", registry_reg_rejects_hostile_import_shapes},
     };
 

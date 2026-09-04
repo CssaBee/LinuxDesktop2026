@@ -461,15 +461,20 @@ policy_report query_policy(const policy_entry&, const apply_options& = {});
 
 Windows backend:
 
-- Registry policy keys and app-owned HKLM/HKCU layers.
-- `Software\Policies\<schema/group>` values are written through the raw Registry backend.
-- global writes require both `allow_policy_write` and `allow_global_write`.
+- Registry policy keys and app-owned HKLM/HKCU layers are the intended backend
+  shape.
+- `Software\Policies\<schema/group>` values should be written through a raw
+  Registry backend once `ld_desktop` grows that implementation.
+- global writes must require both `allow_policy_write` and `allow_global_write`.
 
 Linux backend:
 
 - dconf/GSettings-compatible defaults and lock files where schemas exist, without linking GLib.
 - defaults are emitted as keyfiles; enforced settings also emit lock files.
 - the initial implementation supports override directories for safe tests and staged package generation.
+- current `ld_desktop` reports this capability as backend-limited because it
+  does not run `dconf update`; callers must activate the generated files through
+  the system dconf profile before treating policy as enforced.
 - Return diagnostics when no schema/backend exists.
 
 ## C ABI Posture

@@ -728,34 +728,6 @@ std::string json_escape(std::string_view value)
     return output;
 }
 
-std::string json_unescape(std::string_view value)
-{
-    std::string output;
-    for (size_t index = 0; index != value.size(); ++index) {
-        const char ch = value[index];
-        if (ch != '\\' || index + 1 == value.size()) {
-            output += ch;
-            continue;
-        }
-        const char escaped = value[++index];
-        switch (escaped) {
-        case 'n':
-            output += '\n';
-            break;
-        case 'r':
-            output += '\r';
-            break;
-        case 't':
-            output += '\t';
-            break;
-        default:
-            output += escaped;
-            break;
-        }
-    }
-    return output;
-}
-
 char hex_digit(unsigned value)
 {
     return static_cast<char>(value < 10 ? '0' + value : 'a' + (value - 10));
@@ -826,156 +798,360 @@ std::string trim(std::string_view value)
     return std::string(value.substr(begin, end - begin));
 }
 
-std::optional<std::string> json_string_field(std::string_view object, std::string_view field)
-{
-    const auto needle = "\"" + std::string(field) + "\"";
-    auto pos = object.find(needle);
-    if (pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-    pos = object.find(':', pos + needle.size());
-    if (pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-    pos = object.find('"', pos + 1);
-    if (pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-    ++pos;
+std::optional<hive> hive_from_string(std::string_view value);
+std::optional<view> view_from_string(std::string_view value);
+std::optional<value_type> value_type_from_string(std::string_view value);
 
-    std::string raw;
-    bool escaped = false;
-    for (; pos != object.size(); ++pos) {
-        const char ch = object[pos];
-        if (escaped) {
-            raw.push_back('\\');
-            raw.push_back(ch);
-            escaped = false;
-            continue;
-        }
-        if (ch == '\\') {
-            escaped = true;
-            continue;
-        }
-        if (ch == '"') {
-            return json_unescape(raw);
-        }
-        raw.push_back(ch);
-    }
-    return std::nullopt;
-}
-
-std::optional<std::string_view> json_object_field(std::string_view object, std::string_view field)
-{
-    const auto needle = "\"" + std::string(field) + "\"";
-    auto pos = object.find(needle);
-    if (pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-    pos = object.find('{', pos + needle.size());
-    if (pos == std::string_view::npos) {
-        return std::nullopt;
+class snapshot_json_parser {
+public:
+    explicit snapshot_json_parser(std::string_view content)
+        : content_(content)
+    {
     }
 
-    size_t depth = 0;
-    bool in_string = false;
-    bool escaped = false;
-    for (size_t index = pos; index != object.size(); ++index) {
-        const char ch = object[index];
-        if (escaped) {
-            escaped = false;
-            continue;
+    snapshot_report parse()
+    {
+        snapshot_report report;
+        snapshot parsed;
+
+        std::string format;
+        bool seen_format = false;
+        bool seen_root = false;
+        bool seen_values = false;
+        bool failed = false;
+
+        skip_ws();
+        if (!consume('{')) {
+            add_error(report, "registry-json-format-invalid", "Registry JSON snapshot must be an object");
+            return report;
         }
-        if (in_string && ch == '\\') {
-            escaped = true;
-            continue;
+
+        skip_ws();
+        if (!consume('}')) {
+            while (true) {
+                auto field = parse_string();
+                if (!field) {
+                    add_error(report, "registry-json-format-invalid", "Registry JSON snapshot fields must be strings");
+                    return report;
+                }
+                if (!consume_colon(report, "registry-json-format-invalid")) {
+                    return report;
+                }
+
+                if (*field == "format") {
+                    if (seen_format || !parse_string_value(format)) {
+                        failed = true;
+                    }
+                    seen_format = true;
+                } else if (*field == "root") {
+                    if (seen_root || !parse_root(parsed.root, report)) {
+                        return report;
+                    }
+                    seen_root = true;
+                } else if (*field == "values") {
+                    if (seen_values || !parse_values(parsed.values, report)) {
+                        return report;
+                    }
+                    seen_values = true;
+                } else {
+                    add_error(report, "registry-json-format-invalid", "Registry JSON snapshot contains an unsupported field");
+                    return report;
+                }
+
+                if (failed) {
+                    add_error(report, "registry-json-format-invalid", "Registry JSON snapshot has an invalid format field");
+                    return report;
+                }
+
+                skip_ws();
+                if (consume('}')) {
+                    break;
+                }
+                if (!consume(',')) {
+                    add_error(report, "registry-json-format-invalid", "Registry JSON snapshot object is malformed");
+                    return report;
+                }
+                skip_ws();
+            }
         }
-        if (ch == '"') {
-            in_string = !in_string;
-            continue;
+
+        skip_ws();
+        if (position_ != content_.size()) {
+            add_error(report, "registry-json-format-invalid", "Registry JSON snapshot has trailing content");
+            return report;
         }
-        if (in_string) {
-            continue;
+        if (!seen_format || format != "linuxdesktop.settings.registry.snapshot.v1") {
+            add_error(report, "registry-json-format-invalid", "Registry JSON snapshot has an unknown or missing format marker");
+            return report;
         }
-        if (ch == '{') {
-            ++depth;
-        } else if (ch == '}') {
-            --depth;
-            if (depth == 0) {
-                return object.substr(pos, index - pos + 1);
+        if (!seen_root) {
+            add_error(report, "registry-json-root-missing", "Registry JSON snapshot is missing the root object");
+            return report;
+        }
+        if (!seen_values) {
+            add_error(report, "registry-json-values-invalid", "Registry JSON snapshot requires a well-formed values array");
+            return report;
+        }
+
+        report.ok = true;
+        report.item = std::move(parsed);
+        return report;
+    }
+
+private:
+    static void add_error(snapshot_report& report, std::string code, std::string message)
+    {
+        report.diagnostics.push_back(make_diagnostic(severity::error, std::move(code), std::move(message)));
+    }
+
+    void skip_ws()
+    {
+        while (position_ != content_.size() && std::isspace(static_cast<unsigned char>(content_[position_]))) {
+            ++position_;
+        }
+    }
+
+    bool consume(char expected)
+    {
+        skip_ws();
+        if (position_ == content_.size() || content_[position_] != expected) {
+            return false;
+        }
+        ++position_;
+        return true;
+    }
+
+    bool consume_colon(snapshot_report& report, std::string code)
+    {
+        if (consume(':')) {
+            return true;
+        }
+        add_error(report, std::move(code), "Registry JSON snapshot field is missing a colon");
+        return false;
+    }
+
+    std::optional<std::string> parse_string()
+    {
+        skip_ws();
+        if (position_ == content_.size() || content_[position_] != '"') {
+            return std::nullopt;
+        }
+        ++position_;
+
+        std::string output;
+        while (position_ != content_.size()) {
+            const char ch = content_[position_++];
+            if (ch == '"') {
+                return output;
+            }
+            if (static_cast<unsigned char>(ch) < 0x20) {
+                return std::nullopt;
+            }
+            if (ch != '\\') {
+                output.push_back(ch);
+                continue;
+            }
+            if (position_ == content_.size()) {
+                return std::nullopt;
+            }
+
+            const char escaped = content_[position_++];
+            switch (escaped) {
+            case '"':
+                output.push_back('"');
+                break;
+            case '\\':
+                output.push_back('\\');
+                break;
+            case 'n':
+                output.push_back('\n');
+                break;
+            case 'r':
+                output.push_back('\r');
+                break;
+            case 't':
+                output.push_back('\t');
+                break;
+            default:
+                return std::nullopt;
+            }
+        }
+        return std::nullopt;
+    }
+
+    bool parse_string_value(std::string& output)
+    {
+        auto value = parse_string();
+        if (!value) {
+            return false;
+        }
+        output = std::move(*value);
+        return true;
+    }
+
+    bool parse_root(key& output, snapshot_report& report)
+    {
+        std::string hive_text;
+        std::string subkey;
+        std::string view_text;
+        bool seen_hive = false;
+        bool seen_subkey = false;
+        bool seen_view = false;
+
+        if (!consume('{')) {
+            add_error(report, "registry-json-root-invalid", "Registry JSON snapshot root must be an object");
+            return false;
+        }
+
+        if (!parse_string_object([&](const std::string& field) {
+                if (field == "hive") {
+                    return parse_unique_string(seen_hive, hive_text);
+                }
+                if (field == "subkey") {
+                    return parse_unique_string(seen_subkey, subkey);
+                }
+                if (field == "view") {
+                    return parse_unique_string(seen_view, view_text);
+                }
+                return false;
+            })) {
+            add_error(report, "registry-json-root-invalid", "Registry JSON snapshot root requires hive, subkey, and view");
+            return false;
+        }
+
+        const auto parsed_hive = hive_from_string(hive_text);
+        const auto parsed_view = view_from_string(view_text);
+        if (!seen_hive || !seen_subkey || !seen_view || !parsed_hive || !parsed_view) {
+            add_error(report, "registry-json-root-invalid", "Registry JSON snapshot root has an unknown hive or view");
+            return false;
+        }
+
+        output.root = *parsed_hive;
+        output.subkey = std::move(subkey);
+        output.registry_view = *parsed_view;
+        return true;
+    }
+
+    bool parse_values(std::vector<snapshot_value>& output, snapshot_report& report)
+    {
+        if (!consume('[')) {
+            add_error(report, "registry-json-values-invalid", "Registry JSON snapshot requires a well-formed values array");
+            return false;
+        }
+
+        skip_ws();
+        if (consume(']')) {
+            return true;
+        }
+
+        while (true) {
+            snapshot_value value;
+            if (!parse_value_object(value, report)) {
+                if (position_ == content_.size()) {
+                    add_error(report, "registry-json-values-invalid", "Registry JSON snapshot requires a well-formed values array");
+                }
+                return false;
+            }
+            output.push_back(std::move(value));
+
+            skip_ws();
+            if (consume(']')) {
+                return true;
+            }
+            if (!consume(',')) {
+                add_error(report, "registry-json-values-invalid", "Registry JSON snapshot requires a well-formed values array");
+                return false;
             }
         }
     }
-    return std::nullopt;
-}
 
-struct json_array_objects_result {
-    bool found = false;
-    bool malformed = false;
-    std::vector<std::string_view> objects;
+    bool parse_value_object(snapshot_value& output, snapshot_report& report)
+    {
+        if (!consume('{')) {
+            add_error(report, "registry-json-values-invalid", "Registry JSON snapshot values must be objects");
+            return false;
+        }
+
+        std::string type_text;
+        std::string data_hex;
+        bool seen_key_path = false;
+        bool seen_name = false;
+        bool seen_type = false;
+        bool seen_data_hex = false;
+
+        if (!parse_string_object([&](const std::string& field) {
+                if (field == "key_path") {
+                    return parse_unique_string(seen_key_path, output.key_path);
+                }
+                if (field == "name") {
+                    return parse_unique_string(seen_name, output.item.name);
+                }
+                if (field == "type") {
+                    return parse_unique_string(seen_type, type_text);
+                }
+                if (field == "data_hex") {
+                    return parse_unique_string(seen_data_hex, data_hex);
+                }
+                return false;
+            })) {
+            add_error(report, "registry-json-value-invalid", "Registry JSON value requires key_path, name, type, and data_hex");
+            return false;
+        }
+
+        const auto parsed_type = value_type_from_string(type_text);
+        const auto bytes = hex_to_bytes(data_hex);
+        if (!seen_key_path || !seen_name || !seen_type || !seen_data_hex || !parsed_type || !bytes) {
+            add_error(report, "registry-json-value-invalid", "Registry JSON value has an unknown type or invalid hex data");
+            return false;
+        }
+
+        output.item.type = *parsed_type;
+        output.item.bytes = *bytes;
+        return true;
+    }
+
+    template <typename Handler>
+    bool parse_string_object(Handler handle_field)
+    {
+        skip_ws();
+        if (consume('}')) {
+            return true;
+        }
+
+        while (true) {
+            auto field = parse_string();
+            if (!field) {
+                return false;
+            }
+            if (!consume(':')) {
+                return false;
+            }
+            if (!handle_field(*field)) {
+                return false;
+            }
+
+            skip_ws();
+            if (consume('}')) {
+                return true;
+            }
+            if (!consume(',')) {
+                return false;
+            }
+        }
+    }
+
+    bool parse_unique_string(bool& seen, std::string& output)
+    {
+        if (seen) {
+            return false;
+        }
+        seen = true;
+        return parse_string_value(output);
+    }
+
+    std::string_view content_;
+    size_t position_ = 0;
 };
-
-json_array_objects_result json_array_objects(std::string_view object, std::string_view field)
-{
-    json_array_objects_result result;
-    const auto needle = "\"" + std::string(field) + "\"";
-    auto pos = object.find(needle);
-    if (pos == std::string_view::npos) {
-        return result;
-    }
-    pos = object.find('[', pos + needle.size());
-    if (pos == std::string_view::npos) {
-        result.found = true;
-        result.malformed = true;
-        return result;
-    }
-    result.found = true;
-
-    size_t depth = 0;
-    size_t object_begin = std::string_view::npos;
-    bool in_string = false;
-    bool escaped = false;
-    bool closed = false;
-    for (size_t index = pos + 1; index != object.size(); ++index) {
-        const char ch = object[index];
-        if (escaped) {
-            escaped = false;
-            continue;
-        }
-        if (in_string && ch == '\\') {
-            escaped = true;
-            continue;
-        }
-        if (ch == '"') {
-            in_string = !in_string;
-            continue;
-        }
-        if (in_string) {
-            continue;
-        }
-        if (ch == '{') {
-            if (depth == 0) {
-                object_begin = index;
-            }
-            ++depth;
-        } else if (ch == '}') {
-            if (depth == 0) {
-                result.malformed = true;
-                return result;
-            }
-            --depth;
-            if (depth == 0 && object_begin != std::string_view::npos) {
-                result.objects.push_back(object.substr(object_begin, index - object_begin + 1));
-                object_begin = std::string_view::npos;
-            }
-        } else if (ch == ']' && depth == 0) {
-            closed = true;
-            break;
-        }
-    }
-    result.malformed = !closed || depth != 0 || in_string || object_begin != std::string_view::npos;
-    return result;
-}
 
 std::optional<hive> hive_from_string(std::string_view value)
 {
@@ -1284,94 +1460,7 @@ format_report serialize_snapshot_json(const snapshot& snapshot)
 
 snapshot_report parse_snapshot_json(std::string_view content)
 {
-    snapshot_report report;
-    const auto format = json_string_field(content, "format");
-    if (!format || *format != "linuxdesktop.settings.registry.snapshot.v1") {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "registry-json-format-invalid",
-            "Registry JSON snapshot has an unknown or missing format marker"));
-        return report;
-    }
-
-    const auto root_object = json_object_field(content, "root");
-    if (!root_object) {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "registry-json-root-missing",
-            "Registry JSON snapshot is missing the root object"));
-        return report;
-    }
-
-    const auto hive_text = json_string_field(*root_object, "hive");
-    const auto subkey = json_string_field(*root_object, "subkey");
-    const auto view_text = json_string_field(*root_object, "view");
-    if (!hive_text || !subkey || !view_text) {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "registry-json-root-invalid",
-            "Registry JSON snapshot root requires hive, subkey, and view"));
-        return report;
-    }
-
-    const auto parsed_hive = hive_from_string(*hive_text);
-    const auto parsed_view = view_from_string(*view_text);
-    if (!parsed_hive || !parsed_view) {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "registry-json-root-invalid",
-            "Registry JSON snapshot root has an unknown hive or view"));
-        return report;
-    }
-
-    snapshot parsed;
-    parsed.root.root = *parsed_hive;
-    parsed.root.subkey = *subkey;
-    parsed.root.registry_view = *parsed_view;
-
-    const auto value_objects = json_array_objects(content, "values");
-    if (!value_objects.found || value_objects.malformed) {
-        report.diagnostics.push_back(make_diagnostic(
-            severity::error,
-            "registry-json-values-invalid",
-            "Registry JSON snapshot requires a well-formed values array"));
-        return report;
-    }
-
-    for (const auto value_object : value_objects.objects) {
-        const auto key_path = json_string_field(value_object, "key_path");
-        const auto name = json_string_field(value_object, "name");
-        const auto type_text = json_string_field(value_object, "type");
-        const auto data_hex = json_string_field(value_object, "data_hex");
-        if (!key_path || !name || !type_text || !data_hex) {
-            report.diagnostics.push_back(make_diagnostic(
-                severity::error,
-                "registry-json-value-invalid",
-                "Registry JSON value requires key_path, name, type, and data_hex"));
-            return report;
-        }
-
-        const auto parsed_type = value_type_from_string(*type_text);
-        const auto bytes = hex_to_bytes(*data_hex);
-        if (!parsed_type || !bytes) {
-            report.diagnostics.push_back(make_diagnostic(
-                severity::error,
-                "registry-json-value-invalid",
-                "Registry JSON value has an unknown type or invalid hex data"));
-            return report;
-        }
-
-        snapshot_value value;
-        value.key_path = *key_path;
-        value.item.name = *name;
-        value.item.type = *parsed_type;
-        value.item.bytes = *bytes;
-        parsed.values.push_back(std::move(value));
-    }
-
-    report.ok = true;
-    report.item = std::move(parsed);
-    return report;
+    return snapshot_json_parser(content).parse();
 }
 
 format_report serialize_snapshot_reg(const snapshot& snapshot)

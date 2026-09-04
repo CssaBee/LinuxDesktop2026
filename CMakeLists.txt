@@ -15,9 +15,9 @@ set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
 
 if(MSVC)
-    add_compile_options(/W4 /permissive-)
+    add_compile_options(/W4 /permissive- /we4062)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic -Wconversion)
+    add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wswitch-enum -Werror=switch-enum)
 endif()
 
 add_library(ld_core INTERFACE)

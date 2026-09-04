@@ -34,6 +34,9 @@ The extracted module must cover these responsibility groups before
 - Use explicit capability reports for every backend.
 - Keep filesystem and Registry mutation behind explicit permission flags.
 - Default mutating operations to dry-run where practical.
+- Separate staged file/Registry artifact writes from live activation commands
+  such as `update-desktop-database`, `update-mime-database`, icon-cache
+  refreshes, `dconf update`, or Windows system-default updates.
 - Report unsupported, sandbox-limited, permission-denied, backend-missing, and
   externally-updated-database states as diagnostics.
 - Keep desktop/session concepts separate from settings payload concepts.
@@ -49,8 +52,12 @@ The extracted module must cover these responsibility groups before
 - `ld_desktop` reports capabilities for autostart, desktop entries, icons,
   MIME/file associations, default applications, URL protocol handlers,
   shell-equivalent integration, desktop database updates, and managed policy.
+  Managed policy is reported as backend-limited on Linux because the current
+  implementation generates dconf-compatible source files but does not run
+  `dconf update` or otherwise verify active dconf database state.
 - Linux autostart and managed/enforced policy use the same dry-run-first file
-  behavior proven by the earlier prototype.
+  behavior proven by the earlier prototype. Policy reports include diagnostics
+  that generated files still require system dconf installation and activation.
 - Windows autostart and policy currently report backend-missing capability
   diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
   before those writes should move into this module.

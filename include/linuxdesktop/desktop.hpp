@@ -34,6 +34,7 @@ enum class capability_state {
     supported,
     unsupported,
     backend_missing,
+    backend_limited,
     sandbox_limited,
     permission_denied
 };

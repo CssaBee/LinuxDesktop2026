@@ -5,15 +5,29 @@ development.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Enable `-Wswitch-enum` for non-MSVC builds and the closest practical MSVC
+- [x] Enable `-Wswitch-enum` for non-MSVC builds and the closest practical MSVC
   equivalent.
-- [ ] Decide whether `switch-enum` warnings should be errors globally or only
+- [x] Decide whether `switch-enum` warnings should be errors globally or only
   for library targets.
-- [ ] Update all enum stringification functions so the build stays clean.
-- [ ] Keep fallback behavior only where invalid external values genuinely need
+- [x] Update all enum stringification functions so the build stays clean.
+- [x] Keep fallback behavior only where invalid external values genuinely need
   runtime handling.
+
+## Implementation Note
+
+The project now treats missing enum cases as build failures during ordinary
+development: non-MSVC builds use `-Wswitch-enum -Werror=switch-enum`, and MSVC
+uses `/we4062`. The setting is global to this repository's C and C++ targets so
+header-only enum helpers are checked by tests and demos too, but the package
+does not export those warning flags to install-tree consumers.
+
+Existing fallback returns remain after exhaustive switches to preserve runtime
+handling for invalid external values, such as casted C ABI inputs or corrupted
+serialized values. Partial bucket switches in `ld_paths` and `ld_root` now spell
+out every current enumerator explicitly, making future enum additions fail the
+build until the intended behavior is chosen.
 
 ## Review Anchor
 

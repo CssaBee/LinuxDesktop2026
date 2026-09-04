@@ -44,6 +44,15 @@ cleanup.
   policy actions into migration execution.
 - Treat Registry snapshots as compatibility data for application state, not as a
   general Registry abstraction.
+- Treat the Registry JSON snapshot format as a narrow compatibility format, not
+  as arbitrary JSON. Version `linuxdesktop.settings.registry.snapshot.v1`
+  accepts one top-level object with exactly `format`, `root`, and `values`;
+  `root` is an object with string `hive`, `subkey`, and `view`; `values` is an
+  array of flat objects with string `key_path`, `name`, `type`, and `data_hex`.
+  The parser accepts only strings, objects, and arrays used by that schema.
+  Supported string escapes are `\"`, `\\`, `\n`, `\r`, and `\t`; Unicode,
+  slash, backspace/form-feed escapes, scalar literals, unknown fields, trailing
+  content, and extra nesting are rejected with Registry JSON diagnostics.
 - Treat filesystem migration as application settings migration, not rsync-grade
   filesystem replication. Supported sources are regular files and directories
   containing regular files or subdirectories. Symlinks and special files are

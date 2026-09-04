@@ -6,9 +6,6 @@ list below.
 
 ## Current Order
 
-- `70` - Make Dconf Policy Activation Honest
-- `68` - Enforce Enum String Exhaustiveness
-- `71` - Replace Or Formally Scope Migration JSON Parser
 - `72` - Formally Scope Reg File Compatibility
 - `73` - Decide Settings Interprocess Write Contract
 - `74` - Rename Or Split Migration Move Semantics
@@ -24,6 +21,9 @@ list below.
 
 ## Implemented
 
+- `71` - Replace Or Formally Scope Migration JSON Parser
+- `68` - Enforce Enum String Exhaustiveness
+- `70` - Make Dconf Policy Activation Honest
 - `69` - Share Durable File Write Primitive With Desktop
 - `64` - Protect Watch Self-Stop Ownership Invariant
 - `63` - Replace Blocking Settle FIFO With Deadline Scheduler
