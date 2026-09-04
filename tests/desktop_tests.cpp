@@ -40,6 +40,22 @@ bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, co
     return false;
 }
 
+bool has_temp_sibling(const std::filesystem::path& target)
+{
+    std::error_code ec;
+    const auto parent = target.parent_path();
+    if (!std::filesystem::is_directory(parent, ec)) {
+        return false;
+    }
+    const auto prefix = target.filename().string() + ".tmp.";
+    for (const auto& entry : std::filesystem::directory_iterator(parent, ec)) {
+        if (entry.path().filename().string().rfind(prefix, 0) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const ld::capability* find_capability(const ld::capability_report& report, ld::effect_kind kind)
 {
     for (const auto& capability : report.effects) {
@@ -237,6 +253,30 @@ void autostart_linux_removal_only_deletes_generated_entry()
 #endif
 }
 
+void autostart_atomic_write_cleans_temp_after_replace_failure()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "autostart-atomic-replace-failure";
+    const auto entry = autostart_entry_for_tests();
+    const auto target = root / "linuxdesktop2026-desktop-tests.desktop";
+    std::filesystem::create_directories(target);
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root;
+
+    const auto report = ld::apply_autostart(entry, options);
+    require(!report.ok, "desktop autostart should fail when the target path is a directory");
+    require(has_diagnostic(report.diagnostics, "atomic-replace-failed"),
+        "desktop autostart should surface atomic replace failures");
+    require(has_diagnostic(report.diagnostics, "autostart-write-failed"),
+        "desktop autostart should keep its effect-specific write diagnostic");
+    require(std::filesystem::is_directory(target), "failed autostart replace should preserve existing target");
+    require(!has_temp_sibling(target), "failed autostart replace should clean temporary files");
+#endif
+}
+
 void autostart_linux_routes_config_home_through_paths()
 {
 #if !defined(_WIN32)
@@ -347,6 +387,57 @@ void policy_linux_writes_queries_and_removes_dconf_files()
 #endif
 }
 
+void policy_atomic_write_cleans_temp_after_defaults_replace_failure()
+{
+#if !defined(_WIN32)
+    auto entry = policy_entry_for_tests();
+    const auto root = test_root() / "policy-defaults-atomic-replace-failure";
+    const auto target = root / "defaults" / "desktop-tests-theme.conf";
+    std::filesystem::create_directories(target);
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_policy_write = true;
+    options.policy_defaults_directory_override = root / "defaults";
+
+    const auto report = ld::apply_policy(entry, options);
+    require(!report.ok, "desktop policy should fail when the defaults path is a directory");
+    require(has_diagnostic(report.diagnostics, "atomic-replace-failed"),
+        "desktop policy defaults should surface atomic replace failures");
+    require(has_diagnostic(report.diagnostics, "policy-write-failed"),
+        "desktop policy defaults should keep its effect-specific write diagnostic");
+    require(std::filesystem::is_directory(target), "failed policy defaults replace should preserve existing target");
+    require(!has_temp_sibling(target), "failed policy defaults replace should clean temporary files");
+#endif
+}
+
+void policy_atomic_write_cleans_temp_after_lock_replace_failure()
+{
+#if !defined(_WIN32)
+    auto entry = policy_entry_for_tests();
+    entry.enforced = true;
+
+    const auto root = test_root() / "policy-lock-atomic-replace-failure";
+    const auto lock_target = root / "locks" / "desktop-tests-theme.conf";
+    std::filesystem::create_directories(lock_target);
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_policy_write = true;
+    options.policy_defaults_directory_override = root / "defaults";
+    options.policy_locks_directory_override = root / "locks";
+
+    const auto report = ld::apply_policy(entry, options);
+    require(!report.ok, "desktop policy should fail when the lock path is a directory");
+    require(has_diagnostic(report.diagnostics, "atomic-replace-failed"),
+        "desktop policy locks should surface atomic replace failures");
+    require(has_diagnostic(report.diagnostics, "policy-lock-write-failed"),
+        "desktop policy locks should keep its effect-specific write diagnostic");
+    require(std::filesystem::is_directory(lock_target), "failed policy lock replace should preserve existing target");
+    require(!has_temp_sibling(lock_target), "failed policy lock replace should clean temporary files");
+#endif
+}
+
 int main()
 {
     capability_report_covers_extraction_scope();
@@ -355,9 +446,12 @@ int main()
     autostart_rejects_relative_or_file_backed_output_directory();
     autostart_linux_writes_queries_and_removes_desktop_file();
     autostart_linux_removal_only_deletes_generated_entry();
+    autostart_atomic_write_cleans_temp_after_replace_failure();
     autostart_linux_routes_config_home_through_paths();
     policy_write_requires_explicit_permission();
     policy_reports_sanitized_ids_and_rejects_malformed_directories();
     policy_linux_writes_queries_and_removes_dconf_files();
+    policy_atomic_write_cleans_temp_after_defaults_replace_failure();
+    policy_atomic_write_cleans_temp_after_lock_replace_failure();
     return EXIT_SUCCESS;
 }

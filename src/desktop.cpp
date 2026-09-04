@@ -1,11 +1,10 @@
 #include "linuxdesktop/desktop.hpp"
 
+#include "durable_file_write.hpp"
 #include "linuxdesktop/paths.hpp"
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
-#include <sstream>
 #include <system_error>
 #include <utility>
 
@@ -36,28 +35,26 @@ std::string sanitize_segment(std::string value, std::string fallback = {})
     return value.empty() ? fallback : value;
 }
 
-bool write_file_content(const std::filesystem::path& target, const std::string& content)
+bool write_file_content(
+    const std::filesystem::path& target,
+    const std::string& content,
+    std::vector<diagnostic>& diagnostics)
 {
-    std::ofstream output(target, std::ios::binary | std::ios::trunc);
-    output << content;
-    return output.good();
+    ::linuxdesktop::detail::durable_file_write_options options;
+    options.target = target;
+    options.content = content;
+    options.keep_backup = false;
+    options.atomic_replace = true;
+    options.durable_write = true;
+
+    auto report = ::linuxdesktop::detail::write_durable_file(options);
+    diagnostics.insert(diagnostics.end(), report.diagnostics.begin(), report.diagnostics.end());
+    return report.ok;
 }
 
 std::string read_text(const std::filesystem::path& path, std::error_code& ec)
 {
-    ec.clear();
-    std::ifstream input(path, std::ios::binary);
-    if (!input) {
-        ec = std::make_error_code(std::errc::no_such_file_or_directory);
-        return {};
-    }
-    std::ostringstream output;
-    output << input.rdbuf();
-    if (!input.good() && !input.eof()) {
-        ec = std::make_error_code(std::errc::io_error);
-        return {};
-    }
-    return output.str();
+    return ::linuxdesktop::detail::read_text_file(path, ec);
 }
 
 std::filesystem::path config_base_directory(std::vector<diagnostic>& diagnostics)
@@ -541,7 +538,7 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
         report.diagnostics.push_back(make_diagnostic(severity::error, "autostart-create-directory-failed", ec.message(), report.path->parent_path()));
         return report;
     }
-    if (!write_file_content(*report.path, desktop_file_content(entry))) {
+    if (!write_file_content(*report.path, desktop_file_content(entry), report.diagnostics)) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "autostart-write-failed", "Failed to write XDG autostart desktop entry", *report.path));
         return report;
     }
@@ -669,7 +666,7 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
         report.diagnostics.push_back(make_diagnostic(severity::error, "policy-create-directory-failed", ec.message(), report.path->parent_path()));
         return report;
     }
-    if (!write_file_content(*report.path, dconf_policy_content(entry))) {
+    if (!write_file_content(*report.path, dconf_policy_content(entry), report.diagnostics)) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "policy-write-failed", "Failed to write dconf-compatible policy defaults file", *report.path));
         return report;
     }
@@ -679,7 +676,7 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
             report.diagnostics.push_back(make_diagnostic(severity::error, "policy-lock-create-directory-failed", ec.message(), lock_path.parent_path()));
             return report;
         }
-        if (!write_file_content(lock_path, dconf_lock_content(entry))) {
+        if (!write_file_content(lock_path, dconf_lock_content(entry), report.diagnostics)) {
             report.diagnostics.push_back(make_diagnostic(severity::error, "policy-lock-write-failed", "Failed to write dconf-compatible policy lock file", lock_path));
             return report;
         }

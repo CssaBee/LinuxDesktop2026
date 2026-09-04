@@ -5,15 +5,15 @@ internal primitive and use it for desktop integration files.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Extract a shared internal write helper that supports temp file, flush,
+- [x] Extract a shared internal write helper that supports temp file, flush,
   atomic replace, parent-directory sync where available, and diagnostics.
-- [ ] Replace `ld_desktop` direct truncate-and-write behavior for autostart,
+- [x] Replace `ld_desktop` direct truncate-and-write behavior for autostart,
   policy defaults, and policy lock files.
-- [ ] Add interruption/failure tests for desktop writes that mirror the
+- [x] Add interruption/failure tests for desktop writes that mirror the
   settings module's durability expectations.
-- [ ] Keep module dependencies clean; do not make `ld_desktop` depend on
+- [x] Keep module dependencies clean; do not make `ld_desktop` depend on
   `ld_settings`.
 
 ## Review Anchor

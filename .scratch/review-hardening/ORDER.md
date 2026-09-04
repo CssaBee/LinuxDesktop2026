@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `69` - Share Durable File Write Primitive With Desktop
 - `70` - Make Dconf Policy Activation Honest
 - `68` - Enforce Enum String Exhaustiveness
 - `71` - Replace Or Formally Scope Migration JSON Parser
@@ -25,6 +24,7 @@ list below.
 
 ## Implemented
 
+- `69` - Share Durable File Write Primitive With Desktop
 - `64` - Protect Watch Self-Stop Ownership Invariant
 - `63` - Replace Blocking Settle FIFO With Deadline Scheduler
 - `62` - Bound And Coalesce Settled-File Readiness Work

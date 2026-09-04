@@ -32,6 +32,7 @@ target_include_directories(ld_core
 )
 
 add_library(ld_desktop
+    src/durable_file_write.cpp
     src/desktop.cpp
     src/desktop_c.cpp
 )
@@ -103,6 +104,7 @@ target_include_directories(ld_root
 target_link_libraries(ld_root PUBLIC LinuxDesktop2026::ld_core LinuxDesktop2026::ld_paths)
 
 add_library(ld_settings
+    src/durable_file_write.cpp
     src/settings.cpp
     src/settings_c.cpp
     src/settings_roots.cpp
