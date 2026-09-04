@@ -5,14 +5,14 @@ does not erase all pending events without accounting.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Replace whole-queue clearing with an explicit drop policy such as
+- [x] Replace whole-queue clearing with an explicit drop policy such as
   drop-oldest or drop-newest.
-- [ ] Report how many events were dropped, and whether a rescan is required.
-- [ ] Preserve the invariant that overflow degrades stream state and surfaces a
+- [x] Report how many events were dropped, and whether a rescan is required.
+- [x] Preserve the invariant that overflow degrades stream state and surfaces a
   caller-visible overflow event.
-- [ ] Add a regression test proving an unrelated already-queued event is not
+- [x] Add a regression test proving an unrelated already-queued event is not
   silently discarded without being counted/diagnosed.
 
 ## Review Anchor

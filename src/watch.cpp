@@ -41,7 +41,14 @@ watch_event make_failure_event(
     return event;
 }
 
-watch_event make_overflow_event(const watch_event& source, std::string message)
+std::string overflow_message(std::size_t dropped_count)
+{
+    return "Watcher queue overflowed; dropped " + std::to_string(dropped_count) +
+        (dropped_count == 1 ? " event" : " events") +
+        "; rescan watched roots before trusting further events";
+}
+
+watch_event make_overflow_event(const watch_event& source, std::size_t dropped_count)
 {
     watch_event event = source;
     event.kind = event_kind::overflow;
@@ -51,7 +58,7 @@ watch_event make_overflow_event(const watch_event& source, std::string message)
     event.diagnostics.push_back(make_diagnostic(
         severity::error,
         std::string(diagnostic_code::queue_overflow),
-        std::move(message),
+        overflow_message(dropped_count),
         source.path.absolute));
     return event;
 }
@@ -652,13 +659,14 @@ private:
             state_ = stream_state::degraded;
         }
         if (queue_overflowed_) {
+            ++queue_overflow_drop_count_;
+            refresh_overflow_diagnostic_locked();
             return;
         }
         if (queue_.size() >= max_queue_depth) {
-            queue_.clear();
-            queue_.push_back(make_overflow_event(
-                event,
-                "Watcher queue overflowed; rescan watched roots before trusting further events"));
+            queue_.pop_front();
+            queue_overflow_drop_count_ = 1;
+            queue_.push_front(make_overflow_event(event, queue_overflow_drop_count_));
             state_ = stream_state::degraded;
             queue_overflowed_ = true;
             cv_.notify_all();
@@ -672,10 +680,38 @@ private:
     {
         auto event = std::move(queue_.front());
         queue_.pop_front();
-        if (queue_.empty()) {
+        if (event.kind == event_kind::overflow && has_queue_overflow_diagnostic(event)) {
             queue_overflowed_ = false;
+            queue_overflow_drop_count_ = 0;
         }
         return event;
+    }
+
+    bool has_queue_overflow_diagnostic(const watch_event& event) const
+    {
+        for (const auto& diagnostic : event.diagnostics) {
+            if (diagnostic.code == diagnostic_code::queue_overflow) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void refresh_overflow_diagnostic_locked()
+    {
+        if (queue_.empty()) {
+            return;
+        }
+        auto& event = queue_.front();
+        if (event.kind != event_kind::overflow) {
+            return;
+        }
+        for (auto& diagnostic : event.diagnostics) {
+            if (diagnostic.code == diagnostic_code::queue_overflow) {
+                diagnostic.message = overflow_message(queue_overflow_drop_count_);
+                return;
+            }
+        }
     }
 
     mutable std::mutex mutex_;
@@ -694,6 +730,7 @@ private:
     stream_state state_ = stream_state::clean;
     bool stopped_ = false;
     bool queue_overflowed_ = false;
+    std::size_t queue_overflow_drop_count_ = 0;
 };
 
 watcher::watcher()

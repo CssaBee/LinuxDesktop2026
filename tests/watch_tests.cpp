@@ -48,6 +48,18 @@ bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, st
     return false;
 }
 
+const linuxdesktop::diagnostic* find_diagnostic(
+    const std::vector<linuxdesktop::diagnostic>& diagnostics,
+    std::string_view code)
+{
+    for (const auto& item : diagnostics) {
+        if (item.code == code) {
+            return &item;
+        }
+    }
+    return nullptr;
+}
+
 std::filesystem::path test_root()
 {
     auto root = std::filesystem::temp_directory_path() / "linuxdesktop2026-watch-tests";
@@ -561,6 +573,62 @@ void pull_queue_overflow_emits_rescan_hint()
         "queue overflow should carry a queue diagnostic");
 }
 
+void pull_queue_overflow_preserves_queued_events_and_counts_drops()
+{
+    const auto root = test_root();
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options first_options;
+    first_options.path = root;
+    const auto first_report = watcher.add_watch(first_options);
+    require(first_report.ok, "first watch should start");
+
+    const auto second_root = root / "second";
+    std::filesystem::create_directories(second_root);
+    ld::watch_options second_options;
+    second_options.path = second_root;
+    const auto second_report = watcher.add_watch(second_options);
+    require(second_report.ok, "second watch should start");
+
+    for (int i = 0; i < 510; ++i) {
+        backend->push(backend->event_for(first_report.id, ld::event_kind::modified, "filler-" + std::to_string(i) + ".txt"));
+    }
+    backend->push(backend->event_for(second_report.id, ld::event_kind::modified, "survivor.txt"));
+    backend->push(backend->event_for(first_report.id, ld::event_kind::modified, "tail.txt"));
+    backend->push(backend->event_for(first_report.id, ld::event_kind::modified, "overflow-trigger.txt"));
+
+    for (int i = 0; i < 200; ++i) {
+        if (watcher.state() == ld::stream_state::degraded) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    }
+    require(watcher.state() == ld::stream_state::degraded, "queue overflow should degrade the watcher state");
+
+    const auto overflow = watcher.wait_for(std::chrono::seconds(2));
+    require(overflow.has_value(), "queue overflow event should arrive before preserved queued events");
+    require(overflow->kind == ld::event_kind::overflow, "queue overflow should be reported first");
+    require(overflow->state == ld::stream_state::degraded, "queue overflow should degrade the watcher");
+    require(overflow->rescan_recommended, "queue overflow should recommend a rescan");
+    const auto* overflow_diagnostic = find_diagnostic(overflow->diagnostics, ld::diagnostic_code::queue_overflow);
+    require(overflow_diagnostic != nullptr, "queue overflow should carry a queue diagnostic");
+    require(overflow_diagnostic->message.find("dropped 1 event") != std::string::npos,
+        "queue overflow should report the number of dropped events");
+    require(overflow_diagnostic->message.find("rescan") != std::string::npos,
+        "queue overflow should report that a rescan is required");
+
+    bool saw_survivor = false;
+    for (int i = 0; i < 511; ++i) {
+        const auto event = watcher.wait_for(std::chrono::seconds(2));
+        require(event.has_value(), "preserved queued events should remain available after overflow");
+        if (event->source == second_report.id && event->path.root_relative == std::filesystem::path{"survivor.txt"}) {
+            saw_survivor = true;
+        }
+    }
+    require(saw_survivor, "overflow should preserve unrelated already-queued events instead of clearing the queue");
+}
+
 void maps_rename_and_overflow_state()
 {
     const auto root = test_root();
@@ -1026,6 +1094,7 @@ int main()
         callback_replacement_applies_to_future_events();
         callback_exception_is_caught_and_falls_back_to_queue();
         pull_queue_overflow_emits_rescan_hint();
+        pull_queue_overflow_preserves_queued_events_and_counts_drops();
         maps_rename_and_overflow_state();
         preserves_backend_resource_limit_start_diagnostics();
         preserves_resource_limit_event_diagnostics();
