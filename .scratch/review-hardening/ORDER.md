@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `62` - Bound And Coalesce Settled-File Readiness Work
 - `63` - Replace Blocking Settle FIFO With Deadline Scheduler
 - `64` - Protect Watch Self-Stop Ownership Invariant
 - `69` - Share Durable File Write Primitive With Desktop
@@ -28,6 +27,7 @@ list below.
 
 ## Implemented
 
+- `62` - Bound And Coalesce Settled-File Readiness Work
 - `84` - Preserve Unrelated Events On Watch Queue Overflow
 - `66` - Gate Watch Test Hooks Behind CMake Option
 - `65` - Scope Inotify Remove-Watch Pending State

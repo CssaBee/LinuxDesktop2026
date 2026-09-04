@@ -37,7 +37,7 @@ See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 | `ld_core` | `LinuxDesktop2026::ld_core` | Active | Shared diagnostic vocabulary and version-adjacent core types. |
 | `ld_settings` | `LinuxDesktop2026::ld_settings` | Active prototype | Settings/config roots, config-default hydration, validated writes, backup behavior, config layers, and settings diagnostics. |
 | `ld_paths` | `LinuxDesktop2026::ld_paths` | Active prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
-| `ld_watch` | `LinuxDesktop2026::ld_watch` | Active prototype | File watching with native Linux and Windows backends, optional libuv, bounded event delivery, recursive-watch honesty, and settled-file behavior. |
+| `ld_watch` | `LinuxDesktop2026::ld_watch` | Active prototype | File watching with native Linux and Windows backends, optional libuv, bounded pull delivery, settled-file coalescing by path, and recursive-watch honesty. |
 | `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Extraction in progress | Desktop/session integration effects such as autostart and managed/enforced policy, with the broader desktop-effect scope still being completed. |
 | `ld_migration` | `LinuxDesktop2026::ld_migration` | Extraction in progress | Dry-run-first application-settings migration for regular files/directories and app-settings Registry snapshot/import/export compatibility. |
 

@@ -202,7 +202,7 @@ The first `watcher` object owns backend resources and an internal event queue.
 - Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
 - Callbacks may call `stop`, `remove_watch`, `set_callback`, or destroy the watcher facade from inside the callback. Destroying the facade stops the watcher and waits for worker threads other than the callback's current delivery thread.
 - Callback exceptions are caught, degrade the stream, and fall back to queued delivery with a diagnostic error event rather than escaping the delivery thread.
-- Internal event queues are bounded. If pull-mode delivery falls behind, the watcher discards queued events, emits a degraded overflow event with rescan guidance, and resumes once the queue is drained.
+- Pull delivery is bounded by event depth. If pull-mode delivery falls behind, the watcher discards queued events, emits a degraded overflow event with rescan guidance, and resumes once the queue is drained. Settled-file readiness is coalesced by distinct pending path so repeated events for one file do not allocate unbounded stale work.
 
 The prototype can use one delivery thread on Linux. A later toolkit adapter may marshal events onto Qt, GLib, wxWidgets, .NET, or application-specific dispatchers.
 

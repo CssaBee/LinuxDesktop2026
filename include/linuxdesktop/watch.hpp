@@ -3,6 +3,7 @@
 #include "linuxdesktop/core.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -174,14 +175,16 @@ struct start_report {
 namespace detail {
 class watch_backend;
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
+std::size_t pending_settle_work_for_tests(const watcher& watcher);
 } // namespace detail
 #endif
 
 class watcher {
 public:
-    // Watcher queues are bounded. If pull-mode delivery falls behind far enough,
-    // the watcher drops queued events, emits a degraded overflow event, and
-    // expects the caller to rescan.
+    // Pull delivery is bounded by event depth. If it falls behind far enough, the
+    // watcher drops queued events, emits a degraded overflow event, and expects
+    // the caller to rescan. Settled-file readiness is coalesced by distinct
+    // pending (watch_id, path) keys.
     watcher();
     ~watcher();
 
@@ -205,6 +208,7 @@ public:
 private:
 #if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
     friend watcher detail::make_watcher_for_backend(std::shared_ptr<detail::watch_backend> backend);
+    friend std::size_t detail::pending_settle_work_for_tests(const watcher& watcher);
 
     explicit watcher(std::shared_ptr<detail::watch_backend> backend);
 #endif

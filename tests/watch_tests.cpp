@@ -1041,6 +1041,67 @@ void stale_settled_generation_does_not_stop_future_settlement()
         "worker should continue to unrelated settled work after stale generation");
 }
 
+void settled_file_burst_for_one_path_keeps_pending_work_bounded()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "burst.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{1000},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "burst.txt"));
+    for (int i = 0; i < 200; ++i) {
+        if (ld::detail::pending_settle_work_for_tests(watcher) == 1) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    }
+    require(ld::detail::pending_settle_work_for_tests(watcher) == 1,
+        "first settled-file event should become active before the burst");
+
+    constexpr int burst_count = 3000;
+    for (int i = 0; i < burst_count; ++i) {
+        auto event = backend->event_for(report.id, ld::event_kind::modified, "burst.txt");
+        if (i == burst_count - 1) {
+            event.diagnostics.push_back(diagnostic(
+                linuxdesktop::severity::info,
+                "test.burst.latest",
+                "latest burst event"));
+        }
+        backend->push(std::move(event));
+    }
+
+    bool observed_pending_work = false;
+    for (int i = 0; i < 200; ++i) {
+        const auto work = ld::detail::pending_settle_work_for_tests(watcher);
+        require(work <= 2, "same-path settled-file burst should keep at most one active and one pending work item");
+        if (work == 2) {
+            observed_pending_work = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    }
+    require(observed_pending_work, "same-path settled-file burst should create one coalesced pending work item");
+
+    const auto received = watcher.wait_for(std::chrono::seconds{4});
+    require(received.has_value(), "latest settled-file burst event should arrive");
+    require(has_diagnostic(received->diagnostics, "test.burst.latest"),
+        "same-path settled-file burst should deliver the latest event");
+    require(watcher.poll() == std::nullopt, "same-path settled-file burst should not leave stale events");
+}
+
 void settled_file_large_batch_delivers_all_paths()
 {
     const auto root = test_root();
@@ -1108,6 +1169,7 @@ int main()
         repeated_add_remove_start_stays_usable();
         removed_settled_watch_does_not_stop_future_settlement();
         stale_settled_generation_does_not_stop_future_settlement();
+        settled_file_burst_for_one_path_keeps_pending_work_bounded();
         settled_file_large_batch_delivers_all_paths();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";

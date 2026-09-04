@@ -308,6 +308,14 @@ public:
         return state_;
     }
 
+#if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+    std::size_t pending_settle_work_for_tests() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return active_settle_tasks_ + pending_settle_tasks_.size();
+    }
+#endif
+
 private:
     explicit impl(std::shared_ptr<detail::watch_backend> backend)
         : backend_(std::move(backend))
@@ -455,6 +463,13 @@ private:
                 ++it;
             }
         }
+        for (auto it = pending_settle_tasks_.begin(); it != pending_settle_tasks_.end();) {
+            if (it->first.rfind(prefix, 0) == 0) {
+                it = pending_settle_tasks_.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
     void enqueue_for_settle(watch_event event)
@@ -465,7 +480,13 @@ private:
         }
         const auto key = settle_key(event);
         const auto generation = ++settle_generations_[key];
-        settle_queue_.push_back(settle_task{std::move(key), generation, std::move(event)});
+        auto [it, inserted] = pending_settle_tasks_.try_emplace(key);
+        if (inserted) {
+            settle_order_.push_back(key);
+            it->second.key = key;
+        }
+        it->second.generation = generation;
+        it->second.event = std::move(event);
         settle_cv_.notify_one();
     }
 
@@ -476,13 +497,19 @@ private:
             {
                 std::unique_lock<std::mutex> lock(mutex_);
                 settle_cv_.wait(lock, [this] {
-                    return stopped_ || !settle_queue_.empty();
+                    return stopped_ || !settle_order_.empty();
                 });
-                if (settle_queue_.empty()) {
+                if (settle_order_.empty()) {
                     return;
                 }
-                task = std::move(settle_queue_.front());
-                settle_queue_.pop_front();
+                auto key = std::move(settle_order_.front());
+                settle_order_.pop_front();
+                const auto task_it = pending_settle_tasks_.find(key);
+                if (task_it == pending_settle_tasks_.end()) {
+                    continue;
+                }
+                task = std::move(task_it->second);
+                pending_settle_tasks_.erase(task_it);
             }
 
             const auto status = current_settle_status(task.key, task.generation);
@@ -493,7 +520,15 @@ private:
                 continue;
             }
 
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                ++active_settle_tasks_;
+            }
             auto result = apply_settle_policy(task.key, task.generation, std::move(task.event));
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                --active_settle_tasks_;
+            }
             if (result.status == settle_status::shutdown) {
                 return;
             }
@@ -724,9 +759,11 @@ private:
     std::deque<watch_event> queue_;
     event_callback callback_;
     std::map<std::uint64_t, watch_options> watches_;
-    std::deque<settle_task> settle_queue_;
+    std::deque<std::string> settle_order_;
+    std::map<std::string, settle_task> pending_settle_tasks_;
     std::map<std::string, std::uint64_t> settle_generations_;
     std::uint64_t next_id_ = 1;
+    std::size_t active_settle_tasks_ = 0;
     stream_state state_ = stream_state::clean;
     bool stopped_ = false;
     bool queue_overflowed_ = false;
@@ -816,6 +853,11 @@ namespace detail {
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend)
 {
     return watcher(std::move(backend));
+}
+
+std::size_t pending_settle_work_for_tests(const watcher& watcher)
+{
+    return watcher.impl_->pending_settle_work_for_tests();
 }
 #endif
 

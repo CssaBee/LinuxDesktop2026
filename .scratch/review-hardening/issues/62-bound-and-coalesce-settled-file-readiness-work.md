@@ -5,15 +5,15 @@ one pending readiness record per `(watch_id, path)`.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Define the pending settled-file key and state so repeated events update
+- [x] Define the pending settled-file key and state so repeated events update
   existing work instead of appending stale tasks.
-- [ ] Preserve the current generation/coalescing semantics while making memory
+- [x] Preserve the current generation/coalescing semantics while making memory
   use bounded by distinct pending paths, not raw event count.
-- [ ] Add a burst test where one path receives far more events than the public
+- [x] Add a burst test where one path receives far more events than the public
   queue depth and memory/task count stays bounded.
-- [ ] Clarify public wording so "bounded watcher queues" cannot be read as a
+- [x] Clarify public wording so "bounded watcher queues" cannot be read as a
   broader guarantee than the implementation provides.
 
 ## Review Anchor
