@@ -4,7 +4,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ld = linuxdesktop::desktop;
@@ -65,6 +67,36 @@ const ld::capability* find_capability(const ld::capability_report& report, ld::e
     }
     return nullptr;
 }
+
+#if !defined(_WIN32)
+class scoped_env_var {
+public:
+    scoped_env_var(std::string name, std::string value)
+        : name_(std::move(name))
+    {
+        if (const char* current = std::getenv(name_.c_str())) {
+            original_ = current;
+        }
+        setenv(name_.c_str(), value.c_str(), 1);
+    }
+
+    ~scoped_env_var()
+    {
+        if (original_) {
+            setenv(name_.c_str(), original_->c_str(), 1);
+        } else {
+            unsetenv(name_.c_str());
+        }
+    }
+
+    scoped_env_var(const scoped_env_var&) = delete;
+    scoped_env_var& operator=(const scoped_env_var&) = delete;
+
+private:
+    std::string name_;
+    std::optional<std::string> original_;
+};
+#endif
 
 ld::autostart_entry autostart_entry_for_tests()
 {
@@ -301,7 +333,7 @@ void autostart_linux_routes_config_home_through_paths()
 {
 #if !defined(_WIN32)
     const auto config_home = test_root() / "xdg-config-home";
-    setenv("XDG_CONFIG_HOME", config_home.string().c_str(), 1);
+    scoped_env_var config_home_env("XDG_CONFIG_HOME", config_home.string());
 
     const auto entry = autostart_entry_for_tests();
     ld::apply_options options;
@@ -312,6 +344,83 @@ void autostart_linux_routes_config_home_through_paths()
     require(
         *queried.path == config_home / "autostart" / "linuxdesktop2026-desktop-tests.desktop",
         "desktop autostart query should route XDG config-home selection through ld_paths");
+#endif
+}
+
+void desktop_flavors_share_standard_xdg_autostart_contract()
+{
+#if !defined(_WIN32)
+    struct flavor_case {
+        const char* name;
+        const char* xdg_current_desktop;
+    };
+
+    const flavor_case flavors[] = {
+        {"xdg_full_gnome", "ubuntu:GNOME"},
+        {"xdg_full_kde", "KDE"},
+        {"xdg_light_xfce", "XFCE"},
+        {"xdg_minimal_bare_wm", "i3"},
+    };
+
+    for (const auto& flavor : flavors) {
+        const auto config_home = test_root() / "desktop-flavors" / flavor.name / "config";
+        scoped_env_var config_home_env("XDG_CONFIG_HOME", config_home.string());
+        scoped_env_var desktop_env("XDG_CURRENT_DESKTOP", flavor.xdg_current_desktop);
+
+        const auto entry = autostart_entry_for_tests();
+        const auto queried = ld::query_autostart(entry);
+
+        require(queried.ok, "Desktop Flavor autostart query should resolve the XDG autostart artifact");
+        require(queried.path.has_value(), "Desktop Flavor autostart query should report the artifact path");
+        require(
+            *queried.path == config_home / "autostart" / "linuxdesktop2026-desktop-tests.desktop",
+            "Desktop Flavors should share the standard XDG autostart artifact location");
+    }
+#endif
+}
+
+void desktop_flavor_capabilities_do_not_create_per_desktop_backends()
+{
+#if !defined(_WIN32)
+    struct flavor_case {
+        const char* name;
+        const char* xdg_current_desktop;
+    };
+
+    const flavor_case flavors[] = {
+        {"xdg_full_gnome", "ubuntu:GNOME"},
+        {"xdg_full_kde", "KDE"},
+        {"xdg_light_xfce", "XFCE"},
+        {"xdg_minimal_bare_wm", "i3"},
+    };
+
+    const ld::effect_kind registration_artifacts[] = {
+        ld::effect_kind::desktop_entry,
+        ld::effect_kind::icon,
+        ld::effect_kind::mime_association,
+        ld::effect_kind::default_application,
+        ld::effect_kind::url_protocol_handler,
+        ld::effect_kind::desktop_database,
+    };
+
+    for (const auto& flavor : flavors) {
+        scoped_env_var desktop_env("XDG_CURRENT_DESKTOP", flavor.xdg_current_desktop);
+        const auto report = ld::query_capabilities();
+
+        for (const auto kind : registration_artifacts) {
+            const auto* capability = find_capability(report, kind);
+            require(capability != nullptr, "Desktop Flavor capability report should include every registration artifact");
+            require(capability->state == ld::capability_state::backend_missing,
+                "Unimplemented registration artifacts should report backend_missing instead of per-desktop pseudo-support");
+            require(!capability->can_write_user,
+                "Unimplemented registration artifacts should not advertise user writes for any Desktop Flavor");
+        }
+
+        const auto* shell = find_capability(report, ld::effect_kind::shell_integration);
+        require(shell != nullptr, "Desktop Flavor capability report should include shell integration");
+        require(shell->state == ld::capability_state::backend_missing,
+            "Runtime shell integration should stay outside the registration-artifact tranche");
+    }
 #endif
 }
 
@@ -473,6 +582,8 @@ int main()
     autostart_linux_removal_only_deletes_generated_entry();
     autostart_atomic_write_cleans_temp_after_replace_failure();
     autostart_linux_routes_config_home_through_paths();
+    desktop_flavors_share_standard_xdg_autostart_contract();
+    desktop_flavor_capabilities_do_not_create_per_desktop_backends();
     policy_write_requires_explicit_permission();
     policy_reports_sanitized_ids_and_rejects_malformed_directories();
     policy_linux_writes_queries_and_removes_dconf_files();

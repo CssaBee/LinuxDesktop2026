@@ -130,6 +130,19 @@ See `CROSS_PORT_REFERENCES.md` for the rule that keeps local FlavorTests
 separate from maintained cross-port proof repositories, plus the current
 OpenIPC Dashboard and OBS reference lessons.
 
+Desktop Flavor coverage:
+
+- Environment-oriented desktop validation uses Desktop Flavor fixtures such as
+  `xdg_full_gnome`, `xdg_full_kde`, `xdg_light_xfce`,
+  `xdg_minimal_bare_wm`, and `windows_registration`.
+- These fixtures are not a substitute for product-shaped FlavorTests. They
+  prove honest capability reporting and staged artifact generation across
+  desktop-session families; they do not promise that every live session consumes
+  every generated artifact.
+- Add product FlavorTests for `ld_desktop` only when a real upstream seam has
+  desktop registration behavior to refactor. Until then, keep Desktop Flavor
+  assertions in hermetic `ld_desktop` unit tests.
+
 Seam rule:
 
 - The adapter code should stay smaller than the original upstream control flow

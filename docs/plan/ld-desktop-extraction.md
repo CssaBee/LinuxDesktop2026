@@ -14,6 +14,12 @@ The matching C ABI lives in `linuxdesktop/desktop_c.h` and the
 
 ## Scope
 
+`ld_desktop` supports desktop integration by standards-backed registration
+artifacts rather than by separate GNOME, KDE, Xfce, bare-window-manager, or
+Windows-shell public APIs. GNOME, KDE Plasma, Xfce, bare window-manager
+sessions, and the Windows shell are Desktop Flavors for validation, not separate
+platform promises.
+
 The extracted module must cover these responsibility groups before
 `ld_desktop` can be treated as the stable desktop integration surface:
 
@@ -23,11 +29,22 @@ The extracted module must cover these responsibility groups before
 - MIME and file associations,
 - default applications,
 - URL protocol handlers,
-- shell-equivalent behavior where practical,
-- desktop database updates,
+- desktop database update and activation plans,
+- uninstall cleanup reporting,
 - managed and enforced desktop or application policy,
 - Registry-equivalent behavior whose purpose is shell, startup, policy,
   session, or desktop integration.
+
+Runtime shell actions such as opening a path or URL, revealing a file in a file
+manager, and forwarding a later invocation to an already-running process are
+outside this expansion. They should be handled by a later process/shell or IPC
+design pass unless repeated consumer evidence proves they belong here.
+
+The preferred C++ surface for app registration should be a coherent desktop
+bundle that can plan, dry-run, apply, query, and remove the normal registration
+set together. Individual effect calls remain useful for advanced callers,
+tests, and partial integrations, but they should not create per-desktop public
+APIs.
 
 ## Required API Posture
 
@@ -61,6 +78,8 @@ The extracted module must cover these responsibility groups before
 - Windows autostart and policy currently report backend-missing capability
   diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
   before those writes should move into this module.
+- Desktop Flavor variance is currently covered by hermetic capability and XDG
+  path tests. Live desktop-session consumption is not yet release evidence.
 - New C++ callers should include `linuxdesktop/desktop.hpp` and link
   `LinuxDesktop2026::ld_desktop`.
 - New C callers should include `linuxdesktop/desktop_c.h` and link
@@ -74,6 +93,10 @@ Before `ld_desktop` is a ship candidate, tests and examples must cover:
 - Linux `.desktop` field escaping and invalid-field rejection,
 - Linux MIME/default-app/protocol registration as dry-run and staged file
   generation before any live database update,
+- Desktop Flavor scenarios for `xdg_full_gnome`, `xdg_full_kde`,
+  `xdg_light_xfce`, `xdg_minimal_bare_wm`, and `windows_registration`, with
+  assertions focused on honest capability reporting and correct staged
+  artifacts rather than live desktop consumption,
 - managed/enforced Linux policy diagnostics for missing schemas, user-vs-global
   scope, and lock/default file behavior,
 - Windows-shaped autostart and policy diagnostics, even when CI cannot mutate

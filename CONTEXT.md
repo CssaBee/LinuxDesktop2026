@@ -80,6 +80,10 @@ _Avoid_: Notepad++ porting helpers, application-private wrappers
 The initial platform promise of Windows 10/11 and Ubuntu LTS, with other Linux distributions best-effort and no macOS commitment.
 _Avoid_: All desktop platforms, Linux everywhere
 
+**Desktop Flavor**:
+A tested desktop-session family used to verify platform behavior within the phase-one support matrix, such as Ubuntu GNOME, KDE Plasma, Xfce, a bare window-manager session, or the Windows shell.
+_Avoid_: Separate platform, window manager, desktop environment promise
+
 **API hygiene rule**:
 A public API design constraint that keeps concepts small, ownership explicit, threading documented, and future non-C++ bindings plausible.
 _Avoid_: Rust implementation requirement, premature FFI layer

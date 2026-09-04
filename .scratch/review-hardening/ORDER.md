@@ -18,6 +18,9 @@ list below.
 - `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
 - `83` - Run Review Blind-Spot Retrospective
+- `86` - Design Desktop Bundle Registration Surface
+- `87` - Add Staged XDG Desktop Registration Artifacts
+- `88` - Prove Windows Registration Capability Posture
 
 ## Implemented
 

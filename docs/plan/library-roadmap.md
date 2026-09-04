@@ -167,10 +167,13 @@ Example documentation:
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
-- Complete desktop integration effects in `ld_desktop`, including desktop
-  entries, icons, MIME/file associations, default applications, URL protocol
-  handlers, shell-equivalent behavior, desktop database updates, Windows
-  autostart/policy mutation, and Registry-equivalent desktop/system behavior.
+- Complete desktop integration effects in `ld_desktop` according to ADR 0015:
+  standards-backed registration artifacts, a preferred desktop-bundle path,
+  individual calls for autostart, desktop entries, icons, MIME/file
+  associations, default applications, URL protocol handlers, activation/update
+  plans, uninstall cleanup reports, Windows autostart/policy mutation, and
+  Registry-equivalent desktop/system behavior. Keep runtime shell-open behavior
+  and single-instance activation outside this tranche.
 - Continue hardening `ld_migration`, including rollback reporting, cross-module orchestration, adversarial path tests, Windows Registry verification, and release-candidate C ABI cleanup.
 - Use `docs/plan/ld-desktop-extraction.md` and
   `docs/plan/ld-migration-extraction.md` as the extraction requirement

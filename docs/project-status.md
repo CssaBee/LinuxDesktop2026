@@ -24,7 +24,7 @@ boundaries, but it is not a production-stable release.
 | `active` | `ld_settings` | Settings/config sample with root resolution, config-default hydration, ordered writes, backup files, validation before commit, config layers, and opt-in durable writes. Desktop and migration ownership has moved out. |
 | `active` | `ld_paths` | Public C++ and C prototype for standard roots, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, deterministic environment hooks, and opt-in directory creation. |
 | `active` | `ld_watch` | Public C++ watcher prototype with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded pull delivery, recursive-watch diagnostics, and deadline-scheduled settled-file coalescing by path. |
-| `active` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy; broader desktop entries, icons, MIME/file associations, protocols, and desktop database behavior remain before ship-candidate status. |
+| `active` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy. ADR 0015 scopes the next expansion around standards-backed registration artifacts, a preferred desktop-bundle path, individual effect calls, activation plans, uninstall cleanup reports, and Desktop Flavor validation for GNOME, KDE, Xfce, bare window-manager sessions, and Windows 10/11. |
 | `active` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and directories containing regular files/subdirectories; symlinks, special files, ownership, permissions, timestamps, xattrs, ACLs, sparse extents, and hard-link topology are not replicated as filesystem metadata. App-settings Registry snapshot/import/export compatibility is present; broader rollback and adversarial hardening remain before ship-candidate status. |
 | `blocked` | Maintained consumer proof | The Notepad++ proof branch exists in `../LinuxDesktop2026-crossport-notepadpp` and has a private GitHub remote at `CssaBee/LinuxDesktop2026-crossport-notepadpp`. Local package-consumption, private-remote, and rebase evidence exists through generated platform defaults, `ld_root` topology use, and product-owned diagnostics. It still needs observed CI and ongoing rebase-cadence evidence before this gate is validated. |
 
@@ -68,6 +68,9 @@ boundaries, but it is not a production-stable release.
   defaults.
 - Continue adversarial parser and filesystem tests for paths, writes, desktop
   effects, and migration actions.
+- Keep Desktop Flavor tests hermetic until controlled live desktop-session
+  runners exist; flavor coverage should prove honest capabilities and staged
+  artifacts, not imply that every session consumes them.
 - Keep `ld_watch` native Windows verification green and expand capability fields
   only when tests or maintained consumers prove a need.
 
