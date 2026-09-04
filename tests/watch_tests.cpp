@@ -1083,23 +1083,78 @@ void settled_file_burst_for_one_path_keeps_pending_work_bounded()
         backend->push(std::move(event));
     }
 
-    bool observed_pending_work = false;
     for (int i = 0; i < 200; ++i) {
         const auto work = ld::detail::pending_settle_work_for_tests(watcher);
-        require(work <= 2, "same-path settled-file burst should keep at most one active and one pending work item");
-        if (work == 2) {
-            observed_pending_work = true;
+        require(work <= 1, "same-path settled-file burst should keep at most one pending work item");
+        if (work == 1) {
             break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
     }
-    require(observed_pending_work, "same-path settled-file burst should create one coalesced pending work item");
 
     const auto received = watcher.wait_for(std::chrono::seconds{4});
     require(received.has_value(), "latest settled-file burst event should arrive");
     require(has_diagnostic(received->diagnostics, "test.burst.latest"),
         "same-path settled-file burst should deliver the latest event");
     require(watcher.poll() == std::nullopt, "same-path settled-file burst should not leave stale events");
+}
+
+void settled_file_slow_path_does_not_block_ready_paths()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "slow.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    constexpr int fast_count = 25;
+    for (int i = 0; i < fast_count; ++i) {
+        std::ofstream output(root / ("fast-" + std::to_string(i) + ".txt"), std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options slow_options;
+    slow_options.path = root;
+    slow_options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{700},
+        std::chrono::milliseconds{50},
+        std::chrono::milliseconds{1200}};
+    const auto slow_report = watcher.add_watch(slow_options);
+    require(slow_report.ok, "slow settled-file watch should start");
+
+    ld::watch_options fast_options;
+    fast_options.path = root;
+    fast_options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
+    const auto fast_report = watcher.add_watch(fast_options);
+    require(fast_report.ok, "fast settled-file watch should start");
+
+    backend->push(backend->event_for(slow_report.id, ld::event_kind::modified, "slow.txt"));
+    for (int i = 0; i < fast_count; ++i) {
+        backend->push(backend->event_for(fast_report.id, ld::event_kind::modified, "fast-" + std::to_string(i) + ".txt"));
+    }
+
+    const auto started_at = std::chrono::steady_clock::now();
+    std::vector<std::filesystem::path> received_paths;
+    for (int i = 0; i < fast_count; ++i) {
+        const auto received = watcher.wait_for(std::chrono::milliseconds{500});
+        require(received.has_value(), "ready settled-file paths should arrive before the slow path");
+        require(received->source == fast_report.id, "ready settled-file paths should not wait behind the slow path");
+        received_paths.push_back(*received->path.root_relative);
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - started_at;
+    require(elapsed < std::chrono::milliseconds{500},
+        "ready settled-file paths should not wait for another path's stability window");
+
+    for (int i = 0; i < fast_count; ++i) {
+        require(std::find(received_paths.begin(), received_paths.end(), std::filesystem::path("fast-" + std::to_string(i) + ".txt")) != received_paths.end(),
+            "ready settled-file batch should preserve every path");
+    }
 }
 
 void settled_file_large_batch_delivers_all_paths()
@@ -1170,6 +1225,7 @@ int main()
         removed_settled_watch_does_not_stop_future_settlement();
         stale_settled_generation_does_not_stop_future_settlement();
         settled_file_burst_for_one_path_keeps_pending_work_bounded();
+        settled_file_slow_path_does_not_block_ready_paths();
         settled_file_large_batch_delivers_all_paths();
     } catch (const test_failure& failure) {
         std::cerr << failure.message << "\n";

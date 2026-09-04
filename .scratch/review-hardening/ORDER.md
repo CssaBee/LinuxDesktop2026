@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `63` - Replace Blocking Settle FIFO With Deadline Scheduler
 - `64` - Protect Watch Self-Stop Ownership Invariant
 - `69` - Share Durable File Write Primitive With Desktop
 - `70` - Make Dconf Policy Activation Honest
@@ -27,6 +26,7 @@ list below.
 
 ## Implemented
 
+- `63` - Replace Blocking Settle FIFO With Deadline Scheduler
 - `62` - Bound And Coalesce Settled-File Readiness Work
 - `84` - Preserve Unrelated Events On Watch Queue Overflow
 - `66` - Gate Watch Test Hooks Behind CMake Option
@@ -77,8 +77,9 @@ review does not reason from stale status. The remaining order starts with
 correctness and security items: defects that can corrupt state, erase unrelated
 watcher backend or delivery state, or expose test-only behavior in ordinary
 builds. The settled-file scheduler follows because it is now the largest live
-`ld_watch` design risk: raw delivery is bounded, but settled-file readiness can
-still allocate unbounded stale work and block unrelated ready paths.
+`ld_watch` design risk: raw delivery is bounded, and settled-file readiness now
+has bounded path coalescing plus deadline scheduling; remaining watcher work
+focuses on lifecycle invariants.
 
 Desktop write durability and dconf activation are ordered together because they
 are both end-to-end desktop-effect truth problems: generating a file is not the

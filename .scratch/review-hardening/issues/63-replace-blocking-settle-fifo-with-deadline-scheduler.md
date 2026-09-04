@@ -5,15 +5,15 @@ task at a time into deadline-based scheduling across pending paths.
 
 **Blocked by:** 62 - Bound And Coalesce Settled-File Readiness Work.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Model each pending path with next poll/debounce deadline, stability
+- [x] Model each pending path with next poll/debounce deadline, stability
   window, timeout deadline, and latest event payload.
-- [ ] Ensure an unsettled or slow-changing file cannot block delivery of other
+- [x] Ensure an unsettled or slow-changing file cannot block delivery of other
   paths that are already ready.
-- [ ] Add a head-of-line test where file A has long stability/timeout behavior
+- [x] Add a head-of-line test where file A has long stability/timeout behavior
   while files B-Z are immediately deliverable.
-- [ ] Keep raw watcher event delivery independent from settled-file readiness.
+- [x] Keep raw watcher event delivery independent from settled-file readiness.
 
 ## Review Anchor
 
