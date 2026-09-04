@@ -383,6 +383,8 @@ subkeys_report enumerate_subkeys(const key& key);
 format_report serialize_snapshot_json(const snapshot& snapshot);
 snapshot_report parse_snapshot_json(std::string_view content);
 format_report serialize_snapshot_reg(const snapshot& snapshot);
+// Parses the documented application-settings `.reg` snapshot subset only; this
+// is not a general Registry import parser.
 snapshot_report parse_snapshot_reg(std::string_view content);
 format_report export_tree_json(const key& key);
 operation_report import_tree_json(const key& key, std::string_view content, const options& options = {});

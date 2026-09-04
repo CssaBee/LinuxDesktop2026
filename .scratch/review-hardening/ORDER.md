@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `72` - Formally Scope Reg File Compatibility
 - `73` - Decide Settings Interprocess Write Contract
 - `74` - Rename Or Split Migration Move Semantics
 - `75` - Split Migration Internals By Responsibility
@@ -24,6 +23,7 @@ list below.
 
 ## Implemented
 
+- `72` - Formally Scope Reg File Compatibility
 - `71` - Replace Or Formally Scope Migration JSON Parser
 - `68` - Enforce Enum String Exhaustiveness
 - `70` - Make Dconf Policy Activation Honest

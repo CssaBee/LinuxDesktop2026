@@ -53,6 +53,25 @@ cleanup.
   Supported string escapes are `\"`, `\\`, `\n`, `\r`, and `\t`; Unicode,
   slash, backspace/form-feed escapes, scalar literals, unknown fields, trailing
   content, and extra nesting are rejected with Registry JSON diagnostics.
+- Treat the `.reg` snapshot format as a narrow Windows Registry Editor
+  compatibility subset, not as a full `reg.exe` import implementation. The
+  parser accepts UTF-8/ASCII text with optional UTF-8 BOM and UTF-16LE text with
+  BOM; UTF-16BE and malformed UTF-16LE are rejected. The supported headers are
+  `Windows Registry Editor Version 5.00` and `REGEDIT4`. The first key section
+  establishes one local root hive; subsequent sections must stay in that hive
+  and under that root. Supported hives are `HKEY_CURRENT_USER`/`HKCU`,
+  `HKEY_LOCAL_MACHINE`/`HKLM`, `HKEY_CLASSES_ROOT`/`HKCR`,
+  `HKEY_USERS`/`HKU`, and `HKEY_CURRENT_CONFIG`/`HKCC`. Remote Registry paths,
+  delete-key sections, delete-value assignments, malformed sections, multiple
+  hives, and keys outside the first root are rejected with `.reg` diagnostics.
+  Supported value names are `@` and quoted names using only `\\` and `\"`
+  escapes. Supported value data forms are quoted strings using only `\\` and
+  `\"` escapes, `dword:` with exactly eight hex digits, `hex:`, `hex(2):`,
+  `hex(7):`, and `hex(b):`. Hex payloads accept comma or whitespace separators;
+  line continuation is accepted only for hex payloads and continuation lines
+  must begin with whitespace. Other Registry constructs, value type aliases,
+  deletion forms, non-hex continuations, and unsupported escapes are rejected
+  instead of approximated.
 - Treat filesystem migration as application settings migration, not rsync-grade
   filesystem replication. Supported sources are regular files and directories
   containing regular files or subdirectories. Symlinks and special files are

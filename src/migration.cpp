@@ -798,6 +798,157 @@ std::string trim(std::string_view value)
     return std::string(value.substr(begin, end - begin));
 }
 
+bool starts_with(std::string_view value, std::string_view prefix)
+{
+    return value.size() >= prefix.size() && value.substr(0, prefix.size()) == prefix;
+}
+
+bool ends_with(std::string_view value, char suffix)
+{
+    return !value.empty() && value.back() == suffix;
+}
+
+bool append_utf8_code_point(std::string& output, unsigned code_point)
+{
+    if (code_point <= 0x7f) {
+        output.push_back(static_cast<char>(code_point));
+        return true;
+    }
+    if (code_point <= 0x7ff) {
+        output.push_back(static_cast<char>(0xc0 | (code_point >> 6)));
+        output.push_back(static_cast<char>(0x80 | (code_point & 0x3f)));
+        return true;
+    }
+    if (code_point >= 0xd800 && code_point <= 0xdfff) {
+        return false;
+    }
+    if (code_point <= 0xffff) {
+        output.push_back(static_cast<char>(0xe0 | (code_point >> 12)));
+        output.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3f)));
+        output.push_back(static_cast<char>(0x80 | (code_point & 0x3f)));
+        return true;
+    }
+    return false;
+}
+
+std::optional<std::string> decode_reg_text(std::string_view content, snapshot_report& report)
+{
+    if (content.size() >= 2 &&
+        static_cast<unsigned char>(content[0]) == 0xff &&
+        static_cast<unsigned char>(content[1]) == 0xfe) {
+        if ((content.size() - 2) % 2 != 0) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "registry-reg-encoding-unsupported",
+                "Registry file UTF-16LE content has a truncated code unit"));
+            return std::nullopt;
+        }
+
+        std::string output;
+        for (size_t index = 2; index != content.size(); index += 2) {
+            const auto low = static_cast<unsigned char>(content[index]);
+            const auto high = static_cast<unsigned char>(content[index + 1]);
+            const auto code_unit = static_cast<unsigned>(low) | (static_cast<unsigned>(high) << 8);
+            if (!append_utf8_code_point(output, code_unit)) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-encoding-unsupported",
+                    "Registry file UTF-16LE content uses unsupported surrogate characters"));
+                return std::nullopt;
+            }
+        }
+        return output;
+    }
+
+    if (content.size() >= 2 &&
+        static_cast<unsigned char>(content[0]) == 0xfe &&
+        static_cast<unsigned char>(content[1]) == 0xff) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-reg-encoding-unsupported",
+            "Registry file UTF-16BE content is not supported"));
+        return std::nullopt;
+    }
+
+    if (content.size() >= 3 &&
+        static_cast<unsigned char>(content[0]) == 0xef &&
+        static_cast<unsigned char>(content[1]) == 0xbb &&
+        static_cast<unsigned char>(content[2]) == 0xbf) {
+        return std::string(content.substr(3));
+    }
+
+    return std::string(content);
+}
+
+bool is_hex_value_line(std::string_view line)
+{
+    const auto equals = line.find('=');
+    if (equals == std::string_view::npos) {
+        return false;
+    }
+    const auto value_text = trim(line.substr(equals + 1));
+    return starts_with(value_text, "hex:") ||
+        starts_with(value_text, "hex(2):") ||
+        starts_with(value_text, "hex(7):") ||
+        starts_with(value_text, "hex(b):");
+}
+
+std::optional<std::vector<std::string>> reg_logical_lines(std::string_view text, snapshot_report& report)
+{
+    std::istringstream input{std::string(text)};
+    std::vector<std::string> lines;
+    std::string line;
+    std::string pending;
+    bool continuing = false;
+
+    while (std::getline(input, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
+        const auto trimmed = trim(line);
+        if (continuing) {
+            if (!line.empty() && line.front() != ' ' && line.front() != '\t') {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-continuation-invalid",
+                    "Registry hex continuation lines must begin with whitespace"));
+                return std::nullopt;
+            }
+            pending += trimmed;
+        } else {
+            pending = trimmed;
+        }
+
+        if (ends_with(pending, '\\')) {
+            pending.pop_back();
+            if (!continuing && !is_hex_value_line(pending)) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-continuation-invalid",
+                    "Registry line continuations are supported only for hex value data"));
+                return std::nullopt;
+            }
+            continuing = true;
+            continue;
+        }
+
+        continuing = false;
+        lines.push_back(std::move(pending));
+        pending.clear();
+    }
+
+    if (continuing) {
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-reg-continuation-invalid",
+            "Registry file ends inside a continued hex value"));
+        return std::nullopt;
+    }
+
+    return lines;
+}
+
 std::optional<hive> hive_from_string(std::string_view value);
 std::optional<view> view_from_string(std::string_view value);
 std::optional<value_type> value_type_from_string(std::string_view value);
@@ -1265,12 +1416,15 @@ std::string reg_escape(std::string_view value)
     return output;
 }
 
-std::string reg_unescape(std::string_view value)
+std::optional<std::string> reg_unescape(std::string_view value)
 {
     std::string output;
     bool escaped = false;
     for (const char ch : value) {
         if (escaped) {
+            if (ch != '\\' && ch != '"') {
+                return std::nullopt;
+            }
             output.push_back(ch);
             escaped = false;
             continue;
@@ -1280,6 +1434,9 @@ std::string reg_unescape(std::string_view value)
             continue;
         }
         output.push_back(ch);
+    }
+    if (escaped) {
+        return std::nullopt;
     }
     return output;
 }
@@ -1523,18 +1680,47 @@ snapshot_report parse_snapshot_reg(std::string_view content)
     bool have_root = false;
     std::string current_relative_key;
 
-    std::istringstream input{std::string(content)};
-    std::string line;
-    while (std::getline(input, line)) {
-        line = trim(line);
+    const auto decoded = decode_reg_text(content, report);
+    if (!decoded) {
+        return report;
+    }
+    const auto logical_lines = reg_logical_lines(*decoded, report);
+    if (!logical_lines) {
+        return report;
+    }
+
+    for (const auto& line : *logical_lines) {
         if (line.empty() || line[0] == ';') {
             continue;
         }
         if (line == "Windows Registry Editor Version 5.00" || line == "REGEDIT4") {
             continue;
         }
+        if (starts_with(line, "[-") || line.find("=-") != std::string::npos) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "registry-reg-unsupported-form",
+                "Registry delete directives are outside the supported .reg snapshot subset"));
+            return report;
+        }
+        if (line.front() == '[' || line.back() == ']') {
+            if (line.front() != '[' || line.back() != ']') {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-key-invalid",
+                    "Registry key section is malformed"));
+                return report;
+            }
+        }
         if (line.front() == '[' && line.back() == ']') {
             const auto full_key = line.substr(1, line.size() - 2);
+            if (full_key.empty() || starts_with(full_key, "\\\\")) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-key-invalid",
+                    "Registry key section is outside the supported local hive subset"));
+                return report;
+            }
             const auto slash = full_key.find('\\');
             const auto hive_text = slash == std::string::npos ? full_key : full_key.substr(0, slash);
             const auto hive = reg_hive_from_name(hive_text);
@@ -1590,7 +1776,15 @@ snapshot_report parse_snapshot_reg(std::string_view content)
         if (name_text == "@") {
             value.item.name.clear();
         } else if (name_text.size() >= 2 && name_text.front() == '"' && name_text.back() == '"') {
-            value.item.name = reg_unescape(std::string_view(name_text).substr(1, name_text.size() - 2));
+            auto unescaped_name = reg_unescape(std::string_view(name_text).substr(1, name_text.size() - 2));
+            if (!unescaped_name) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-escape-invalid",
+                    "Registry value name uses an unsupported escape sequence"));
+                return report;
+            }
+            value.item.name = std::move(*unescaped_name);
         } else {
             report.diagnostics.push_back(make_diagnostic(
                 severity::error,
@@ -1601,7 +1795,15 @@ snapshot_report parse_snapshot_reg(std::string_view content)
 
         if (value_text.size() >= 2 && value_text.front() == '"' && value_text.back() == '"') {
             value.item.type = value_type::string;
-            value.item.bytes = string_to_bytes(reg_unescape(std::string_view(value_text).substr(1, value_text.size() - 2)));
+            auto unescaped_value = reg_unescape(std::string_view(value_text).substr(1, value_text.size() - 2));
+            if (!unescaped_value) {
+                report.diagnostics.push_back(make_diagnostic(
+                    severity::error,
+                    "registry-reg-escape-invalid",
+                    "Registry string value uses an unsupported escape sequence"));
+                return report;
+            }
+            value.item.bytes = string_to_bytes(*unescaped_value);
         } else if (value_text.find("dword:") == 0) {
             value.item.type = value_type::dword;
             const auto bytes = dword_reg_text_to_bytes(std::string_view(value_text).substr(6));

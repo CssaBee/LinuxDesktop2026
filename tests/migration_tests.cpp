@@ -69,6 +69,18 @@ std::string read_file(const std::filesystem::path& path)
     return buffer.str();
 }
 
+std::string utf16le_bom_ascii(std::string_view text)
+{
+    std::string output;
+    output.push_back(static_cast<char>(0xff));
+    output.push_back(static_cast<char>(0xfe));
+    for (const char ch : text) {
+        output.push_back(ch);
+        output.push_back('\0');
+    }
+    return output;
+}
+
 void plan_is_dry_run_first()
 {
     const auto root = test_root();
@@ -637,6 +649,45 @@ void registry_reg_snapshot_round_trips()
     require(parsed.item->values[2].item.bytes == dword_value.item.bytes, ".reg DWORD bytes should round-trip");
 }
 
+void registry_reg_accepts_scoped_subset()
+{
+    namespace reg = linuxdesktop::migration::registry;
+
+    const auto parsed = reg::parse_snapshot_reg(
+        utf16le_bom_ascii("Windows Registry Editor Version 5.00\r\n\r\n"
+                          "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\r\n"
+                          "\"Escaped\\\\Name\\\"One\"=\"Escaped\\\\Value\\\"One\"\r\n"
+                          "\"Blob\"=hex:01,02,\\\r\n"
+                          "  03,ff\r\n"
+                          "\"Multi\"=hex(7):4f,00,6e,00,65,00,00,00,54,00,77,00,6f,00,00,00,00,00\r\n"
+                          "\r\n"
+                          "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026\\Child]\r\n"
+                          "\"Expand\"=hex(2):25,00,41,00,50,00,50,00,44,00,41,00,54,00,41,00,25,00,00,00\r\n"
+                          "\"Qword\"=hex(b):08,07,06,05,04,03,02,01\r\n"));
+
+    require(parsed.ok, ".reg scoped subset should parse UTF-16LE BOM content");
+    require(parsed.item.has_value(), ".reg scoped subset should return a snapshot");
+    require(parsed.item->root.root == reg::hive::current_user, ".reg scoped subset should parse hive");
+    require(parsed.item->root.subkey == "Software\\LinuxDesktop2026", ".reg scoped subset should parse root key");
+    require(parsed.item->values.size() == 5, ".reg scoped subset should parse supported values");
+    require(parsed.item->values[0].item.name == "Escaped\\Name\"One", ".reg value name escapes should parse");
+    require(parsed.item->values[0].item.bytes == std::vector<std::byte>{
+            std::byte{'E'}, std::byte{'s'}, std::byte{'c'}, std::byte{'a'}, std::byte{'p'}, std::byte{'e'},
+            std::byte{'d'}, std::byte{'\\'}, std::byte{'V'}, std::byte{'a'}, std::byte{'l'}, std::byte{'u'},
+            std::byte{'e'}, std::byte{'"'}, std::byte{'O'}, std::byte{'n'}, std::byte{'e'}},
+        ".reg string escapes should parse");
+    require(parsed.item->values[1].item.bytes == std::vector<std::byte>{
+            std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0xff}},
+        ".reg binary continuation data should parse");
+    require(parsed.item->values[2].item.type == reg::value_type::multi_string,
+        ".reg multi-string should parse as REG_MULTI_SZ compatibility bytes");
+    require(parsed.item->values[3].key_path == "Child", ".reg child key should stay relative to the snapshot root");
+    require(parsed.item->values[3].item.type == reg::value_type::expandable_string,
+        ".reg expandable string should parse as REG_EXPAND_SZ compatibility bytes");
+    require(parsed.item->values[4].item.type == reg::value_type::qword,
+        ".reg qword should parse as REG_QWORD compatibility bytes");
+}
+
 void registry_import_requires_explicit_permission()
 {
     namespace reg = linuxdesktop::migration::registry;
@@ -784,6 +835,42 @@ void registry_reg_rejects_hostile_import_shapes()
     require(has_diagnostic(invalid_dword.diagnostics, "registry-reg-value-data-invalid"),
         ".reg parser should diagnose malformed DWORD data");
 
+    const auto unsupported_escape = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"Line\\nBreak\"\n");
+    require(!unsupported_escape.ok, ".reg parser should reject unsupported string escapes");
+    require(has_diagnostic(unsupported_escape.diagnostics, "registry-reg-escape-invalid"),
+        ".reg parser should diagnose unsupported string escapes");
+
+    const auto string_continuation = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n"
+        "\"Name\"=\"continued\\\n"
+        "  value\"\n");
+    require(!string_continuation.ok, ".reg parser should reject non-hex continuations");
+    require(has_diagnostic(string_continuation.diagnostics, "registry-reg-continuation-invalid"),
+        ".reg parser should diagnose non-hex continuations");
+
+    const auto delete_key = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[-HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n");
+    require(!delete_key.ok, ".reg parser should reject delete-key directives");
+    require(has_diagnostic(delete_key.diagnostics, "registry-reg-unsupported-form"),
+        ".reg parser should diagnose delete-key directives");
+
+    const auto remote_key = reg::parse_snapshot_reg(
+        "Windows Registry Editor Version 5.00\n\n"
+        "[\\\\MACHINE\\HKEY_CURRENT_USER\\Software\\LinuxDesktop2026]\n");
+    require(!remote_key.ok, ".reg parser should reject remote Registry paths");
+    require(has_diagnostic(remote_key.diagnostics, "registry-reg-key-invalid"),
+        ".reg parser should diagnose remote Registry paths");
+
+    const auto utf16be = reg::parse_snapshot_reg("\xfe\xff\0W\0i\0n\0d\0o\0w\0s");
+    require(!utf16be.ok, ".reg parser should reject UTF-16BE content");
+    require(has_diagnostic(utf16be.diagnostics, "registry-reg-encoding-unsupported"),
+        ".reg parser should diagnose unsupported encodings");
+
     reg::key destination;
     destination.subkey = "Software\\LinuxDesktop2026";
     const auto imported = reg::import_tree_reg(destination,
@@ -823,6 +910,7 @@ int main()
         {"registry_json_rejects_hostile_import_shapes", registry_json_rejects_hostile_import_shapes},
         {"registry_json_rejects_out_of_scope_json", registry_json_rejects_out_of_scope_json},
         {"registry_reg_rejects_hostile_import_shapes", registry_reg_rejects_hostile_import_shapes},
+        {"registry_reg_accepts_scoped_subset", registry_reg_accepts_scoped_subset},
     };
 
     int failures = 0;
