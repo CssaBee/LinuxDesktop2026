@@ -5,13 +5,13 @@ callback-triggered watcher destruction safe.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** done
 
-- [ ] Add a short source comment at thread start/stop sites explaining that any
+- [x] Add a short source comment at thread start/stop sites explaining that any
   detached worker must retain a strong `impl` owner until it exits.
-- [ ] Add a tight ASan/TSan-friendly regression loop that repeatedly destroys
+- [x] Add a tight ASan/TSan-friendly regression loop that repeatedly destroys
   the last watcher facade from inside the callback.
-- [ ] Check worker lambdas and future callback paths for accidental `[this]`
+- [x] Check worker lambdas and future callback paths for accidental `[this]`
   captures or borrowed lifetime assumptions.
 
 ## Review Anchor

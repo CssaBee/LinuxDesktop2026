@@ -230,6 +230,8 @@ public:
         cv_.notify_all();
         settle_cv_.notify_all();
         std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
+        // If stop() is called from a worker callback, detaching is safe only because
+        // the worker entry lambdas below retain a strong impl owner until they exit.
         join_or_detach_for_stop(worker_, current_thread);
         join_or_detach_for_stop(settle_worker_, current_thread);
     }
@@ -330,6 +332,8 @@ private:
         if (!backend_) {
             return;
         }
+        // Worker threads must capture impl strongly. A callback may destroy the last
+        // watcher facade and detach the current worker before this function returns.
         auto self = shared_from_this();
         worker_ = std::thread([self] {
             self->run();

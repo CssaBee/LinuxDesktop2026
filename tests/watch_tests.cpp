@@ -426,38 +426,41 @@ void callback_stop_and_remove_are_safe()
 
 void callback_last_owner_release_is_safe()
 {
-    const auto root = test_root();
-    const auto backend = make_backend();
-    std::optional<ld::watcher> watcher;
-    watcher.emplace(ld::detail::make_watcher_for_backend(backend));
+    for (int i = 0; i < 128; ++i) {
+        const auto root = test_root() / ("last-owner-" + std::to_string(i));
+        std::filesystem::create_directories(root);
+        const auto backend = make_backend();
+        std::optional<ld::watcher> watcher;
+        watcher.emplace(ld::detail::make_watcher_for_backend(backend));
 
-    ld::watch_options options;
-    options.path = root;
-    const auto report = watcher->add_watch(options);
-    require(report.ok, "watch should start");
+        ld::watch_options options;
+        options.path = root;
+        const auto report = watcher->add_watch(options);
+        require(report.ok, "watch should start");
 
-    struct callback_sync {
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool callback_survived_release = false;
-    };
-    auto sync = std::make_shared<callback_sync>();
+        struct callback_sync {
+            std::mutex mutex;
+            std::condition_variable cv;
+            bool callback_survived_release = false;
+        };
+        auto sync = std::make_shared<callback_sync>();
 
-    watcher->set_callback([&, sync](const ld::watch_event&) {
-        watcher.reset();
-        {
-            std::lock_guard<std::mutex> lock(sync->mutex);
-            sync->callback_survived_release = true;
-        }
-        sync->cv.notify_all();
-    });
+        watcher->set_callback([&, sync](const ld::watch_event&) {
+            watcher.reset();
+            {
+                std::lock_guard<std::mutex> lock(sync->mutex);
+                sync->callback_survived_release = true;
+            }
+            sync->cv.notify_all();
+        });
 
-    backend->push(backend->event_for(report.id, ld::event_kind::modified, "destroy.txt"));
+        backend->push(backend->event_for(report.id, ld::event_kind::modified, "destroy.txt"));
 
-    std::unique_lock<std::mutex> lock(sync->mutex);
-    require(sync->cv.wait_for(lock, std::chrono::seconds(2), [&] { return sync->callback_survived_release; }),
-        "callback should survive releasing the last watcher facade owner");
-    require(!watcher.has_value(), "callback should release the watcher facade");
+        std::unique_lock<std::mutex> lock(sync->mutex);
+        require(sync->cv.wait_for(lock, std::chrono::seconds(2), [&] { return sync->callback_survived_release; }),
+            "callback should survive releasing the last watcher facade owner");
+        require(!watcher.has_value(), "callback should release the watcher facade");
+    }
 }
 
 void callback_replacement_applies_to_future_events()

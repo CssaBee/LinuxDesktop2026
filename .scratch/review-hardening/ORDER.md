@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `64` - Protect Watch Self-Stop Ownership Invariant
 - `69` - Share Durable File Write Primitive With Desktop
 - `70` - Make Dconf Policy Activation Honest
 - `68` - Enforce Enum String Exhaustiveness
@@ -26,6 +25,7 @@ list below.
 
 ## Implemented
 
+- `64` - Protect Watch Self-Stop Ownership Invariant
 - `63` - Replace Blocking Settle FIFO With Deadline Scheduler
 - `62` - Bound And Coalesce Settled-File Readiness Work
 - `84` - Preserve Unrelated Events On Watch Queue Overflow
