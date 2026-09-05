@@ -1,6 +1,7 @@
 #include "migration_internal.hpp"
 
 #include <cctype>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <utility>
@@ -1204,6 +1205,175 @@ snapshot_report parse_snapshot_reg(std::string_view content)
 }
 
 #if defined(_WIN32)
+std::wstring widen_utf8(std::string_view value)
+{
+    if (value.empty()) {
+        return {};
+    }
+    if (value.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
+        return {};
+    }
+
+    const auto input_size = static_cast<int>(value.size());
+    const int required = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), input_size, nullptr, 0);
+    if (required <= 0) {
+        return {};
+    }
+
+    std::wstring output(static_cast<size_t>(required), L'\0');
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), input_size, output.data(), required);
+    return output;
+}
+
+std::string narrow_utf8(std::wstring_view value)
+{
+    if (value.empty()) {
+        return {};
+    }
+    if (value.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
+        return {};
+    }
+
+    const auto input_size = static_cast<int>(value.size());
+    const int required = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), input_size, nullptr, 0, nullptr, nullptr);
+    if (required <= 0) {
+        return {};
+    }
+
+    std::string output(static_cast<size_t>(required), '\0');
+    WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), input_size, output.data(), required, nullptr, nullptr);
+    return output;
+}
+
+HKEY native_hive(hive value)
+{
+    switch (value) {
+    case hive::current_user:
+        return HKEY_CURRENT_USER;
+    case hive::local_machine:
+        return HKEY_LOCAL_MACHINE;
+    case hive::classes_root:
+        return HKEY_CLASSES_ROOT;
+    case hive::users:
+        return HKEY_USERS;
+    case hive::current_config:
+        return HKEY_CURRENT_CONFIG;
+    }
+    return HKEY_CURRENT_USER;
+}
+
+REGSAM registry_view_flags(view value)
+{
+    switch (value) {
+    case view::native:
+        return 0;
+    case view::registry_32:
+        return KEY_WOW64_32KEY;
+    case view::registry_64:
+        return KEY_WOW64_64KEY;
+    }
+    return 0;
+}
+
+DWORD registry_type_to_native(value_type value)
+{
+    switch (value) {
+    case value_type::none:
+        return REG_NONE;
+    case value_type::string:
+        return REG_SZ;
+    case value_type::expandable_string:
+        return REG_EXPAND_SZ;
+    case value_type::multi_string:
+        return REG_MULTI_SZ;
+    case value_type::dword:
+        return REG_DWORD;
+    case value_type::qword:
+        return REG_QWORD;
+    case value_type::binary:
+    case value_type::unknown:
+        return REG_BINARY;
+    }
+    return REG_BINARY;
+}
+
+value_type registry_type_from_native(DWORD value)
+{
+    switch (value) {
+    case REG_NONE:
+        return value_type::none;
+    case REG_SZ:
+        return value_type::string;
+    case REG_EXPAND_SZ:
+        return value_type::expandable_string;
+    case REG_MULTI_SZ:
+        return value_type::multi_string;
+    case REG_DWORD:
+        return value_type::dword;
+    case REG_QWORD:
+        return value_type::qword;
+    case REG_BINARY:
+        return value_type::binary;
+    default:
+        return value_type::unknown;
+    }
+}
+
+diagnostic win32_diagnostic(std::string code, std::string message, LSTATUS status)
+{
+    if (status != ERROR_SUCCESS) {
+        message += ": Win32 error " + std::to_string(status);
+    }
+    return make_diagnostic(severity::error, std::move(code), std::move(message));
+}
+
+std::string ascii_lower(std::string_view value)
+{
+    std::string output;
+    output.reserve(value.size());
+    for (const char ch : value) {
+        output.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+    }
+    return output;
+}
+
+bool is_policy_key(const key& key)
+{
+    const auto subkey = ascii_lower(key.subkey);
+    return starts_with(subkey, "software\\policies") || subkey.find("\\software\\policies\\") != std::string::npos;
+}
+
+bool registry_write_allowed(
+    const key& key,
+    const options& options,
+    bool recursive_delete,
+    std::vector<diagnostic>& diagnostics)
+{
+    bool allowed = true;
+    if (key.root == hive::local_machine && !options.allow_hklm_write) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-hklm-write-denied",
+            "Registry writes under HKEY_LOCAL_MACHINE require allow_hklm_write"));
+        allowed = false;
+    }
+    if (is_policy_key(key) && !options.allow_policy_write) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-policy-write-denied",
+            "Registry policy writes require allow_policy_write"));
+        allowed = false;
+    }
+    if (recursive_delete && !options.allow_recursive_delete) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "registry-recursive-delete-denied",
+            "Registry key deletion requires allow_recursive_delete"));
+        allowed = false;
+    }
+    return allowed;
+}
+
 value_report read_value(const key& key, const std::string& name)
 {
     value_report report;
@@ -1374,7 +1544,7 @@ operation_report delete_key(const key& key, const options& options)
 {
     operation_report report;
     report.dry_run = options.dry_run;
-    if (!registry_write_allowed(key, options, false, report.diagnostics)) {
+    if (!registry_write_allowed(key, options, true, report.diagnostics)) {
         return report;
     }
     if (options.dry_run) {
