@@ -127,8 +127,8 @@ Current settings/config prototype sample:
   Linux dconf-compatible managed/enforced policy files, and capability reports
   for the full desktop-effect scope.
 - `ld_migration` C++ extraction started with dry-run-first migration planning,
-  file/directory copy and move execution, and app-settings Registry
-  snapshot/import/export compatibility.
+  file copy, atomic file rename, directory copy/move execution, and
+  app-settings Registry snapshot/import/export compatibility.
 - Temporary `ld_settings` compatibility wrappers no longer expose migration or
   Registry helpers. Autostart and policy moved to `ld_desktop`; migration
   callers use `ld_migration` directly.
@@ -241,7 +241,7 @@ Out of scope for first `ld_paths`:
 
 - macOS support promise,
 - settings payload hydration,
-- migration copy/move execution,
+- migration copy, atomic file rename, and directory move execution,
 - desktop entry/icon/MIME/protocol registration,
 - process launch,
 - IPC,

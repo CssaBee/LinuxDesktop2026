@@ -210,7 +210,7 @@ void execute_blocks_destination_collision_without_overwrite()
         "migration collision should not overwrite target without permission");
 }
 
-void move_execution_requires_dangerous_permission()
+void rename_file_execution_requires_dangerous_permission()
 {
     const auto root = test_root();
     const auto source = root / "old" / "config.xml";
@@ -223,20 +223,20 @@ void move_execution_requires_dangerous_permission()
 
     ld::options plan_options;
     plan_options.allow_dangerous = true;
-    const auto plan = ld::plan_move_file(source, target, plan_options);
+    const auto plan = ld::plan_rename_file(source, target, plan_options);
 
     ld::options execute_options;
     execute_options.dry_run = false;
     const auto report = ld::execute_migration_plan(plan, execute_options);
 
-    require(!report.ok, "move execution should be denied by default");
-    require(report.actions.size() == 1, "move denial should report the action");
+    require(!report.ok, "rename execution should be denied by default");
+    require(report.actions.size() == 1, "rename denial should report the action");
     require(report.actions[0].state == ld::migration_action_state::blocked,
-        "move denial should report blocked state");
+        "rename denial should report blocked state");
     require(has_diagnostic(report.actions[0].diagnostics, "migration-dangerous-action-denied"),
-        "move denial should require allow_dangerous");
-    require(std::filesystem::exists(source), "denied move should keep source");
-    require(!std::filesystem::exists(target), "denied move should not create target");
+        "rename denial should require allow_dangerous");
+    require(std::filesystem::exists(source), "denied rename should keep source");
+    require(!std::filesystem::exists(target), "denied rename should not create target");
 }
 
 void execute_copies_directory()
@@ -264,7 +264,7 @@ void execute_copies_directory()
         "directory copy should copy nested files");
 }
 
-void execute_moves_file_with_permission()
+void execute_renames_file_with_permission()
 {
     const auto root = test_root();
     const auto source = root / "old" / "state.bin";
@@ -277,20 +277,23 @@ void execute_moves_file_with_permission()
 
     ld::options plan_options;
     plan_options.allow_dangerous = true;
-    const auto plan = ld::plan_move_file(source, target, plan_options);
+    const auto plan = ld::plan_rename_file(source, target, plan_options);
+    require(ld::to_string(plan.actions[0].kind) == "rename_file",
+        "file rename action kind should use explicit rename vocabulary");
+
     ld::options execute_options;
     execute_options.dry_run = false;
     execute_options.allow_dangerous = true;
     const auto report = ld::execute_migration_plan(plan, execute_options);
 
-    require(report.ok, "file move should succeed with explicit dangerous permission");
+    require(report.ok, "file rename should succeed with explicit dangerous permission");
     require(report.actions[0].state == ld::migration_action_state::executed,
-        "file move should report executed state");
-    require(!std::filesystem::exists(source), "file move should remove source");
-    require(read_file(target) == "state", "file move should preserve content");
+        "file rename should report executed state");
+    require(!std::filesystem::exists(source), "file rename should remove source");
+    require(read_file(target) == "state", "file rename should preserve content");
 }
 
-void file_move_failure_does_not_copy_remove_fallback()
+void file_rename_failure_does_not_copy_remove_fallback()
 {
     const auto root = test_root();
     const auto source = root / "old" / "state.bin";
@@ -304,9 +307,9 @@ void file_move_failure_does_not_copy_remove_fallback()
     ld::options plan_options;
     plan_options.allow_dangerous = true;
     plan_options.create_parent_directories = false;
-    const auto plan = ld::plan_move_file(source, target, plan_options);
-    require(has_diagnostic(plan.diagnostics, "migration-file-move-atomic-rename-only"),
-        "file move plan should document atomic rename semantics");
+    const auto plan = ld::plan_rename_file(source, target, plan_options);
+    require(has_diagnostic(plan.diagnostics, "migration-file-rename-atomic-only"),
+        "file rename plan should document atomic rename semantics");
 
     ld::options execute_options;
     execute_options.dry_run = false;
@@ -314,16 +317,16 @@ void file_move_failure_does_not_copy_remove_fallback()
     execute_options.create_parent_directories = false;
     const auto report = ld::execute_migration_plan(plan, execute_options);
 
-    require(!report.ok, "failed file move should fail the report");
-    require(report.actions.size() == 1, "failed file move should report the action");
+    require(!report.ok, "failed file rename should fail the report");
+    require(report.actions.size() == 1, "failed file rename should report the action");
     require(report.actions[0].state == ld::migration_action_state::rollback_missing,
-        "failed atomic file move should not claim rollback is available");
+        "failed atomic file rename should not claim rollback is available");
     require(!report.actions[0].rollback_attempted,
-        "failed atomic file move should not attempt copy-target rollback");
-    require(has_diagnostic(report.actions[0].diagnostics, "migration-file-move-failed"),
-        "failed atomic file move should report the narrow move diagnostic");
-    require(std::filesystem::exists(source), "failed atomic file move should keep source");
-    require(!std::filesystem::exists(target), "failed atomic file move should not create target through fallback");
+        "failed atomic file rename should not attempt copy-target rollback");
+    require(has_diagnostic(report.actions[0].diagnostics, "migration-file-rename-failed"),
+        "failed atomic file rename should report the narrow rename diagnostic");
+    require(std::filesystem::exists(source), "failed atomic file rename should keep source");
+    require(!std::filesystem::exists(target), "failed atomic file rename should not create target through fallback");
 }
 
 void directory_move_reports_best_effort_semantics()
@@ -891,10 +894,10 @@ int main()
         {"execute_copies_file", execute_copies_file},
         {"execute_overwrite_records_before_and_after_state", execute_overwrite_records_before_and_after_state},
         {"execute_blocks_destination_collision_without_overwrite", execute_blocks_destination_collision_without_overwrite},
-        {"move_execution_requires_dangerous_permission", move_execution_requires_dangerous_permission},
+        {"rename_file_execution_requires_dangerous_permission", rename_file_execution_requires_dangerous_permission},
         {"execute_copies_directory", execute_copies_directory},
-        {"execute_moves_file_with_permission", execute_moves_file_with_permission},
-        {"file_move_failure_does_not_copy_remove_fallback", file_move_failure_does_not_copy_remove_fallback},
+        {"execute_renames_file_with_permission", execute_renames_file_with_permission},
+        {"file_rename_failure_does_not_copy_remove_fallback", file_rename_failure_does_not_copy_remove_fallback},
         {"directory_move_reports_best_effort_semantics", directory_move_reports_best_effort_semantics},
         {"symlink_sources_are_unsupported", symlink_sources_are_unsupported},
         {"directory_symlinks_are_unsupported", directory_symlinks_are_unsupported},

@@ -15,7 +15,7 @@ The extracted module covers these responsibility groups at the C++ ownership
 boundary:
 
 - migration planning,
-- regular-file copy and atomic-rename move execution,
+- regular-file copy and atomic file rename execution,
 - directory copy and best-effort copy-then-source-cleanup move execution,
 - explicit dry-run previews,
 - per-action before/after reporting,
@@ -78,7 +78,7 @@ cleanup.
   rejected. File content is copied, but ownership, permissions, timestamps,
   xattrs, ACLs, sparse extents, and hard-link topology are not replicated as
   filesystem metadata.
-- Treat file moves as atomic rename operations. Cross-device copy/remove
+- Treat file migration renames as atomic rename operations. Cross-device copy/remove
   fallback is not supported.
 - Treat directory moves as best-effort copy plus source-tree cleanup. Partial
   copy failures block the action before cleanup; cleanup failures are reported
@@ -91,13 +91,14 @@ cleanup.
 Before `ld_migration` is a ship candidate, tests and examples must cover:
 
 - dry-run plans for every action kind,
-- file and directory copy/move success paths within the supported object model,
+- file copy, atomic file rename, and directory copy/move success paths within
+  the supported object model,
 - missing source, wrong source kind, existing target, and parent creation
   failures,
 - hostile paths, including relative escape attempts and target collisions,
 - destructive action denial by default,
 - explicit permission paths for dangerous actions,
-- partial-failure reporting, including failed atomic file moves without
+- partial-failure reporting, including failed atomic file renames without
   copy/remove fallback,
 - rollback reporting for action kinds that can reasonably be reversed,
 - JSON and `.reg` snapshot round trips for app-settings Registry compatibility,
@@ -112,3 +113,12 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 New C++ callers should include `linuxdesktop/migration.hpp` and use
 `linuxdesktop::migration` directly. There is no `ld_settings` migration
 compatibility layer.
+
+For file migration, new callers should use
+`migration_action_kind::rename_file` and `plan_rename_file()`. The earlier
+`move_file` enum spelling and `plan_move_file()` helper were removed as an
+intentional pre-1.0 source break because they implied semantic cross-device move
+behavior that the implementation does not provide. A semantic cross-device file
+move with copy, verification, and source removal is not part of the current
+contract; add it later as a separate action only if maintained consumer evidence
+needs that behavior.

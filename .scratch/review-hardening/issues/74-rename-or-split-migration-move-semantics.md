@@ -5,15 +5,28 @@ contract.
 
 **Blocked by:** 60 - Narrow And Harden Migration Filesystem Semantics.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Decide whether pre-1.0 `move_file` should become an explicitly atomic
+- [x] Decide whether pre-1.0 `move_file` should become an explicitly atomic
   rename action name.
-- [ ] Decide whether semantic cross-device move belongs as a separate future
+- [x] Decide whether semantic cross-device move belongs as a separate future
   action with copy/verify/remove behavior.
-- [ ] Update helper names, examples, FlavorTests, and migration docs if the
+- [x] Update helper names, examples, FlavorTests, and migration docs if the
   action taxonomy changes.
-- [ ] Add compatibility guidance for any pre-1.0 callers using the old names.
+- [x] Add source-break guidance for any pre-1.0 callers using the old names.
+
+## Implementation Notes
+
+- Added `migration_action_kind::rename_file` and `plan_rename_file()` as the
+  canonical file rename API.
+- Removed `migration_action_kind::move_file` and `plan_move_file()` as an
+  intentional pre-1.0 source break. Callers should use `rename_file` and
+  `plan_rename_file()`.
+- Renamed the file diagnostics to `migration-file-rename-atomic-only` and
+  `migration-file-rename-failed`.
+- Did not add semantic cross-device file move behavior. If consumer evidence
+  later needs copy/verify/remove semantics, it should be a separate action kind
+  instead of hidden fallback under atomic rename.
 
 ## Review Anchor
 

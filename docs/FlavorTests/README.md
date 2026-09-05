@@ -26,7 +26,7 @@ Selected upstream subprojects:
   validation while replacing repeated copy/migration/backup/temp-write
   mechanics with `linuxdesktop::settings::ensure_config_defaults`,
   `linuxdesktop::migration::plan_copy_directory`,
-  `linuxdesktop::migration::plan_move_file`,
+  `linuxdesktop::migration::plan_rename_file`,
   `linuxdesktop::settings::write_with_backup`, and
   `linuxdesktop::settings::write_common_config` for the repeated save path.
   - Source anchors: `src/slic3r/Config/Snapshot.cpp`,

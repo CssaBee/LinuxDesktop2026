@@ -47,7 +47,8 @@ effects, and migration items are extraction inventory for `ld_desktop` and
 Extraction inventory:
 
 - migration plans with dry-run default and explicit execution move to `ld_migration`,
-- file/directory copy and move execution moves to `ld_migration`,
+- file copy, atomic file rename, and directory copy/move execution moves to
+  `ld_migration`,
 - rollback and before/after reporting moves to `ld_migration`,
 - app-settings Registry JSON and `.reg` snapshot/import/export compatibility moves to `ld_migration`,
 - full practical Registry-equivalent desktop/system behavior moves to `ld_desktop`,
@@ -260,7 +261,7 @@ migrations, but it should not own the stable migration engine.
 ```cpp
 enum class migration_action_kind {
     copy_file,
-    move_file,
+    rename_file,
     copy_directory,
     move_directory,
     import_registry,
@@ -292,7 +293,9 @@ Execution rules:
 - dry-run first by default,
 - destructive and global operations require explicit flags,
 - every executed action reports before/after state where practical,
-- rollback support is required for portable run-scoped registry/file moves before release.
+- rollback support is required for portable run-scoped Registry and directory
+  moves before release; atomic file renames either complete or leave the source
+  in place.
 
 ## Registry API Prototype
 
@@ -560,7 +563,8 @@ Implemented in the current C++ sample:
 
 Implemented in extracted modules:
 
-- `ld_migration` dry-run-first migration plans with file/directory copy and move execution,
+- `ld_migration` dry-run-first migration plans with file copy, atomic file
+  rename, and directory copy/move execution,
 - canonical JSON Registry snapshot serialization/parsing,
 - `.reg` snapshot serialization/parsing for string, expandable string, multi-string, DWORD, QWORD, and binary-shaped values,
 - Registry tree JSON/`.reg` import/export wrappers,

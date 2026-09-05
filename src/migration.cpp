@@ -55,7 +55,7 @@ void append_action_gate_diagnostics(
 bool is_file_action(migration_action_kind kind)
 {
     return kind == migration_action_kind::copy_file ||
-        kind == migration_action_kind::move_file ||
+        kind == migration_action_kind::rename_file ||
         kind == migration_action_kind::copy_directory ||
         kind == migration_action_kind::move_directory;
 }
@@ -68,13 +68,13 @@ bool is_directory_action(migration_action_kind kind)
 
 bool is_move_action(migration_action_kind kind)
 {
-    return kind == migration_action_kind::move_file ||
+    return kind == migration_action_kind::rename_file ||
         kind == migration_action_kind::move_directory;
 }
 
 bool action_requires_dangerous_permission(migration_action_kind kind)
 {
-    return kind == migration_action_kind::move_file ||
+    return kind == migration_action_kind::rename_file ||
         kind == migration_action_kind::move_directory ||
         kind == migration_action_kind::delete_registry_key;
 }
@@ -248,11 +248,11 @@ void append_file_action_diagnostics(
         }
     }
     append_source_object_model_diagnostics(action, diagnostics);
-    if (action.kind == migration_action_kind::move_file) {
+    if (action.kind == migration_action_kind::rename_file) {
         diagnostics.push_back(make_diagnostic(
             severity::info,
-            "migration-file-move-atomic-rename-only",
-            "File moves use atomic rename only; cross-device copy/remove fallback is not supported",
+            "migration-file-rename-atomic-only",
+            "File rename actions use atomic rename only; cross-device copy/remove fallback is not supported",
             action.source_path));
     }
     if (action.kind == migration_action_kind::move_directory) {
@@ -423,8 +423,8 @@ std::string_view to_string(migration_action_kind value)
     switch (value) {
     case migration_action_kind::copy_file:
         return "copy_file";
-    case migration_action_kind::move_file:
-        return "move_file";
+    case migration_action_kind::rename_file:
+        return "rename_file";
     case migration_action_kind::copy_directory:
         return "copy_directory";
     case migration_action_kind::move_directory:
@@ -650,10 +650,10 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
                 }
                 result.diagnostics.push_back(make_diagnostic(
                     severity::error,
-                    is_directory_action(action.kind) ? "migration-move-cleanup-failed" : "migration-file-move-failed",
+                    is_directory_action(action.kind) ? "migration-move-cleanup-failed" : "migration-file-rename-failed",
                     is_directory_action(action.kind)
                         ? ec.message()
-                        : "Atomic file move failed; cross-device copy/remove fallback is not supported: " + ec.message(),
+                        : "Atomic file rename failed; cross-device copy/remove fallback is not supported: " + ec.message(),
                     action.source_path));
                 record_after_paths(result);
                 report.actions.push_back(std::move(result));

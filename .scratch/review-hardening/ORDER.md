@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `74` - Rename Or Split Migration Move Semantics
 - `75` - Split Migration Internals By Responsibility
 - `76` - Finish Maintained Consumer Proof Evidence
 - `77` - Centralize Dynamic Public Validation State
@@ -23,6 +22,7 @@ list below.
 
 ## Implemented
 
+- `74` - Rename Or Split Migration Move Semantics
 - `73` - Decide Settings Interprocess Write Contract
 - `72` - Formally Scope Reg File Compatibility
 - `71` - Replace Or Formally Scope Migration JSON Parser

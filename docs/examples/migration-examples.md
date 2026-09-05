@@ -292,7 +292,7 @@ Before, a migration check can be tempted to return the generic plan directly:
 ```cpp
 linuxdesktop::migration::migration_plan Config::migrateOldLocalConfig()
 {
-    return linuxdesktop::migration::plan_move_file(old_cache_ini, new_state_ini);
+    return linuxdesktop::migration::plan_rename_file(old_cache_ini, new_state_ini);
 }
 ```
 
@@ -304,7 +304,7 @@ namespace ldm = linuxdesktop::migration;
 
 LocalConfigMigration Config::migrateOldLocalConfig()
 {
-    const auto plan = ldm::plan_move_file(old_cache_ini(), local_state_ini());
+    const auto plan = ldm::plan_rename_file(old_cache_ini(), local_state_ini());
 
     LocalConfigMigration result;
     result.available = !plan.actions.empty();
@@ -318,7 +318,7 @@ LocalConfigMigration Config::migrateOldLocalConfig()
 }
 ```
 
-`plan_move_file()` is useful here, but only inside the adapter. Callers should
+`plan_rename_file()` is useful here, but only inside the adapter. Callers should
 not need to understand `migration_action_kind` to decide whether to show a
 KeePassXC prompt.
 

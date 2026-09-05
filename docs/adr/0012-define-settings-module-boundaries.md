@@ -45,7 +45,7 @@ Desktop integration effects belong to the real `ld_desktop` extraction:
 Migration behavior belongs to the real `ld_migration` extraction:
 
 - migration planning,
-- file and directory copy/move execution,
+- file copy, atomic file rename, and directory copy/move execution,
 - rollback and before/after reporting where practical,
 - app-settings Registry snapshot/import/export compatibility when used to move
   application state rather than apply a desktop integration effect,

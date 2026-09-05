@@ -152,7 +152,7 @@ LocalConfigMigration Config::migrateOldLocalConfig(const RuntimeEnvironment& env
 
     ldm::options options;
     options.allow_dangerous = true;
-    return to_local_config_migration(ldm::plan_move_file(*environment.old_cache_config_file, files_.local, options));
+    return to_local_config_migration(ldm::plan_rename_file(*environment.old_cache_config_file, files_.local, options));
 }
 
 void Config::set(std::string key, std::string value, bool local)

@@ -146,7 +146,7 @@ Fit:
 - `linuxdesktop::root::options` fits the roaming/local split and a
   machine-local `local-settings` named root.
 - `write_common_config()` fits settings export.
-- `plan_move_file()` fits old cache config migration when translated into
+- `plan_rename_file()` fits old cache config migration when translated into
   `LocalConfigMigration`.
 
 Friction:

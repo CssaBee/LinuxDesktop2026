@@ -24,7 +24,7 @@ using ::linuxdesktop::to_string;
 
 enum class migration_action_kind {
     copy_file,
-    move_file,
+    rename_file,
     copy_directory,
     move_directory,
     import_registry,
@@ -213,13 +213,13 @@ inline migration_plan copy_path(
     return plan_copy(std::move(source_path), std::move(target_path), options);
 }
 
-inline migration_plan plan_move_file(
+inline migration_plan plan_rename_file(
     std::filesystem::path source_path,
     std::filesystem::path target_path,
     const options& options = {})
 {
     migration_action action;
-    action.kind = migration_action_kind::move_file;
+    action.kind = migration_action_kind::rename_file;
     action.source_path = std::move(source_path);
     action.target_path = std::move(target_path);
     action.dangerous = true;
@@ -248,10 +248,18 @@ inline migration_plan plan_move(
         std::move(source_path),
         std::move(target_path),
         options,
-        migration_action_kind::move_file,
+        migration_action_kind::rename_file,
         migration_action_kind::move_directory,
         true,
         "plan_move");
+}
+
+inline migration_plan rename_file_path(
+    std::filesystem::path source_path,
+    std::filesystem::path target_path,
+    const options& options = {})
+{
+    return plan_rename_file(std::move(source_path), std::move(target_path), options);
 }
 
 inline migration_plan move_path(

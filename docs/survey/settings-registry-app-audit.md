@@ -261,7 +261,7 @@ bag:
   reporting.
 - `ld_paths`: generic root policy and candidate reporting.
 - `ld_migration`: migration plans with dry-run defaults, explicit execute
-  steps, file/directory copy and move behavior, and app-settings
+  steps, file copy, atomic file rename, directory copy/move behavior, and app-settings
   Registry-shaped import/export compatibility.
 - `ld_desktop`: Linux equivalents for Registry-backed desktop/system effects,
   including dconf/GSettings defaults and locks, XDG Autostart, and later file

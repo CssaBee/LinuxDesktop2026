@@ -33,9 +33,10 @@ Ownership, permissions, timestamps, xattrs, ACLs, sparse extents, and hard-link
 topology are not replicated as filesystem metadata; hard-linked regular files
 receive a warning because content can be copied but topology is not preserved.
 
-File moves are atomic `rename` operations. Cross-device copy/remove fallback is
-not supported; failed rename paths report `migration-file-move-failed` and leave
-rollback unattempted. Directory moves are best-effort copy plus source cleanup;
+File migration renames are atomic `rename` operations. Cross-device copy/remove
+fallback is not supported; failed rename paths report
+`migration-file-rename-failed` and leave rollback unattempted. Directory moves
+are best-effort copy plus source cleanup;
 plans and executions report `migration-directory-move-best-effort`, and cleanup
 failures report rollback details when the copied target can be removed.
 
