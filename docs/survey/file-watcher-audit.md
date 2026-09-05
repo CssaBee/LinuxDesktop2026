@@ -180,7 +180,7 @@ struct capability_report {
     bool emulated_recursive = false;
     bool polling_fallback = false;
     bool overflow_reporting = true;
-    std::vector<settings::diagnostic> diagnostics;
+    std::vector<linuxdesktop::diagnostic> diagnostics;
 };
 
 } // namespace linuxdesktop::watch

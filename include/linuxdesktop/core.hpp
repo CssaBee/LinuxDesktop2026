@@ -86,7 +86,7 @@ inline diagnostic_disposition disposition_for_diagnostic_code(std::string_view c
 {
     if (diagnostic_code_is_one_of(code, {
             "directory-created",
-            "config-hydrated",
+            "config-default-copied",
             "write-ok",
             "write-ok-durable",
             "temp-cleaned",

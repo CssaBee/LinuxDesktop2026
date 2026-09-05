@@ -31,7 +31,7 @@ void append_root_diagnostics(StartupPlan& plan, const linuxdesktop::settings::ro
     }
 }
 
-void append_hydration_diagnostics(StartupPlan& plan, const linuxdesktop::settings::hydrate_report& report)
+void append_config_defaults_diagnostics(StartupPlan& plan, const linuxdesktop::settings::config_defaults_report& report)
 {
     for (const auto& item : report.diagnostics) {
         plan.diagnostics.push_back(diagnostic(
@@ -88,16 +88,16 @@ StartupPlan DesktopFrontend::prepare(const RuntimeEnvironment& environment, cons
     plan.settings_file = plan.config_root / "gearcoleco.ini";
     append_root_diagnostics(plan, roots);
 
-    linuxdesktop::settings::hydrate_options defaults;
+    linuxdesktop::settings::config_defaults_options defaults;
     defaults.model_root = roots.roots.resources;
     defaults.target_root = plan.config_root;
     defaults.files = {
         {"gearcoleco.ini", "gearcoleco.ini", true},
     };
 
-    const auto hydration = linuxdesktop::settings::ensure_config_defaults(defaults);
-    plan.copied_defaults = hydration.copied;
-    append_hydration_diagnostics(plan, hydration);
+    const auto defaults_report = linuxdesktop::settings::ensure_config_defaults(defaults);
+    plan.copied_defaults = defaults_report.copied;
+    append_config_defaults_diagnostics(plan, defaults_report);
 
     if (options.rom_file) {
         plan.symbols.automatic = symbol_candidates_for(*options.rom_file);

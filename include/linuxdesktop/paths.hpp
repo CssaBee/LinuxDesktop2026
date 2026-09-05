@@ -15,10 +15,6 @@ inline constexpr int version_major = 0;
 inline constexpr int version_minor = 1;
 inline constexpr int version_patch = 0;
 
-using ::linuxdesktop::diagnostic;
-using ::linuxdesktop::severity;
-using ::linuxdesktop::to_string;
-
 namespace diagnostic_code {
 inline constexpr std::string_view application_missing = "paths.identity.application_missing";
 inline constexpr std::string_view home_missing = "paths.home.missing";

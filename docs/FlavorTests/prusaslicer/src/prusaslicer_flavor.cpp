@@ -75,15 +75,15 @@ OldDatadirMigration to_old_datadir_migration(const ldm::migration_plan& plan)
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
 {
-    ld::hydrate_options defaults;
+    ld::config_defaults_options defaults;
     defaults.model_root = config.resources_dir;
     defaults.target_root = config.config_dir;
     defaults.files = config.vendor_profiles;
-    const auto hydrate_report = ld::ensure_config_defaults(defaults);
+    const auto config_defaults_report = ld::ensure_config_defaults(defaults);
     load_result_ = {
         false,
-        hydrate_report.copied.size(),
-        hydrate_report.skipped_existing.size(),
+        config_defaults_report.copied.size(),
+        config_defaults_report.skipped_existing.size(),
     };
 
     bool loaded = true;

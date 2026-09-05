@@ -39,7 +39,7 @@ Use LinuxDesktop2026 for:
 - settings/config root discovery after Notepad++ has supplied its identity and
   accepted overrides
 - directory creation diagnostics
-- shipped default/model file hydration
+- shipped default/model file copying
 - high-value config writes with validation-before-commit
 - explicit migration plans where Notepad++ has already decided the product
   migration is allowed
@@ -83,7 +83,7 @@ not satisfy this ticket by itself.
   linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
 - Test result: `ctest --test-dir build --output-on-failure` passed, 1/1
 - Flows exercised: Notepad++-named settings root resolution, session root
-  resolution, plugin-config root resolution, default XML model hydration,
+  resolution, plugin-config root resolution, default XML model copying,
   backup-preserving validated config write, and dry-run legacy config migration
   planning
 - Include/link evidence: proof target links only exported
@@ -176,6 +176,27 @@ not satisfy this ticket by itself.
   satisfies private crossport existence evidence only; public release evidence
   still requires an observed green workflow run and later maintenance entries.
 
+### 2026-09-05 Current Main API Drift Sync
+
+- LinuxDesktop2026 base commit: `344b45c` plus local pre-1.0 compatibility
+  cleanup working-tree changes
+- Cross-port branch base commit: `de576a462`
+- Cross-port branch commit: pending
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: freshly staged CMake package at
+  `/tmp/linuxdesktop2026-current-main-prefix`
+- Build result: `cmake --build build/current-main-proof --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
+- Test result: `ctest --test-dir build/current-main-proof
+  --output-on-failure` passed, 1/1
+- Drift fixed: the proof now uses the current `ld_root`
+  `portable_root_request` API, reads `portable_root_requested` and
+  `portable_root_active`, expects the current
+  `portable-denied-privileged-install` diagnostic code, and uses
+  config-default copying vocabulary instead of the removed hydration vocabulary.
+- Disposition: local proof evidence is aligned with current main package
+  consumption again. Observed green workflow evidence is still outstanding.
+
 ## API Pain Log
 
 No blocking maintained-branch pain points have been recorded yet. The first
@@ -186,8 +207,8 @@ adapter code.
 
 The backend rewrite added one non-blocking product-mapping rule: consumers need
 both requested and active state for portable/local settings. LinuxDesktop2026
-already exposes this through `portable_requested` and `portable_active`, so the
-fork records the rule in its backend rather than changing the library.
+now exposes this through `portable_root_requested` and `portable_root_active`,
+so the fork records the rule in its backend rather than changing the library.
 
 The platform-default rebase added one API fix: `ld_settings` now accepts
 `platform_path_defaults` and passes them to `ld_paths`. This keeps consumers on

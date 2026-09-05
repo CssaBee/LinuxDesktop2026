@@ -11,7 +11,7 @@
 
 namespace {
 
-using linuxdesktop::settings::diagnostic;
+using linuxdesktop::diagnostic;
 
 struct cli_options {
     std::optional<std::filesystem::path> resource_root;
@@ -94,7 +94,7 @@ cli_options parse_args(int argc, char** argv)
 void print_diagnostics(const std::vector<diagnostic>& diagnostics)
 {
     for (const auto& item : diagnostics) {
-        std::cout << "diagnostic " << linuxdesktop::settings::to_string(item.level)
+        std::cout << "diagnostic " << linuxdesktop::to_string(item.level)
                   << " " << item.code << ": " << item.message;
         if (!item.path.empty()) {
             std::cout << " [" << item.path.string() << "]";
@@ -195,21 +195,21 @@ int main(int argc, char** argv)
         config_file.model_name = "config.model.xml";
         config_file.required = true;
 
-        linuxdesktop::settings::hydrate_options defaults_options;
+        linuxdesktop::settings::config_defaults_options defaults_options;
         defaults_options.model_root = cli.model_root;
         defaults_options.target_root = roots.roots.config;
         defaults_options.files = {shortcuts_file, config_file};
 
-        const auto hydrated = linuxdesktop::settings::ensure_config_defaults(defaults_options);
+        const auto defaults_report = linuxdesktop::settings::ensure_config_defaults(defaults_options);
 
         std::cout << "\nconfig defaults\n";
-        for (const auto& path : hydrated.copied) {
+        for (const auto& path : defaults_report.copied) {
             std::cout << "  copied:  " << path.string() << "\n";
         }
-        for (const auto& path : hydrated.skipped_existing) {
+        for (const auto& path : defaults_report.skipped_existing) {
             std::cout << "  skipped: " << path.string() << "\n";
         }
-        print_diagnostics(hydrated.diagnostics);
+        print_diagnostics(defaults_report.diagnostics);
 
         linuxdesktop::settings::write_options shortcuts_options;
         shortcuts_options.target = roots.roots.config / "shortcuts.xml";

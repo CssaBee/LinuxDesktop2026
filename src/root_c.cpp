@@ -50,14 +50,14 @@ std::optional<std::filesystem::path> optional_path(const char* value)
     return std::filesystem::path(value);
 }
 
-int severity_to_c(ld::severity value)
+int severity_to_c(linuxdesktop::severity value)
 {
     switch (value) {
-    case ld::severity::info:
+    case linuxdesktop::severity::info:
         return LD_ROOT_SEVERITY_INFO;
-    case ld::severity::warning:
+    case linuxdesktop::severity::warning:
         return LD_ROOT_SEVERITY_WARNING;
-    case ld::severity::error:
+    case linuxdesktop::severity::error:
         return LD_ROOT_SEVERITY_ERROR;
     }
     return LD_ROOT_SEVERITY_ERROR;
@@ -125,7 +125,7 @@ void free_diagnostic(ld_root_diagnostic& diagnostic)
     diagnostic = {};
 }
 
-bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_root_diagnostic*& diagnostics, size_t& count)
+bool fill_diagnostics(const std::vector<linuxdesktop::diagnostic>& source, ld_root_diagnostic*& diagnostics, size_t& count)
 {
     diagnostics = nullptr;
     count = 0;

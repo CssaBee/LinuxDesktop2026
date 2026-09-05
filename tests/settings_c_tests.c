@@ -107,7 +107,7 @@ int main(void)
     struct ld_settings_root_report report;
     char settings_override[512];
     char model_root[512];
-    char hydrate_root[512];
+    char defaults_root[512];
     char old_root[512];
     char model_file[768];
     char old_file[768];
@@ -115,11 +115,11 @@ int main(void)
 
     make_path(settings_override, sizeof(settings_override), "settings");
     make_path(model_root, sizeof(model_root), "models");
-    make_path(hydrate_root, sizeof(hydrate_root), "hydrated");
+    make_path(defaults_root, sizeof(defaults_root), "defaults");
     make_path(old_root, sizeof(old_root), "old");
     make_path(model_file, sizeof(model_file), "models/config.model.xml");
     make_path(old_file, sizeof(old_file), "old/config.xml");
-    make_path(saved_file, sizeof(saved_file), "hydrated/saved.xml");
+    make_path(saved_file, sizeof(saved_file), "defaults/saved.xml");
 
     memset(&report, 0, sizeof(report));
     ld_settings_root_options_init(&options);
@@ -162,7 +162,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (!ensure_directory(model_root) || !ensure_directory(hydrate_root) || !ensure_directory(old_root)) {
+    if (!ensure_directory(model_root) || !ensure_directory(defaults_root) || !ensure_directory(old_root)) {
         return EXIT_FAILURE;
     }
     if (!write_text(model_file, "<Config model=\"true\" />\n") ||
@@ -177,20 +177,20 @@ int main(void)
     files[0].model_name = "config.model.xml";
     files[0].required = 1;
 
-    struct ld_settings_hydrate_options hydrate_options;
-    struct ld_settings_hydrate_report hydrate_report;
-    memset(&hydrate_report, 0, sizeof(hydrate_report));
-    ld_settings_hydrate_options_init(&hydrate_options);
-    hydrate_options.model_root = model_root;
-    hydrate_options.target_root = hydrate_root;
-    hydrate_options.files = files;
-    hydrate_options.file_count = 1;
-    if (!ld_settings_hydrate_config_bundle(&hydrate_options, &hydrate_report) ||
-        (hydrate_report.copied_count != 1 && hydrate_report.skipped_existing_count != 1)) {
-        ld_settings_free_hydrate_report(&hydrate_report);
+    struct ld_settings_config_defaults_options config_defaults_options;
+    struct ld_settings_config_defaults_report config_defaults_report;
+    memset(&config_defaults_report, 0, sizeof(config_defaults_report));
+    ld_settings_config_defaults_options_init(&config_defaults_options);
+    config_defaults_options.model_root = model_root;
+    config_defaults_options.target_root = defaults_root;
+    config_defaults_options.files = files;
+    config_defaults_options.file_count = 1;
+    if (!ld_settings_ensure_config_defaults(&config_defaults_options, &config_defaults_report) ||
+        (config_defaults_report.copied_count != 1 && config_defaults_report.skipped_existing_count != 1)) {
+        ld_settings_free_config_defaults_report(&config_defaults_report);
         return EXIT_FAILURE;
     }
-    ld_settings_free_hydrate_report(&hydrate_report);
+    ld_settings_free_config_defaults_report(&config_defaults_report);
 
     struct ld_settings_write_options write_options;
     struct ld_settings_write_report write_report;

@@ -58,9 +58,9 @@ std::string_view to_string(storage_backend value)
     }
     return "unknown";
 }
-hydrate_report ensure_config_defaults(const hydrate_options& options)
+config_defaults_report ensure_config_defaults(const config_defaults_options& options)
 {
-    hydrate_report report;
+    config_defaults_report report;
     if (options.create_target_root) {
         detail::create_directory_if_needed(options.target_root, report.diagnostics);
     }
@@ -101,17 +101,12 @@ hydrate_report ensure_config_defaults(const hydrate_options& options)
         report.copied.push_back(target);
         report.diagnostics.push_back(detail::make_diagnostic(
             severity::info,
-            "config-hydrated",
-            "Copied model file into config bundle",
+            "config-default-copied",
+            "Copied model file into config defaults target",
             target));
     }
 
     return report;
-}
-
-hydrate_report hydrate_config_bundle(const hydrate_options& options)
-{
-    return ensure_config_defaults(options);
 }
 
 write_report write_with_backup(const write_options& options, validation_callback validate)

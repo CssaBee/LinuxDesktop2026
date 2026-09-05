@@ -56,7 +56,7 @@ void installed_mode_uses_user_config_and_executable_resources()
     expect(plan.config_root == expected_config, "installed mode uses platform config root");
     expect(plan.controller_database == env.executable_directory / "gamecontrollerdb.txt",
         "controller database stays executable-relative");
-    expect(std::filesystem::exists(plan.settings_file), "settings model is hydrated into config root");
+    expect(std::filesystem::exists(plan.settings_file), "settings model is copied into config root");
     expect(plan.copied_defaults.size() == 1, "first run copies default gearcoleco.ini");
 }
 

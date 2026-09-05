@@ -132,7 +132,7 @@ bool NppParameters::loadConfigFiles()
 }
 ```
 
-After, hydration and common saves are shared, while XML semantics remain
+After, config-default copying and common saves are shared, while XML semantics remain
 Notepad++ code:
 
 ```cpp
@@ -141,7 +141,7 @@ namespace settings = linuxdesktop::settings;
 
 bool NppParameters::loadConfigFiles()
 {
-    const auto hydrated = settings::ensure_config_defaults({
+    const auto defaults_report = settings::ensure_config_defaults({
         _nppPath,
         _userPath,
         {
@@ -152,7 +152,7 @@ bool NppParameters::loadConfigFiles()
         },
     });
 
-    log_hydration(to_notepad_hydration(hydrated));
+    log_hydration(to_notepad_hydration(defaults_report));
 
     // KEEP: parsing, merging, shortcuts, and session semantics are product code.
     load_langs_xml(_userPath / "langs.xml");
@@ -338,7 +338,7 @@ namespace ldm = linuxdesktop::migration;
 
 LoadBundleResult load_config_bundle(const AppConfig& app_config)
 {
-    settings::hydrate_options defaults;
+    settings::config_defaults_options defaults;
     defaults.model_root = app_config.resources / "profiles";
     defaults.target_root = app_config.config_dir;
     defaults.files = {
@@ -347,10 +347,10 @@ LoadBundleResult load_config_bundle(const AppConfig& app_config)
         {"filament.ini", "filament.ini", false},
     };
 
-    const auto hydrated = settings::ensure_config_defaults(defaults);
+    const auto defaults_report = settings::ensure_config_defaults(defaults);
 
     // KEEP: profile parsing, merging, and vendor metadata stay PrusaSlicer code.
-    return parse_prusa_profiles(app_config.config_dir, hydrated);
+    return parse_prusa_profiles(app_config.config_dir, defaults_report);
 }
 
 OldDatadirMigration check_old_linux_datadir(const AppConfig& config)

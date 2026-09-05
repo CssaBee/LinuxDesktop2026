@@ -110,7 +110,8 @@ Current settings/config prototype sample:
 
 - `ld_core` interface target.
 - `LinuxDesktop2026::ld_core` namespaced target.
-- Shared C++ diagnostics with `linuxdesktop::settings` aliases preserved.
+- Shared C++ diagnostics through `linuxdesktop::severity` and
+  `linuxdesktop::diagnostic`; module namespaces do not re-export those names.
 - `ld_settings` library target.
 - `LinuxDesktop2026::ld_settings` namespaced target.
 - `ld_settings_demo` executable target.
@@ -168,7 +169,8 @@ Example documentation:
   reports surface this distinction so product code can add an app-owned lock,
   version token, or merge flow where needed.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
-- Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving the shared diagnostic aliases in `ld_settings`, `ld_paths`, and `ld_watch`.
+- Keep shared C++ diagnostics in the tiny `ld_core` interface target. Do not add
+  module-level C++ aliases for the shared diagnostic names before 1.0.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.

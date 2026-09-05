@@ -123,7 +123,7 @@ struct ld_settings_config_file {
     int required;
 };
 
-struct ld_settings_hydrate_options {
+struct ld_settings_config_defaults_options {
     const char* model_root;
     const char* target_root;
     const struct ld_settings_config_file* files;
@@ -131,7 +131,7 @@ struct ld_settings_hydrate_options {
     int create_target_root;
 };
 
-struct ld_settings_hydrate_report {
+struct ld_settings_config_defaults_report {
     char** copied;
     size_t copied_count;
     char** skipped_existing;
@@ -166,7 +166,7 @@ struct ld_settings_write_report {
 
 LD_SETTINGS_API void ld_settings_root_options_init(struct ld_settings_root_options* options);
 
-LD_SETTINGS_API void ld_settings_hydrate_options_init(struct ld_settings_hydrate_options* options);
+LD_SETTINGS_API void ld_settings_config_defaults_options_init(struct ld_settings_config_defaults_options* options);
 
 LD_SETTINGS_API void ld_settings_write_options_init(struct ld_settings_write_options* options);
 
@@ -176,11 +176,11 @@ LD_SETTINGS_API int ld_settings_resolve_app_roots(
 
 LD_SETTINGS_API void ld_settings_free_root_report(struct ld_settings_root_report* report);
 
-LD_SETTINGS_API int ld_settings_hydrate_config_bundle(
-    const struct ld_settings_hydrate_options* options,
-    struct ld_settings_hydrate_report* report);
+LD_SETTINGS_API int ld_settings_ensure_config_defaults(
+    const struct ld_settings_config_defaults_options* options,
+    struct ld_settings_config_defaults_report* report);
 
-LD_SETTINGS_API void ld_settings_free_hydrate_report(struct ld_settings_hydrate_report* report);
+LD_SETTINGS_API void ld_settings_free_config_defaults_report(struct ld_settings_config_defaults_report* report);
 
 LD_SETTINGS_API int ld_settings_write_with_backup(
     const struct ld_settings_write_options* options,

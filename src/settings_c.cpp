@@ -46,14 +46,14 @@ void free_diagnostic(ld_settings_diagnostic& diagnostic)
     diagnostic = {};
 }
 
-int severity_to_c(ld::severity value)
+int severity_to_c(linuxdesktop::severity value)
 {
     switch (value) {
-    case ld::severity::info:
+    case linuxdesktop::severity::info:
         return LD_SETTINGS_SEVERITY_INFO;
-    case ld::severity::warning:
+    case linuxdesktop::severity::warning:
         return LD_SETTINGS_SEVERITY_WARNING;
-    case ld::severity::error:
+    case linuxdesktop::severity::error:
         return LD_SETTINGS_SEVERITY_ERROR;
     }
     return LD_SETTINGS_SEVERITY_ERROR;
@@ -111,7 +111,7 @@ bool assign_path(char*& target, const std::filesystem::path& value)
     return target != nullptr;
 }
 
-bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count);
+bool fill_diagnostics(const std::vector<linuxdesktop::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count);
 std::optional<std::filesystem::path> optional_path(const char* value);
 
 void free_config_layer(ld_settings_config_layer& layer)
@@ -132,7 +132,7 @@ void free_string_array(char** values, size_t count)
     std::free(values);
 }
 
-void free_hydrate_report_fields(ld_settings_hydrate_report& report)
+void free_config_defaults_report_fields(ld_settings_config_defaults_report& report)
 {
     free_string_array(report.copied, report.copied_count);
     free_string_array(report.skipped_existing, report.skipped_existing_count);
@@ -158,7 +158,7 @@ void free_write_report_fields(ld_settings_write_report& report)
     report = {};
 }
 
-bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count)
+bool fill_diagnostics(const std::vector<linuxdesktop::diagnostic>& source, ld_settings_diagnostic*& diagnostics, size_t& count)
 {
     diagnostics = nullptr;
     count = 0;
@@ -296,13 +296,13 @@ bool fill_report(const ld::root_report& source, ld_settings_root_report& target)
     return true;
 }
 
-bool fill_hydrate_report(const ld::hydrate_report& source, ld_settings_hydrate_report& target)
+bool fill_config_defaults_report(const ld::config_defaults_report& source, ld_settings_config_defaults_report& target)
 {
     target = {};
     if (!fill_path_array(source.copied, target.copied, target.copied_count) ||
         !fill_path_array(source.skipped_existing, target.skipped_existing, target.skipped_existing_count) ||
         !fill_diagnostics(source.diagnostics, target.diagnostics, target.diagnostic_count)) {
-        free_hydrate_report_fields(target);
+        free_config_defaults_report_fields(target);
         return false;
     }
     return true;
@@ -371,7 +371,7 @@ void ld_settings_root_options_init(ld_settings_root_options* options)
     options->portable_level = LD_SETTINGS_PORTABLE_SETTINGS_ONLY;
 }
 
-void ld_settings_hydrate_options_init(ld_settings_hydrate_options* options)
+void ld_settings_config_defaults_options_init(ld_settings_config_defaults_options* options)
 {
     if (!options) {
         return;
@@ -477,27 +477,27 @@ void ld_settings_free_root_report(ld_settings_root_report* report)
     *report = {};
 }
 
-int ld_settings_hydrate_config_bundle(
-    const ld_settings_hydrate_options* options,
-    ld_settings_hydrate_report* report)
+int ld_settings_ensure_config_defaults(
+    const ld_settings_config_defaults_options* options,
+    ld_settings_config_defaults_report* report)
 {
     if (!options || !report || !options->model_root || !options->target_root) {
         return 0;
     }
     try {
-        ld::hydrate_options hydrate;
-        hydrate.model_root = options->model_root;
-        hydrate.target_root = options->target_root;
-        hydrate.create_target_root = options->create_target_root != 0;
+        ld::config_defaults_options defaults;
+        defaults.model_root = options->model_root;
+        defaults.target_root = options->target_root;
+        defaults.create_target_root = options->create_target_root != 0;
         for (size_t index = 0; index != options->file_count; ++index) {
             const auto& source = options->files[index];
             ld::config_file file;
             file.name = source.name ? source.name : "";
             file.model_name = source.model_name ? source.model_name : "";
             file.required = source.required != 0;
-            hydrate.files.push_back(std::move(file));
+            defaults.files.push_back(std::move(file));
         }
-        return fill_hydrate_report(ld::hydrate_config_bundle(hydrate), *report) ? 1 : 0;
+        return fill_config_defaults_report(ld::ensure_config_defaults(defaults), *report) ? 1 : 0;
     } catch (const std::bad_alloc&) {
         return 0;
     } catch (const std::exception&) {
@@ -505,12 +505,12 @@ int ld_settings_hydrate_config_bundle(
     }
 }
 
-void ld_settings_free_hydrate_report(ld_settings_hydrate_report* report)
+void ld_settings_free_config_defaults_report(ld_settings_config_defaults_report* report)
 {
     if (!report) {
         return;
     }
-    free_hydrate_report_fields(*report);
+    free_config_defaults_report_fields(*report);
 }
 
 int ld_settings_write_with_backup(

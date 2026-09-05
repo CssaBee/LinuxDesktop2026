@@ -4,7 +4,7 @@
 unnatural after the first ergonomics pass, so passing tests do not masquerade as
 adoption evidence.
 
-**Blocked by:** 23 — Add Common Config Write Facade; 24 — Add Settings Root Construction Helpers; 25 — Add Clear Config Defaults Alias; 26 — Add Ergonomic Migration Action Helpers.
+**Blocked by:** 23 — Add Common Config Write Facade; 24 — Add Settings Root Construction Helpers; 25 — Replace Config Defaults Hydration Name; 26 — Add Ergonomic Migration Action Helpers.
 
 **Status:** done
 

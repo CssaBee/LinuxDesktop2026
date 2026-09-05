@@ -30,7 +30,7 @@ void require(bool condition, const std::string& message)
     }
 }
 
-bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, const std::string& code)
+bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, const std::string& code)
 {
     for (const auto& item : diagnostics) {
         if (item.code == code) {

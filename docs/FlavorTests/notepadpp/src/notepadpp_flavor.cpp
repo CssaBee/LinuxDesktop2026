@@ -160,7 +160,7 @@ bool NppParameters::load(const startup_environment& environment)
 
 bool NppParameters::loadConfigFiles()
 {
-    linuxdesktop::settings::hydrate_options defaults;
+    linuxdesktop::settings::config_defaults_options defaults;
     defaults.model_root = state_.npp_path;
     defaults.target_root = state_.user_path;
     defaults.files = {
@@ -171,11 +171,12 @@ bool NppParameters::loadConfigFiles()
         {"contextMenu.xml", "contextMenu.xml.model", true},
     };
 
-    const linuxdesktop::settings::hydrate_report hydration = linuxdesktop::settings::ensure_config_defaults(defaults);
+    const linuxdesktop::settings::config_defaults_report defaults_report =
+        linuxdesktop::settings::ensure_config_defaults(defaults);
     state_.diagnostics.insert(
         state_.diagnostics.end(),
-        hydration.diagnostics.begin(),
-        hydration.diagnostics.end());
+        defaults_report.diagnostics.begin(),
+        defaults_report.diagnostics.end());
 
     bool is_all_loaded = true;
     is_all_loaded = loadXml(langs_xml_, state_.user_path / "langs.xml") && is_all_loaded;

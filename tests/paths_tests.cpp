@@ -32,7 +32,7 @@ void require(bool condition, const std::string& message)
     }
 }
 
-bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, std::string_view code)
+bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, std::string_view code)
 {
     for (const auto& item : diagnostics) {
         if (item.code == code) {
@@ -137,16 +137,14 @@ void exposes_cpp_version()
     require(ld::version_patch == 0, "C++ version patch should match project version");
 }
 
-void paths_diagnostics_use_shared_core_vocabulary()
+void paths_diagnostics_use_core_namespace()
 {
-    ld::diagnostic paths_diagnostic;
-    paths_diagnostic.level = ld::severity::warning;
-    paths_diagnostic.code = "shared-diagnostic";
+    linuxdesktop::diagnostic core_diagnostic;
+    core_diagnostic.level = linuxdesktop::severity::warning;
+    core_diagnostic.code = "shared-diagnostic";
 
-    linuxdesktop::diagnostic core_diagnostic = paths_diagnostic;
-    require(core_diagnostic.code == "shared-diagnostic", "paths diagnostics should alias shared diagnostics");
+    require(core_diagnostic.code == "shared-diagnostic", "paths diagnostics should use shared diagnostics");
     require(linuxdesktop::to_string(core_diagnostic.level) == "warning", "shared severity should stringify");
-    require(ld::to_string(paths_diagnostic.level) == "warning", "paths severity alias should stringify");
 }
 
 void stringifies_public_enums()
@@ -889,7 +887,7 @@ int main()
 {
     try {
         exposes_cpp_version();
-        paths_diagnostics_use_shared_core_vocabulary();
+        paths_diagnostics_use_core_namespace();
         stringifies_public_enums();
         resolves_linux_xdg_base_directories_from_injected_environment();
         resolves_home_fallbacks_when_xdg_is_unset();

@@ -29,7 +29,7 @@ void require(bool condition, const std::string& message)
     }
 }
 
-bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, const std::string& code)
+bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, const std::string& code)
 {
     for (const auto& item : diagnostics) {
         if (item.code == code) {
@@ -39,10 +39,10 @@ bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, const std::s
     return false;
 }
 
-bool has_error_diagnostic(const std::vector<ld::diagnostic>& diagnostics)
+bool has_error_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics)
 {
     for (const auto& item : diagnostics) {
-        if (item.level == ld::severity::error) {
+        if (item.level == linuxdesktop::severity::error) {
             return true;
         }
     }

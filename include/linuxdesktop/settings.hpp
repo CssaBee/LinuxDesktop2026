@@ -19,10 +19,6 @@ inline constexpr int version_major = 0;
 inline constexpr int version_minor = 1;
 inline constexpr int version_patch = 0;
 
-using ::linuxdesktop::diagnostic;
-using ::linuxdesktop::severity;
-using ::linuxdesktop::to_string;
-
 struct app_identity {
     std::string organization;
     std::string application;
@@ -230,14 +226,14 @@ struct config_file {
     bool required = true;
 };
 
-struct hydrate_options {
+struct config_defaults_options {
     std::filesystem::path model_root;
     std::filesystem::path target_root;
     std::vector<config_file> files;
     bool create_target_root = true;
 };
 
-struct hydrate_report {
+struct config_defaults_report {
     std::vector<std::filesystem::path> copied;
     std::vector<std::filesystem::path> skipped_existing;
     std::vector<diagnostic> diagnostics;
@@ -289,8 +285,7 @@ inline root_report root_builder::resolve() const
     return resolve_settings_roots(identity_, options_);
 }
 
-hydrate_report ensure_config_defaults(const hydrate_options& options);
-hydrate_report hydrate_config_bundle(const hydrate_options& options);
+config_defaults_report ensure_config_defaults(const config_defaults_options& options);
 
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
 write_report write_common_config(common_config_write_request request, validation_callback validate = {});

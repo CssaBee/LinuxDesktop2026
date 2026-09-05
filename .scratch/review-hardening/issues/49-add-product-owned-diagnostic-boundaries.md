@@ -25,7 +25,7 @@ product seam should speak in the adopting application's vocabulary.
   product-shaped public structs should not store
   `std::vector<linuxdesktop::diagnostic>`.
 - [x] Replace cross-port public methods that return
-  `linuxdesktop::settings::hydrate_report`,
+  `linuxdesktop::settings::config_defaults_report`,
   `linuxdesktop::settings::write_report`, or
   `linuxdesktop::migration::migration_plan` with Notepad++-owned summaries that
   carry the decisions the caller needs: success/failure, selected paths,

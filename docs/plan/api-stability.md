@@ -36,7 +36,10 @@ linuxdesktop::paths::version_minor
 linuxdesktop::paths::version_patch
 ```
 
-`linuxdesktop::settings::severity`, `linuxdesktop::settings::diagnostic`, `linuxdesktop::settings::to_string`, `linuxdesktop::paths::severity`, `linuxdesktop::paths::diagnostic`, and `linuxdesktop::paths::to_string` remain source-compatible aliases for the shared C++ diagnostic vocabulary.
+Module namespaces do not re-export the shared diagnostic C++ names. Consumers
+should use `linuxdesktop::severity`, `linuxdesktop::diagnostic`, and
+`linuxdesktop::to_string(linuxdesktop::severity)` directly, while module-specific
+enum stringification remains in each module namespace.
 
 C and Rust FFI consumers can read:
 

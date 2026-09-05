@@ -35,7 +35,7 @@ void require(bool condition, const std::string& message)
     }
 }
 
-bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, const std::string& code)
+bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, const std::string& code)
 {
     for (const auto& item : diagnostics) {
         if (item.code == code) {
@@ -45,10 +45,10 @@ bool has_diagnostic(const std::vector<ld::diagnostic>& diagnostics, const std::s
     return false;
 }
 
-bool has_error_diagnostic(const std::vector<ld::diagnostic>& diagnostics)
+bool has_error_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics)
 {
     for (const auto& item : diagnostics) {
-        if (item.level == ld::severity::error) {
+        if (item.level == linuxdesktop::severity::error) {
             return true;
         }
     }
@@ -164,16 +164,14 @@ void exposes_cpp_version()
     require(ld::version_patch == 0, "C++ version patch should match project version");
 }
 
-void settings_diagnostics_use_shared_core_vocabulary()
+void settings_diagnostics_use_core_namespace()
 {
-    ld::diagnostic settings_diagnostic;
-    settings_diagnostic.level = ld::severity::warning;
-    settings_diagnostic.code = "shared-diagnostic";
+    linuxdesktop::diagnostic core_diagnostic;
+    core_diagnostic.level = linuxdesktop::severity::warning;
+    core_diagnostic.code = "shared-diagnostic";
 
-    linuxdesktop::diagnostic core_diagnostic = settings_diagnostic;
-    require(core_diagnostic.code == "shared-diagnostic", "settings diagnostics should alias shared diagnostics");
+    require(core_diagnostic.code == "shared-diagnostic", "settings diagnostics should use shared diagnostics");
     require(linuxdesktop::to_string(core_diagnostic.level) == "warning", "shared severity should stringify");
-    require(ld::to_string(settings_diagnostic.level) == "warning", "settings severity alias should stringify");
 }
 
 enum class product_severity {
@@ -784,7 +782,7 @@ void ensure_config_defaults_copies_missing_models()
     file.model_name = "config.model.xml";
     file.required = true;
 
-    ld::hydrate_options options;
+    ld::config_defaults_options options;
     options.model_root = models;
     options.target_root = target;
     options.files = {file};
@@ -793,33 +791,6 @@ void ensure_config_defaults_copies_missing_models()
 
     require(report.copied.size() == 1, "config defaults should copy one model");
     require(std::filesystem::exists(target / "config.xml"), "config default target should exist");
-}
-
-void legacy_hydrate_config_bundle_forwards_to_config_defaults()
-{
-    const auto root = test_root();
-    const auto models = root / "models";
-    const auto target = root / "config";
-    std::filesystem::create_directories(models);
-    {
-        std::ofstream model(models / "config.model.xml");
-        model << "<Config />\n";
-    }
-
-    ld::config_file file;
-    file.name = "config.xml";
-    file.model_name = "config.model.xml";
-    file.required = true;
-
-    ld::hydrate_options options;
-    options.model_root = models;
-    options.target_root = target;
-    options.files = {file};
-
-    const auto report = ld::hydrate_config_bundle(options);
-
-    require(report.copied.size() == 1, "legacy hydration API should keep forwarding");
-    require(std::filesystem::exists(target / "config.xml"), "legacy hydration target should exist");
 }
 
 void common_config_write_replaces_target_with_backup()
@@ -1594,7 +1565,7 @@ int main()
 {
     const std::vector<std::pair<const char*, void (*)()>> tests = {
         {"exposes_cpp_version", exposes_cpp_version},
-        {"settings_diagnostics_use_shared_core_vocabulary", settings_diagnostics_use_shared_core_vocabulary},
+        {"settings_diagnostics_use_core_namespace", settings_diagnostics_use_core_namespace},
         {"core_diagnostics_translate_to_product_vocabulary", core_diagnostics_translate_to_product_vocabulary},
         {"core_diagnostics_classify_product_disposition", core_diagnostics_classify_product_disposition},
         {"writes_absolute_settings_override", writes_absolute_settings_override},
@@ -1618,7 +1589,6 @@ int main()
         {"windows_default_roots_are_resolved", windows_default_roots_are_resolved},
 #endif
         {"ensure_config_defaults_copies_missing_models", ensure_config_defaults_copies_missing_models},
-        {"legacy_hydrate_config_bundle_forwards_to_config_defaults", legacy_hydrate_config_bundle_forwards_to_config_defaults},
         {"common_config_write_replaces_target_with_backup", common_config_write_replaces_target_with_backup},
         {"common_config_write_does_not_merge_stale_interprocess_payloads", common_config_write_does_not_merge_stale_interprocess_payloads},
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},

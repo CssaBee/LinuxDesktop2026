@@ -221,7 +221,7 @@ Fit:
 
 Friction:
 
-- `hydrate_options` is still LinuxDesktop2026-shaped at a point where the
+- `config_defaults_options` is still LinuxDesktop2026-shaped at a point where the
   product thinks in vendor bundles, model roots, target roots, and merge
   metadata.
 - Vendor profile metadata is product-specific enough that a generic helper

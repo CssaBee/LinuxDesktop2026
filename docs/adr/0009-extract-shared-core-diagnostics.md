@@ -10,7 +10,11 @@ Create a minimal `ld_core` C++ surface for:
 - `linuxdesktop::diagnostic`,
 - and `linuxdesktop::to_string(severity)`.
 
-`ld_settings` should keep source-compatible aliases such as `linuxdesktop::settings::severity` and `linuxdesktop::settings::diagnostic`, but those names should point at the shared vocabulary. The C ABI can keep `LD_SETTINGS_SEVERITY_*` and settings-local struct names for now.
+Public C++ reports should use the shared vocabulary directly. Module namespaces
+must not re-export `linuxdesktop::severity`, `linuxdesktop::diagnostic`, or
+`linuxdesktop::to_string(severity)` as compatibility aliases. The C ABI keeps
+module-local severity enums and diagnostic structs because C has no namespace
+for the shared C++ types.
 
 The first implementation should expose `LinuxDesktop2026::ld_core` as a header-only/interface CMake target so later modules, especially `ld_watch`, can depend on shared diagnostics without depending on `ld_settings`.
 
@@ -22,9 +26,13 @@ The shared core should stay intentionally small. Path abstractions, result/repor
 
 ## Compatibility
 
-Keep the current `ld_settings` C++ names as aliases. Do not force existing C++ consumers to rename diagnostic types during this pre-1.0 cleanup.
+Earlier prototypes kept `ld_settings` C++ aliases for source compatibility.
+Those aliases were removed as an intentional pre-1.0 break. Before 1.0, one
+clear shared diagnostic vocabulary is preferred over carrying compatibility
+wrappers.
 
-The C ABI should not be renamed yet. C ownership and naming rules are more expensive to change, and there is not a second C module to prove the shared shape.
+The C ABI should keep module-local names unless a deliberate C ABI versioning
+plan introduces shared C diagnostics.
 
 ## Verification
 

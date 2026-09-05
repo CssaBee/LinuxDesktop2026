@@ -73,8 +73,8 @@ void command_line_settings_dir_wins_over_cloud_and_local_mode()
     require(state.session_path == command_line_root, "session follows command line settings");
     require(state.user_plugin_config_dir == command_line_root / "plugins" / "Config",
         "plugin config should stay under active settings root");
-    require(parameters.langs().loaded, "langs.xml should be hydrated and loaded");
-    require(parameters.config().loaded, "config.xml should be hydrated and loaded");
+    require(parameters.langs().loaded, "langs.xml should be copied from defaults and loaded");
+    require(parameters.config().loaded, "config.xml should be copied from defaults and loaded");
 }
 
 void portable_marker_moves_settings_beside_the_install_root()

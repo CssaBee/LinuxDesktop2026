@@ -2,7 +2,7 @@
 
 **What to build:** Security-sensitive parser and filesystem behavior should be exercised with hostile inputs and failure modes before any stable or ship-ready claim.
 
-**Blocked by:** 23 — Add Common Config Write Facade; 24 — Add Settings Root Construction Helpers; 25 — Add Clear Config Defaults Alias; 26 — Add Ergonomic Migration Action Helpers; 27 — Record FlavorTest API Friction Notes.
+**Blocked by:** 23 — Add Common Config Write Facade; 24 — Add Settings Root Construction Helpers; 25 — Replace Config Defaults Hydration Name; 26 — Add Ergonomic Migration Action Helpers; 27 — Record FlavorTest API Friction Notes.
 
 **Status:** done
 

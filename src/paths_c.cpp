@@ -44,14 +44,14 @@ void free_diagnostic(ld_paths_diagnostic& diagnostic)
     diagnostic = {};
 }
 
-int severity_to_c(ld::severity value)
+int severity_to_c(linuxdesktop::severity value)
 {
     switch (value) {
-    case ld::severity::info:
+    case linuxdesktop::severity::info:
         return LD_PATHS_SEVERITY_INFO;
-    case ld::severity::warning:
+    case linuxdesktop::severity::warning:
         return LD_PATHS_SEVERITY_WARNING;
-    case ld::severity::error:
+    case linuxdesktop::severity::error:
         return LD_PATHS_SEVERITY_ERROR;
     }
     return LD_PATHS_SEVERITY_ERROR;
@@ -145,7 +145,7 @@ T* allocate_array(size_t count)
     return static_cast<T*>(std::calloc(count, sizeof(T)));
 }
 
-bool fill_diagnostics(const std::vector<ld::diagnostic>& source, ld_paths_diagnostic*& diagnostics, size_t& count)
+bool fill_diagnostics(const std::vector<linuxdesktop::diagnostic>& source, ld_paths_diagnostic*& diagnostics, size_t& count)
 {
     diagnostics = allocate_array<ld_paths_diagnostic>(source.size());
     count = source.size();
