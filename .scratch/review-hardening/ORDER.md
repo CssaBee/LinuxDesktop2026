@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `76` - Finish Maintained Consumer Proof Evidence
 - `77` - Centralize Dynamic Public Validation State
 - `78` - Pin FetchContent Example
 - `79` - Measure Framework Tax In Maintained Proof
@@ -21,6 +20,7 @@ list below.
 
 ## Implemented
 
+- `76` - Finish Maintained Consumer Proof Evidence
 - `75` - Split Migration Internals By Responsibility
 - `74` - Rename Or Split Migration Move Semantics
 - `73` - Decide Settings Interprocess Write Contract

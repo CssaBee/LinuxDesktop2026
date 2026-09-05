@@ -86,9 +86,13 @@ settings API ergonomics. It is not evidence for full Notepad++ native Linux UI
 parity, plugin ABI compatibility, printing, shell integration, or broad file
 watching.
 
-Keep it manual while the proof branch is private and until it has at least one
-observed green run. After that, promote it to a scheduled or pull-request lane
-if it stays stable enough to be useful.
+The 2026-09-05 manually dispatched run is the first observed green proof run:
+it checked out LinuxDesktop2026 `cf7de44f92a35b18add35529a58d8598b9c80321` and
+crossport `a296934feedbae187fcd98981637bc45f8faceb5`, installed the package,
+built the proof target, and passed CTest 1/1 on Ubuntu 24.04/GCC 13.3.
+
+Keep it manual while the proof branch is private. Promote it to a scheduled or
+pull-request lane if it stays stable enough to be useful.
 
 ## How To Read Failures
 

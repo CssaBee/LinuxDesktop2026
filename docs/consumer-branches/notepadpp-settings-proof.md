@@ -229,13 +229,14 @@ not satisfy this ticket by itself.
 - Adapter churn: no proof adapter changes were needed for the task-75
   migration split; the split preserved the public package surface used by the
   proof.
-- CI status: not observed from this environment. GitHub network access required
-  escalation and the HTTPS remote then required noninteractive credentials, so
-  an observed green GitHub Actions run still needs repository credentials or a
-  configured read token.
-- Disposition: satisfies the stable private proof repository and later
-  maintenance-pass evidence. The only remaining task-76 gate is an observed
-  green CI run against the current package.
+- CI status: observed green in the 2026-09-05 manually dispatched
+  `Notepad++ Proof Branch` GitHub Actions workflow. The run checked out
+  LinuxDesktop2026 `cf7de44f92a35b18add35529a58d8598b9c80321` and crossport
+  `a296934feedbae187fcd98981637bc45f8faceb5`, installed LinuxDesktop2026 as a
+  Release CMake package on Ubuntu 24.04/GCC 13.3, built
+  `linuxdesktop2026_notepadpp_settings_proof`, and passed CTest 1/1.
+- Disposition: satisfies the stable private proof repository, observed CI, and
+  later maintenance-pass evidence for task 76.
 
 ## API Pain Log
 

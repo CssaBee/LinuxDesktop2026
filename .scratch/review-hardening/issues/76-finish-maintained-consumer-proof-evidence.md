@@ -5,10 +5,10 @@ maintained-consumer evidence.
 
 **Blocked by:** 15 - Validate APIs With One Maintained Consumer Branch.
 
-**Status:** in progress
+**Status:** implemented
 
 - [x] Push the proof branch/repository to a stable remote location.
-- [ ] Record at least one observed green CI run against the current package.
+- [x] Record at least one observed green CI run against the current package.
 - [x] Record rebase cadence, include/link friction, dependency friction, and
   adapter churn over at least one later maintenance pass.
 - [x] Keep FlavorTests clearly labeled as product-shaped fixtures, not proof
@@ -24,10 +24,12 @@ at `a296934fe`. The local task-76 proof pass installed LinuxDesktop2026 commit
 against the exported package, built
 `linuxdesktop2026_notepadpp_settings_proof`, and passed CTest 1/1.
 
-Observed GitHub Actions evidence is still open. Network access could reach the
-GitHub remote only after escalation, and then HTTPS required noninteractive
-credentials. The manual workflow now names `LD2026_CROSSPORT_READ_TOKEN` as the
-private crossport checkout token path.
+Observed GitHub Actions evidence is green. The 2026-09-05
+`Notepad++ Proof Branch` manual workflow run checked out main commit
+`cf7de44f92a35b18add35529a58d8598b9c80321` and crossport commit
+`a296934feedbae187fcd98981637bc45f8faceb5`, installed LinuxDesktop2026 as a
+Release CMake package on Ubuntu 24.04/GCC 13.3, configured and built
+`linuxdesktop2026_notepadpp_settings_proof`, and passed CTest 1/1.
 
 ## Review Anchor
 
