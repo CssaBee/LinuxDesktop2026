@@ -6,7 +6,7 @@ list below.
 
 ## Current Order
 
-- `89` - Design Versioned Settings Commit Contract
+- `90` - Implement Versioned Settings Commit API
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
@@ -17,6 +17,7 @@ list below.
 
 ## Implemented
 
+- `89` - Design Versioned Settings Commit Contract
 - `79` - Measure Framework Tax In Maintained Proof
 - `78` - Pin FetchContent Example
 - `77` - Centralize Dynamic Public Validation State
@@ -99,10 +100,11 @@ Maintained-consumer evidence and public validation-state cleanup follow because
 they answer the project's central strategic question: whether these APIs lower
 real integration cost over time. FetchContent pinning is small but public-facing
 and should happen in the same documentation honesty pass. Framework-tax metrics
-then give ticket 17 real evidence instead of intuition. Task 89 follows that
-evidence pass because versioned settings commits may be valuable for high-impact
-files like Notepad++ session and shortcut state, but the contract should be
-shaped by maintained-consumer proof before it becomes a pre-1.0 API promise.
+then give ticket 17 real evidence instead of intuition. Task 89 followed that
+evidence pass and accepted a narrow versioned settings commit contract for
+high-impact files like Notepad++ session and shortcut state. Task 90 now
+implements that pre-1.0 C++ promise before broader coverage/performance work
+continues.
 
 Coverage, failure-mode, and performance evidence are intentionally after the
 watcher scheduler work so measurements target the intended shape. CMake

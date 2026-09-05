@@ -313,3 +313,28 @@ from the product-shaped surface. Do not add broader convenience APIs from this
 single proof alone. Reopen helper design only if another maintained proof also
 duplicates named-root lookup names, root-option assembly, or report translation
 in a comparable way.
+
+## Versioned Settings Commit Evidence
+
+Task 89 used the maintained Notepad++ proof and in-tree flavor tests as the
+first real evidence for a versioned settings commit contract.
+
+- `session.xml` is the first proof target. The proof already uses
+  `write_common_config()` with backup, durable write, and validation-after-write
+  for session saves, and it exercises startup recovery from `session.xml.bak`.
+  Losing or replacing a newer session image has high user impact, but merging
+  session XML is Notepad++ policy.
+- `shortcuts.xml` is the second proof target. The proof writes shortcuts through
+  `write_common_config()`, validates the XML, reloads the saved bytes, refreshes
+  the shortcut HMAC source, and later lets `config.xml` persist the matching
+  integrity state. Replacing a newer shortcuts file would make the subsequent
+  HMAC bookkeeping describe the wrong overwrite, but shortcut parsing and HMAC
+  policy are still product-owned.
+
+Conclusion: the proof targets justify an `ld_settings` stale-write rejection
+API for participating whole-file settings commits. They do not justify library
+merge callbacks, automatic retry/reread behavior, XML-specific merging, or a
+general settings transaction system. ADR 0016 records the accepted narrow
+contract: opaque file-version token plus an internal per-target advisory commit
+guard, followed by the existing backup/replacement/validation path only when
+the target still matches the expected version.

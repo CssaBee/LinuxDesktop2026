@@ -36,8 +36,12 @@ effects, and migration items are extraction inventory for `ld_desktop` and
 - default precedence with enforced values non-overridable,
 - hydration of default/model config files,
 - atomic file writes with validation, backups, opt-in durable flushing, and an
-  explicit warning that `ld_settings` does not provide multi-process
-  read-modify-write lost-update protection,
+  explicit warning that the ordinary whole-file helpers do not provide
+  multi-process read-modify-write lost-update protection,
+- a pre-1.0 C++ versioned settings commit path for high-value whole-file writes,
+  accepted by ADR 0016, that rejects stale participating commits with
+  diagnostics through an opaque file-version token plus an internal per-target
+  advisory commit guard, without library-owned payload merging or retry,
 - Windows Known Folder resolution,
 - no new C ABI expansion before release-candidate status; existing C ABI entry points are kept compatible where practical,
 - examples from Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style workflows,

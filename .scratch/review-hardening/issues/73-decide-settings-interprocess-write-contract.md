@@ -9,8 +9,9 @@ update protection or explicitly does not.
 
 - [x] State the current interprocess contract in settings docs and headers.
 - [x] Decide protection is out of scope for the current whole-file write API;
-  do not add `flock()`/`fcntl()`-style locking unless task 89 accepts a
-  versioned settings commit contract.
+  do not add `flock()`/`fcntl()`-style locking to those helpers. Task 89
+  separately accepted an internal advisory guard for the future versioned
+  settings commit path.
 - [x] If protection is out of scope for now, add diagnostics or documentation
   that distinguish atomic corruption-safety from lost-update safety.
 - [x] Add tests or a concurrency harness for two writers touching different
@@ -24,10 +25,13 @@ so an app-owned stale read can still overwrite a newer independent setting even
 if individual commits are serialized. `write_with_backup()` and
 `write_common_config()` now report
 `settings-interprocess-lost-update-not-protected` to distinguish atomic
-replacement, backup, validation, and optional durable flushing from merge/version
-safety. Tests include a deterministic two-writer stale-payload simulation. Task
-89 tracks whether high-value files such as Notepad++ `session.xml` and
-`shortcuts.xml` justify a future versioned settings commit API.
+replacement, backup, validation, and optional durable flushing from versioned
+commit safety. Tests include a deterministic two-writer stale-payload
+simulation. Task 89 accepted a separate pre-1.0 C++ versioned settings commit
+contract for high-value files such as Notepad++ `session.xml` and
+`shortcuts.xml`: stale participating commits should be rejected through an
+opaque file-version token and internal per-target advisory commit guard, while
+payload merge semantics stay product-owned.
 
 ## Review Anchor
 
