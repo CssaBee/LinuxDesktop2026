@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
 - `83` - Run Review Blind-Spot Retrospective
 - `86` - Design Desktop Bundle Registration Surface
@@ -15,6 +14,7 @@ list below.
 
 ## Implemented
 
+- `80` - Decompose Root CMake Before Next Module Wave
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `90` - Implement Versioned Settings Commit API
 - `89` - Design Versioned Settings Commit Contract

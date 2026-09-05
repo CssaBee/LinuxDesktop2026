@@ -1,0 +1,7 @@
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Core.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Paths.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Root.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Settings.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Migration.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Desktop.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/modules/LinuxDesktop2026Watch.cmake")

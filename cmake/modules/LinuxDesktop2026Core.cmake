@@ -1,0 +1,10 @@
+add_library(ld_core INTERFACE)
+add_library(LinuxDesktop2026::ld_core ALIAS ld_core)
+
+target_compile_features(ld_core INTERFACE cxx_std_17)
+
+target_include_directories(ld_core
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
