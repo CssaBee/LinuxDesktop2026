@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `78` - Pin FetchContent Example
 - `79` - Measure Framework Tax In Maintained Proof
 - `89` - Design Versioned Settings Commit Contract
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
@@ -19,6 +18,7 @@ list below.
 
 ## Implemented
 
+- `78` - Pin FetchContent Example
 - `77` - Centralize Dynamic Public Validation State
 - `76` - Finish Maintained Consumer Proof Evidence
 - `75` - Split Migration Internals By Responsibility

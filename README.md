@@ -121,12 +121,17 @@ include(FetchContent)
 FetchContent_Declare(
     LinuxDesktop2026
     GIT_REPOSITORY https://github.com/CssaBee/LinuxDesktop2026.git
-    GIT_TAG main
+    GIT_TAG <release-tag-or-commit-sha>
 )
 FetchContent_MakeAvailable(LinuxDesktop2026)
 
 target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_settings)
 ```
+
+Use a release tag or commit SHA for normal dependency builds so updates are
+deliberate and reproducible. Tracking `main` is appropriate only for active
+LinuxDesktop2026 development, proof branches, or other integration work that is
+prepared to absorb pre-1.0 breaking changes immediately.
 
 From a vendored checkout:
 
