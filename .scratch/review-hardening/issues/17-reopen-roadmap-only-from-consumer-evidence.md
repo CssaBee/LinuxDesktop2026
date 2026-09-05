@@ -20,3 +20,15 @@ from the wrong module.
 This ticket should close only after task 15 records enough maintained-consumer
 evidence to prove that the gate works against a real branch, not just local
 FlavorTests.
+
+## Consumer-Evidence Inputs
+
+- Task 79 adds the current maintained-proof framework-tax snapshot to
+  `docs/consumer-branches/notepadpp-settings-proof.md`: the Notepad++
+  crossport currently uses 252 lines of backend implementation, a 109-line
+  product-shaped header, five LinuxDesktop2026 concept families, and no
+  platform preprocessor branches under `proof/`.
+- Current disposition for roadmap gating: do not activate new convenience APIs
+  from this proof alone. Reopen helper design only when a second maintained
+  proof repeats comparable named-root lookup, root-option assembly, or report
+  translation friction.

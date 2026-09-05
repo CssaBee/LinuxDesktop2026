@@ -102,6 +102,11 @@ Boundary notes:
 - The CMake dependency list in the cross-port is `ld_root`, `ld_settings`, and
   `ld_migration`. The cross-port does not link `ld_paths` directly because
   `ld_root` carries that dependency.
+- Current maintained-proof metrics are recorded in
+  `docs/consumer-branches/notepadpp-settings-proof.md`. The live snapshot is
+  252 lines of backend implementation, 109 lines of product-shaped header, five
+  LinuxDesktop2026 concept families, and zero platform preprocessor branches in
+  the proof adapter.
 
 ## Audacity
 

@@ -269,3 +269,47 @@ so the fork records the rule in its backend rather than changing the library.
 The platform-default rebase added one API fix: `ld_settings` now accepts
 `platform_path_defaults` and passes them to `ld_paths`. This keeps consumers on
 the settings-level API while still allowing CMake-generated OS defaults.
+
+## Current Framework-Tax Snapshot
+
+Measured against crossport commit
+`a296934feedbae187fcd98981637bc45f8faceb5`.
+
+- Adapter size: `proof/notepadpp_settings_backend.cpp` is 252 lines and
+  `proof/notepadpp_settings_backend.hpp` is 109 lines. The proof harness adds
+  258 lines, but it is test/evidence code rather than product adapter surface.
+- LinuxDesktop2026 exposure: the product-facing header uses Notepad++
+  vocabulary only. LinuxDesktop2026 headers and namespaces are confined to the
+  backend implementation and CMake target wiring.
+- Concept families the consumer currently has to understand: 5
+  (`ld_core` diagnostics, CMake-generated platform defaults, `ld_root`
+  topology, `ld_settings` default/write lifecycle, and `ld_migration` dry-run
+  planning). `ld_watch` is not part of the current Notepad++ settings proof, so
+  this snapshot does not measure watcher concept tax.
+- Concrete LinuxDesktop2026 touchpoints in the adapter: `root::options`,
+  `portable_root_request`, `portable_root_level`, `ownership_kind`,
+  `app_identity`, named-root request helpers, `resolve_app_roots`,
+  `find_named_root`, root report booleans/diagnostics,
+  `settings::config_file`, `ensure_config_defaults`, `write_common_config`,
+  config-write validation callback, `migration::plan_copy`, migration actions,
+  `diagnostic`, `diagnostic_handling`, and classified product-diagnostic
+  helpers.
+- Reports/options constructed or consumed: one root options object, one
+  portable-root request, one app identity, three named-root requests, three
+  settings file descriptors in the current proof scenario, one defaults report,
+  one write report, one migration plan, the top-level root report, and three
+  named-root subreports.
+- Platform branches in adapter code: 0 `#if` or platform-specific source
+  branches under `proof/`. The generated platform defaults are the only
+  platform-default integration point.
+- Product policy kept outside LinuxDesktop2026: command-line `-settingsDir`
+  acceptance, cloud-directory acceptance, `doLocalConf.xml` marker detection,
+  protected-install policy, Notepad++ XML root validation, user-facing
+  diagnostic vocabulary, and legacy-import intent.
+
+Current conclusion: the concept tax is acceptable for a settings/root/migration
+proof because it remains private to one backend and removes platform branching
+from the product-shaped surface. Do not add broader convenience APIs from this
+single proof alone. Reopen helper design only if another maintained proof also
+duplicates named-root lookup names, root-option assembly, or report translation
+in a comparable way.

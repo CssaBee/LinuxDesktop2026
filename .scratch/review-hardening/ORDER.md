@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `79` - Measure Framework Tax In Maintained Proof
 - `89` - Design Versioned Settings Commit Contract
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `80` - Decompose Root CMake Before Next Module Wave
@@ -18,6 +17,7 @@ list below.
 
 ## Implemented
 
+- `79` - Measure Framework Tax In Maintained Proof
 - `78` - Pin FetchContent Example
 - `77` - Centralize Dynamic Public Validation State
 - `76` - Finish Maintained Consumer Proof Evidence
