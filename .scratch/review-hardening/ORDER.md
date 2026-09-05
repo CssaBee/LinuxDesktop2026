@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `75` - Split Migration Internals By Responsibility
 - `76` - Finish Maintained Consumer Proof Evidence
 - `77` - Centralize Dynamic Public Validation State
 - `78` - Pin FetchContent Example
@@ -22,6 +21,7 @@ list below.
 
 ## Implemented
 
+- `75` - Split Migration Internals By Responsibility
 - `74` - Rename Or Split Migration Move Semantics
 - `73` - Decide Settings Interprocess Write Contract
 - `72` - Formally Scope Reg File Compatibility

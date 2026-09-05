@@ -50,7 +50,10 @@ target_include_directories(ld_desktop
 target_link_libraries(ld_desktop PUBLIC LinuxDesktop2026::ld_core)
 
 add_library(ld_migration
+    src/migration_filesystem.cpp
     src/migration.cpp
+    src/migration_planning.cpp
+    src/migration_registry.cpp
 )
 
 add_library(LinuxDesktop2026::ld_migration ALIAS ld_migration)
