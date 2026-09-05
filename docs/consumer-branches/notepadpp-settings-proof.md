@@ -2,6 +2,21 @@
 
 This is the evidence ledger for the first maintained consumer branch.
 
+## Current Status
+
+- Status: active maintained-consumer proof.
+- External repository: private GitHub repository
+  `https://github.com/CssaBee/LinuxDesktop2026-crossport-notepadpp.git`
+- Local checkout: `../LinuxDesktop2026-crossport-notepadpp`
+- Branch: `linuxdesktop2026-settings-proof`
+- Tracking: `origin/linuxdesktop2026-settings-proof`
+- Current proof commit: `a296934feedbae187fcd98981637bc45f8faceb5`
+- Current observed CI: the 2026-09-05 manually dispatched
+  `Notepad++ Proof Branch` workflow passed CTest 1/1 against LinuxDesktop2026
+  `cf7de44f92a35b18add35529a58d8598b9c80321` on Ubuntu 24.04/GCC 13.3.
+- Current maintenance posture: keep recording rebase, dependency, include/link,
+  compile, and API-friction evidence here while the proof branch is maintained.
+
 ## Branch Contract
 
 - External repository name: `LinuxDesktop2026-crossport-notepadpp`

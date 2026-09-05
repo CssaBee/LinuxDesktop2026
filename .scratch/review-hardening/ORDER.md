@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `77` - Centralize Dynamic Public Validation State
 - `78` - Pin FetchContent Example
 - `79` - Measure Framework Tax In Maintained Proof
 - `89` - Design Versioned Settings Commit Contract
@@ -20,6 +19,7 @@ list below.
 
 ## Implemented
 
+- `77` - Centralize Dynamic Public Validation State
 - `76` - Finish Maintained Consumer Proof Evidence
 - `75` - Split Migration Internals By Responsibility
 - `74` - Rename Or Split Migration Move Semantics
@@ -215,6 +215,11 @@ translate failures instead of reverse-engineering silent normalization.
 Spec: `specs/platform-path-defaults.md`
 Spec: `specs/root-module-boundary.md`
 ADR: `docs/adr/0014-adopt-invasive-and-adversarial-hardening-tests.md`
+
+## Review Checklist
+
+- Public-facing status claims should point to one current ledger instead of
+  repeating branch, remote, CI, or maintenance details in multiple docs.
 
 ## Review-Derived Hardening Batch
 

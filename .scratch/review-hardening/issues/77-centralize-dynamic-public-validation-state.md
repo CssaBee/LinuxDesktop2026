@@ -5,15 +5,23 @@ public documents.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Make README describe maintained consumer validation as a tracked project
+- [x] Make README describe maintained consumer validation as a tracked project
   status area, not as a detailed live claim.
-- [ ] Keep exact branch, remote, CI, and maintenance status in one status
+- [x] Keep exact branch, remote, CI, and maintenance status in one status
   ledger.
-- [ ] Audit docs for duplicated claims about proof branches and public
+- [x] Audit docs for duplicated claims about proof branches and public
   validation state.
-- [ ] Add a short review checklist item for public claim drift.
+- [x] Add a short review checklist item for public claim drift.
+
+## Result
+
+Current public status now says the private Notepad++ crossport exists, is
+tracked locally, and has one observed green manual proof workflow. Exact branch,
+remote, commit, CI, and maintenance details live in
+`docs/consumer-branches/notepadpp-settings-proof.md`; README and project status
+link there instead of repeating live evidence.
 
 ## Review Anchor
 

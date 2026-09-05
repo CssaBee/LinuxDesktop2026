@@ -173,8 +173,9 @@ The project uses three layers of evidence:
 - [FlavorTests](docs/FlavorTests/README.md), which refactor real upstream-shaped
   seams from projects such as Notepad++, PrusaSlicer, OpenRGB, KeePassXC,
   qBittorrent, OBS, KiCad, Audacity, FreeCAD, Walnut, and OpenIPC Dashboard.
-- Maintained consumer proof branches, starting with
-  [LinuxDesktop2026-crossport-notepadpp](docs/consumer-branches/notepadpp-settings-proof.md).
+- Maintained consumer proof branches, tracked in
+  [project status](docs/project-status.md) with exact branch and CI evidence in
+  the [Notepad++ proof ledger](docs/consumer-branches/notepadpp-settings-proof.md).
 
 The CI matrix covers Ubuntu, Fedora, Windows/MSVC, shared-library builds on
 Linux, sanitizer lanes, FlavorTests, optional libuv watcher coverage, and a

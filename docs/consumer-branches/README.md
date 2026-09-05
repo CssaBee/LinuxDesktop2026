@@ -50,19 +50,20 @@ default threshold for new public vocabulary before release-candidate status.
 ## Current Evidence
 
 - `notepadpp-settings-proof.md`: first maintained consumer target and evidence
-  ledger.
+  ledger. This is the source of truth for exact branch, remote, commit, CI, and
+  maintenance state.
 
 ## CI Path
 
 The main repository owns the smallest repeatable consumer integration path in
-the manually dispatched `.github/workflows/notepadpp-proof.yml` workflow. It checks out
-`CssaBee/LinuxDesktop2026-crossport-notepadpp` on
-`linuxdesktop2026-settings-proof`, installs the current LinuxDesktop2026 tree
-into a workflow-local CMake package prefix, then configures, builds, and tests
-the proof target against the exported package.
+the manually dispatched `.github/workflows/notepadpp-proof.yml` workflow. It
+checks out the current Notepad++ proof branch, installs the current
+LinuxDesktop2026 tree into a workflow-local CMake package prefix, then
+configures, builds, and tests the proof target against the exported package.
 
 This lane is a release-evidence input, not a full product-port claim.
 
 Because the crossport repository is private, the workflow should have
-`LD2026_CROSSPORT_READ_TOKEN` configured with read access to
-`CssaBee/LinuxDesktop2026-crossport-notepadpp`.
+`LD2026_CROSSPORT_READ_TOKEN` configured with read access to the proof
+repository. Keep the exact repository and branch state in
+`notepadpp-settings-proof.md`.

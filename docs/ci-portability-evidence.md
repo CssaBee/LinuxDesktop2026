@@ -68,28 +68,27 @@ head-of-line blocking when one file never stabilizes.
 
 ## Maintained Consumer Proof
 
-The manually dispatched `.github/workflows/notepadpp-proof.yml` workflow builds the
-`CssaBee/LinuxDesktop2026-crossport-notepadpp` proof branch against the current
-LinuxDesktop2026 checkout as an installed CMake package. This is the smallest
-repeatable integration slice for task 15:
+The manually dispatched `.github/workflows/notepadpp-proof.yml` workflow builds
+the current Notepad++ proof branch against the current LinuxDesktop2026 checkout
+as an installed CMake package. This is the smallest repeatable integration slice
+for task 15:
 
 - LinuxDesktop2026 is installed into a workflow-local prefix.
 - The Notepad++ proof branch consumes the exported package target.
 - The proof target builds and runs its CTest scenario.
 
 The proof repository is private. Configure `LD2026_CROSSPORT_READ_TOKEN` with
-read access to `CssaBee/LinuxDesktop2026-crossport-notepadpp` before treating
-this workflow as observable CI evidence.
+read access to that repository before treating this workflow as observable CI
+evidence.
 
 This lane is evidence for package consumption, include/link propagation, and
 settings API ergonomics. It is not evidence for full Notepad++ native Linux UI
 parity, plugin ABI compatibility, printing, shell integration, or broad file
 watching.
 
-The 2026-09-05 manually dispatched run is the first observed green proof run:
-it checked out LinuxDesktop2026 `cf7de44f92a35b18add35529a58d8598b9c80321` and
-crossport `a296934feedbae187fcd98981637bc45f8faceb5`, installed the package,
-built the proof target, and passed CTest 1/1 on Ubuntu 24.04/GCC 13.3.
+The proof workflow has one observed green manual run. Keep the exact run,
+commit, branch, and maintenance state in
+`docs/consumer-branches/notepadpp-settings-proof.md`.
 
 Keep it manual while the proof branch is private. Promote it to a scheduled or
 pull-request lane if it stays stable enough to be useful.
