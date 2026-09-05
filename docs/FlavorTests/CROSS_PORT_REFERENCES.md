@@ -2,7 +2,8 @@
 
 FlavorTests are local, source-anchored refactors. They are useful because they
 keep product-shaped seams visible without requiring LinuxDesktop2026 to carry a
-fork of every upstream project.
+fork of every upstream project. They are ergonomics evidence, not proof of the
+ongoing cost of maintaining a real crossport branch.
 
 Cross-port and reference cases answer a different question: whether the product
 concept survives across platforms, and whether LinuxDesktop2026 is matching that
@@ -42,9 +43,9 @@ an actual downstream fork that needs to read naturally to the upstream project,
 default.
 
 The first required maintained branch is the Notepad++ settings proof described
-in `docs/consumer-branches/notepadpp-settings-proof.md`. Until that branch has
-clean build and rebase evidence, local FlavorTests remain ergonomics evidence
-rather than integration-readiness evidence.
+in `docs/consumer-branches/notepadpp-settings-proof.md`. Even after that branch
+has clean build, rebase, and CI evidence, local FlavorTests remain ergonomics
+fixtures rather than maintained-consumer economics evidence.
 
 ## OpenIPC Dashboard Reference Case
 

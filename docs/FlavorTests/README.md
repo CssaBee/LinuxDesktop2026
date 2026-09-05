@@ -1,12 +1,16 @@
 # Flavor Tests
 
-FlavorTests is a small harness for proving that LinuxDesktop2026 APIs can
-replace real upstream platform code without growing into a bulky adapter layer.
+FlavorTests is a small harness for testing whether LinuxDesktop2026 APIs can
+represent real upstream-shaped platform code without growing into a bulky
+adapter layer.
 
 The goal is not to invent new sample applications. The goal is to take a few
 production-shaped methods from upstream projects, keep their application
 responsibilities intact, and refactor only the platform-root, file-hydration,
 backup-write, and desktop-effect portions through LinuxDesktop2026 APIs.
+These fixtures are product-shaped ergonomics evidence, not maintained
+upstream-economics proof; rebase cost, dependency drift, and CI evidence belong
+in maintained crossport repositories.
 
 Selected upstream subprojects:
 
@@ -198,7 +202,8 @@ Cross-port repository rule:
 - Create separate GitHub repositories only for maintained, buildable proof
   branches or patch series against upstream-shaped source trees.
 - Keep source-anchored notes and small refactors in this repository's
-  FlavorTests.
+  FlavorTests; they remain ergonomics fixtures even when a maintained proof is
+  green.
 - Name external proof repositories with the
   `LinuxDesktop2026-crossport-<project>` prefix by default so their relationship
   is visible in GitHub search and issue links.

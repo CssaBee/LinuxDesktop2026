@@ -77,6 +77,10 @@ repeatable integration slice for task 15:
 - The Notepad++ proof branch consumes the exported package target.
 - The proof target builds and runs its CTest scenario.
 
+The proof repository is private. Configure `LD2026_CROSSPORT_READ_TOKEN` with
+read access to `CssaBee/LinuxDesktop2026-crossport-notepadpp` before treating
+this workflow as observable CI evidence.
+
 This lane is evidence for package consumption, include/link propagation, and
 settings API ergonomics. It is not evidence for full Notepad++ native Linux UI
 parity, plugin ABI compatibility, printing, shell integration, or broad file

@@ -8,6 +8,8 @@ This is the evidence ledger for the first maintained consumer branch.
 - Local checkout: `../LinuxDesktop2026-crossport-notepadpp`
 - Remote: private GitHub repository
   `https://github.com/CssaBee/LinuxDesktop2026-crossport-notepadpp.git`
+- Local tracking state: `linuxdesktop2026-settings-proof` tracks
+  `origin/linuxdesktop2026-settings-proof`
 - Branch name: `linuxdesktop2026-settings-proof`
 - Application base: upstream-shaped Notepad++ source
 - Initial upstream base commit: `c057c0802`
@@ -181,7 +183,7 @@ not satisfy this ticket by itself.
 - LinuxDesktop2026 base commit: `344b45c` plus local pre-1.0 compatibility
   cleanup working-tree changes
 - Cross-port branch base commit: `de576a462`
-- Cross-port branch commit: pending
+- Cross-port branch commit: `a296934fe`
 - Notepad++ base commit: `c057c0802`
 - Dependency mode: freshly staged CMake package at
   `/tmp/linuxdesktop2026-current-main-prefix`
@@ -196,6 +198,44 @@ not satisfy this ticket by itself.
   config-default copying vocabulary instead of the removed hydration vocabulary.
 - Disposition: local proof evidence is aligned with current main package
   consumption again. Observed green workflow evidence is still outstanding.
+
+### 2026-09-05 Task 76 Maintained Proof Pass
+
+- LinuxDesktop2026 commit: `af518aa`
+- Cross-port branch commit: `a296934fe`
+- Local tracking state: cross-port branch
+  `linuxdesktop2026-settings-proof` is clean and tracks
+  `origin/linuxdesktop2026-settings-proof`; the local remote-tracking ref is
+  also at `a296934fe`.
+- Remote state: `origin` is the private GitHub repository
+  `https://github.com/CssaBee/LinuxDesktop2026-crossport-notepadpp.git`.
+- Notepad++ base commit: `c057c0802`
+- Dependency mode: freshly staged installed CMake package at
+  `/tmp/linuxdesktop2026-task76-prefix`
+- Build result: `cmake --build build/task76-proof --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3
+- Test result: `ctest --test-dir build/task76-proof --output-on-failure`
+  passed, 1/1
+- Rebase/maintenance evidence: the proof has now survived later
+  LinuxDesktop2026 API movement across platform defaults, root topology,
+  portable-root request naming, diagnostic-code cleanup, config-default
+  vocabulary, and the `ld_migration` internal split without local header
+  patching or source vendoring.
+- Include/link friction: none observed in this pass. The proof continued to
+  consume exported CMake package targets.
+- Dependency friction: none observed locally. The main-repo manual workflow now
+  documents the token path for checking out the private crossport repository
+  through `LD2026_CROSSPORT_READ_TOKEN`.
+- Adapter churn: no proof adapter changes were needed for the task-75
+  migration split; the split preserved the public package surface used by the
+  proof.
+- CI status: not observed from this environment. GitHub network access required
+  escalation and the HTTPS remote then required noninteractive credentials, so
+  an observed green GitHub Actions run still needs repository credentials or a
+  configured read token.
+- Disposition: satisfies the stable private proof repository and later
+  maintenance-pass evidence. The only remaining task-76 gate is an observed
+  green CI run against the current package.
 
 ## API Pain Log
 

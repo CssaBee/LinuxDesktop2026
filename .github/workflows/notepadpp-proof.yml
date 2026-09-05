@@ -20,6 +20,7 @@ jobs:
           repository: CssaBee/LinuxDesktop2026-crossport-notepadpp
           ref: linuxdesktop2026-settings-proof
           path: LinuxDesktop2026-crossport-notepadpp
+          token: ${{ secrets.LD2026_CROSSPORT_READ_TOKEN }}
 
       - name: Configure LinuxDesktop2026 package
         run: >

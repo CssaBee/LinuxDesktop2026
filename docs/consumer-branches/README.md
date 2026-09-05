@@ -62,3 +62,7 @@ into a workflow-local CMake package prefix, then configures, builds, and tests
 the proof target against the exported package.
 
 This lane is a release-evidence input, not a full product-port claim.
+
+Because the crossport repository is private, the workflow should have
+`LD2026_CROSSPORT_READ_TOKEN` configured with read access to
+`CssaBee/LinuxDesktop2026-crossport-notepadpp`.
