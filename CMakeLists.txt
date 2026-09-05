@@ -7,6 +7,7 @@ include(GNUInstallDirs)
 
 option(LD2026_BUILD_EXAMPLES "Build LinuxDesktop2026 examples" ON)
 option(LD2026_BUILD_TESTS "Build LinuxDesktop2026 tests" ON)
+option(LD2026_ENABLE_COVERAGE "Build LinuxDesktop2026 with local coverage instrumentation" OFF)
 option(LD2026_WATCH_ENABLE_LIBUV "Enable the optional libuv watcher backend when libuv is available" ON)
 option(LD2026_WATCH_PREFER_LIBUV "Prefer libuv over the native inotify backend for ld_watch" OFF)
 option(LD2026_WATCH_ENABLE_TEST_HOOKS "Compile ld_watch test-only backend injection hooks" OFF)
@@ -18,6 +19,14 @@ if(MSVC)
     add_compile_options(/W4 /permissive- /we4062)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wswitch-enum -Werror=switch-enum)
+endif()
+
+if(LD2026_ENABLE_COVERAGE)
+    if(MSVC)
+        message(FATAL_ERROR "LD2026_ENABLE_COVERAGE currently supports GCC/Clang style coverage flags only")
+    endif()
+    add_compile_options(-O0 -g --coverage)
+    add_link_options(--coverage)
 endif()
 
 add_library(ld_core INTERFACE)
@@ -339,6 +348,38 @@ if(LD2026_BUILD_TESTS)
 
         add_test(NAME ld_watch_tests COMMAND ld_watch_tests)
         set_tests_properties(ld_watch_tests PROPERTIES LABELS "watch;adversarial;tsan")
+
+        add_executable(ld_watch_performance_probe
+            tests/watch_performance_probe.cpp
+        )
+        target_include_directories(ld_watch_performance_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        target_compile_definitions(ld_watch_performance_probe PRIVATE LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+        target_link_libraries(ld_watch_performance_probe PRIVATE LinuxDesktop2026::ld_watch)
+
+        add_test(NAME ld_watch_performance_probe COMMAND ld_watch_performance_probe)
+        set_tests_properties(ld_watch_performance_probe PROPERTIES LABELS "watch;performance")
+    endif()
+
+    if(LD2026_ENABLE_COVERAGE)
+        find_program(LD2026_GCOVR gcovr)
+        if(LD2026_GCOVR)
+            add_custom_target(ld2026_coverage
+                COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/coverage
+                COMMAND ${LD2026_GCOVR}
+                    --root ${CMAKE_CURRENT_SOURCE_DIR}
+                    --filter ${CMAKE_CURRENT_SOURCE_DIR}/src
+                    --filter ${CMAKE_CURRENT_SOURCE_DIR}/include
+                    --exclude ${CMAKE_CURRENT_SOURCE_DIR}/tests
+                    --html-details ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
+                    --xml ${CMAKE_CURRENT_BINARY_DIR}/coverage/coverage.xml
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                COMMENT "Running LinuxDesktop2026 tests and writing coverage/index.html plus coverage/coverage.xml"
+                VERBATIM
+            )
+        else()
+            message(WARNING "LD2026_ENABLE_COVERAGE is ON, but gcovr was not found; run ctest and gcov/gcovr manually from the build tree")
+        endif()
     endif()
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT LD2026_WATCH_PREFER_LIBUV)

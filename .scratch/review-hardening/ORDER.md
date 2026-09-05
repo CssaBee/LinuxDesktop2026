@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
 - `83` - Run Review Blind-Spot Retrospective
@@ -16,6 +15,7 @@ list below.
 
 ## Implemented
 
+- `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `90` - Implement Versioned Settings Commit API
 - `89` - Design Versioned Settings Commit Contract
 - `79` - Measure Framework Tax In Maintained Proof

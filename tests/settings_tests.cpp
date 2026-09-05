@@ -12,6 +12,13 @@
 #include <system_error>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <csignal>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 namespace {
 
 namespace ld = linuxdesktop::settings;
@@ -1452,6 +1459,106 @@ void common_config_write_cleans_temp_after_backup_copy_failure()
         "backup-copy failure should keep the original target content");
 }
 
+void direct_write_reports_disk_full_like_failure()
+{
+#if !defined(_WIN32)
+    const auto root = test_root();
+    const auto target = root / "too-large.xml";
+    const pid_t child = ::fork();
+    require(child >= 0, "disk-full-like test should fork a child process");
+    if (child == 0) {
+        std::signal(SIGXFSZ, SIG_IGN);
+        rlimit limit;
+        limit.rlim_cur = 1024;
+        limit.rlim_max = 1024;
+        if (::setrlimit(RLIMIT_FSIZE, &limit) != 0) {
+            std::_Exit(2);
+        }
+
+        ld::write_options options;
+        options.target = target;
+        options.content.assign(4096, 'x');
+        options.keep_backup = false;
+        options.atomic_replace = false;
+        options.durable_write = false;
+
+        const auto report = ld::write_with_backup(options);
+        std::_Exit(!report.ok && has_error_diagnostic(report.diagnostics) ? 0 : 3);
+    }
+
+    int status = 0;
+    require(::waitpid(child, &status, 0) == child, "disk-full-like child process should exit");
+    require(WIFEXITED(status), "disk-full-like child should exit normally");
+    require(WEXITSTATUS(status) == 0, "disk-full-like direct write should fail with an error diagnostic");
+#endif
+}
+
+void atomic_write_reports_permission_denial_before_replacement()
+{
+#if !defined(_WIN32)
+    if (::geteuid() == 0) {
+        return;
+    }
+
+    const auto root = test_root();
+    const auto directory = root / "read-only";
+    std::filesystem::create_directories(directory);
+    std::filesystem::permissions(
+        directory,
+        std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec,
+        std::filesystem::perm_options::replace);
+
+    const auto restore_permissions = [&] {
+        std::error_code ec;
+        std::filesystem::permissions(
+            directory,
+            std::filesystem::perms::owner_all,
+            std::filesystem::perm_options::replace,
+            ec);
+    };
+
+    ld::write_options options;
+    options.target = directory / "config.xml";
+    options.content = "<Config />\n";
+    options.keep_backup = false;
+    options.atomic_replace = true;
+    options.durable_write = true;
+
+    const auto report = ld::write_with_backup(options);
+    restore_permissions();
+
+    require(!report.ok, "atomic write should fail when temp creation is denied");
+    require(has_diagnostic(report.diagnostics, "temp-open-failed"),
+        "permission denial should be reported as temp-open failure before replacement");
+#endif
+}
+
+void atomic_write_cleans_temp_after_replacement_failure()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(target);
+
+    ld::write_options options;
+    options.target = target;
+    options.content = "<Config />\n";
+    options.keep_backup = false;
+    options.atomic_replace = true;
+    options.durable_write = false;
+
+    const auto report = ld::write_with_backup(options, [](const std::filesystem::path& path, std::string&) {
+        return read_file(path).find("<Config") != std::string::npos;
+    });
+
+    require(!report.ok, "atomic write should fail when replacement target is a directory");
+    require(report.temp_path.has_value(), "replacement failure should report the temp path");
+    require(has_diagnostic(report.diagnostics, "atomic-replace-failed"),
+        "replacement failure should report atomic-replace-failed");
+    require(!std::filesystem::exists(*report.temp_path),
+        "replacement failure should clean the temporary file");
+    require(std::filesystem::is_directory(target), "replacement failure should leave the directory target untouched");
+}
+
 desk::autostart_entry autostart_entry_for_tests()
 {
     desk::autostart_entry entry;
@@ -1775,6 +1882,9 @@ int main()
         {"registry_reg_rejects_hostile_import_shapes", registry_reg_rejects_hostile_import_shapes},
         {"common_config_write_rejects_parent_that_is_file", common_config_write_rejects_parent_that_is_file},
         {"common_config_write_cleans_temp_after_backup_copy_failure", common_config_write_cleans_temp_after_backup_copy_failure},
+        {"direct_write_reports_disk_full_like_failure", direct_write_reports_disk_full_like_failure},
+        {"atomic_write_reports_permission_denial_before_replacement", atomic_write_reports_permission_denial_before_replacement},
+        {"atomic_write_cleans_temp_after_replacement_failure", atomic_write_cleans_temp_after_replacement_failure},
         {"autostart_dry_run_does_not_write", autostart_dry_run_does_not_write},
         {"autostart_linux_writes_queries_and_removes_desktop_file", autostart_linux_writes_queries_and_removes_desktop_file},
         {"autostart_global_write_requires_permission", autostart_global_write_requires_permission},

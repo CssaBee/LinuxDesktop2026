@@ -311,6 +311,12 @@ public:
     }
 
 #if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
+    std::size_t queued_events_for_tests() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return queue_.size();
+    }
+
     std::size_t pending_settle_work_for_tests() const
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -836,6 +842,11 @@ watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend)
 std::size_t pending_settle_work_for_tests(const watcher& watcher)
 {
     return watcher.impl_->pending_settle_work_for_tests();
+}
+
+std::size_t queued_events_for_tests(const watcher& watcher)
+{
+    return watcher.impl_->queued_events_for_tests();
 }
 #endif
 

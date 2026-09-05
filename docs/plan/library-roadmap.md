@@ -218,6 +218,10 @@ Current direction:
 - ADR 0010 as the implementation-ready API boundary,
 - public API cleanup, dynamic recursive expansion, nonblocking settled-file scheduling, recursive symlink diagnostics, duplicate recursive directory skipping, multi-client native descriptor fan-out, inotify resource-limit diagnostics, settled-file timeout reporting, remove-watch cancellation, and larger settled-file batches completed in the prototype hardening pass,
 - public API stabilization started with backend capability identity, named diagnostic-code constants, `watch_id` equality, timeout-capable pull delivery, optional settled-file timeout policy, and platform-neutral single-file `root_relative` semantics,
+- local watcher performance evidence now measures raw delivery throughput,
+  queue depth, RSS growth, settled-file latency, and pending settled work in
+  `ld_watch_performance_probe`; it does not currently justify replacing
+  `std::filesystem::path` in the watcher API,
 - Windows `ReadDirectoryChangesW` backend implementation, Windows smoke-test target, libuv preferred-backend smoke test, and libuv CI job are now in place,
 - Windows compatibility issues should be fixed through LinuxDesktop2026 concepts first: `watch_path` for watcher events, `ld_paths` root families and source labels for filesystem locations, `ld_desktop` reports for desktop effects, and future `ld_migration` reports for migration targets,
 - and next watcher work focused on keeping real Windows CI/local verification green, deferring `ld_watch` C ABI design to release-candidate status, adding richer capability fields only if stress tests prove they are needed, and reopening the wrap decision only from concrete evidence.

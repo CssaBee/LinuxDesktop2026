@@ -175,6 +175,7 @@ struct start_report {
 namespace detail {
 class watch_backend;
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
+std::size_t queued_events_for_tests(const watcher& watcher);
 std::size_t pending_settle_work_for_tests(const watcher& watcher);
 } // namespace detail
 #endif
@@ -208,6 +209,7 @@ public:
 private:
 #if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
     friend watcher detail::make_watcher_for_backend(std::shared_ptr<detail::watch_backend> backend);
+    friend std::size_t detail::queued_events_for_tests(const watcher& watcher);
     friend std::size_t detail::pending_settle_work_for_tests(const watcher& watcher);
 
     explicit watcher(std::shared_ptr<detail::watch_backend> backend);

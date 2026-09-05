@@ -33,6 +33,9 @@ boundaries, but it is not a production-stable release.
 - Main unit and smoke tests cover settings, paths, desktop, migration, watcher,
   C ABI reports, Rust FFI smoke where `rustc` is available, and install-tree
   consumption.
+- Local review-hardening evidence now includes coverage instrumentation,
+  deterministic write failure-mode tests, and bounded watcher performance
+  measurements. See `docs/validation-evidence.md`.
 - FlavorTests cover Notepad++, PrusaSlicer, OpenRGB, KeePassXC, qBittorrent,
   OBS, KiCad, Audacity, FreeCAD, Walnut, and OpenIPC Dashboard.
 - FlavorTests now use shared platform-path fixtures instead of product-local
