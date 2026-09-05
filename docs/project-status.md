@@ -21,7 +21,7 @@ boundaries, but it is not a production-stable release.
 | Status | Module | Current state |
 | --- | --- | --- |
 | `done` | `ld_core` | Shared C++ diagnostic vocabulary and CMake interface target. |
-| `active` | `ld_settings` | Settings/config sample with root resolution, config-default hydration, ordered writes, backup files, validation before commit, config layers, and opt-in durable writes. Desktop and migration ownership has moved out. |
+| `active` | `ld_settings` | Settings/config sample with root resolution, config-default hydration, ordered writes, backup files, validation before commit, config layers, opt-in durable writes, and explicit diagnostics that atomic replacement does not protect multi-process read-modify-write flows from lost updates. Desktop and migration ownership has moved out. |
 | `active` | `ld_paths` | Public C++ and C prototype for standard roots, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, deterministic environment hooks, and opt-in directory creation. |
 | `active` | `ld_watch` | Public C++ watcher prototype with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded pull delivery, recursive-watch diagnostics, and deadline-scheduled settled-file coalescing by path. |
 | `active` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy. ADR 0015 scopes the next expansion around standards-backed registration artifacts, a preferred desktop-bundle path, individual effect calls, activation plans, uninstall cleanup reports, and Desktop Flavor validation for GNOME, KDE, Xfce, bare window-manager sessions, and Windows 10/11. |

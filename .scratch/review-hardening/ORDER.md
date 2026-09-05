@@ -6,13 +6,13 @@ list below.
 
 ## Current Order
 
-- `73` - Decide Settings Interprocess Write Contract
 - `74` - Rename Or Split Migration Move Semantics
 - `75` - Split Migration Internals By Responsibility
 - `76` - Finish Maintained Consumer Proof Evidence
 - `77` - Centralize Dynamic Public Validation State
 - `78` - Pin FetchContent Example
 - `79` - Measure Framework Tax In Maintained Proof
+- `89` - Design Versioned Settings Commit Contract
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
@@ -23,6 +23,7 @@ list below.
 
 ## Implemented
 
+- `73` - Decide Settings Interprocess Write Contract
 - `72` - Formally Scope Reg File Compatibility
 - `71` - Replace Or Formally Scope Migration JSON Parser
 - `68` - Enforce Enum String Exhaustiveness
@@ -98,7 +99,10 @@ Maintained-consumer evidence and public validation-state cleanup follow because
 they answer the project's central strategic question: whether these APIs lower
 real integration cost over time. FetchContent pinning is small but public-facing
 and should happen in the same documentation honesty pass. Framework-tax metrics
-then give ticket 17 real evidence instead of intuition.
+then give ticket 17 real evidence instead of intuition. Task 89 follows that
+evidence pass because versioned settings commits may be valuable for high-impact
+files like Notepad++ session and shortcut state, but the contract should be
+shaped by maintained-consumer proof before it becomes a pre-1.0 API promise.
 
 Coverage, failure-mode, and performance evidence are intentionally after the
 watcher scheduler work so measurements target the intended shape. CMake

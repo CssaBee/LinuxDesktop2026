@@ -35,7 +35,9 @@ effects, and migration items are extraction inventory for `ld_desktop` and
 - all config layers: `defaults`, `global`, `user`, `local`, `portable`, `managed`, `enforced`,
 - default precedence with enforced values non-overridable,
 - hydration of default/model config files,
-- atomic file writes with validation, backups, and opt-in durable flushing,
+- atomic file writes with validation, backups, opt-in durable flushing, and an
+  explicit warning that `ld_settings` does not provide multi-process
+  read-modify-write lost-update protection,
 - Windows Known Folder resolution,
 - no new C ABI expansion before release-candidate status; existing C ABI entry points are kept compatible where practical,
 - examples from Notepad++, ShareX, WinSCP, KeePassXC, and PortableApps-style workflows,

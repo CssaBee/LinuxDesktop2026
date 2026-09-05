@@ -251,6 +251,9 @@ struct write_options {
     bool durable_write = false;
 };
 
+// Settings writes protect the file image from partial-write corruption through
+// backup/replacement options. They do not provide interprocess lost-update
+// protection for app-owned read-modify-write merges.
 struct write_report {
     bool ok = false;
     std::optional<std::filesystem::path> backup_path;

@@ -131,6 +131,11 @@ write_report write_with_backup(const write_options& options, validation_callback
     report.temp_path = std::move(internal_report.temp_path);
     report.durable_write = internal_report.durable_write;
     report.diagnostics = std::move(internal_report.diagnostics);
+    report.diagnostics.push_back(detail::make_diagnostic(
+        severity::warning,
+        "settings-interprocess-lost-update-not-protected",
+        "Settings writes use replacement and backup for corruption safety but do not protect read-modify-write flows from lost updates across processes",
+        options.target));
     return report;
 }
 

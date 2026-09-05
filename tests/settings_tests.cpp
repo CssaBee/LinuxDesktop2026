@@ -841,9 +841,45 @@ void common_config_write_replaces_target_with_backup()
     require(report.backup_path.has_value(), "valid common config write should keep old target as backup");
     require(report.temp_path.has_value(), "common config write should report temp path");
     require(report.durable_write, "common config write should report durable mode when enabled");
+    require(has_diagnostic(report.diagnostics, "settings-interprocess-lost-update-not-protected"),
+        "common config write should state the interprocess lost-update contract");
     require(!std::filesystem::exists(*report.temp_path), "common config temp file should be replaced away");
     require(read_file(target).find("new") != std::string::npos, "target should contain new content");
     require(read_file(*report.backup_path).find("old") != std::string::npos, "backup should contain old content");
+}
+
+void common_config_write_does_not_merge_stale_interprocess_payloads()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config a=\"old\" b=\"old\" />\n";
+    }
+
+    const auto first_writer_view = read_file(target);
+    const auto second_writer_view = read_file(target);
+    const auto first_payload = "<Config a=\"new\" b=\"old\" />\n";
+    const auto second_payload = "<Config a=\"old\" b=\"new\" />\n";
+    require(first_writer_view.find("a=\"old\"") != std::string::npos,
+        "first simulated writer should start from the original file");
+    require(second_writer_view.find("b=\"old\"") != std::string::npos,
+        "second simulated writer should start from the original file");
+
+    const auto first = ld::write_common_config({target, first_payload, false});
+    const auto second = ld::write_common_config({target, second_payload, false});
+
+    require(first.ok, "first simulated writer should commit");
+    require(second.ok, "second simulated writer should commit");
+    require(has_diagnostic(first.diagnostics, "settings-interprocess-lost-update-not-protected"),
+        "first writer should report the lost-update limitation");
+    require(has_diagnostic(second.diagnostics, "settings-interprocess-lost-update-not-protected"),
+        "second writer should report the lost-update limitation");
+    require(read_file(target).find("a=\"new\"") == std::string::npos,
+        "second stale whole-file writer should overwrite the first independent setting");
+    require(read_file(target).find("b=\"new\"") != std::string::npos,
+        "second stale whole-file writer should still commit its own setting");
 }
 
 void common_config_write_validation_keeps_original_target()
@@ -1584,6 +1620,7 @@ int main()
         {"ensure_config_defaults_copies_missing_models", ensure_config_defaults_copies_missing_models},
         {"legacy_hydrate_config_bundle_forwards_to_config_defaults", legacy_hydrate_config_bundle_forwards_to_config_defaults},
         {"common_config_write_replaces_target_with_backup", common_config_write_replaces_target_with_backup},
+        {"common_config_write_does_not_merge_stale_interprocess_payloads", common_config_write_does_not_merge_stale_interprocess_payloads},
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
         {"common_config_write_reports_durable_mode_and_keeps_backup", common_config_write_reports_durable_mode_and_keeps_backup},

@@ -133,6 +133,13 @@ A warning, error, or status item expressed in the adopting application's own
 vocabulary, even when it is derived from LinuxDesktop2026 internal reports.
 _Avoid_: Raw library diagnostic, passthrough report, generic status dump
 
+**Versioned settings commit**:
+A possible high-value settings write contract where an application commits a
+new file image only if the on-disk settings state still matches the state it
+read, so stale whole-file writes can be detected instead of silently replacing
+independent changes.
+_Avoid_: File lock, merge magic, atomic write
+
 **Desktop integration effect**:
 A platform action that registers an application with the desktop/session environment, such as autostart entries, desktop entries, icons, file associations, MIME types, or URL protocol handlers.
 _Avoid_: Settings file, GUI toolkit feature, installer only

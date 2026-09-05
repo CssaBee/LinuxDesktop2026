@@ -161,7 +161,12 @@ Example documentation:
   planning helpers, clear config-default naming, and per-flavor friction notes
   now precede adversarial hardening and maintained-branch validation.
 - Keep consumer examples for `FetchContent`, `add_subdirectory`, and installed `find_package` tested and agent-readable.
-- Keep atomic namespace replacement as the default write behavior while preserving direct-write opt-out for legacy cases; keep durable-write semantics explicit and opt-in rather than implied by replacement alone.
+- Keep atomic namespace replacement as the default write behavior while preserving
+  direct-write opt-out for legacy cases; keep durable-write semantics explicit
+  and opt-in rather than implied by replacement alone. `ld_settings` does not
+  currently provide interprocess read-modify-write lost-update protection; write
+  reports surface this distinction so product code can add an app-owned lock,
+  version token, or merge flow where needed.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target while preserving the shared diagnostic aliases in `ld_settings`, `ld_paths`, and `ld_watch`.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
