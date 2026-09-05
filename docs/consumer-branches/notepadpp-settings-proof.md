@@ -317,24 +317,44 @@ in a comparable way.
 ## Versioned Settings Commit Evidence
 
 Task 89 used the maintained Notepad++ proof and in-tree flavor tests as the
-first real evidence for a versioned settings commit contract.
+first real evidence for a versioned settings commit contract. Task 90
+implemented that contract in `ld_settings` and updated the maintained
+crossport proof to exercise the new API directly.
 
 - `session.xml` is the first proof target. The proof already uses
-  `write_common_config()` with backup, durable write, and validation-after-write
-  for session saves, and it exercises startup recovery from `session.xml.bak`.
-  Losing or replacing a newer session image has high user impact, but merging
-  session XML is Notepad++ policy.
+  `read_file_version()` followed by `write_versioned()` with backup, durable
+  write, and validation-after-write for session saves. Its stale-write proof
+  confirms a newer independent `session.xml` image remains untouched and the
+  validation callback is not entered for stale input. Losing or replacing a
+  newer session image has high user impact, but merging session XML is Notepad++
+  policy.
 - `shortcuts.xml` is the second proof target. The proof writes shortcuts through
-  `write_common_config()`, validates the XML, reloads the saved bytes, refreshes
-  the shortcut HMAC source, and later lets `config.xml` persist the matching
-  integrity state. Replacing a newer shortcuts file would make the subsequent
-  HMAC bookkeeping describe the wrong overwrite, but shortcut parsing and HMAC
-  policy are still product-owned.
+  `read_file_version()` followed by `write_versioned()`, validates the XML, and
+  only refreshes the shortcut HMAC source after a successful commit. Its stale
+  proof confirms rejection happens before HMAC-source refresh. Replacing a newer
+  shortcuts file would make the subsequent HMAC bookkeeping describe the wrong
+  overwrite, but shortcut parsing and HMAC policy are still product-owned.
 
-Conclusion: the proof targets justify an `ld_settings` stale-write rejection
-API for participating whole-file settings commits. They do not justify library
+Current implementation status: `ld_settings` now exposes the C++-only
+`file_version_token`, `read_file_version()`, `missing_file_version()`, and
+`write_versioned()` path. `write_with_backup()` and `write_common_config()`
+remain unversioned helpers and still report
+`settings-interprocess-lost-update-not-protected`.
+
+Task 90 validation on 2026-09-05:
+
+- LinuxDesktop2026: `cmake --build build --target ld_settings_tests` passed on
+  local Linux/GCC 13.3.
+- LinuxDesktop2026: `./build/ld_settings_tests` passed, including deterministic
+  versioned-writer, missing-file token, stale `session.xml`, and stale
+  `shortcuts.xml` cases.
+- Crossport proof: staged LinuxDesktop2026 into
+  `/tmp/linuxdesktop2026-task90-prefix`, configured
+  `LinuxDesktop2026-crossport-notepadpp/build/task90-proof` against that
+  package, built `linuxdesktop2026_notepadpp_settings_proof`, and passed CTest
+  1/1.
+
+Conclusion: the implemented proof supports stale-write rejection for
+participating whole-file settings commits. It still does not justify library
 merge callbacks, automatic retry/reread behavior, XML-specific merging, or a
-general settings transaction system. ADR 0016 records the accepted narrow
-contract: opaque file-version token plus an internal per-target advisory commit
-guard, followed by the existing backup/replacement/validation path only when
-the target still matches the expected version.
+general settings transaction system.

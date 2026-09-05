@@ -10,8 +10,8 @@ update protection or explicitly does not.
 - [x] State the current interprocess contract in settings docs and headers.
 - [x] Decide protection is out of scope for the current whole-file write API;
   do not add `flock()`/`fcntl()`-style locking to those helpers. Task 89
-  separately accepted an internal advisory guard for the future versioned
-  settings commit path.
+  separately accepted an internal advisory guard for the versioned settings
+  commit path implemented by task 90.
 - [x] If protection is out of scope for now, add diagnostics or documentation
   that distinguish atomic corruption-safety from lost-update safety.
 - [x] Add tests or a concurrency harness for two writers touching different
@@ -31,7 +31,8 @@ simulation. Task 89 accepted a separate pre-1.0 C++ versioned settings commit
 contract for high-value files such as Notepad++ `session.xml` and
 `shortcuts.xml`: stale participating commits should be rejected through an
 opaque file-version token and internal per-target advisory commit guard, while
-payload merge semantics stay product-owned.
+payload merge semantics stay product-owned. Task 90 implemented that separate
+versioned path.
 
 ## Review Anchor
 

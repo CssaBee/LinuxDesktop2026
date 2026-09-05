@@ -247,6 +247,8 @@ struct write_options {
     bool durable_write = false;
 };
 
+using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
+
 // Settings writes protect the file image from partial-write corruption through
 // backup/replacement options. They do not provide interprocess lost-update
 // protection for app-owned read-modify-write merges.
@@ -258,6 +260,42 @@ struct write_report {
     std::vector<diagnostic> diagnostics;
 };
 
+struct file_version_read_report;
+struct versioned_write_request;
+
+class file_version_token {
+public:
+    file_version_token() = default;
+
+private:
+    friend struct file_version_read_report;
+    friend file_version_read_report read_file_version(const std::filesystem::path& target);
+    friend file_version_token missing_file_version(std::filesystem::path target);
+    friend write_report write_versioned(versioned_write_request request, validation_callback validate);
+
+    std::filesystem::path target_;
+    bool valid_ = false;
+    bool existed_ = false;
+    std::string content_;
+};
+
+struct file_version_read_report {
+    bool ok = false;
+    std::filesystem::path target;
+    std::string content;
+    file_version_token version;
+    std::vector<diagnostic> diagnostics;
+};
+
+struct versioned_write_request {
+    file_version_token expected_version;
+    std::filesystem::path target;
+    std::string content;
+    bool keep_backup = true;
+    bool atomic_replace = true;
+    bool durable_write = false;
+};
+
 // Narrow helper for the common validated config write path.
 // It always keeps the backup + atomic replacement behavior explicit and lets
 // callers opt into durable flushing without rebuilding write_options.
@@ -266,8 +304,6 @@ struct common_config_write_request {
     std::string content;
     bool durable_write = false;
 };
-
-using validation_callback = std::function<bool(const std::filesystem::path&, std::string&)>;
 
 std::string_view to_string(portable_level value);
 std::string_view to_string(config_layer_kind value);
@@ -287,7 +323,11 @@ inline root_report root_builder::resolve() const
 
 config_defaults_report ensure_config_defaults(const config_defaults_options& options);
 
+file_version_read_report read_file_version(const std::filesystem::path& target);
+file_version_token missing_file_version(std::filesystem::path target);
+
 write_report write_with_backup(const write_options& options, validation_callback validate = {});
 write_report write_common_config(common_config_write_request request, validation_callback validate = {});
+write_report write_versioned(versioned_write_request request, validation_callback validate = {});
 
 } // namespace linuxdesktop::settings

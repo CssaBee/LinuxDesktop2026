@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `90` - Implement Versioned Settings Commit API
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `80` - Decompose Root CMake Before Next Module Wave
 - `82` - Reduce Bus Factor And Write Governance
@@ -17,6 +16,7 @@ list below.
 
 ## Implemented
 
+- `90` - Implement Versioned Settings Commit API
 - `89` - Design Versioned Settings Commit Contract
 - `79` - Measure Framework Tax In Maintained Proof
 - `78` - Pin FetchContent Example

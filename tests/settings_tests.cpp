@@ -853,6 +853,171 @@ void common_config_write_does_not_merge_stale_interprocess_payloads()
         "second stale whole-file writer should still commit its own setting");
 }
 
+void versioned_write_rejects_second_participating_writer()
+{
+    const auto root = test_root();
+    const auto target = root / "config.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<Config a=\"old\" b=\"old\" />\n";
+    }
+
+    const auto first_view = ld::read_file_version(target);
+    const auto second_view = ld::read_file_version(target);
+    require(first_view.ok, "first participating writer should capture a version token");
+    require(second_view.ok, "second participating writer should capture a version token");
+    require(first_view.content == second_view.content, "participating writers should read the same starting bytes");
+
+    const auto first = ld::write_versioned({
+        first_view.version,
+        target,
+        "<Config a=\"new\" b=\"old\" />\n",
+        true,
+        true,
+        false,
+    });
+    const auto second = ld::write_versioned({
+        second_view.version,
+        target,
+        "<Config a=\"old\" b=\"new\" />\n",
+        true,
+        true,
+        false,
+    });
+
+    require(first.ok, "first versioned writer should commit");
+    require(!second.ok, "second versioned writer should reject the stale write");
+    require(has_diagnostic(second.diagnostics, "settings-version-stale"),
+        "stale versioned write should report a distinct stale diagnostic");
+    require(!has_diagnostic(first.diagnostics, "settings-interprocess-lost-update-not-protected"),
+        "versioned writes should not report the unversioned lost-update warning");
+    require(read_file(target).find("a=\"new\"") != std::string::npos,
+        "first versioned write should remain on disk");
+    require(read_file(target).find("b=\"new\"") == std::string::npos,
+        "second stale versioned write should leave the target untouched");
+}
+
+void versioned_missing_file_token_commits_once()
+{
+    const auto root = test_root();
+    const auto target = root / "new-config.xml";
+
+    const auto missing = ld::missing_file_version(target);
+    const auto first = ld::write_versioned({
+        missing,
+        target,
+        "<Config created=\"first\" />\n",
+        true,
+        true,
+        false,
+    });
+    const auto second = ld::write_versioned({
+        missing,
+        target,
+        "<Config created=\"second\" />\n",
+        true,
+        true,
+        false,
+    });
+
+    require(first.ok, "missing-file token should allow the first create");
+    require(!first.backup_path.has_value(), "first create should not report a backup");
+    require(!second.ok, "same missing-file token should reject after the file exists");
+    require(has_diagnostic(second.diagnostics, "settings-version-stale"),
+        "stale missing-file token should report a stale diagnostic");
+    require(read_file(target).find("first") != std::string::npos,
+        "stale missing-file retry should not replace the created file");
+}
+
+void versioned_session_write_rejects_stale_before_validation()
+{
+    const auto root = test_root();
+    const auto target = root / "session.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<NotepadPlus><Session saved=\"old\" /></NotepadPlus>\n";
+    }
+
+    const auto session_view = ld::read_file_version(target);
+    require(session_view.ok, "session writer should capture the session version");
+    {
+        std::ofstream newer(target, std::ios::binary | std::ios::trunc);
+        newer << "<NotepadPlus><Session saved=\"newer\" /></NotepadPlus>\n";
+    }
+
+    int validation_calls = 0;
+    const auto stale = ld::write_versioned({
+        session_view.version,
+        target,
+        "<NotepadPlus><Session saved=\"stale\" /></NotepadPlus>\n",
+        true,
+        true,
+        true,
+    }, [&validation_calls](const std::filesystem::path& path, std::string& message) {
+        ++validation_calls;
+        if (read_file(path).find("<Session") == std::string::npos) {
+            message = "Notepad++ session is missing its Session element";
+            return false;
+        }
+        return true;
+    });
+
+    require(!stale.ok, "stale session write should be rejected");
+    require(stale.durable_write, "stale session write should still report requested durable mode");
+    require(has_diagnostic(stale.diagnostics, "settings-version-stale"),
+        "stale session write should report the version diagnostic");
+    require(validation_calls == 0, "stale session write should reject before validation-after-write");
+    require(read_file(target).find("newer") != std::string::npos,
+        "stale session write should leave the newer session image untouched");
+}
+
+void versioned_shortcuts_write_rejects_before_hmac_source_refresh()
+{
+    const auto root = test_root();
+    const auto target = root / "shortcuts.xml";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream existing(target);
+        existing << "<NotepadPlus><InternalCommands version=\"old\" /></NotepadPlus>\n";
+    }
+
+    const auto shortcuts_view = ld::read_file_version(target);
+    require(shortcuts_view.ok, "shortcuts writer should capture the shortcuts version");
+    {
+        std::ofstream newer(target, std::ios::binary | std::ios::trunc);
+        newer << "<NotepadPlus><InternalCommands version=\"newer\" /></NotepadPlus>\n";
+    }
+
+    std::string hmac_source;
+    const auto stale = ld::write_versioned({
+        shortcuts_view.version,
+        target,
+        "<NotepadPlus><InternalCommands version=\"stale\" /></NotepadPlus>\n",
+        true,
+        true,
+        false,
+    }, [](const std::filesystem::path& path, std::string& message) {
+        if (read_file(path).find("<InternalCommands") == std::string::npos) {
+            message = "Notepad++ shortcuts file is missing command entries";
+            return false;
+        }
+        return true;
+    });
+
+    if (stale.ok) {
+        hmac_source = read_file(target);
+    }
+
+    require(!stale.ok, "stale shortcuts write should be rejected");
+    require(has_diagnostic(stale.diagnostics, "settings-version-stale"),
+        "stale shortcuts write should report the version diagnostic");
+    require(hmac_source.empty(), "stale shortcuts write should not refresh caller HMAC source bytes");
+    require(read_file(target).find("newer") != std::string::npos,
+        "stale shortcuts write should leave the newer shortcuts image untouched");
+}
+
 void common_config_write_validation_keeps_original_target()
 {
     const auto root = test_root();
@@ -1591,6 +1756,10 @@ int main()
         {"ensure_config_defaults_copies_missing_models", ensure_config_defaults_copies_missing_models},
         {"common_config_write_replaces_target_with_backup", common_config_write_replaces_target_with_backup},
         {"common_config_write_does_not_merge_stale_interprocess_payloads", common_config_write_does_not_merge_stale_interprocess_payloads},
+        {"versioned_write_rejects_second_participating_writer", versioned_write_rejects_second_participating_writer},
+        {"versioned_missing_file_token_commits_once", versioned_missing_file_token_commits_once},
+        {"versioned_session_write_rejects_stale_before_validation", versioned_session_write_rejects_stale_before_validation},
+        {"versioned_shortcuts_write_rejects_before_hmac_source_refresh", versioned_shortcuts_write_rejects_before_hmac_source_refresh},
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
         {"direct_write_validation_restores_backup", direct_write_validation_restores_backup},
         {"common_config_write_reports_durable_mode_and_keeps_backup", common_config_write_reports_durable_mode_and_keeps_backup},

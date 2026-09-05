@@ -167,10 +167,10 @@ Example documentation:
   and opt-in rather than implied by replacement alone. `ld_settings` does not
   currently provide interprocess read-modify-write lost-update protection through
   `write_with_backup()` or `write_common_config()`; those reports surface this
-  distinction. ADR 0016 accepts a separate pre-1.0 C++ versioned settings commit
-  API for high-value whole-file writes: opaque file-version token, internal
-  per-target advisory commit guard, stale-commit rejection diagnostics, and no
-  library-owned merge/retry behavior.
+  distinction. ADR 0016 accepts, and task 90 implements, a separate pre-1.0 C++
+  versioned settings commit API for high-value whole-file writes: opaque
+  file-version token, internal per-target advisory commit guard, stale-commit
+  rejection diagnostics, and no library-owned merge/retry behavior.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target. Do not add
   module-level C++ aliases for the shared diagnostic names before 1.0.
