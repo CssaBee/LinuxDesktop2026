@@ -78,8 +78,13 @@ cleanup.
   rejected. File content is copied, but ownership, permissions, timestamps,
   xattrs, ACLs, sparse extents, and hard-link topology are not replicated as
   filesystem metadata.
-- Treat file migration renames as atomic rename operations. Cross-device copy/remove
-  fallback is not supported.
+- Treat file migration renames as atomic rename operations. Cross-device
+  copy/remove fallback is not supported for `0.2.0`; the maintained consumer
+  evidence only needs same-filesystem settings-file rename planning. If a real
+  consumer later needs semantic cross-device file moves, add a separate action
+  such as `semantic_move_file` with copy, verification, source cleanup,
+  rollback reporting, and explicit metadata limits instead of broadening
+  `rename_file`.
 - Treat directory moves as copy, verify, then source-tree cleanup. After the
   copy step, every supported source directory entry must have a target entry of
   the same file/directory kind, and every regular file must match by content
@@ -122,10 +127,11 @@ New C++ callers should include `linuxdesktop/migration.hpp` and use
 compatibility layer.
 
 For file migration, new callers should use
-`migration_action_kind::rename_file` and `plan_rename_file()`. The earlier
-`move_file` enum spelling and `plan_move_file()` helper were removed as an
-intentional pre-1.0 source break because they implied semantic cross-device move
-behavior that the implementation does not provide. A semantic cross-device file
-move with copy, verification, and source removal is not part of the current
-contract; add it later as a separate action only if maintained consumer evidence
-needs that behavior.
+`migration_action_kind::rename_file` and `plan_rename_file()` only when atomic
+rename semantics are acceptable. The earlier `move_file` enum spelling and
+`plan_move_file()` helper were removed as an intentional pre-1.0 source break
+because they implied semantic cross-device move behavior that the implementation
+does not provide. A semantic cross-device file move with copy, verification,
+source cleanup, rollback reporting, and metadata-limit diagnostics is excluded
+from `0.2.0`; add it later as a separate action only if maintained consumer
+evidence needs that behavior.

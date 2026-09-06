@@ -241,13 +241,22 @@ and validation flavors, not public product concepts.
 
 ## C ABI Posture
 
-Do not mirror `desktop_bundle` into the C ABI during this design step. The
-current C ABI remains limited to the existing autostart and policy calls until
-release-candidate API policy explicitly allows expansion. When it does expand,
-prefer opaque handles or builder-style allocation over copying the whole C++
-object graph into nested C structs; registration bundles contain repeated
-strings, paths, associations, diagnostics, activation steps, and cleanup rules,
-which are easy to make painful for C callers if exposed prematurely.
+Do not mirror `desktop_bundle` into the C ABI for `0.2.0`. The maintained
+Notepad++ desktop-registration proof found no blocking C++ API friction and no
+consumer need that justifies freezing the larger registration object graph into
+C before release-candidate status. For `0.2.0`, C callers should continue using
+the existing narrow autostart and policy calls when they need C ABI access;
+broader staged desktop entry, icon, MIME/default-app, protocol, activation-plan,
+bundle, and cleanup-report registration remains C++-only experimental surface.
+
+When the desktop registration C ABI does expand, prefer opaque handles or
+builder-style allocation over copying the whole C++ object graph into nested C
+structs. Registration bundles contain repeated strings, paths, associations,
+diagnostics, activation steps, and cleanup rules, which are easy to make
+painful for C callers if exposed prematurely. Every report family that crosses
+the C ABI boundary must name its owned fields, provide exactly one matching
+free function, and guarantee that the free function releases nested allocations
+and resets the report to zero.
 
 ## Required API Posture
 
@@ -271,6 +280,9 @@ which are easy to make painful for C callers if exposed prematurely.
   including the first `desktop_bundle` request/report vocabulary and
   `plan_bundle`, `apply_bundle`, `query_bundle`, and `remove_bundle`.
 - `include/linuxdesktop/desktop_c.h` exposes the C ABI `ld_desktop` surface.
+  For `0.2.0`, that surface is intentionally limited to autostart and policy
+  effect calls plus version functions; report ownership is covered by matching
+  reset-after-free functions.
 - `ld_desktop` reports capabilities for autostart, Linux/XDG desktop entries,
   icons, MIME/file associations, default applications, URL protocol handlers,
   shell-equivalent integration, desktop database updates, and managed policy.

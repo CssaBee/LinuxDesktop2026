@@ -318,9 +318,11 @@ LocalConfigMigration Config::migrateOldLocalConfig()
 }
 ```
 
-`plan_rename_file()` is useful here, but only inside the adapter. Callers should
-not need to understand `migration_action_kind` to decide whether to show a
-KeePassXC prompt.
+`plan_rename_file()` is useful here, but only inside the adapter. It is an
+atomic rename contract, so the KeePassXC adapter must not promise cross-device
+file moves unless product code implements that as a separate copy, verify, and
+cleanup workflow. Callers should not need to understand `migration_action_kind`
+to decide whether to show a KeePassXC prompt.
 
 ## Example 6: PrusaSlicer Config Defaults And Old Datadir
 

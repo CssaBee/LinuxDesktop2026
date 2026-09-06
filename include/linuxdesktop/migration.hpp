@@ -214,6 +214,9 @@ inline migration_plan plan_rename_file(
     std::filesystem::path target_path,
     const options& options = {})
 {
+    // Atomic file rename only. This helper never performs copy/remove fallback
+    // for cross-device moves; use copy plus product-owned cleanup logic until a
+    // separate semantic file-move action is justified by consumer evidence.
     migration_action action;
     action.kind = migration_action_kind::rename_file;
     action.source_path = std::move(source_path);
@@ -240,6 +243,9 @@ inline migration_plan plan_move(
     std::filesystem::path target_path,
     const options& options = {})
 {
+    // File sources map to atomic rename_file; directory sources map to verified
+    // copy-then-cleanup move_directory. Do not use this helper when a product
+    // must guarantee semantic cross-device file moves.
     return detail::plan_path_inference(
         std::move(source_path),
         std::move(target_path),

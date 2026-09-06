@@ -78,6 +78,17 @@ static int has_diagnostic(const struct ld_desktop_diagnostic* diagnostics, size_
     return 0;
 }
 
+static int effect_report_is_clear(const struct ld_desktop_effect_report* report)
+{
+    return report->path == NULL && report->diagnostics == NULL && report->diagnostic_count == 0;
+}
+
+static int policy_report_is_clear(const struct ld_desktop_policy_report* report)
+{
+    return report->path == NULL && report->value == NULL && report->diagnostics == NULL &&
+        report->diagnostic_count == 0;
+}
+
 static int read_text(const char* path, char* buffer, size_t size)
 {
     FILE* file = fopen(path, "rb");
@@ -155,6 +166,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_effect_report(&report);
+        if (!effect_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
     }
 
 #if !defined(_WIN32)
@@ -178,6 +192,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_effect_report(&report);
+        if (!effect_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
 
         memset(&report, 0, sizeof(report));
         if (!ld_desktop_query_autostart(&entry, &options, &report) ||
@@ -187,6 +204,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_effect_report(&report);
+        if (!effect_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
 
         memset(&report, 0, sizeof(report));
         if (!ld_desktop_remove_autostart(&entry, &options, &report) ||
@@ -195,6 +215,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_effect_report(&report);
+        if (!effect_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
     }
 
     {
@@ -217,6 +240,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_policy_report(&report);
+        if (!policy_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
 
         memset(&report, 0, sizeof(report));
         if (!ld_desktop_query_policy(&entry, &options, &report) ||
@@ -226,6 +252,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_policy_report(&report);
+        if (!policy_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
 
         memset(&report, 0, sizeof(report));
         if (!ld_desktop_remove_policy(&entry, &options, &report) ||
@@ -234,6 +263,9 @@ int main(void)
             return EXIT_FAILURE;
         }
         ld_desktop_free_policy_report(&report);
+        if (!policy_report_is_clear(&report)) {
+            return EXIT_FAILURE;
+        }
     }
 #endif
 

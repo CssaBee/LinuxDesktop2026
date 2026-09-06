@@ -139,8 +139,13 @@ still freeze layout too early. Until then, existing C ABI maintenance is a
 best-effort compatibility practice, not a promise to keep expanding binary
 interfaces during prototype work.
 
-For `0.2.0`, new C ABI expansion is not required for desktop registration or
-watching. The release support matrix in `docs/project-status.md` is the current
+For `0.2.0`, the solid C ABI line is the already-covered subset, not a broader
+ABI surface. Desktop registration C callers can use the existing autostart and
+policy calls with matching reset-after-free reports; the desktop bundle,
+activation plans, cleanup reports, and staged entry/icon/MIME/default-app/
+protocol registration stay C++-only experimental APIs until release-candidate
+evidence supports an opaque-handle or builder-style C design. Watching still has
+no C ABI. The release support matrix in `docs/project-status.md` is the current
 source of truth for which modules are supported prototypes, experimental
 extractions, best-effort, or excluded.
 

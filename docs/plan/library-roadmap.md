@@ -25,10 +25,13 @@ public claims and user data: replace the migration JSON parser with a maintained
 dependency while preserving the narrow Registry snapshot schema, add coverage
 reporting to CI, add a `.clang-format` baseline, make filesystem resolution
 non-mutating by default, and verify directory migration copies before source
-cleanup. Governance, desktop registration C ABI expansion, semantic
-cross-device file moves, watcher path-type optimization, and diagnostic
-stringification cleanup remain follow-up work unless new consumer evidence
-makes one of them release-critical.
+cleanup. For the desktop C ABI, `0.2.0` should be solid by documenting and
+testing the existing autostart/policy report ownership contract, not by adding
+bundle-shaped C entry points. Semantic cross-device file moves are explicitly
+excluded from `0.2.0`; `rename_file` stays atomic-only unless later maintained
+consumer evidence justifies a separate semantic move action. Governance, watcher
+path-type optimization, and diagnostic stringification cleanup remain follow-up
+work unless new consumer evidence makes one of them release-critical.
 
 ## API Principles
 
@@ -192,6 +195,11 @@ Example documentation:
   module-level C++ aliases for the shared diagnostic names before 1.0.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
+- Keep the `0.2.0` desktop C ABI intentionally narrow: autostart and policy
+  effect calls, version functions, and matching reset-after-free report
+  ownership. Do not add desktop bundle, activation-plan, cleanup-report, or
+  staged entry/icon/MIME/default-app/protocol C entry points before
+  release-candidate evidence justifies an opaque-handle or builder-style shape.
 - Do not ship Registry, autostart, policy, or migration execution as stable `ld_settings` responsibilities.
 - Complete desktop integration effects in `ld_desktop` according to ADR 0015:
   standards-backed registration artifacts, a preferred desktop-bundle path,
@@ -200,7 +208,7 @@ Example documentation:
   plans, uninstall cleanup reports, Windows autostart/policy mutation, and
   Registry-equivalent desktop/system behavior. Keep runtime shell-open behavior
   and single-instance activation outside this tranche.
-- Continue hardening `ld_migration`, including rollback reporting, cross-module orchestration, adversarial path tests, Windows Registry verification, and release-candidate C ABI cleanup.
+- Continue hardening `ld_migration`, including rollback reporting, cross-module orchestration, adversarial path tests, Windows Registry verification, and release-candidate C ABI cleanup. Keep `rename_file` atomic-only; any semantic cross-device file move must be a separate action with copy verification, source cleanup, rollback reporting, and explicit metadata limits.
 - Use `docs/plan/ld-desktop-extraction.md` and
   `docs/plan/ld-migration-extraction.md` as the extraction requirement
   inventories.

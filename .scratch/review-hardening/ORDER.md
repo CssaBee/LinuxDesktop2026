@@ -6,9 +6,7 @@ list below.
 
 ## Current Order
 
-- `96` - Decide Desktop Registration C ABI Expansion
 - `82` - Reduce Bus Factor And Write Governance
-- `101` - Decide Semantic Cross-Device File Move
 - `102` - Run Native Watch Performance Evidence
 - `103` - Decide Diagnostic Stringification Location
 - `105` - Add Amiberry Root Topology FlavorTest Probe
@@ -27,8 +25,6 @@ These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
 
 - `82` - Reduce Bus Factor And Write Governance
-- `96` - Decide Desktop Registration C ABI Expansion
-- `101` - Decide Semantic Cross-Device File Move
 - `102` - Run Native Watch Performance Evidence
 - `103` - Decide Diagnostic Stringification Location
 - `105` - Add Amiberry Root Topology FlavorTest Probe
@@ -37,6 +33,8 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `96` - Decide Desktop Registration C ABI Expansion
+- `101` - Decide Semantic Cross-Device File Move
 - `104` - Make Filesystem Resolution Non-Mutating By Default
 - `100` - Strengthen Directory Migration Verification
 - `99` - Add Formatting Policy

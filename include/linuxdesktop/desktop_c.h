@@ -56,6 +56,11 @@ struct ld_desktop_effect_report {
     int ok;
     int dry_run;
     int enabled;
+    /*
+     * `path`, `diagnostics`, and diagnostic strings are owned by the report.
+     * Release them with `ld_desktop_free_effect_report()`, which also resets
+     * the report to zero so callers can safely discard or reuse it.
+     */
     char* path;
     struct ld_desktop_diagnostic* diagnostics;
     size_t diagnostic_count;
@@ -76,6 +81,11 @@ struct ld_desktop_policy_report {
     int dry_run;
     int present;
     int enforced;
+    /*
+     * `path`, `value`, `diagnostics`, and diagnostic strings are owned by the
+     * report. Release them with `ld_desktop_free_policy_report()`, which also
+     * resets the report to zero so callers can safely discard or reuse it.
+     */
     char* path;
     char* value;
     struct ld_desktop_diagnostic* diagnostics;
