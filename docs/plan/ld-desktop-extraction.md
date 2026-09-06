@@ -237,9 +237,18 @@ which are easy to make painful for C callers if exposed prematurely.
 - Linux/XDG registration reports return activation plans for
   `update-desktop-database`, `update-mime-database`, icon-cache refreshes, and
   dconf activation instead of running those commands by default.
-- Windows autostart and policy currently report backend-missing capability
-  diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
-  before those writes should move into this module.
+- Windows registration effects report native mappings without overpromising
+  mutation. Autostart maps to per-user Run registration; application identity,
+  file associations, URL protocols, and policy map to Registry-backed shell or
+  policy artifacts; default-app selection is user-choice mediated and reports a
+  Default Apps settings activation step instead of forcing `UserChoice`.
+  Registry-backed Windows writes remain backend-limited until a shared
+  Registry/system layer owns HKCU/HKLM mutation, and Windows shell activation is
+  reported as a follow-up plan rather than executed by staged artifact calls.
+- Windows 10 and Windows 11 share the same public posture: registration
+  artifacts and diagnostics are modeled once, while OS-version differences in
+  Settings UI or shell consumption are validation notes unless a stable Windows
+  contract requires a public branch.
 - Desktop Flavor variance is currently covered by hermetic capability, XDG
   path, and staged artifact tests. Live desktop-session consumption is not yet
   release evidence.

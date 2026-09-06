@@ -6,21 +6,29 @@ shell behavior.
 
 **Blocked by:** 86 - Design Desktop Bundle Registration Surface.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Define the Windows registration mapping for autostart, desktop-entry-like
+- [x] Define the Windows registration mapping for autostart, desktop-entry-like
   app identity, file associations, URL protocol handlers, and policy artifacts.
-- [ ] Keep Windows default-app setting honest: query/report or open-settings
+- [x] Keep Windows default-app setting honest: query/report or open-settings
   guidance is acceptable; silently forcing user defaults is not.
-- [ ] Decide which Windows Registry writes require a shared Registry/system
+- [x] Decide which Windows Registry writes require a shared Registry/system
   layer before implementation.
-- [ ] Add Windows-shaped dry-run and backend-missing/backend-limited tests that
+- [x] Add Windows-shaped dry-run and backend-missing/backend-limited tests that
   can run in CI without mutating machine-wide state.
-- [ ] Add privileged/global-write denial tests for HKLM or policy-like effects
+- [x] Add privileged/global-write denial tests for HKLM or policy-like effects
   where CI can exercise them safely.
-- [ ] Document any Windows 10 versus Windows 11 behavior differences as
+- [x] Document any Windows 10 versus Windows 11 behavior differences as
   diagnostics or validation notes, not public API branches, unless a stable OS
   contract requires it.
+
+## Implementation Note
+
+Windows registration capabilities now report backend-limited native mappings
+for Registry-backed artifacts and Default Apps user-choice behavior, while
+runtime shell integration remains backend-missing. Windows-only tests exercise
+capability posture, dry-run diagnostics, activation plans, and global-write
+denial without mutating HKCU or HKLM.
 
 ## Review Anchor
 

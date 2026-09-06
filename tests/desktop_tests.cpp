@@ -42,6 +42,16 @@ bool has_diagnostic(const std::vector<linuxdesktop::diagnostic>& diagnostics, co
     return false;
 }
 
+bool has_activation_step(const ld::effect_report& report, ld::activation_step_kind kind)
+{
+    for (const auto& step : report.activation_plan) {
+        if (step.kind == kind) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool has_temp_sibling(const std::filesystem::path& target)
 {
     std::error_code ec;
@@ -190,8 +200,100 @@ void managed_policy_capability_reports_dconf_activation_limit()
 #endif
 }
 
+void windows_registration_capabilities_report_limited_native_mapping()
+{
+#if defined(_WIN32)
+    ld::apply_options options;
+    options.allow_desktop_integration_write = true;
+    options.allow_policy_write = true;
+    options.allow_global_write = true;
+
+    const auto report = ld::query_capabilities(options);
+
+    const ld::effect_kind registry_backed[] = {
+        ld::effect_kind::autostart,
+        ld::effect_kind::desktop_entry,
+        ld::effect_kind::mime_association,
+        ld::effect_kind::url_protocol_handler,
+        ld::effect_kind::managed_policy,
+    };
+    for (const auto kind : registry_backed) {
+        const auto* capability = find_capability(report, kind);
+        require(capability != nullptr, "Windows capability report should include every Registry-backed registration effect");
+        require(capability->state == ld::capability_state::backend_limited,
+            "Windows Registry-backed registration effects should be backend-limited until the shared Registry layer exists");
+        require(capability->can_dry_run, "Windows registration effects should support dry-run proof");
+        require(!capability->can_write_user && !capability->can_write_global,
+            "Windows registration effects should not promise writes before the shared Registry layer exists");
+    }
+
+    const auto* defaults = find_capability(report, ld::effect_kind::default_application);
+    require(defaults != nullptr, "Windows capability report should include default applications");
+    require(defaults->state == ld::capability_state::backend_limited,
+        "Windows default applications should be backend-limited rather than forceable");
+    require(has_diagnostic(defaults->diagnostics, "desktop.windows.default-apps.user-choice-required"),
+        "Windows default applications should diagnose the user-choice contract");
+
+    const auto* shell = find_capability(report, ld::effect_kind::shell_integration);
+    require(shell != nullptr, "Windows capability report should include shell integration");
+    require(shell->state == ld::capability_state::backend_missing,
+        "Windows runtime shell integration should remain backend-missing");
+#endif
+}
+
+void windows_registration_dry_runs_report_limits_without_mutation()
+{
+#if defined(_WIN32)
+    ld::apply_options options;
+    options.allow_desktop_integration_write = true;
+    options.allow_policy_write = true;
+
+    const auto autostart = ld::apply_autostart(autostart_entry_for_tests(), options);
+    require(autostart.ok && autostart.dry_run, "Windows autostart dry-run should succeed without Registry mutation");
+    require(has_diagnostic(autostart.diagnostics, "desktop.windows.autostart.registry-layer-required"),
+        "Windows autostart dry-run should name the Registry-layer dependency");
+
+    ld::mime_association association;
+    association.mime_type = "text/x-linuxdesktop2026-test";
+    association.desktop_entry_ids = {"org.linuxdesktop2026.DesktopTests"};
+    const auto association_report = ld::apply_mime_association(association, options);
+    require(association_report.ok, "Windows file association dry-run should succeed without Registry mutation");
+    require(has_diagnostic(association_report.diagnostics, "desktop.windows.file-association.registry-layer-required"),
+        "Windows file association dry-run should name the Registry-layer dependency");
+    require(has_activation_step(association_report, ld::activation_step_kind::windows_shell_notify),
+        "Windows file association dry-run should report shell notification activation");
+
+    ld::default_application_intent defaults;
+    defaults.mime_type_or_scheme = "text/x-linuxdesktop2026-test";
+    defaults.desktop_entry_id = "org.linuxdesktop2026.DesktopTests";
+    defaults.make_default = true;
+    const auto default_report = ld::apply_default_application(defaults, options);
+    require(default_report.ok, "Windows default application dry-run should succeed as guidance");
+    require(has_diagnostic(default_report.diagnostics, "desktop.windows.default-apps.user-choice-required"),
+        "Windows default application dry-run should diagnose that UserChoice is not forced");
+    require(has_activation_step(default_report, ld::activation_step_kind::windows_default_apps_ui),
+        "Windows default application dry-run should point to Default Apps settings");
+
+    ld::url_scheme_handler handler;
+    handler.scheme = "ld2026";
+    handler.desktop_entry_id = "org.linuxdesktop2026.DesktopTests";
+    const auto protocol_report = ld::apply_url_scheme_handler(handler, options);
+    require(protocol_report.ok, "Windows URL protocol dry-run should succeed without Registry mutation");
+    require(has_diagnostic(protocol_report.diagnostics, "desktop.windows.url-protocol.registry-layer-required"),
+        "Windows URL protocol dry-run should name the Registry-layer dependency");
+
+    auto global_entry = desktop_entry_for_tests();
+    global_entry.user_scope = false;
+    const auto denied = ld::apply_desktop_entry(global_entry, options);
+    require(!denied.ok, "Windows global app identity writes should require explicit global permission");
+    require(has_diagnostic(denied.diagnostics, "desktop-entry-global-write-denied"),
+        "Windows global app identity denial should be reported before any backend write path");
+#endif
+}
+
 void autostart_dry_run_does_not_write()
 {
+#if !defined(_WIN32)
     const auto root = test_root() / "autostart-dry-run";
     const auto entry = autostart_entry_for_tests();
 
@@ -205,6 +307,7 @@ void autostart_dry_run_does_not_write()
     require(report.path.has_value(), "desktop autostart dry-run should report target path");
     require(!std::filesystem::exists(*report.path), "desktop autostart dry-run should not write a file");
     require(has_diagnostic(report.diagnostics, "autostart-dry-run"), "desktop autostart dry-run should include a diagnostic");
+#endif
 }
 
 void autostart_reports_sanitized_ids_and_escaped_arguments()
@@ -854,6 +957,8 @@ int main()
 {
     capability_report_covers_extraction_scope();
     managed_policy_capability_reports_dconf_activation_limit();
+    windows_registration_capabilities_report_limited_native_mapping();
+    windows_registration_dry_runs_report_limits_without_mutation();
     autostart_dry_run_does_not_write();
     autostart_reports_sanitized_ids_and_escaped_arguments();
     autostart_rejects_relative_or_file_backed_output_directory();

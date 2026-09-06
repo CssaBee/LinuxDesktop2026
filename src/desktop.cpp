@@ -617,6 +617,79 @@ diagnostic unsupported_backend_diagnostic(effect_kind kind)
         "This desktop integration backend is not implemented on this platform yet");
 }
 
+#if defined(_WIN32)
+diagnostic windows_registration_limited_diagnostic(effect_kind kind)
+{
+    switch (kind) {
+    case effect_kind::autostart:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.autostart.registry-layer-required",
+            "Windows autostart maps to the per-user Run registration contract; ld_desktop does not mutate it until a shared Registry/system layer owns those writes");
+    case effect_kind::desktop_entry:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.app-identity.registry-layer-required",
+            "Windows app identity maps to shell App Paths and registered application metadata; ld_desktop does not mutate those Registry artifacts until a shared Registry/system layer owns those writes");
+    case effect_kind::icon:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.icon.app-identity-required",
+            "Windows icon metadata is part of registered application, association, or shortcut artifacts rather than a standalone XDG-style icon cache");
+    case effect_kind::mime_association:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.file-association.registry-layer-required",
+            "Windows file associations map to registered application and file-association Registry artifacts; ld_desktop does not mutate them until a shared Registry/system layer owns those writes");
+    case effect_kind::default_application:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.default-apps.user-choice-required",
+            "Windows default apps are user-choice and policy mediated; ld_desktop can guide the user to Default Apps settings but must not silently force defaults");
+    case effect_kind::url_protocol_handler:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.url-protocol.registry-layer-required",
+            "Windows URL protocol handlers map to registered protocol Registry artifacts; ld_desktop does not mutate them until a shared Registry/system layer owns those writes");
+    case effect_kind::desktop_database:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.shell-notify-required",
+            "Windows has no XDG desktop database; shell registration changes require ShellExecute/SHChangeNotify-style activation outside the current staged artifact API");
+    case effect_kind::managed_policy:
+        return make_diagnostic(
+            severity::warning,
+            "desktop.windows.policy.registry-layer-required",
+            "Windows managed policy maps to HKCU/HKLM policy Registry artifacts; ld_desktop does not mutate those artifacts until a shared Registry/system layer owns those writes");
+    case effect_kind::shell_integration:
+        return unsupported_backend_diagnostic(kind);
+    }
+    return unsupported_backend_diagnostic(kind);
+}
+
+void append_windows_activation_plan(effect_report& report, effect_kind kind)
+{
+    if (kind == effect_kind::default_application) {
+        report.activation_plan.push_back(activation_required(
+            activation_step_kind::windows_default_apps_ui,
+            "ms-settings:defaultapps",
+            "windows-default-apps-ui-required",
+            "Open Windows Default Apps settings so the user can choose the default application; ld_desktop must not force UserChoice defaults"));
+        return;
+    }
+    if (kind == effect_kind::desktop_database ||
+        kind == effect_kind::desktop_entry ||
+        kind == effect_kind::mime_association ||
+        kind == effect_kind::url_protocol_handler) {
+        report.activation_plan.push_back(activation_required(
+            activation_step_kind::windows_shell_notify,
+            "SHChangeNotify(SHCNE_ASSOCCHANGED)",
+            "windows-shell-notify-required",
+            "Notify the Windows shell after registration artifacts change; ld_desktop only reports this activation step today"));
+    }
+}
+#endif
+
 diagnostic dconf_activation_required_diagnostic()
 {
     return make_diagnostic(
@@ -710,8 +783,13 @@ capability_report query_capabilities(const apply_options& options)
         item.kind = kind;
         item.can_dry_run = true;
 #if defined(_WIN32)
-        item.state = capability_state::backend_missing;
-        item.diagnostics.push_back(unsupported_backend_diagnostic(kind));
+        if (kind == effect_kind::shell_integration) {
+            item.state = capability_state::backend_missing;
+            item.diagnostics.push_back(unsupported_backend_diagnostic(kind));
+        } else {
+            item.state = capability_state::backend_limited;
+            item.diagnostics.push_back(windows_registration_limited_diagnostic(kind));
+        }
 #else
         if (kind == effect_kind::autostart ||
             kind == effect_kind::desktop_entry ||
@@ -762,6 +840,17 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::autostart));
+    if (options.dry_run) {
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "autostart-dry-run",
+            "Windows autostart registration was planned but not written"));
+    }
+    return report;
+#else
     report.path = autostart_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -776,10 +865,6 @@ effect_report apply_autostart(const autostart_entry& entry, const apply_options&
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -810,6 +895,17 @@ effect_report remove_autostart(const autostart_entry& entry, const apply_options
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::autostart));
+    if (options.dry_run) {
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "autostart-dry-run",
+            "Windows autostart registration removal was planned but not applied"));
+    }
+    return report;
+#else
     report.path = autostart_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -820,10 +916,6 @@ effect_report remove_autostart(const autostart_entry& entry, const apply_options
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -844,7 +936,7 @@ effect_report query_autostart(const autostart_entry& entry, const apply_options&
     }
 
 #if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::autostart));
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::autostart));
     return report;
 #else
     report.path = autostart_path(entry, options, report.diagnostics);
@@ -957,6 +1049,14 @@ effect_report apply_desktop_entry(const desktop_entry& entry, const apply_option
     if (has_error(report.diagnostics)) {
         return report;
     }
+#if defined(_WIN32)
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::desktop_entry));
+    append_windows_activation_plan(report, effect_kind::desktop_entry);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = desktop_entry_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -971,10 +1071,6 @@ effect_report apply_desktop_entry(const desktop_entry& entry, const apply_option
         report.diagnostics.push_back(make_diagnostic(severity::info, "desktop-entry-dry-run", "Desktop entry was planned but not written", *report.path));
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::desktop_entry));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -996,6 +1092,17 @@ effect_report remove_desktop_entry(const desktop_entry& entry, const apply_optio
     report.dry_run = options.dry_run;
     append_desktop_entry_validation(entry, report.diagnostics);
     append_desktop_write_permission(entry.user_scope, options, "desktop-entry", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::desktop_entry));
+    append_windows_activation_plan(report, effect_kind::desktop_entry);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = desktop_entry_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1005,10 +1112,6 @@ effect_report remove_desktop_entry(const desktop_entry& entry, const apply_optio
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::desktop_entry));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -1024,14 +1127,18 @@ effect_report query_desktop_entry(const desktop_entry& entry, const apply_option
 {
     effect_report report;
     append_desktop_entry_validation(entry, report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::desktop_entry));
+    append_windows_activation_plan(report, effect_kind::desktop_entry);
+    return report;
+#else
     report.path = desktop_entry_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::desktop_entry));
-    return report;
-#else
     std::error_code ec;
     report.present = std::filesystem::exists(*report.path, ec);
     report.ok = !ec;
@@ -1076,6 +1183,16 @@ effect_report apply_icon(const icon_entry& entry, const apply_options& options)
     report.present = true;
     append_icon_validation(entry, report.diagnostics);
     append_desktop_write_permission(entry.user_scope, options, "icon", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::icon));
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = icon_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1085,10 +1202,6 @@ effect_report apply_icon(const icon_entry& entry, const apply_options& options)
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::icon));
-    return report;
-#else
     std::error_code ec;
     if (!std::filesystem::is_regular_file(entry.source_path, ec)) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "icon-source-path-not-file", "Icon source path must name a readable file", entry.source_path));
@@ -1115,6 +1228,16 @@ effect_report remove_icon(const icon_entry& entry, const apply_options& options)
     report.dry_run = options.dry_run;
     append_icon_validation(entry, report.diagnostics);
     append_desktop_write_permission(entry.user_scope, options, "icon", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::icon));
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = icon_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1124,10 +1247,6 @@ effect_report remove_icon(const icon_entry& entry, const apply_options& options)
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::icon));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -1143,14 +1262,17 @@ effect_report query_icon(const icon_entry& entry, const apply_options& options)
 {
     effect_report report;
     append_icon_validation(entry, report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::icon));
+    return report;
+#else
     report.path = icon_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::icon));
-    return report;
-#else
     std::error_code ec;
     report.present = std::filesystem::exists(*report.path, ec);
     report.ok = !ec;
@@ -1217,6 +1339,16 @@ effect_report apply_mime_declaration(const mime_declaration& declaration, const 
     report.present = true;
     append_mime_declaration_validation(declaration, report.diagnostics);
     append_desktop_write_permission(declaration.user_scope, options, "mime-declaration", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = mime_declaration_path(declaration, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1226,10 +1358,6 @@ effect_report apply_mime_declaration(const mime_declaration& declaration, const 
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -1251,6 +1379,16 @@ effect_report remove_mime_declaration(const mime_declaration& declaration, const
     report.dry_run = options.dry_run;
     append_mime_declaration_validation(declaration, report.diagnostics);
     append_desktop_write_permission(declaration.user_scope, options, "mime-declaration", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = mime_declaration_path(declaration, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1260,10 +1398,6 @@ effect_report remove_mime_declaration(const mime_declaration& declaration, const
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -1279,14 +1413,17 @@ effect_report query_mime_declaration(const mime_declaration& declaration, const 
 {
     effect_report report;
     append_mime_declaration_validation(declaration, report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    return report;
+#else
     report.path = mime_declaration_path(declaration, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     std::error_code ec;
     report.present = std::filesystem::exists(*report.path, ec);
     report.ok = !ec;
@@ -1439,6 +1576,17 @@ effect_report apply_mime_association(const mime_association& association, const 
     }
     const auto ids = normalized_desktop_ids(association.desktop_entry_ids, report.diagnostics);
     append_desktop_write_permission(association.user_scope, options, "mime-association", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    append_windows_activation_plan(report, effect_kind::mime_association);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = mimeapps_file(association.user_scope, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1448,10 +1596,6 @@ effect_report apply_mime_association(const mime_association& association, const 
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -1475,6 +1619,17 @@ effect_report remove_mime_association(const mime_association& association, const
     }
     const auto ids = normalized_desktop_ids(association.desktop_entry_ids, report.diagnostics);
     append_desktop_write_permission(association.user_scope, options, "mime-association", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    append_windows_activation_plan(report, effect_kind::mime_association);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = mimeapps_file(association.user_scope, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1483,10 +1638,6 @@ effect_report remove_mime_association(const mime_association& association, const
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     report.ok = update_mimeapps_key(*report.path, "Added Associations", association.mime_type, ids, true, report.diagnostics);
     if (!report.ok) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "mimeapps-write-failed", "Failed to update mimeapps.list", *report.path));
@@ -1502,14 +1653,18 @@ effect_report query_mime_association(const mime_association& association, const 
         report.diagnostics.push_back(make_diagnostic(severity::error, "mime-name-invalid", "MIME association requires a valid MIME name"));
     }
     const auto ids = normalized_desktop_ids(association.desktop_entry_ids, report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::mime_association));
+    append_windows_activation_plan(report, effect_kind::mime_association);
+    return report;
+#else
     report.path = mimeapps_file(association.user_scope, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::mime_association));
-    return report;
-#else
     report.present = !ids.empty() && query_mimeapps_key(*report.path, "Added Associations", association.mime_type, ids.front(), report.diagnostics);
     report.ok = !has_error(report.diagnostics);
     return report;
@@ -1531,6 +1686,17 @@ effect_report apply_default_application(const default_application_intent& intent
     }
     const auto ids = normalized_desktop_ids({intent.desktop_entry_id}, report.diagnostics);
     append_desktop_write_permission(intent.user_scope, options, "default-application", report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::default_application));
+    append_windows_activation_plan(report, effect_kind::default_application);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     report.path = mimeapps_file(intent.user_scope, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1544,10 +1710,6 @@ effect_report apply_default_application(const default_application_intent& intent
         report.ok = true;
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::default_application));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -1576,14 +1738,18 @@ effect_report query_default_application(const default_application_intent& intent
         report.diagnostics.push_back(make_diagnostic(severity::error, "default-application-key-invalid", "Default application key must be a MIME name or x-scheme-handler entry"));
     }
     const auto ids = normalized_desktop_ids({intent.desktop_entry_id}, report.diagnostics);
+#if defined(_WIN32)
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::default_application));
+    append_windows_activation_plan(report, effect_kind::default_application);
+    return report;
+#else
     report.path = mimeapps_file(intent.user_scope, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
     }
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::default_application));
-    return report;
-#else
     report.present = !ids.empty() && query_mimeapps_key(*report.path, "Default Applications", intent.mime_type_or_scheme, ids.front(), report.diagnostics);
     report.ok = !has_error(report.diagnostics);
     return report;
@@ -1597,6 +1763,22 @@ effect_report apply_url_scheme_handler(const url_scheme_handler& handler, const 
         report.diagnostics.push_back(make_diagnostic(severity::error, "url-scheme-invalid", "URL scheme must follow RFC-style scheme token syntax"));
         return report;
     }
+#if defined(_WIN32)
+    effect_report report;
+    report.dry_run = options.dry_run;
+    report.present = true;
+    (void)normalized_desktop_ids({handler.desktop_entry_id}, report.diagnostics);
+    append_desktop_write_permission(handler.user_scope, options, "url-scheme-handler", report.diagnostics);
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::url_protocol_handler));
+    append_windows_activation_plan(report, effect_kind::url_protocol_handler);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     default_application_intent intent;
     intent.mime_type_or_scheme = scheme_mime_key(handler.scheme);
     intent.desktop_entry_id = handler.desktop_entry_id;
@@ -1611,6 +1793,7 @@ effect_report apply_url_scheme_handler(const url_scheme_handler& handler, const 
             "URL scheme handler artifact was staged; refresh desktop registration metadata before treating it as active"));
     }
     return report;
+#endif
 }
 
 effect_report remove_url_scheme_handler(const url_scheme_handler& handler, const apply_options& options)
@@ -1620,12 +1803,28 @@ effect_report remove_url_scheme_handler(const url_scheme_handler& handler, const
         report.diagnostics.push_back(make_diagnostic(severity::error, "url-scheme-invalid", "URL scheme must follow RFC-style scheme token syntax"));
         return report;
     }
+#if defined(_WIN32)
+    effect_report report;
+    report.dry_run = options.dry_run;
+    (void)normalized_desktop_ids({handler.desktop_entry_id}, report.diagnostics);
+    append_desktop_write_permission(handler.user_scope, options, "url-scheme-handler", report.diagnostics);
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::url_protocol_handler));
+    append_windows_activation_plan(report, effect_kind::url_protocol_handler);
+    if (options.dry_run) {
+        report.ok = true;
+    }
+    return report;
+#else
     default_application_intent intent;
     intent.mime_type_or_scheme = scheme_mime_key(handler.scheme);
     intent.desktop_entry_id = handler.desktop_entry_id;
     intent.make_default = false;
     intent.user_scope = handler.user_scope;
     return apply_default_application(intent, options);
+#endif
 }
 
 effect_report query_url_scheme_handler(const url_scheme_handler& handler, const apply_options& options)
@@ -1635,11 +1834,22 @@ effect_report query_url_scheme_handler(const url_scheme_handler& handler, const 
         report.diagnostics.push_back(make_diagnostic(severity::error, "url-scheme-invalid", "URL scheme must follow RFC-style scheme token syntax"));
         return report;
     }
+#if defined(_WIN32)
+    effect_report report;
+    (void)normalized_desktop_ids({handler.desktop_entry_id}, report.diagnostics);
+    if (has_error(report.diagnostics)) {
+        return report;
+    }
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::url_protocol_handler));
+    append_windows_activation_plan(report, effect_kind::url_protocol_handler);
+    return report;
+#else
     default_application_intent intent;
     intent.mime_type_or_scheme = scheme_mime_key(handler.scheme);
     intent.desktop_entry_id = handler.desktop_entry_id;
     intent.user_scope = handler.user_scope;
     return query_default_application(intent, options);
+#endif
 }
 
 policy_report apply_policy(const policy_entry& entry, const apply_options& options)
@@ -1659,6 +1869,18 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
     }
     report.present = true;
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::managed_policy));
+    if (options.dry_run) {
+        report.ok = true;
+        report.value = entry.value;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "policy-dry-run",
+            "Windows managed policy registration was planned but not written"));
+    }
+    return report;
+#else
     report.path = policy_defaults_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1678,10 +1900,6 @@ policy_report apply_policy(const policy_entry& entry, const apply_options& optio
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::create_directories(report.path->parent_path(), ec);
     if (ec) {
@@ -1725,6 +1943,17 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
         return report;
     }
 
+#if defined(_WIN32)
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::managed_policy));
+    if (options.dry_run) {
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::info,
+            "policy-dry-run",
+            "Windows managed policy registration removal was planned but not applied"));
+    }
+    return report;
+#else
     report.path = policy_defaults_path(entry, options, report.diagnostics);
     if (!report.path || report.path->empty() || has_error(report.diagnostics)) {
         return report;
@@ -1736,10 +1965,6 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
         return report;
     }
 
-#if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
-    return report;
-#else
     std::error_code ec;
     std::filesystem::remove(*report.path, ec);
     if (ec) {
@@ -1769,7 +1994,7 @@ policy_report query_policy(const policy_entry& entry, const apply_options& optio
     }
 
 #if defined(_WIN32)
-    report.diagnostics.push_back(unsupported_backend_diagnostic(effect_kind::managed_policy));
+    report.diagnostics.push_back(windows_registration_limited_diagnostic(effect_kind::managed_policy));
     return report;
 #else
     report.path = policy_defaults_path(entry, options, report.diagnostics);
