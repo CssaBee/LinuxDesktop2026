@@ -1,7 +1,7 @@
 # Validation Evidence
 
-This page records local evidence for review-hardening checks that should stay
-visible without turning `project-status.md` into a build log.
+This page records local validation evidence that should stay visible without
+turning `project-status.md` into a build log.
 
 ## Coverage
 

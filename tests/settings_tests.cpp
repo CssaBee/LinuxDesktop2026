@@ -167,7 +167,7 @@ std::filesystem::path app_leaf()
 void exposes_cpp_version()
 {
     require(ld::version_major == 0, "C++ version major should match project version");
-    require(ld::version_minor == 1, "C++ version minor should match project version");
+    require(ld::version_minor == 2, "C++ version minor should match project version");
     require(ld::version_patch == 0, "C++ version patch should match project version");
 }
 
@@ -1793,7 +1793,7 @@ void c_abi_resolves_settings_override()
         "C ABI runtime minor should match header minor");
     require(ld_settings_version_patch() == LD_SETTINGS_VERSION_PATCH,
         "C ABI runtime patch should match header patch");
-    require(std::string(ld_settings_version_string()) == "0.1.0",
+    require(std::string(ld_settings_version_string()) == "0.2.0",
         "C ABI version string should match project version");
 
     ld_settings_free_root_report(&report);

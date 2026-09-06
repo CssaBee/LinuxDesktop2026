@@ -2,7 +2,7 @@
 
 The platform libraries are general-purpose, permissively licensed, and designed
 for both humans and AI coding agents. This document explains direction and
-module gates. The current implementation ledger lives in
+module gates. The current release-support matrix lives in
 `docs/project-status.md`; parked ideas live in `docs/research-backlog.md`.
 
 ## Initial Direction
@@ -14,30 +14,35 @@ module gates. The current implementation ledger lives in
 - Use CMake consumption paths: FetchContent, add_subdirectory, and installed package configuration.
 - Include examples for each capability and integration examples that combine modules.
 
-## 0.2.0 Direction
+## Current Release: 0.2.0
 
-The `0.2.0` milestone should clarify support rather than broaden it. The
-current support matrix lives in `docs/project-status.md` so release claims,
-module status, platform status, and validation gates have one current ledger.
+`0.2.0` clarifies support rather than broadening the project promise. The public
+line is:
 
-Release-gating work for `0.2.0` is limited to the review findings that protect
-public claims and user data: replace the migration JSON parser with a maintained
-dependency while preserving the narrow Registry snapshot schema, add coverage
-reporting to CI, add a `.clang-format` baseline, make filesystem resolution
-non-mutating by default, and verify directory migration copies before source
-cleanup. For the desktop C ABI, `0.2.0` should be solid by documenting and
-testing the existing autostart/policy report ownership contract, not by adding
-bundle-shaped C entry points. Semantic cross-device file moves are explicitly
-excluded from `0.2.0`; `rename_file` stays atomic-only unless later maintained
-consumer evidence justifies a separate semantic move action. Governance, watcher
-path-type optimization, and diagnostic stringification cleanup remain follow-up
-work unless new consumer evidence makes one of them release-critical.
-The root/topology documentation pass records the `0.2.0` construction rule:
-consumers should see `ld_root::request_builder` as the recommended style for
-ordinary app topology, portable policy, overrides, named roots, and component
-roots, while raw `ld_root::options` remains valid for dense product-owned root
-models and `ld_paths::resolver_options` remains the lighter choice for plain
-path-family or resource-location resolution.
+- supported prototype modules: `ld_core`, `ld_settings`, `ld_paths`, `ld_root`,
+  and `ld_watch`;
+- experimental extraction modules: `ld_desktop` and `ld_migration`;
+- phase-one platforms: Windows 10/11 and Ubuntu LTS, with other XDG-like Linux
+  distributions best-effort and no macOS promise;
+- explicit mutation: path/root/settings resolution is preview-only by default,
+  and filesystem, desktop, policy, and migration writes require opt-in or
+  execution calls;
+- narrow C ABI: existing settings, paths, root, desktop autostart/policy, and
+  version/report-ownership functions remain best-effort-compatible where
+  practical, while broad C ABI expansion waits until release-candidate work.
+
+The root/topology construction rule for `0.2.0` is:
+
+- use `ld_root::request_builder` for ordinary app topology, portable policy,
+  overrides, named roots, and component roots;
+- use raw `ld_root::options` when a product already has a dense root-policy
+  object and the explicit structure is easier to audit;
+- use `ld_paths::resolver_options` for plain path-family or resource-location
+  resolution that does not need root topology.
+
+`0.2.0` intentionally excludes semantic cross-device file moves, broad desktop
+bundle C entry points, a watcher C ABI, production-stable C++ ABI claims, and
+new process/IPC/dynamic-loader/service APIs.
 
 ## API Principles
 
@@ -102,15 +107,14 @@ two-consumer activation threshold because it removes responsibilities already
 implemented in the wrong module. New surface added during those extractions is
 not exempt; it still needs source or consumer evidence.
 
-## Completed Initial Execution
+## Release Evidence
 
-1. Complete the initial repository survey.
-2. Score module candidates.
-3. Run a focused follow-up search for the strongest candidates.
-4. Select the first module and code sample.
-5. Build the tiny working sample.
-6. Make the first sample easy to consume from CMake.
-7. Publish once working code exists with supporting docs.
+`0.2.0` is backed by module tests, C ABI tests, install-tree consumers,
+FlavorTests, sanitizer lanes, CI coverage reporting, optional libuv watcher
+coverage, native Windows watcher smoke coverage, and a maintained Notepad++
+proof branch. Detailed command output and local measurement snapshots live in
+`docs/validation-evidence.md` and
+`docs/consumer-branches/notepadpp-settings-proof.md`.
 
 ## First Module Decision
 
@@ -131,7 +135,7 @@ Original implementation target:
 - Windows Known Folder behavior shaped in the API, implemented as soon as feasible.
 - Structured diagnostic output suitable for humans, tests, and AI agents.
 
-Current settings/config prototype sample:
+Current settings/config prototype:
 
 - `ld_core` interface target.
 - `LinuxDesktop2026::ld_core` namespaced target.
@@ -192,10 +196,10 @@ Example documentation:
   and opt-in rather than implied by replacement alone. `ld_settings` does not
   currently provide interprocess read-modify-write lost-update protection through
   `write_with_backup()` or `write_common_config()`; those reports surface this
-  distinction. ADR 0016 accepts, and task 90 implements, a separate pre-1.0 C++
-  versioned settings commit API for high-value whole-file writes: opaque
-  file-version token, internal per-target advisory commit guard, stale-commit
-  rejection diagnostics, and no library-owned merge/retry behavior.
+  distinction. The pre-1.0 C++ versioned settings commit API supports
+  high-value whole-file writes with an opaque file-version token, internal
+  per-target advisory commit guard, stale-commit rejection diagnostics, and no
+  library-owned merge/retry behavior.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
 - Keep shared C++ diagnostics in the tiny `ld_core` interface target through
   `0.2.0`. Do not add module-level C++ aliases for the shared diagnostic names
@@ -306,7 +310,7 @@ The extended source survey in `docs/survey/extended-watchlist-fit-audit.md` samp
 
 Near-term planning changes:
 
-- Keep `ld_paths` as an active prototype module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Real Windows verification remains before public prototype announcement.
+- Keep `ld_paths` as an active prototype module. It now covers standard user paths beyond settings roots, XDG user-dir parsing, legacy/site config candidates, executable/resource/install roots, path-list parsing, environment override diagnostics, Wine-prefix-aware defaults, typed plugin path sets, a small C ABI, and install-tree consumer coverage. Deeper Windows path verification remains planned work.
 - Keep `ld_process` as research-only until two integrations show the same process boundary and an existing-tool decision explains why `std::process`-like libraries, Qt/GLib process APIs, Boost.Process-style wrappers, or direct platform APIs are not enough for the shared case.
 - Keep `ld_ipc` as research-only until two integrations show the same activation/IPC boundary and an existing-tool decision covers D-Bus, local sockets, Windows named pipes, toolkit single-instance helpers, and Windows window-message activation.
 - Extract desktop integration work into `ld_desktop` for `.desktop` files, command escaping, icon installation, MIME types, file associations, URL protocols, AppImage executable discovery, policy, autostart, Registry-equivalent shell/system behavior, and uninstall cleanup.

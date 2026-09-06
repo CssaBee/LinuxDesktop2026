@@ -135,7 +135,7 @@ int main(void)
     if (ld_settings_version_major() != LD_SETTINGS_VERSION_MAJOR ||
         ld_settings_version_minor() != LD_SETTINGS_VERSION_MINOR ||
         ld_settings_version_patch() != LD_SETTINGS_VERSION_PATCH ||
-        strcmp(ld_settings_version_string(), "0.1.0") != 0) {
+        strcmp(ld_settings_version_string(), "0.2.0") != 0) {
         return EXIT_FAILURE;
     }
 

@@ -141,7 +141,7 @@ int main(void)
     if (ld_desktop_version_major() != LD_DESKTOP_VERSION_MAJOR ||
         ld_desktop_version_minor() != LD_DESKTOP_VERSION_MINOR ||
         ld_desktop_version_patch() != LD_DESKTOP_VERSION_PATCH ||
-        strcmp(ld_desktop_version_string(), "0.1.0") != 0) {
+        strcmp(ld_desktop_version_string(), "0.2.0") != 0) {
         return EXIT_FAILURE;
     }
 

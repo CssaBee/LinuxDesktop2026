@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #define LD_PATHS_VERSION_MAJOR 0
-#define LD_PATHS_VERSION_MINOR 1
+#define LD_PATHS_VERSION_MINOR 2
 #define LD_PATHS_VERSION_PATCH 0
 
 enum ld_paths_severity {

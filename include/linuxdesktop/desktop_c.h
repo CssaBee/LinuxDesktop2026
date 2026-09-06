@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #define LD_DESKTOP_VERSION_MAJOR 0
-#define LD_DESKTOP_VERSION_MINOR 1
+#define LD_DESKTOP_VERSION_MINOR 2
 #define LD_DESKTOP_VERSION_PATCH 0
 
 struct ld_desktop_diagnostic {

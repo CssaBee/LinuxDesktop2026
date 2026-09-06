@@ -11,22 +11,25 @@ general-purpose and permissively licensed.
 
 ## Maturity
 
-LinuxDesktop2026 is pre-1.0 prototype code. The repository has working modules,
-tests, examples, install-tree consumption checks, FlavorTests, and CI portability
-lanes, but none of the modules should be treated as production-stable yet.
+LinuxDesktop2026 `0.2.0` is a public prototype release. The repository has
+working modules, tests, examples, install-tree consumption checks, FlavorTests,
+and CI portability lanes, but none of the modules should be treated as
+production-stable yet.
 
-Current promises:
+The `0.2.0` support line:
 
 - C++17 public headers live under `include/linuxdesktop/`.
 - Supported phase-one platforms are Windows 10/11 and Ubuntu LTS.
 - Other XDG-like Linux distributions are best-effort.
 - There is no phase-one macOS support promise.
-- C++ APIs may break before `1.0` when source audits, proof integrations, or
-  module-boundary corrections show that the current shape is wrong.
-- Existing C ABI entry points are maintained where practical, but new C ABI
+- C++ APIs may break in later `0.x` releases when source audits, proof
+  integrations, or module-boundary corrections show that the current shape is
+  wrong.
+- Existing C ABI entry points are maintained where practical. New C ABI
   expansion waits until release-candidate status.
 - Filesystem, desktop, policy, and migration mutation is explicit; preview or
   dry-run behavior is preferred where practical.
+- Path, root, and settings resolution are non-mutating by default.
 
 See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 
@@ -35,11 +38,12 @@ See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 | Module | Target | Status | Responsibility |
 | --- | --- | --- | --- |
 | `ld_core` | `LinuxDesktop2026::ld_core` | Active | Shared diagnostic vocabulary and version-adjacent core types. |
-| `ld_settings` | `LinuxDesktop2026::ld_settings` | Active prototype | Settings/config roots, config-default hydration, validated writes, backup behavior, config layers, and settings diagnostics. |
-| `ld_paths` | `LinuxDesktop2026::ld_paths` | Active prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
-| `ld_watch` | `LinuxDesktop2026::ld_watch` | Active prototype | File watching with native Linux and Windows backends, optional libuv, bounded pull delivery, deadline-scheduled settled-file coalescing by path, and recursive-watch honesty. |
-| `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Extraction in progress | Desktop/session integration effects such as autostart and managed/enforced policy, with the broader desktop-effect scope still being completed. |
-| `ld_migration` | `LinuxDesktop2026::ld_migration` | Extraction in progress | Dry-run-first application-settings migration for regular files/directories and app-settings Registry snapshot/import/export compatibility. |
+| `ld_settings` | `LinuxDesktop2026::ld_settings` | Supported prototype | Settings/config roots, config-default hydration, validated writes, backup behavior, config layers, versioned whole-file commits, and settings diagnostics. |
+| `ld_paths` | `LinuxDesktop2026::ld_paths` | Supported prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
+| `ld_root` | `LinuxDesktop2026::ld_root` | Supported prototype | App/user root topology, portable-root policy, named roots, component roots, request builders, and non-mutating root reports. |
+| `ld_watch` | `LinuxDesktop2026::ld_watch` | Supported prototype | File watching with native Linux and Windows backends, optional libuv, bounded pull delivery, deadline-scheduled settled-file coalescing by path, and recursive-watch honesty. |
+| `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Experimental extraction | Desktop/session integration effects such as autostart and managed/enforced policy, with broader desktop registration still experimental. |
+| `ld_migration` | `LinuxDesktop2026::ld_migration` | Experimental extraction | Dry-run-first application-settings migration for regular files/directories and app-settings Registry snapshot/import/export compatibility. |
 
 `ld_settings` no longer owns desktop effects or migration behavior. New callers
 should use `ld_desktop` and `ld_migration` directly for those responsibilities.
@@ -136,7 +140,7 @@ include(FetchContent)
 FetchContent_Declare(
     LinuxDesktop2026
     GIT_REPOSITORY https://github.com/CssaBee/LinuxDesktop2026.git
-    GIT_TAG <release-tag-or-commit-sha>
+    GIT_TAG 0.2.0
 )
 FetchContent_MakeAvailable(LinuxDesktop2026)
 
@@ -184,18 +188,20 @@ find_package(LinuxDesktop2026 CONFIG REQUIRED)
 target_link_libraries(your_app PRIVATE LinuxDesktop2026::ld_watch)
 ```
 
-## Validation Strategy
+## Validation
 
-The project uses three layers of evidence:
+The project uses these evidence layers:
 
 - Unit and smoke tests for module behavior, C ABI ownership, install-tree
   consumption, watcher backends, and Windows/Linux path behavior.
 - [FlavorTests](docs/FlavorTests/README.md), which refactor real upstream-shaped
   seams from projects such as Notepad++, PrusaSlicer, OpenRGB, KeePassXC,
-  qBittorrent, OBS, KiCad, Audacity, FreeCAD, Walnut, and OpenIPC Dashboard.
-- Maintained consumer proof branches, tracked in
+  qBittorrent, OBS, KiCad, Audacity, FreeCAD, Walnut, OpenIPC Dashboard,
+  Gearcoleco, CtrlrX, SmartServoFramework, KickCAT, Amiberry, Endless Sky, and
+  Minifox.
+- Maintained consumer proof branches, summarized in
   [project status](docs/project-status.md) with exact branch and CI evidence in
-  the [Notepad++ proof ledger](docs/consumer-branches/notepadpp-settings-proof.md).
+  the [Notepad++ proof page](docs/consumer-branches/notepadpp-settings-proof.md).
 
 The CI matrix covers Ubuntu, Fedora, Windows/MSVC, shared-library builds on
 Linux, sanitizer lanes, FlavorTests, optional libuv watcher coverage, and a
@@ -205,7 +211,6 @@ manual Notepad++ proof-branch workflow. See
 ## Documentation
 
 - [Project status](docs/project-status.md)
-- [Research backlog](docs/research-backlog.md)
 - [Domain language](CONTEXT.md)
 - [Library roadmap](docs/plan/library-roadmap.md)
 - [API and ABI stability](docs/plan/api-stability.md)
@@ -213,8 +218,9 @@ manual Notepad++ proof-branch workflow. See
 - [FlavorTest API friction](docs/FlavorTests/API_FRICTION.md)
 - [Cross-port reference rules](docs/FlavorTests/CROSS_PORT_REFERENCES.md)
 - [Maintained consumer branches](docs/consumer-branches/README.md)
-- [Adoption targets and challenge ideas](docs/survey/adoption-targets-and-challenge-ideas.md)
 - [Migration examples](docs/examples/migration-examples.md)
+- [Validation evidence](docs/validation-evidence.md)
+- [Research backlog](docs/research-backlog.md)
 - [Architecture decisions](docs/adr)
 - [Survey documents](docs/survey)
 

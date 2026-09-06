@@ -133,7 +133,7 @@ std::filesystem::path fixture_path(std::initializer_list<std::string_view> parts
 void exposes_cpp_version()
 {
     require(ld::version_major == 0, "C++ version major should match project version");
-    require(ld::version_minor == 1, "C++ version minor should match project version");
+    require(ld::version_minor == 2, "C++ version minor should match project version");
     require(ld::version_patch == 0, "C++ version patch should match project version");
 }
 

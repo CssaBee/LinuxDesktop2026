@@ -402,5 +402,5 @@ int ld_desktop_version_patch(void)
 
 const char* ld_desktop_version_string(void)
 {
-    return "0.1.0";
+    return "0.2.0";
 }

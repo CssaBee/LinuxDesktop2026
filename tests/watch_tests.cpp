@@ -282,7 +282,7 @@ std::shared_ptr<simulated_backend> make_backend()
 void exposes_public_version_and_strings()
 {
     require(ld::version_major == 0, "watch version major should match project version");
-    require(ld::version_minor == 1, "watch version minor should match project version");
+    require(ld::version_minor == 2, "watch version minor should match project version");
     require(ld::version_patch == 0, "watch version patch should match project version");
     require(ld::to_string(ld::event_kind::created) == "created", "event kind should stringify");
     require(ld::to_string(ld::path_type::directory) == "directory", "path type should stringify");

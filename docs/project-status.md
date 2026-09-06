@@ -1,38 +1,41 @@
 # Project Status
 
-This document is the implementation ledger for the current repository state.
-The README stays public-facing; detailed progress and caveats live here.
+This document summarizes what LinuxDesktop2026 supports today and what remains
+experimental or planned. It is the current release-support page, not a changelog.
 
-## Current Stage
+## Current Release
 
-LinuxDesktop2026 is in prototype hardening, FlavorTest review, and maintained
-consumer validation. The code is useful for evaluating API shape and platform
-boundaries, but it is not a production-stable release.
+LinuxDesktop2026 `0.2.0` is a public prototype release. The code is useful for
+evaluating API shape, platform boundaries, and early integration work, but it is
+not production-stable and does not promise `1.0` source or binary compatibility.
 
 ## Status Legend
 
-- `done`: implemented prototype behavior with local tests or documentation.
-- `active`: implementation or extraction is underway.
-- `blocked`: waiting for evidence before it can be treated as validated.
-- `research`: parked until the activation gate is met.
+- `supported prototype`: implemented behavior with tests, examples, and public
+  docs, still allowed to change in later `0.x` releases.
+- `experimental`: usable for proof integrations, but not ready to describe as a
+  stable module contract.
+- `research`: parked until repeated source or consumer evidence justifies API
+  design.
 
 ## Module Status
 
 | Status | Module | Current state |
 | --- | --- | --- |
-| `done` | `ld_core` | Shared C++ diagnostic vocabulary and CMake interface target. |
-| `active` | `ld_settings` | Settings/config sample with preview-only root resolution, explicit root creation, config-default copying, ordered writes, backup files, validation before commit, config layers, opt-in durable writes, and explicit diagnostics that atomic replacement does not protect multi-process read-modify-write flows from lost updates. Desktop and migration ownership has moved out. |
-| `active` | `ld_paths` | Public C++ and C prototype for non-mutating standard root resolution, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, deterministic environment hooks, and opt-in directory creation. |
-| `active` | `ld_watch` | Public C++ watcher prototype with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded pull delivery, recursive-watch diagnostics, and deadline-scheduled settled-file coalescing by path. |
-| `active` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy. ADR 0015 scopes the next expansion around standards-backed registration artifacts, a preferred desktop-bundle path, individual effect calls, activation plans, uninstall cleanup reports, and Desktop Flavor validation for GNOME, KDE, Xfce, bare window-manager sessions, and Windows 10/11. |
-| `active` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and directories containing regular files/subdirectories; symlinks, special files, ownership, permissions, timestamps, xattrs, ACLs, sparse extents, and hard-link topology are not replicated as filesystem metadata. App-settings Registry snapshot/import/export compatibility is present; broader rollback and adversarial hardening remain before ship-candidate status. |
-| `active` | Maintained consumer proof | The Notepad++ proof branch exists locally, tracks its private GitHub remote, has an observed green manual settings-proof workflow, and now has local desktop-registration proof changes with an upstream-following check. Keep the exact branch, remote, commit, CI, and maintenance evidence in `docs/consumer-branches/notepadpp-settings-proof.md`; this status page reports only the current gate state. |
+| `supported prototype` | `ld_core` | Shared C++ diagnostic vocabulary and CMake interface target. |
+| `supported prototype` | `ld_settings` | Settings/config roots, explicit root creation, config-default copying, ordered writes, backup files, validation before commit, config layers, opt-in durable writes, versioned whole-file commits, and clear diagnostics for lost-update limitations. Desktop and migration ownership has moved out. |
+| `supported prototype` | `ld_paths` | Public C++ and C API for non-mutating standard root resolution, executable/resource/install roots, candidate reports, path lists, typed plugin path sets, deterministic environment hooks, and opt-in directory creation. |
+| `supported prototype` | `ld_root` | Root-topology layer over `ld_paths` for portable roots, named roots, component roots, static `named_root_handle` lookup, and `request_builder` construction. |
+| `supported prototype` | `ld_watch` | Public C++ watcher API with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded pull delivery, recursive-watch diagnostics, and deadline-scheduled settled-file coalescing by path. |
+| `experimental` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy. Broader desktop bundles, activation plans, cleanup reports, icons, MIME/default-app/protocol handling, and desktop-session validation remain experimental. |
+| `experimental` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and verified directory-tree moves within explicit metadata limits. App-settings Registry snapshot/import/export compatibility is present through a maintained JSON parser and a narrow schema. |
+| `experimental` | Maintained consumer proof | The Notepad++ proof branch exists locally, tracks its private GitHub remote, has an observed green manual settings-proof workflow, and has local desktop-registration proof changes with an upstream-following check. Exact branch, remote, commit, CI, and maintenance evidence live in `docs/consumer-branches/notepadpp-settings-proof.md`. |
 
 ## 0.2.0 Support Matrix
 
-`0.2.0` is the next public prototype milestone, not a production-stable release.
-It should make the support line easier to follow without expanding the project
-promise beyond current evidence.
+`0.2.0` is a public prototype support line, not a production-stable release. It
+clarifies what can be tried today without expanding the project promise beyond
+current evidence.
 
 | Area | `0.2.0` support line |
 | --- | --- |
@@ -46,7 +49,7 @@ promise beyond current evidence.
 | Parser contract | Registry `.reg` compatibility remains a scoped app-settings subset. Registry JSON snapshot parsing must use a maintained JSON parser while preserving the narrow `linuxdesktop.settings.registry.snapshot.v1` schema. |
 | Watcher performance | Keep the current watcher path value API through `0.2.0`; local native Linux evidence does not show path construction dominating watcher cost. Windows native measurements or maintained-consumer data can reopen that after the release. |
 | Diagnostics and stringification | Keep module enum `to_string` declarations with out-of-line definitions, and keep `ld_core` diagnostic helpers plus named `ld_paths`/`ld_watch` diagnostic-code constants header-defined through `0.2.0`. Release-candidate hardening may move or generate tables if evidence justifies it. |
-| Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and CI coverage reporting should be visible before `0.2.0`. |
+| Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and CI coverage reporting are part of the visible release evidence. |
 | Contributor baseline | A `.clang-format` baseline exists for new changes. CI formatting enforcement is deferred until a separate baseline-format pass. Governance/onboarding work remains important but does not block the tag. |
 
 ## Validation Status
@@ -54,11 +57,12 @@ promise beyond current evidence.
 - Main unit and smoke tests cover settings, paths, desktop, migration, watcher,
   C ABI reports, Rust FFI smoke where `rustc` is available, and install-tree
   consumption.
-- Local review-hardening evidence now includes coverage instrumentation,
-  deterministic write failure-mode tests, and bounded watcher performance
-  measurements. See `docs/validation-evidence.md`.
+- Local evidence includes coverage instrumentation, deterministic write
+  failure-mode tests, and bounded watcher performance measurements. See
+  `docs/validation-evidence.md`.
 - FlavorTests cover Notepad++, PrusaSlicer, OpenRGB, KeePassXC, qBittorrent,
-  OBS, KiCad, Audacity, FreeCAD, Walnut, and OpenIPC Dashboard.
+  OBS, KiCad, Audacity, FreeCAD, Walnut, OpenIPC Dashboard, Gearcoleco, CtrlrX,
+  SmartServoFramework, KickCAT, Amiberry, Endless Sky, and Minifox.
 - FlavorTests now use shared platform-path fixtures instead of product-local
   `#if WIN32` path branches.
 - CI covers Ubuntu, Fedora, Windows/MSVC, shared-library Linux builds,
@@ -82,7 +86,7 @@ promise beyond current evidence.
 - Windows compatibility work should happen through LinuxDesktop2026 concepts,
   not through scattered flavor-test or product-test conditionals.
 
-## Remaining Validation Before Public Prototype Announcement
+## Planned Validation
 
 - Observe green Windows CI after the platform-path fixture cleanup.
 - Keep recording rebase/dependency/include/link friction for the Notepad++
@@ -99,11 +103,9 @@ promise beyond current evidence.
 - Keep `ld_watch` native Windows verification green and expand capability fields
   only when tests or maintained consumers prove a need.
 
-## Ticket State
+## Planned Modules
 
-The active review-hardening ticket order is tracked in
-`.scratch/review-hardening/ORDER.md`. Historical ticket numbers are stable, but
-execution order follows that file rather than numeric order.
-
-There is no current review-hardening ticket blocking the `0.2.0` support line.
-See `ORDER.md` for the live ticket list.
+`ld_process`, `ld_ipc`, `ld_dynlib`, service/daemon lifecycle helpers, and
+GUI/windowing, clipboard, drag-and-drop, and common-dialog helpers are
+research-only. They need repeated source-anchored integration evidence and an
+existing-tool decision before they become active LinuxDesktop2026 modules.

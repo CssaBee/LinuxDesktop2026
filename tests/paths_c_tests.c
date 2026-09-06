@@ -128,7 +128,7 @@ int main(void)
     if (ld_paths_version_major() != LD_PATHS_VERSION_MAJOR ||
         ld_paths_version_minor() != LD_PATHS_VERSION_MINOR ||
         ld_paths_version_patch() != LD_PATHS_VERSION_PATCH ||
-        strcmp(ld_paths_version_string(), "0.1.0") != 0 ||
+        strcmp(ld_paths_version_string(), "0.2.0") != 0 ||
         strcmp(ld_paths_severity_name(LD_PATHS_SEVERITY_WARNING), "warning") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_CONFIG), "config") != 0 ||
         strcmp(ld_paths_path_family_name(LD_PATHS_FAMILY_TEMPLATES), "templates") != 0 ||

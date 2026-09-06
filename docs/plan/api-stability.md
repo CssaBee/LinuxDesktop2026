@@ -1,8 +1,7 @@
 # API And ABI Stability
 
-LinuxDesktop2026 is currently `0.1.0`. The next planned milestone is `0.2.0`,
-which remains a public prototype milestone rather than a production-stable or
-release-candidate line.
+LinuxDesktop2026 `0.2.0` is a public prototype release. It is not a
+production-stable or release-candidate line.
 
 ## Current Promise
 
@@ -114,24 +113,17 @@ process environment or OS APIs, platform defaults, then built-in fallback. The
 selected report uses `LD_PATHS_SOURCE_PLATFORM_DEFAULT` when a default-derived
 candidate wins.
 
-Task 04 adds runtime root selection to `ld_paths` and settings-owned
-home/environment injection controls to `ld_settings` root options. These are
-pre-1.0 C and C++ surface changes made to correct the ADR 0012 module boundary;
-existing C enum values are preserved and new C option fields are appended.
+Runtime root selection belongs to `ld_paths`; settings-owned home/environment
+injection controls live in `ld_settings` root options. The path API uses direct
+candidate vocabulary for resolver results, path-list parsing, plugin path sets,
+and executable/resource/install locations instead of treating every result as
+an ordinary application path family.
 
-Task 45 removes the synthetic plugin-search path family and gives path-list and
-plugin path-set reports direct candidate vocabulary. Task 46 removes
-executable, executable-directory, install-prefix, and resources from the
-ordinary path-family model and reports them as `location_role` values instead.
-These are intentional pre-1.0 C and C++ breaking changes: no compatibility
-aliases or duplicate selected-path entries remain.
-
-Task 19 moves C++ autostart and managed/enforced policy implementation to
-`ld_desktop`. Task 20 moves migration planning/execution and app-settings
-Registry compatibility to `ld_migration`. `ld_settings` no longer exposes those
-compatibility helpers. Stable ownership for these responsibilities is
-`ld_migration` and `ld_desktop`. Existing C ABI entry points remain
-best-effort-compatible where practical until release-candidate status.
+Autostart and managed/enforced policy belong to `ld_desktop`. Migration
+planning/execution and app-settings Registry compatibility belong to
+`ld_migration`. `ld_settings` no longer exposes those compatibility helpers.
+Existing C ABI entry points remain best-effort-compatible where practical until
+release-candidate status.
 
 For `0.2.0`, `ld_root::options::create_directories`,
 `ld_settings::root_options::create_directories`,
