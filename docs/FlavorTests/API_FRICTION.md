@@ -129,11 +129,22 @@ Fit:
   executable resource root, controlled test environment, portable marker policy,
   and a machine-local log root.
 - `write_common_config()` fits the ordinary `qBittorrent.ini` save path.
+- `linuxdesktop::desktop::desktop_bundle` fits qBittorrent's launcher,
+  optional autostart, `.torrent` MIME declaration, torrent default-app intent,
+  `magnet:` handler, icon install, activation follow-up, and uninstall cleanup
+  reporting through one product adapter call.
 
 Friction:
 
 - Log placement is a named root request and lookup pair. The lookup is still
   string keyed.
+- Desktop registration still requires product translation for what the user
+  sees as one "integrate qBittorrent with the desktop" setting. The adapter
+  maps staged artifacts, unsupported Windows-shaped mappings, activation
+  follow-up, and cleanup statuses into qBittorrent-owned result fields.
+- Managed policy is useful validation pressure for desktop registration, but
+  the product should not promise active policy state from staged dconf defaults
+  and lock files. The adapter keeps the dconf activation diagnostic explicit.
 
 Boundary notes:
 
@@ -143,6 +154,11 @@ Boundary notes:
   repeats the same shape.
 - `SpecialFolder` stays product-shaped and does not expose LinuxDesktop2026
   root names.
+- Desktop Flavor validation now runs qBittorrent registration across
+  GNOME-like, KDE-like, Xfce-like, bare window-manager, and Windows-shaped
+  scenarios. The assertions stay on staged artifacts, capability limits,
+  activation plans, cleanup reports, and diagnostics rather than live shell,
+  file-manager, or single-instance behavior.
 
 ## KeePassXC
 
@@ -249,6 +265,9 @@ Fit:
   `write_json_file()` adapter.
 - `linuxdesktop::desktop` fits autostart application as long as
   `AutostartUpdate` remains the public result.
+- OpenRGB remains the small desktop-effect counterexample: it needs only
+  autostart, so individual `ld_desktop` calls are cheaper than constructing a
+  full bundle.
 
 Friction:
 

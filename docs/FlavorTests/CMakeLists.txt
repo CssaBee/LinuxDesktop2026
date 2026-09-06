@@ -59,6 +59,7 @@ add_flavor_product(keepassxc
     LinuxDesktop2026::ld_root
     LinuxDesktop2026::ld_settings)
 add_flavor_product(qbittorrent
+    LinuxDesktop2026::ld_desktop
     LinuxDesktop2026::ld_root
     LinuxDesktop2026::ld_settings)
 add_flavor_product(obs

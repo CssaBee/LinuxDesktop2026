@@ -181,20 +181,35 @@ void controller_configuration_is_saved_under_profile_manager_root()
 void linux_autostart_is_planned_as_a_desktop_effect()
 {
     const auto root = test_root();
-    const auto autostart_root = root / "autostart";
+    struct flavor_case {
+        const char* name;
+        const char* current_desktop;
+    };
 
-    const auto result = flavor_tests::openrgb::enable_autostart(
-        root / "bin" / "OpenRGB",
-        {"--startminimized", "--profile", "daily"},
-        root,
-        autostart_root);
+    const flavor_case flavors[] = {
+        {"xdg_full_gnome", "ubuntu:GNOME"},
+        {"xdg_full_kde", "KDE"},
+        {"xdg_light_xfce", "XFCE"},
+        {"xdg_minimal_bare_wm", "i3"},
+    };
 
-    require(result.ok, "autostart planning should succeed");
-    require(result.dry_run, "autostart should be dry-run in tests");
-    require(result.desktop_file.has_value(), "autostart target should be reported");
-    require(*result.desktop_file == autostart_root / "OpenRGB.desktop",
-        "desktop file path should follow the override directory");
-    require(!std::filesystem::exists(*result.desktop_file), "dry-run should not write the desktop file");
+    for (const auto& flavor : flavors) {
+        (void)flavor.current_desktop;
+        const auto autostart_root = root / "desktop-flavors" / flavor.name / "autostart";
+
+        const auto result = flavor_tests::openrgb::enable_autostart(
+            root / "bin" / "OpenRGB",
+            {"--startminimized", "--profile", "daily"},
+            root,
+            autostart_root);
+
+        require(result.ok, "autostart planning should succeed across XDG desktop flavors");
+        require(result.dry_run, "autostart should be dry-run in tests");
+        require(result.desktop_file.has_value(), "autostart target should be reported");
+        require(*result.desktop_file == autostart_root / "OpenRGB.desktop",
+            "desktop file path should follow the override directory");
+        require(!std::filesystem::exists(*result.desktop_file), "dry-run should not write the desktop file");
+    }
 }
 
 void linux_autostart_disable_is_the_same_product_seam()
