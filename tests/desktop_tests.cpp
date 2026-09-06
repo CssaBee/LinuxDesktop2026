@@ -187,6 +187,13 @@ ld::desktop_entry desktop_entry_for_tests()
     return entry;
 }
 
+ld::desktop_entry desktop_entry_for_tests(const std::filesystem::path& executable)
+{
+    auto entry = desktop_entry_for_tests();
+    entry.executable = executable;
+    return entry;
+}
+
 ld::icon_entry icon_entry_for_tests(const std::filesystem::path& source)
 {
     ld::icon_entry entry;
@@ -210,9 +217,10 @@ ld::desktop_bundle desktop_bundle_for_tests(const std::filesystem::path& icon_so
     ld::desktop_bundle bundle;
     bundle.scope = ld::registration_scope::user;
     bundle.autostart = autostart_entry_for_tests();
+    bundle.autostart->executable = root / "ld-desktop-test";
 
     ld::desktop_entry_metadata metadata;
-    const auto entry = desktop_entry_for_tests();
+    const auto entry = desktop_entry_for_tests(root / "ld-desktop-test");
     metadata.id = entry.id;
     metadata.display_name = entry.display_name;
     metadata.generic_name = entry.generic_name;
@@ -647,7 +655,7 @@ void windows_registration_dry_runs_report_limits_without_mutation()
     require(has_diagnostic(protocol_report.diagnostics, "desktop.windows.url-protocol.registry-layer-required"),
         "Windows URL protocol dry-run should name the Registry-layer dependency");
 
-    auto global_entry = desktop_entry_for_tests();
+    auto global_entry = desktop_entry_for_tests(std::filesystem::temp_directory_path() / "ld-desktop-test");
     global_entry.user_scope = false;
     const auto denied = ld::apply_desktop_entry(global_entry, options);
     require(!denied.ok, "Windows global app identity writes should require explicit global permission");
