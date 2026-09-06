@@ -1,7 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/settings.hpp"
-
 #include <cstddef>
 #include <filesystem>
 #include <map>

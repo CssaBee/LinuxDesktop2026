@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `82` - Reduce Bus Factor And Write Governance
 
 ## 0.2.0 Release Gate
@@ -20,11 +19,11 @@ There is no current review-hardening ticket blocking the `0.2.0` support line.
 These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
 
-- `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `82` - Reduce Bus Factor And Write Governance
 
 ## Implemented
 
+- `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `109` - Document Root Builder And Raw Options Selection Rule
 - `108` - Reduce Named-Root String Lookup Friction
 - `107` - Add Minifox Portable Launcher FlavorTest Probe

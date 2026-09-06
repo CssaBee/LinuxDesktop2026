@@ -1,5 +1,8 @@
 #include "kicad_flavor.hpp"
 
+#include "linuxdesktop/root.hpp"
+#include "linuxdesktop/settings.hpp"
+
 #include <filesystem>
 #include <functional>
 #include <sstream>

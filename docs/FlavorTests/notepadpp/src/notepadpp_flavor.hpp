@@ -1,7 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/settings.hpp"
-
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -22,6 +20,21 @@ struct startup_environment {
     bool allow_cloud_for_local_config = false;
 };
 
+enum class diagnostic_level {
+    info,
+    warning,
+    error
+};
+
+struct startup_diagnostic {
+    diagnostic_level level = diagnostic_level::info;
+    std::string code;
+    std::string message;
+    std::filesystem::path path;
+    bool should_log = false;
+    bool should_prompt_user = false;
+};
+
 struct loaded_parameters {
     std::filesystem::path npp_path;
     std::filesystem::path user_path;
@@ -34,7 +47,7 @@ struct loaded_parameters {
     bool is_local = false;
     bool command_line_override_active = false;
     bool cloud_override_active = false;
-    std::vector<linuxdesktop::diagnostic> diagnostics;
+    std::vector<startup_diagnostic> diagnostics;
 };
 
 struct command_shortcut {

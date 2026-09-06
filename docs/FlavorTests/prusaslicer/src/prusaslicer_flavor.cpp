@@ -1,6 +1,7 @@
 #include "prusaslicer_flavor.hpp"
 
 #include "linuxdesktop/migration.hpp"
+#include "linuxdesktop/settings.hpp"
 
 #include <fstream>
 #include <iterator>
@@ -71,6 +72,11 @@ OldDatadirMigration to_old_datadir_migration(const ldm::migration_plan& plan)
     return migration;
 }
 
+ld::config_file to_config_file(const VendorProfileFile& profile)
+{
+    return {profile.name, profile.model_name, profile.required};
+}
+
 } // namespace
 
 bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
@@ -78,7 +84,9 @@ bool PrusaConfigSnapshot::load_config_bundle(const AppConfig& config)
     ld::config_defaults_options defaults;
     defaults.model_root = config.resources_dir;
     defaults.target_root = config.config_dir;
-    defaults.files = config.vendor_profiles;
+    for (const auto& profile : config.vendor_profiles) {
+        defaults.files.push_back(to_config_file(profile));
+    }
     const auto config_defaults_report = ld::ensure_config_defaults(defaults);
     load_result_ = {
         false,
@@ -116,9 +124,7 @@ OldDatadirCheck PrusaConfigSnapshot::check_old_linux_datadir(const AppConfig& co
     return check;
 }
 
-SaveResult PrusaConfigSnapshot::save_snapshot(
-    const Snapshot& snapshot,
-    ld::validation_callback validate) const
+SaveResult PrusaConfigSnapshot::save_snapshot(const Snapshot& snapshot, SnapshotValidation validate) const
 {
     return to_save_result(ld::write_common_config({snapshot.path, snapshot.xml, true}, std::move(validate)));
 }

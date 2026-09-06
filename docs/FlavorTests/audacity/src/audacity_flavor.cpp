@@ -1,5 +1,7 @@
 #include "audacity_flavor.hpp"
 
+#include "linuxdesktop/settings.hpp"
+
 #include <fstream>
 #include <utility>
 

@@ -6,22 +6,22 @@ translate them into product-owned vocabulary.
 
 **Blocked by:** 109 - Document Root Builder And Raw Options Selection Rule.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Inventory FlavorTest public headers for `linuxdesktop::` types in structs,
+- [x] Inventory FlavorTest public headers for `linuxdesktop::` types in structs,
   callbacks, parameters, and return values that pretend to be product-facing
   adapter surfaces.
-- [ ] Replace leaked library types with product-owned types where doing so
+- [x] Replace leaked library types with product-owned types where doing so
   makes the example more honest without bloating the test harness.
-- [ ] Keep private implementation files free to use LinuxDesktop2026 types
+- [x] Keep private implementation files free to use LinuxDesktop2026 types
   directly.
-- [ ] Prioritize the PrusaSlicer leak of
+- [x] Prioritize the PrusaSlicer leak of
   `linuxdesktop::settings::config_file` and `validation_callback`.
-- [ ] Recheck Notepad++ result surfaces where fields still mirror copied
+- [x] Recheck Notepad++ result surfaces where fields still mirror copied
   defaults, validated write backup, dry-run imports, registration statuses, or
   activation follow-up; update notes if the mirroring is acceptable product
   evidence rather than leakage.
-- [ ] Update `docs/FlavorTests/API_FRICTION.md` and examples after the audit.
+- [x] Update `docs/FlavorTests/API_FRICTION.md` and examples after the audit.
 
 ## Evidence Anchor
 

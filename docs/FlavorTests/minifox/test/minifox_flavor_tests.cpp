@@ -106,9 +106,9 @@ void manual_profile_paths_override_auto_candidates()
     expect(plan.selected_comfyui == manual_comfyui, "manual ComfyUI path is selected");
     expect(plan.selected_python == manual_python, "manual Python path is selected");
     expect(plan.tool_candidates.size() == 2, "manual profile still reports both tool candidates");
-    expect(plan.tool_candidates[0].source == linuxdesktop::paths::candidate_source::explicit_option,
+    expect(plan.tool_candidates[0].source == minifox::ToolCandidateSource::ProfileOverride,
         "ComfyUI candidate reports manual profile source");
-    expect(plan.tool_candidates[1].source == linuxdesktop::paths::candidate_source::explicit_option,
+    expect(plan.tool_candidates[1].source == minifox::ToolCandidateSource::ProfileOverride,
         "Python candidate reports manual profile source");
 }
 

@@ -205,6 +205,9 @@ Report translation rule:
 - Rich LinuxDesktop2026 reports are appropriate inside adapter code,
   diagnostic consoles, tests that exercise mechanism details, and applications
   that intentionally expose LinuxDesktop2026 as their platform layer.
+- Product-facing FlavorTest headers should not expose LinuxDesktop2026 headers
+  or concrete library types unless the product is explicitly presenting
+  LinuxDesktop2026 as its public platform layer.
 - Product-shaped methods should translate those reports before returning. A
   Notepad++-style save method should return a Notepad++-shaped save result, an
   OBS-style C seam should keep integer and caller-owned-buffer conventions, and

@@ -781,6 +781,10 @@ the limit: resolving paths is not the same as loading plugins.
 - Raw migration plans and rich diagnostics should usually stay internal to
   adapters. Product-facing methods should return product-shaped save results,
   migration prompts, warnings, or logs.
+- Product-facing headers in FlavorTests should expose product-owned types.
+  LinuxDesktop2026 headers and concrete report/config/candidate types belong in
+  private adapter implementation files unless the product intentionally exposes
+  LinuxDesktop2026 as its platform layer.
 - Counter-examples matter. OBS, Walnut, FreeCAD, KiCad project backups, and
   OpenIPC Dashboard service profiles all show places where the simplest natural
   solution is to keep product code in charge and use LinuxDesktop2026 narrowly,

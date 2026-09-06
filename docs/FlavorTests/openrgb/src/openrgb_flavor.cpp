@@ -2,6 +2,7 @@
 
 #include "linuxdesktop/desktop.hpp"
 #include "linuxdesktop/paths.hpp"
+#include "linuxdesktop/settings.hpp"
 
 #include <fstream>
 #include <iterator>

@@ -1,6 +1,7 @@
 #include "obs_flavor.hpp"
 
 #include "linuxdesktop/paths.hpp"
+#include "linuxdesktop/settings.hpp"
 
 #include <cstring>
 #include <utility>

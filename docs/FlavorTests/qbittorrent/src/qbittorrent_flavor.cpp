@@ -1,6 +1,8 @@
 #include "qbittorrent_flavor.hpp"
 
 #include "linuxdesktop/desktop.hpp"
+#include "linuxdesktop/root.hpp"
+#include "linuxdesktop/settings.hpp"
 
 #include <algorithm>
 #include <utility>

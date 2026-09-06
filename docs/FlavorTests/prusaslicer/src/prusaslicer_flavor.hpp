@@ -1,19 +1,24 @@
 #pragma once
 
-#include "linuxdesktop/settings.hpp"
-
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace flavor_tests::prusaslicer {
 
+struct VendorProfileFile {
+    std::string name;
+    std::string model_name;
+    bool required = true;
+};
+
 struct AppConfig {
     std::filesystem::path resources_dir;
     std::filesystem::path config_dir;
     std::filesystem::path old_linux_datadir;
-    std::vector<linuxdesktop::settings::config_file> vendor_profiles;
+    std::vector<VendorProfileFile> vendor_profiles;
 };
 
 struct Snapshot {
@@ -64,14 +69,14 @@ struct OldDatadirCheck {
     OldDatadirMigration migration;
 };
 
+using SnapshotValidation = std::function<bool(const std::filesystem::path&, std::string&)>;
+
 class PrusaConfigSnapshot {
 public:
     bool load_config_bundle(const AppConfig& config);
     OldDatadirCheck check_old_linux_datadir(const AppConfig& config) const;
 
-    SaveResult save_snapshot(
-        const Snapshot& snapshot,
-        linuxdesktop::settings::validation_callback validate) const;
+    SaveResult save_snapshot(const Snapshot& snapshot, SnapshotValidation validate) const;
     SaveResult save_app_config(const AppConfigStore& config) const;
     SaveResult save_recent_projects(
         const std::filesystem::path& config_dir,

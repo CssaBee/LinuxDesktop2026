@@ -83,10 +83,10 @@ Fit:
   follow-up, and cleanup reporting.
 - `ld_core` provides product-diagnostic translation helpers so adapters can map
   shared severity, codes, messages, related paths, and diagnostic handling flags
-  into product-owned diagnostics without hand-copying each report shape.
-  `"portable-denied-privileged-install"` becomes a Notepad++ diagnostic with
-  `handling.prompt_user = true`, so the adapter does not need a parallel
-  disposition vocabulary or diagnostic-code table.
+  into product-owned diagnostics without hand-copying each report shape. The
+  Notepad++ FlavorTest now returns `startup_diagnostic` rather than
+  `linuxdesktop::diagnostic`, while preserving the prompt/log handling bits the
+  product would need.
 
 Friction:
 
@@ -115,6 +115,12 @@ Leakage:
   validated write backup, and dry-run import actions. That is honest evidence,
   but still asks the product adapter to translate library mechanics into
   application behavior names.
+- The in-tree FlavorTest startup state now translates diagnostics into
+  Notepad++-owned `startup_diagnostic` values. The remaining result fields that
+  mirror backup paths, copied defaults, dry-run imports, registration statuses,
+  and activation follow-up are acceptable evidence because those are the
+  product behaviors an installer, settings dialog, or startup warning would
+  present.
 - `notepadpp_desktop_registration.hpp` keeps LinuxDesktop2026 headers out of the
   product-facing surface, but its result still mirrors registration statuses and
   activation follow-up because those are the behaviors a Notepad++ installer or
@@ -266,18 +272,17 @@ Fit:
 
 Friction:
 
-- `config_defaults_options` is still LinuxDesktop2026-shaped at a point where the
-  product thinks in vendor bundles, model roots, target roots, and merge
-  metadata.
+- `config_defaults_options` is still LinuxDesktop2026-shaped inside the adapter,
+  but `prusaslicer_flavor.hpp` now exposes PrusaSlicer-owned vendor profile
+  descriptors and snapshot validation callbacks.
 - Vendor profile metadata is product-specific enough that a generic helper
   should not try to hide parsing or merge policy.
 
 Leakage:
 
-- `prusaslicer_flavor.hpp` still exposes `linuxdesktop::settings::config_file`
-  and `validation_callback` in product-facing FlavorTest types. That keeps the
-  slice shorter, but a real adapter should translate those to PrusaSlicer-owned
-  types.
+- No product-facing PrusaSlicer FlavorTest type currently exposes a
+  LinuxDesktop2026 type. The implementation file translates
+  `VendorProfileFile` to `settings::config_file` at the adapter boundary.
 
 ## OpenRGB
 
@@ -524,6 +529,9 @@ Friction:
   candidate selection. The FlavorTest currently keeps those candidates in
   Minifox vocabulary and uses LinuxDesktop2026 only to resolve the roots those
   candidates hang from.
+- Tool candidate source reporting is now Minifox-owned
+  `ToolCandidateSource`, not `ld_paths::candidate_source`; path-source details
+  stay private to root/path resolution diagnostics.
 - Process launch, stop, monitor, and live console capture are a visible future
   pressure point, but this probe is not enough evidence to add `ld_process`.
 

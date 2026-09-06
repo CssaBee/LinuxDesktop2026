@@ -1,7 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/paths.hpp"
-
 #include <filesystem>
 #include <map>
 #include <optional>
@@ -21,6 +19,11 @@ enum class RuntimeKind {
     Rocm,
     HipSdk,
     Zluda
+};
+
+enum class ToolCandidateSource {
+    ProfileOverride,
+    PortablePackage
 };
 
 struct PortablePackageEnvironment {
@@ -44,7 +47,7 @@ struct LaunchProfile {
 
 struct ToolCandidate {
     std::string name;
-    linuxdesktop::paths::candidate_source source = linuxdesktop::paths::candidate_source::executable_relative;
+    ToolCandidateSource source = ToolCandidateSource::PortablePackage;
     std::filesystem::path path;
     bool selected = false;
 };

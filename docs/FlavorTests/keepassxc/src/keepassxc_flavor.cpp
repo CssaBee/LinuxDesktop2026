@@ -1,6 +1,8 @@
 #include "keepassxc_flavor.hpp"
 
 #include "linuxdesktop/migration.hpp"
+#include "linuxdesktop/root.hpp"
+#include "linuxdesktop/settings.hpp"
 
 #include <fstream>
 #include <iterator>

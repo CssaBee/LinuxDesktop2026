@@ -1,5 +1,8 @@
 #include "notepadpp_flavor.hpp"
 
+#include "linuxdesktop/root.hpp"
+#include "linuxdesktop/settings.hpp"
+
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -115,6 +118,40 @@ SaveResult to_save_result(const linuxdesktop::settings::write_report& report)
     return {report.ok, report.backup_path};
 }
 
+diagnostic_level to_diagnostic_level(linuxdesktop::severity level)
+{
+    switch (level) {
+    case linuxdesktop::severity::info:
+        return diagnostic_level::info;
+    case linuxdesktop::severity::warning:
+        return diagnostic_level::warning;
+    case linuxdesktop::severity::error:
+        return diagnostic_level::error;
+    }
+    return diagnostic_level::error;
+}
+
+startup_diagnostic to_startup_diagnostic(const linuxdesktop::diagnostic& diagnostic)
+{
+    const auto handling = linuxdesktop::handling_for_diagnostic(diagnostic);
+    return {
+        to_diagnostic_level(diagnostic.level),
+        diagnostic.code,
+        diagnostic.message,
+        diagnostic.path,
+        handling.log,
+        handling.prompt_user,
+    };
+}
+
+template <typename Range>
+void append_startup_diagnostics(std::vector<startup_diagnostic>& target, const Range& diagnostics)
+{
+    for (const auto& diagnostic : diagnostics) {
+        target.push_back(to_startup_diagnostic(diagnostic));
+    }
+}
+
 } // namespace
 
 bool NppParameters::load(const startup_environment& environment)
@@ -154,7 +191,8 @@ bool NppParameters::load(const startup_environment& environment)
     state_.is_local = report.portable_root_active;
     state_.command_line_override_active = report.app_root_override_active;
     state_.cloud_override_active = report.user_config_override_active;
-    state_.diagnostics = report.diagnostics;
+    state_.diagnostics.clear();
+    append_startup_diagnostics(state_.diagnostics, report.diagnostics);
     state_.config_path = state_.user_path / "config.xml";
     state_.shortcuts_path = state_.user_path / "shortcuts.xml";
 
@@ -176,10 +214,7 @@ bool NppParameters::loadConfigFiles()
 
     const linuxdesktop::settings::config_defaults_report defaults_report =
         linuxdesktop::settings::ensure_config_defaults(defaults);
-    state_.diagnostics.insert(
-        state_.diagnostics.end(),
-        defaults_report.diagnostics.begin(),
-        defaults_report.diagnostics.end());
+    append_startup_diagnostics(state_.diagnostics, defaults_report.diagnostics);
 
     bool is_all_loaded = true;
     is_all_loaded = loadXml(langs_xml_, state_.user_path / "langs.xml") && is_all_loaded;
@@ -237,7 +272,7 @@ bool NppParameters::loadSessionWithBackupRecovery(bool remember_last_session)
         XmlDocument restored;
         return loadXml(restored, path);
     });
-    state_.diagnostics.insert(state_.diagnostics.end(), report.diagnostics.begin(), report.diagnostics.end());
+    append_startup_diagnostics(state_.diagnostics, report.diagnostics);
 
     return report.ok && loadXml(session_xml_, session_path);
 }

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "linuxdesktop/paths.hpp"
-#include "linuxdesktop/settings.hpp"
-
 #include <filesystem>
 #include <map>
 #include <optional>

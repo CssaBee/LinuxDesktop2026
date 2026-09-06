@@ -39,7 +39,7 @@ std::string profile_file_stem(const std::string& name)
 
 ToolCandidate make_candidate(
     std::string name,
-    linuxdesktop::paths::candidate_source source,
+    ToolCandidateSource source,
     std::filesystem::path path,
     bool selected)
 {
@@ -188,14 +188,12 @@ LaunchPlan LauncherPlanner::plan(
     plan.selected_python = profile.python_path.value_or(portable_python);
     plan.tool_candidates.push_back(make_candidate(
         "ComfyUI",
-        profile.comfyui_path ? linuxdesktop::paths::candidate_source::explicit_option :
-                                linuxdesktop::paths::candidate_source::executable_relative,
+        profile.comfyui_path ? ToolCandidateSource::ProfileOverride : ToolCandidateSource::PortablePackage,
         plan.selected_comfyui,
         true));
     plan.tool_candidates.push_back(make_candidate(
         "python",
-        profile.python_path ? linuxdesktop::paths::candidate_source::explicit_option :
-                               linuxdesktop::paths::candidate_source::executable_relative,
+        profile.python_path ? ToolCandidateSource::ProfileOverride : ToolCandidateSource::PortablePackage,
         plan.selected_python,
         true));
 
