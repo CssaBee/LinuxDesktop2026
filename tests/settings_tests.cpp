@@ -501,13 +501,34 @@ void resolves_settings_roots_across_separated_platform_families()
         "session root should report its state-root ownership");
     require(report.roots.plugin_config == report.roots.config / "plugins" / "Config",
         "plugin config root should report its config-root ownership");
-    require(std::filesystem::is_directory(report.roots.config), "config root should be created");
-    require(std::filesystem::is_directory(report.roots.data), "data root should be created");
-    require(std::filesystem::is_directory(report.roots.state), "state root should be created");
-    require(std::filesystem::is_directory(report.roots.cache), "cache root should be created");
-    require(std::filesystem::is_directory(report.roots.session), "session root should be created");
-    require(std::filesystem::is_directory(report.roots.plugin_config), "plugin config root should be created");
-    require(std::filesystem::is_directory(report.roots.runtime), "runtime root should be created");
+    require(!std::filesystem::exists(report.roots.config), "default settings resolution should not create config root");
+    require(!std::filesystem::exists(report.roots.data), "default settings resolution should not create data root");
+    require(!std::filesystem::exists(report.roots.state), "default settings resolution should not create state root");
+    require(!std::filesystem::exists(report.roots.cache), "default settings resolution should not create cache root");
+    require(!std::filesystem::exists(report.roots.session), "default settings resolution should not create session root");
+    require(!std::filesystem::exists(report.roots.plugin_config),
+        "default settings resolution should not create plugin config root");
+    require(!std::filesystem::exists(report.roots.runtime), "default settings resolution should not create runtime root");
+}
+
+void settings_root_creation_is_explicit_opt_in()
+{
+    const auto topology = settings_root_resolution_multi_filesystem_fixture();
+    auto options = separated_root_options(topology);
+    options.create_directories = true;
+
+    const auto report = ld::resolve_settings_roots(identity(), options);
+
+    require(!has_error_diagnostic(report.diagnostics),
+        "explicit settings root creation should resolve without error diagnostics");
+    require(std::filesystem::is_directory(report.roots.config), "explicit create should create config root");
+    require(std::filesystem::is_directory(report.roots.data), "explicit create should create data root");
+    require(std::filesystem::is_directory(report.roots.state), "explicit create should create state root");
+    require(std::filesystem::is_directory(report.roots.cache), "explicit create should create cache root");
+    require(std::filesystem::is_directory(report.roots.session), "explicit create should create session root");
+    require(std::filesystem::is_directory(report.roots.plugin_config),
+        "explicit create should create plugin config root");
+    require(std::filesystem::is_directory(report.roots.runtime), "explicit create should create runtime root");
 }
 
 void separated_roots_ignore_process_environment()
@@ -635,6 +656,7 @@ void settings_root_resolution_reports_hostile_roots()
 
     auto collision_options = separated_root_options(topology);
     collision_options.sync_config_override = file_root;
+    collision_options.create_directories = true;
     const auto collision_report = ld::resolve_settings_roots(identity(), collision_options);
 
     require(collision_report.sync_config_override_active,
@@ -698,6 +720,7 @@ void reports_path_directory_failure_for_generic_root_creation()
     options.settings_override = file_root;
     options.use_process_environment = false;
     options.home_directory = root / "home";
+    options.create_directories = true;
 
     const auto report = ld::resolve_settings_roots(identity(), options);
 
@@ -1853,6 +1876,7 @@ int main()
         {"delegates_generic_roots_to_paths_with_injected_environment", delegates_generic_roots_to_paths_with_injected_environment},
         {"delegates_platform_defaults_to_paths", delegates_platform_defaults_to_paths},
         {"resolves_settings_roots_across_separated_platform_families", resolves_settings_roots_across_separated_platform_families},
+        {"settings_root_creation_is_explicit_opt_in", settings_root_creation_is_explicit_opt_in},
         {"separated_roots_ignore_process_environment", separated_roots_ignore_process_environment},
         {"settings_overrides_resolve_across_separated_families", settings_overrides_resolve_across_separated_families},
         {"portable_roots_resolve_across_separated_families", portable_roots_resolve_across_separated_families},

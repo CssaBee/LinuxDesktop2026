@@ -88,7 +88,7 @@ struct root_options {
     bool allow_portable_root = true;
     bool deny_portable_root_in_privileged_install = false;
     bool allow_sync_config_for_portable_root = false;
-    bool create_directories = true;
+    bool create_directories = false;
     bool use_process_environment = true;
     portable_level portable = portable_level::settings_only;
 };

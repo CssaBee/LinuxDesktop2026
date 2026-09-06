@@ -80,6 +80,8 @@ void resolves_named_roots()
     const auto* logs = ld::find_named_root(report, "logs");
     require(logs != nullptr, "C++ helper should find named roots by name");
     require(logs->path == report.roots.state / "Logs", "C++ helper should return the resolved named root");
+    require(!std::filesystem::exists(report.roots.config), "default root resolution should not create config root");
+    require(!std::filesystem::exists(logs->path), "default named-root resolution should not create named roots");
 }
 
 void resolves_component_roots()
@@ -114,6 +116,7 @@ void resolves_component_roots()
     require(plugin_state != nullptr, "C++ helper should find roots inside component groups");
     require(plugin_state->path == root / "components" / "compare-plugin" / "State",
         "component root helper should return resolved component path");
+    require(!std::filesystem::exists(plugin_state->path), "default component-root resolution should not create roots");
 }
 
 void builder_preserves_options()
@@ -159,7 +162,9 @@ void helper_factories_match_explicit_request_shapes()
     require(config.purpose == ld::purpose_kind::config, "config helper should set config purpose");
     require(config.ownership == ld::ownership_kind::user_roaming, "config helper should preserve ownership");
     require(config.relative_path == "Config", "config helper should preserve relative path");
-    require(config.create, "config helper should keep create enabled by default");
+    require(!config.create, "config helper should keep create disabled by default");
+    require(ld::make_config_root_request("config", ld::ownership_kind::user_roaming, "Config", true).create,
+        "config helper should preserve explicit create opt-in");
 
     const auto cache = ld::make_cache_root_request("cache", ld::ownership_kind::ephemeral);
     require(cache.purpose == ld::purpose_kind::cache, "cache helper should set cache purpose");
@@ -278,11 +283,47 @@ void reports_root_creation_failures()
     options.app_root_override = file_root;
     options.use_process_environment = false;
     options.home_directory = root / "home";
+    options.create_directories = true;
 
     const auto report = ld::resolve_app_roots(identity(), options);
 
     require(has_diagnostic(report.diagnostics, "paths.directory.exists_as_file"),
         "root creation failures should come from ld_paths diagnostics");
+}
+
+void root_resolution_creation_is_explicit_opt_in()
+{
+    const auto root = test_root();
+    const auto app = root / "app";
+
+    ld::options preview_options;
+    preview_options.app_root_override = app;
+    preview_options.named_roots = {
+        ld::make_log_root_request("logs", ld::ownership_kind::user_local, "Logs"),
+    };
+
+    const auto preview = ld::resolve_app_roots(identity(), preview_options);
+
+    require(preview.roots.config == app, "preview should still report the resolved config root");
+    require(!std::filesystem::exists(preview.roots.config), "preview should not create the app root");
+    require(!std::filesystem::exists(preview.roots.session), "preview should not create derived session roots");
+    require(preview.named_roots.size() == 1, "preview should still report named roots");
+    require(!std::filesystem::exists(preview.named_roots[0].path), "preview should not create named roots");
+
+    ld::options create_options;
+    create_options.app_root_override = app;
+    create_options.create_directories = true;
+    create_options.named_roots = {
+        ld::make_log_root_request("logs", ld::ownership_kind::user_local, "Logs", true),
+    };
+
+    const auto created = ld::resolve_app_roots(identity(), create_options);
+
+    require(std::filesystem::is_directory(created.roots.config), "explicit create should create the app root");
+    require(std::filesystem::is_directory(created.roots.session), "explicit create should create derived session roots");
+    require(created.named_roots.size() == 1, "explicit create should still report named roots");
+    require(std::filesystem::is_directory(created.named_roots[0].path),
+        "explicit named-root create should create the named root");
 }
 
 void rejects_malformed_named_and_component_roots()
@@ -377,6 +418,7 @@ int main()
         {"explicit_portable_root_does_not_need_marker_file", explicit_portable_root_does_not_need_marker_file},
         {"settings_only_portable_root_keeps_machine_local_roots", settings_only_portable_root_keeps_machine_local_roots},
         {"reports_root_creation_failures", reports_root_creation_failures},
+        {"root_resolution_creation_is_explicit_opt_in", root_resolution_creation_is_explicit_opt_in},
         {"rejects_malformed_named_and_component_roots", rejects_malformed_named_and_component_roots},
         {"rejects_named_root_path_traversal", rejects_named_root_path_traversal},
         {"stringifies_public_root_vocabulary", stringifies_public_root_vocabulary},

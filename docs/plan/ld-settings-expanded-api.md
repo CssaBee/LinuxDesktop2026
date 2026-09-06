@@ -138,7 +138,7 @@ struct named_root_request {
     root_purpose purpose = root_purpose::custom;
     persistence_class persistence = persistence_class::roaming;
     std::filesystem::path relative_path;
-    bool create = true;
+    bool create = false;
 };
 
 struct named_root {

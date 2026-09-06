@@ -100,6 +100,15 @@ compatibility helpers. Stable ownership for these responsibilities is
 `ld_migration` and `ld_desktop`. Existing C ABI entry points remain
 best-effort-compatible where practical until release-candidate status.
 
+For `0.2.0`, `ld_root::options::create_directories`,
+`ld_settings::root_options::create_directories`,
+`ld_root_named_root_request::create`, and the C `create_directories` initializer
+defaults changed from create-on-resolution to preview-only. Callers that relied
+on resolution to create directories should set `create_directories = true` and,
+for named/component roots, set the individual request `create` flag to true.
+`ld_paths` keeps resolution non-mutating and exposes directory creation through
+`ensure_directory()`, whose default report remains a dry-run `would_create`.
+
 `ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until release-candidate status so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
 
 ## Pre-1.0 Rules
@@ -118,6 +127,7 @@ Avoid unless strongly justified:
 - changing ownership rules,
 - removing C ABI functions,
 - changing default root-resolution precedence,
+- changing filesystem mutation defaults,
 - or silently weakening write-safety guarantees.
 
 If one of those happens before `1.0`, document it as a breaking change.

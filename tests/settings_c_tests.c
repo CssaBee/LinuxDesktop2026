@@ -123,6 +123,9 @@ int main(void)
 
     memset(&report, 0, sizeof(report));
     ld_settings_root_options_init(&options);
+    if (options.create_directories != 0) {
+        return EXIT_FAILURE;
+    }
 
     options.organization = "LinuxDesktop2026";
     options.application = "c-smoke";

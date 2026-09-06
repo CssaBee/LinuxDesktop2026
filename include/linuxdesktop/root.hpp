@@ -72,7 +72,7 @@ struct named_root_request {
     purpose_kind purpose = purpose_kind::custom;
     ownership_kind ownership = ownership_kind::user_roaming;
     std::filesystem::path relative_path;
-    bool create = true;
+    bool create = false;
 };
 
 struct named_root {
@@ -113,7 +113,7 @@ inline named_root_request make_named_root_request(
     purpose_kind purpose,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return {std::move(name), purpose, ownership, std::move(relative_path), create};
 }
@@ -122,7 +122,7 @@ inline named_root_request make_config_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::config, ownership, std::move(relative_path), create);
 }
@@ -131,7 +131,7 @@ inline named_root_request make_state_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::state, ownership, std::move(relative_path), create);
 }
@@ -140,7 +140,7 @@ inline named_root_request make_cache_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::cache, ownership, std::move(relative_path), create);
 }
@@ -149,7 +149,7 @@ inline named_root_request make_session_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_local,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::session, ownership, std::move(relative_path), create);
 }
@@ -158,7 +158,7 @@ inline named_root_request make_log_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_local,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::logs, ownership, std::move(relative_path), create);
 }
@@ -167,7 +167,7 @@ inline named_root_request make_profiles_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::profiles, ownership, std::move(relative_path), create);
 }
@@ -176,7 +176,7 @@ inline named_root_request make_plugin_config_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::plugin_config, ownership, std::move(relative_path), create);
 }
@@ -185,7 +185,7 @@ inline named_root_request make_component_config_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::component_config, ownership, std::move(relative_path), create);
 }
@@ -194,7 +194,7 @@ inline named_root_request make_component_data_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_roaming,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::component_data, ownership, std::move(relative_path), create);
 }
@@ -203,7 +203,7 @@ inline named_root_request make_component_state_root_request(
     std::string name,
     ownership_kind ownership = ownership_kind::user_local,
     std::filesystem::path relative_path = {},
-    bool create = true)
+    bool create = false)
 {
     return make_named_root_request(std::move(name), purpose_kind::component_state, ownership, std::move(relative_path), create);
 }
@@ -224,7 +224,7 @@ struct options {
     std::optional<std::filesystem::path> app_root_override;
     std::optional<std::filesystem::path> user_config_override;
     std::optional<portable_root_request> portable_root;
-    bool create_directories = true;
+    bool create_directories = false;
     bool use_process_environment = true;
     std::vector<named_root_request> named_roots;
     std::vector<component_root_request> component_roots;

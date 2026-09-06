@@ -366,7 +366,7 @@ void ld_settings_root_options_init(ld_settings_root_options* options)
 
     *options = {};
     options->allow_portable_root = 1;
-    options->create_directories = 1;
+    options->create_directories = 0;
     options->use_process_environment = 1;
     options->portable_level = LD_SETTINGS_PORTABLE_SETTINGS_ONLY;
 }

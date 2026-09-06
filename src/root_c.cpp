@@ -284,7 +284,7 @@ void ld_root_options_init(ld_root_options* options)
     }
     *options = {};
     options->allow_app_local_root = 1;
-    options->create_directories = 1;
+    options->create_directories = 0;
     options->use_process_environment = 1;
     options->app_local_level = LD_ROOT_APP_LOCAL_CONFIG_ONLY;
 }

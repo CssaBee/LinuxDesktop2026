@@ -53,6 +53,9 @@ int main(void)
     char app_root_override[1024];
 
     ld_root_options_init(&options);
+    if (options.create_directories != 0) {
+        return EXIT_FAILURE;
+    }
     memset(&report, 0, sizeof(report));
     memset(&named, 0, sizeof(named));
     memset(component_roots, 0, sizeof(component_roots));

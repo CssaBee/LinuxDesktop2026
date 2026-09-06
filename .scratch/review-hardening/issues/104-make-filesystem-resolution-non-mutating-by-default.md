@@ -5,24 +5,34 @@ callers explicitly request directory creation or another filesystem mutation.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Inventory public resolution APIs in `ld_paths`, `ld_root`, and
+- [x] Inventory public resolution APIs in `ld_paths`, `ld_root`, and
   `ld_settings` for defaults that create directories or otherwise mutate the
   filesystem.
-- [ ] Keep `ld_paths` resolution non-mutating and keep `ensure_directory` as an
+- [x] Keep `ld_paths` resolution non-mutating and keep `ensure_directory` as an
   explicit opt-in mutation helper.
-- [ ] Change `ld_settings` root resolution defaults so resolving roots does not
+- [x] Change `ld_settings` root resolution defaults so resolving roots does not
   create directories unless callers opt in.
-- [ ] Change `ld_root` named-root request/builder defaults so root resolution
+- [x] Change `ld_root` named-root request/builder defaults so root resolution
   does not create directories unless callers opt in.
-- [ ] Preserve explicit create/apply helpers for callers that want the old
+- [x] Preserve explicit create/apply helpers for callers that want the old
   behavior, with diagnostics that distinguish preview, would-create, created,
   and failed states.
-- [ ] Add focused tests proving default resolution leaves the filesystem
+- [x] Add focused tests proving default resolution leaves the filesystem
   untouched and opt-in creation still works.
-- [ ] Document any pre-1.0 behavior break in release notes or migration
+- [x] Document any pre-1.0 behavior break in release notes or migration
   guidance before tagging `0.2.0`.
+
+## Implementation Notes
+
+`ld_paths` already resolved without mutation and kept directory effects behind
+`ensure_directory()`. `ld_root` and `ld_settings` now default
+`create_directories` to false in C++ and C option initializers, and named-root
+factory helpers default their per-root `create` flag to false. Callers that want
+the previous behavior can set `create_directories = true` and opt in named roots
+with `create = true`. Focused C++ tests cover preview defaults and explicit
+creation.
 
 ## Evidence Fit
 

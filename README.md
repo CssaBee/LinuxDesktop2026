@@ -55,6 +55,16 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+Formatting:
+
+```sh
+clang-format -i $(git ls-files '*.c' '*.cpp' '*.h' '*.hpp')
+```
+
+The repository has a `.clang-format` baseline for new changes, but CI does not
+enforce formatting yet. Do not run a broad mechanical reformat in feature or
+hardening patches unless that cleanup is the whole change being reviewed.
+
 Build options:
 
 ```sh
@@ -110,6 +120,11 @@ int main()
     return paths.selected.empty() || preview.diagnostics.size() > 1;
 }
 ```
+
+`ld_paths::resolve_app_paths`, `ld_root::resolve_app_roots`, and
+`ld_settings::resolve_settings_roots` are preview-only by default. Callers that
+want directory creation must explicitly opt in through `ensure_directory()` or
+the relevant `create_directories` option.
 
 ## Consume From CMake
 
