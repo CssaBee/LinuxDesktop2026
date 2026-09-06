@@ -490,6 +490,33 @@ Boundary notes:
   formats. LinuxDesktop2026 only resolves the platform roots that those product
   paths hang from.
 
+## Minifox ComfyUI Launcher
+
+Fit:
+
+- `linuxdesktop::root::request_builder` fits Minifox's portable package model:
+  the executable directory is the package root, with named app-local data,
+  cache, and runtime roots for `.minifox/` and `.cache/`.
+- Named cache/data roots keep profile settings and ZLUDA/Triton/TorchInductor
+  cache placement explicit without introducing AI-tool-specific library
+  vocabulary.
+
+Friction:
+
+- LinuxDesktop2026 has no external-tool abstraction for Python/ComfyUI
+  candidate selection. The FlavorTest currently keeps those candidates in
+  Minifox vocabulary and uses LinuxDesktop2026 only to resolve the roots those
+  candidates hang from.
+- Process launch, stop, monitor, and live console capture are a visible future
+  pressure point, but this probe is not enough evidence to add `ld_process`.
+
+Boundary notes:
+
+- CUDA, ROCm, HIP SDK, and ZLUDA eligibility are product/runtime diagnostics,
+  not LinuxDesktop2026 capability claims.
+- ZLUDA file replacement/restoration remains product-owned reversible runtime
+  work. LinuxDesktop2026 should not become a GPU runtime patcher.
+
 ## Dependency Pain
 
 Current desired dependency shape:

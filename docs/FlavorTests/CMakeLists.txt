@@ -93,3 +93,6 @@ add_flavor_product(amiberry
     LinuxDesktop2026::ld_root)
 add_flavor_product(endless_sky
     LinuxDesktop2026::ld_root)
+add_flavor_product(minifox
+    LinuxDesktop2026::ld_root
+    LinuxDesktop2026::ld_paths)

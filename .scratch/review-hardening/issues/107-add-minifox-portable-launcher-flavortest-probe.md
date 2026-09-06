@@ -7,17 +7,17 @@ subprocess/tool candidates, and GPU-runtime environment diagnostics.
 
 **Blocked by:** 105 - Add Amiberry Root Topology FlavorTest Probe.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Add `docs/FlavorTests/minifox/src/minifox_flavor.hpp` and
+- [x] Add `docs/FlavorTests/minifox/src/minifox_flavor.hpp` and
   `docs/FlavorTests/minifox/src/minifox_flavor.cpp`.
-- [ ] Add `docs/FlavorTests/minifox/test/minifox_flavor_tests.cpp` and wire it
+- [x] Add `docs/FlavorTests/minifox/test/minifox_flavor_tests.cpp` and wire it
   through `docs/FlavorTests/CMakeLists.txt` with
   `add_flavor_product(minifox)`.
-- [ ] Update `docs/FlavorTests/README.md` with the covered Minifox slice.
-- [ ] Update `docs/FlavorTests/SOURCES.md` with source anchors and README
+- [x] Update `docs/FlavorTests/README.md` with the covered Minifox slice.
+- [x] Update `docs/FlavorTests/SOURCES.md` with source anchors and README
   evidence.
-- [ ] Update `docs/FlavorTests/API_FRICTION.md` with any portable-root,
+- [x] Update `docs/FlavorTests/API_FRICTION.md` with any portable-root,
   settings, executable-candidate, or future process-boundary friction.
 
 ## Source Anchors
@@ -95,3 +95,17 @@ belongs to the product.
 ## Release Gate
 
 Does not block `0.2.0`.
+
+## Implemented Test Slice
+
+- Default portable layout discovers executable-adjacent `ComfyUI/`, `python/`,
+  `.minifox/`, and `.cache/` paths without Registry or user-profile writes.
+- Manual Python and ComfyUI paths override auto-detected portable candidates
+  and report their source.
+- Missing `ComfyUI/main.py` and Python executable produce Minifox-shaped launch
+  diagnostics without creating data/cache roots.
+- Multiple launch profiles keep separate settings while sharing portable cache
+  policy.
+- CUDA, ROCm, HIP SDK, and ZLUDA eligibility are runtime inputs; ZLUDA
+  replacement/restoration is represented as product-owned reversible runtime
+  work.

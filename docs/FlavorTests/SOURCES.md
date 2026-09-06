@@ -347,3 +347,27 @@ loader, or plugin manifest validation. It keeps plugin ownership, scan order,
 download target choice, save names, and preference file names in Endless
 Sky-shaped code. LinuxDesktop2026 is used only for resource/user root
 resolution and named plugin roots.
+
+## Minifox ComfyUI Launcher
+
+- Upstream repository: `EarsT913831CALS/minifox-comfyui-launcher`
+- Source snapshot: `dev` at commit
+  `cee84292108a3d68552a90f1020e59041fd4db69`, reviewed from the README on
+  2026-09-06.
+- Upstream areas: README portable package layout, GPU and ZLUDA notes, version
+  management warnings, portable data layout, and source layout.
+- Anchors: executable-adjacent `ComfyUI/` and `python/`, manual ComfyUI/Python
+  path selection in launch profiles, no Registry use, no ComfyUI file
+  modification, `.minifox/` application/profile/runtime data, `.cache/` ZLUDA,
+  Triton, and TorchInductor caches, CUDA/ROCm/HIP SDK/ZLUDA eligibility,
+  process launch/stop/monitor/log capture behavior, and reversible ZLUDA
+  replacement/restoration.
+- Refactored files: `minifox/src/minifox_flavor.*`
+- Tests: `minifox/test/minifox_flavor_tests.cpp`
+
+The extracted slice does not build Qt, QML, ComfyUI, Python, package downloads,
+process supervision, console parsing, GPU compatibility checks, or ZLUDA
+patching. It keeps launch arguments, profile naming, runtime eligibility, forced
+version-switch consequences, and reversible runtime mutation in Minifox-shaped
+code. LinuxDesktop2026 is used only for executable-adjacent portable root
+resolution and path diagnostics.

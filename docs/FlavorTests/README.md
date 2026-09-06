@@ -114,6 +114,11 @@ Selected upstream subprojects:
   It keeps plugin scanning, downloadable plugin ownership, saves, preferences,
   and game content semantics in product code while using `ld_root` named roots
   to keep bundled and user-owned plugin locations separate.
+- `minifox/`: refactors Minifox ComfyUI Launcher-style portable package
+  planning for executable-adjacent `ComfyUI/`, `python/`, `.minifox/`, and
+  `.cache/` roots. It keeps launch profiles, subprocess lifecycle, console
+  parsing, GPU runtime detection, and ZLUDA replacement/restoration policy in
+  product code while using `ld_root` for portable roots and diagnostics.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -136,6 +141,7 @@ methods rather than against generic helper functions:
 - `kickcat_flavor_tests`
 - `amiberry_flavor_tests`
 - `endless_sky_flavor_tests`
+- `minifox_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers
