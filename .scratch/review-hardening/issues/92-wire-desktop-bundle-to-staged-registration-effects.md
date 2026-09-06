@@ -6,20 +6,30 @@ operation while preserving per-artifact diagnostics.
 
 **Blocked by:** 91 - Add Desktop Bundle API And Report Vocabulary.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Bundle operations cover the staged desktop entry, icon, MIME,
+- [x] Bundle operations cover the staged desktop entry, icon, MIME,
   default-application, URL-scheme, autostart, and policy effects supported by
   the current backend.
-- [ ] A successful bundle report distinguishes staged artifacts from activation
+- [x] A successful bundle report distinguishes staged artifacts from activation
   steps that still require caller, user, admin, or platform follow-up.
-- [ ] Partial success keeps enough per-effect diagnostics for a product adapter
+- [x] Partial success keeps enough per-effect diagnostics for a product adapter
   to explain which registration effects are present, missing, unsupported, or
   pending activation.
-- [ ] Advanced individual effect calls continue to work and share validation,
+- [x] Advanced individual effect calls continue to work and share validation,
   path selection, diagnostics, and durable write behavior with the bundle path.
 
 ## Evidence Fit
 
 Unit and adversarial tests should catch this: the risk is orchestration hiding
 per-effect failure or overclaiming activation.
+
+## Implementation Note
+
+Task 92 keeps bundle writes on the existing individual staged-effect APIs and
+annotates the child reports with `effect_kind` plus `registration_status`.
+Bundle activation remains a separate `activation_plan`, so `ok` means staged
+artifacts succeeded, not that desktop databases, icon caches, dconf, or Windows
+user-choice state are already active. The new tests cover bundle
+plan/apply/query/remove and a partial icon failure that preserves successful
+artifact status plus the failed child diagnostic.

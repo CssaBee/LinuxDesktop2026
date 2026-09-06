@@ -49,6 +49,16 @@ enum class registration_scope {
     global
 };
 
+enum class registration_status {
+    unknown,
+    planned,
+    staged,
+    present,
+    missing,
+    unsupported,
+    failed
+};
+
 struct activation_step {
     activation_step_kind kind = activation_step_kind::refresh_desktop_database;
     bool required = false;
@@ -166,6 +176,8 @@ struct apply_options {
 };
 
 struct effect_report {
+    effect_kind kind = effect_kind::autostart;
+    registration_status status = registration_status::unknown;
     bool ok = false;
     bool dry_run = false;
     bool present = false;
@@ -186,6 +198,8 @@ struct policy_entry {
 };
 
 struct policy_report {
+    effect_kind kind = effect_kind::managed_policy;
+    registration_status status = registration_status::unknown;
     bool ok = false;
     bool dry_run = false;
     bool present = false;
@@ -227,6 +241,7 @@ std::string_view to_string(effect_kind value);
 std::string_view to_string(capability_state value);
 std::string_view to_string(activation_step_kind value);
 std::string_view to_string(registration_scope value);
+std::string_view to_string(registration_status value);
 
 capability_report query_capabilities(const apply_options& options = {});
 

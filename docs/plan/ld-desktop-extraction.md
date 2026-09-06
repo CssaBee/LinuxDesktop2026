@@ -70,6 +70,16 @@ enum class activation_step_kind {
     windows_default_apps_ui
 };
 
+enum class registration_status {
+    unknown,
+    planned,
+    staged,
+    present,
+    missing,
+    unsupported,
+    failed
+};
+
 struct desktop_entry_metadata {
     std::string id;
     std::string display_name;
@@ -157,16 +167,20 @@ desktop_bundle_report remove_bundle(const desktop_bundle&, const apply_options& 
 ```
 
 The first implementation intentionally keeps live activation as an explicit
-plan. A successful bundle write means the expected files or Registry artifacts
-were staged. It does not mean the desktop database, MIME database, icon cache,
-dconf database, or Windows default-app state has already consumed those
-artifacts.
+plan. Each child report identifies its `effect_kind` and current
+`registration_status`; successful write reports use `staged`, while activation
+steps stay in `activation_plan`. A successful bundle write means the expected
+files or Registry artifacts were staged. It does not mean the desktop database,
+MIME database, icon cache, dconf database, or Windows default-app state has
+already consumed those artifacts.
 
 Bundle reports should preserve per-artifact diagnostics instead of collapsing
 everything into a single success flag. A bundle can partially plan successfully
 while still requiring user-facing follow-up, such as opening Windows default
 apps settings, running `update-desktop-database`, or retrying a global write
-with elevated privileges.
+with elevated privileges. Partial writes keep successful children marked
+`staged`, failed children marked `failed`, missing query results marked
+`missing`, and backend-limited children marked `unsupported`.
 
 ## Individual Effect Calls
 
@@ -235,8 +249,9 @@ which are easy to make painful for C callers if exposed prematurely.
 - Linux autostart, desktop entries, icons, shared-mime-info package XML,
   `mimeapps.list` associations, default applications, URL scheme handlers, and
   managed/enforced policy use dry-run-first staged artifact behavior.
-  Successful reports mean the expected artifact was staged, not that the
-  running desktop, MIME database, icon cache, or dconf database consumed it.
+  Bundle child reports identify their effect kind and current registration
+  status. Successful reports mean the expected artifact was staged, not that
+  the running desktop, MIME database, icon cache, or dconf database consumed it.
 - Linux/XDG registration reports return activation plans for
   `update-desktop-database`, `update-mime-database`, icon-cache refreshes, and
   dconf activation instead of running those commands by default.

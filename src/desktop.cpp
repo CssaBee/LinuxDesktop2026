@@ -774,6 +774,27 @@ std::string_view to_string(registration_scope value)
     return "unknown";
 }
 
+std::string_view to_string(registration_status value)
+{
+    switch (value) {
+    case registration_status::unknown:
+        return "unknown";
+    case registration_status::planned:
+        return "planned";
+    case registration_status::staged:
+        return "staged";
+    case registration_status::present:
+        return "present";
+    case registration_status::missing:
+        return "missing";
+    case registration_status::unsupported:
+        return "unsupported";
+    case registration_status::failed:
+        return "failed";
+    }
+    return "unknown";
+}
+
 capability_report query_capabilities(const apply_options& options)
 {
     capability_report report;
@@ -967,6 +988,7 @@ effect_report query_autostart(const autostart_entry& entry, const apply_options&
         return report;
     }
     report.ok = true;
+    report.present = true;
     report.enabled = !desktop_file_hidden(content);
     return report;
 #endif
@@ -2136,6 +2158,50 @@ enum class bundle_operation {
     remove
 };
 
+bool report_is_backend_limited(const std::vector<diagnostic>& diagnostics)
+{
+    return std::any_of(diagnostics.begin(), diagnostics.end(), [](const diagnostic& item) {
+        return item.code.find(".backend-missing") != std::string::npos ||
+            item.code.find(".registry-layer-required") != std::string::npos ||
+            item.code.find(".user-choice-required") != std::string::npos ||
+            item.code.find(".app-identity-required") != std::string::npos;
+    });
+}
+
+registration_status status_for_effect(bundle_operation operation, const effect_report& report)
+{
+    if (report_is_backend_limited(report.diagnostics)) {
+        return registration_status::unsupported;
+    }
+    if (!report.ok || has_error(report.diagnostics)) {
+        return registration_status::failed;
+    }
+    if (operation == bundle_operation::query) {
+        return report.present || report.enabled ? registration_status::present : registration_status::missing;
+    }
+    if (operation == bundle_operation::remove) {
+        return registration_status::missing;
+    }
+    return report.dry_run ? registration_status::planned : registration_status::staged;
+}
+
+registration_status status_for_policy(bundle_operation operation, const policy_report& report)
+{
+    if (report_is_backend_limited(report.diagnostics)) {
+        return registration_status::unsupported;
+    }
+    if (!report.ok || has_error(report.diagnostics)) {
+        return registration_status::failed;
+    }
+    if (operation == bundle_operation::query) {
+        return report.present ? registration_status::present : registration_status::missing;
+    }
+    if (operation == bundle_operation::remove) {
+        return registration_status::missing;
+    }
+    return report.dry_run ? registration_status::planned : registration_status::staged;
+}
+
 effect_report run_effect(bundle_operation operation, const autostart_entry& entry, const apply_options& options)
 {
     switch (operation) {
@@ -2249,9 +2315,11 @@ policy_report run_policy(bundle_operation operation, const policy_entry& entry, 
 }
 
 template <typename Entry>
-void append_effect_report(bundle_operation operation, const Entry& entry, const apply_options& options, desktop_bundle_report& report)
+void append_effect_report(bundle_operation operation, effect_kind kind, const Entry& entry, const apply_options& options, desktop_bundle_report& report)
 {
     auto effect = run_effect(operation, entry, options);
+    effect.kind = kind;
+    effect.status = status_for_effect(operation, effect);
     append_activation_plan(effect, report);
     append_report_diagnostics(effect, report);
     report.artifact_reports.push_back(std::move(effect));
@@ -2260,6 +2328,8 @@ void append_effect_report(bundle_operation operation, const Entry& entry, const 
 void append_policy_report(bundle_operation operation, const policy_entry& entry, const apply_options& options, desktop_bundle_report& report)
 {
     auto policy = run_policy(operation, entry, options);
+    policy.kind = effect_kind::managed_policy;
+    policy.status = status_for_policy(operation, policy);
     if (operation != bundle_operation::query) {
         append_policy_activation_plan(entry, report);
     }
@@ -2278,33 +2348,33 @@ desktop_bundle_report run_bundle(bundle_operation operation, const desktop_bundl
     report.cleanup_plan = bundle.cleanup;
 
     if (bundle.entry) {
-        append_effect_report(operation, desktop_entry_from_bundle(bundle), options, report);
+        append_effect_report(operation, effect_kind::desktop_entry, desktop_entry_from_bundle(bundle), options, report);
     }
     if (bundle.autostart) {
         auto autostart = *bundle.autostart;
         autostart.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, autostart, options, report);
+        append_effect_report(operation, effect_kind::autostart, autostart, options, report);
     }
     for (const auto& icon : bundle.icons) {
         for (const auto& entry : icon_entries_from_reference(icon, bundle.scope)) {
-            append_effect_report(operation, entry, options, report);
+            append_effect_report(operation, effect_kind::icon, entry, options, report);
         }
     }
     for (auto declaration : bundle.mime_declarations) {
         declaration.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, declaration, options, report);
+        append_effect_report(operation, effect_kind::mime_association, declaration, options, report);
     }
     for (auto association : bundle.mime_associations) {
         association.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, association, options, report);
+        append_effect_report(operation, effect_kind::mime_association, association, options, report);
     }
     for (auto intent : bundle.default_applications) {
         intent.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, intent, options, report);
+        append_effect_report(operation, effect_kind::default_application, intent, options, report);
     }
     for (auto handler : bundle.url_scheme_handlers) {
         handler.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, handler, options, report);
+        append_effect_report(operation, effect_kind::url_protocol_handler, handler, options, report);
     }
     for (auto policy : bundle.policies) {
         policy.user_scope = bundle_user_scope(bundle.scope);

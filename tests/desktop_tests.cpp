@@ -1,6 +1,7 @@
 #include "linuxdesktop/desktop.hpp"
 
 #include <cstdlib>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -86,6 +87,23 @@ const ld::capability* find_capability(const ld::capability_report& report, ld::e
         }
     }
     return nullptr;
+}
+
+const ld::effect_report* find_effect_report(const ld::desktop_bundle_report& report, ld::effect_kind kind)
+{
+    for (const auto& effect : report.artifact_reports) {
+        if (effect.kind == kind) {
+            return &effect;
+        }
+    }
+    return nullptr;
+}
+
+bool has_effect_status(const ld::desktop_bundle_report& report, ld::effect_kind kind, ld::registration_status status)
+{
+    return std::any_of(report.artifact_reports.begin(), report.artifact_reports.end(), [&](const ld::effect_report& effect) {
+        return effect.kind == kind && effect.status == status;
+    });
 }
 
 #if !defined(_WIN32)
@@ -255,6 +273,12 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
 
     require(ld::to_string(ld::registration_scope::user) == "user", "bundle scope should name user registration");
     require(ld::to_string(ld::registration_scope::global) == "global", "bundle scope should name global registration");
+    require(ld::to_string(ld::registration_status::planned) == "planned", "bundle reports should name planned artifact status");
+    require(ld::to_string(ld::registration_status::staged) == "staged", "bundle reports should name staged artifact status");
+    require(ld::to_string(ld::registration_status::present) == "present", "bundle reports should name present artifact status");
+    require(ld::to_string(ld::registration_status::missing) == "missing", "bundle reports should name missing artifact status");
+    require(ld::to_string(ld::registration_status::unsupported) == "unsupported", "bundle reports should name unsupported artifact status");
+    require(ld::to_string(ld::registration_status::failed) == "failed", "bundle reports should name failed artifact status");
 
     const auto root = test_root() / "bundle-vocabulary";
     const auto icon_source = root / "icon.png";
@@ -282,6 +306,12 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
     require(planned.artifact_reports.size() == 7, "desktop bundle plan should report every artifact group");
     require(planned.policy_reports.size() == 1, "desktop bundle plan should report policy groups separately");
     require(planned.cleanup_plan.size() == 1, "desktop bundle plan should preserve cleanup rules");
+    require(has_effect_status(planned, ld::effect_kind::desktop_entry, ld::registration_status::planned),
+        "desktop bundle plan should mark staged artifacts as planned");
+    require(planned.policy_reports.front().kind == ld::effect_kind::managed_policy,
+        "desktop bundle policy reports should identify the managed policy effect");
+    require(planned.policy_reports.front().status == ld::registration_status::planned,
+        "desktop bundle plan should mark policy artifacts as planned");
 #if defined(_WIN32)
     require(has_activation_step(planned, ld::activation_step_kind::windows_shell_notify),
         "Windows bundle plan should keep shell activation explicit");
@@ -296,6 +326,111 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
         "Linux bundle plan should keep icon cache activation explicit");
     require(has_activation_step(planned, ld::activation_step_kind::refresh_dconf_database),
         "Linux bundle plan should keep dconf activation explicit");
+#endif
+}
+
+ld::apply_options desktop_bundle_options_for_tests(const std::filesystem::path& root)
+{
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.allow_policy_write = true;
+    options.autostart_directory_override = root / "autostart";
+    options.applications_directory_override = root / "applications";
+    options.icons_directory_override = root / "icons";
+    options.mime_packages_directory_override = root / "mime" / "packages";
+    options.mimeapps_file_override = root / "mimeapps.list";
+    options.policy_defaults_directory_override = root / "dconf" / "defaults";
+    options.policy_locks_directory_override = root / "dconf" / "locks";
+    return options;
+}
+
+void desktop_bundle_applies_queries_and_removes_staged_artifacts()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "bundle-apply-query-remove";
+    std::filesystem::remove_all(root);
+    const auto icon_source = root / "source.png";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream file(icon_source, std::ios::binary);
+        file << "png-ish";
+    }
+
+    auto bundle = desktop_bundle_for_tests(icon_source);
+    auto options = desktop_bundle_options_for_tests(root);
+
+    const auto applied = ld::apply_bundle(bundle, options);
+    require(applied.ok, "desktop bundle apply should stage every supported artifact");
+    require(!applied.dry_run, "desktop bundle apply should report a real write");
+    require(has_effect_status(applied, ld::effect_kind::desktop_entry, ld::registration_status::staged),
+        "desktop bundle apply should mark desktop entry as staged");
+    require(has_effect_status(applied, ld::effect_kind::icon, ld::registration_status::staged),
+        "desktop bundle apply should mark icon as staged");
+    require(applied.policy_reports.front().status == ld::registration_status::staged,
+        "desktop bundle apply should mark policy as staged");
+    require(has_activation_step(applied, ld::activation_step_kind::refresh_desktop_database),
+        "desktop bundle apply should report desktop database activation separately");
+    require(has_activation_step(applied, ld::activation_step_kind::refresh_dconf_database),
+        "desktop bundle apply should report dconf activation separately");
+
+    const auto desktop = find_effect_report(applied, ld::effect_kind::desktop_entry);
+    require(desktop != nullptr && desktop->path.has_value() && std::filesystem::exists(*desktop->path),
+        "desktop bundle apply should write the desktop entry through the staged effect path");
+    require(read_file(*desktop->path).find("MimeType=text/x-linuxdesktop2026-test;x-scheme-handler/ld2026;") != std::string::npos,
+        "desktop bundle apply should merge MIME and URL scheme metadata into the desktop entry");
+
+    const auto queried = ld::query_bundle(bundle, options);
+    require(queried.ok, "desktop bundle query should succeed after apply");
+    require(has_effect_status(queried, ld::effect_kind::desktop_entry, ld::registration_status::present),
+        "desktop bundle query should report present desktop entry");
+    require(has_effect_status(queried, ld::effect_kind::autostart, ld::registration_status::present),
+        "desktop bundle query should report present autostart entry");
+    require(queried.policy_reports.front().status == ld::registration_status::present,
+        "desktop bundle query should report present policy artifact");
+
+    const auto removed = ld::remove_bundle(bundle, options);
+    require(removed.ok, "desktop bundle remove should remove staged artifacts");
+    require(has_effect_status(removed, ld::effect_kind::desktop_entry, ld::registration_status::missing),
+        "desktop bundle remove should mark desktop entry as missing");
+    require(removed.policy_reports.front().status == ld::registration_status::missing,
+        "desktop bundle remove should mark policy as missing");
+
+    const auto queried_after_remove = ld::query_bundle(bundle, options);
+    require(queried_after_remove.ok, "desktop bundle query should succeed after remove");
+    require(has_effect_status(queried_after_remove, ld::effect_kind::desktop_entry, ld::registration_status::missing),
+        "desktop bundle query after remove should report missing desktop entry");
+    require(queried_after_remove.policy_reports.front().status == ld::registration_status::missing,
+        "desktop bundle query after remove should report missing policy artifact");
+#endif
+}
+
+void desktop_bundle_partial_failure_preserves_per_effect_diagnostics()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "bundle-partial-failure";
+    std::filesystem::remove_all(root);
+    const auto icon_source = root / "missing.png";
+    std::filesystem::create_directories(root);
+
+    auto bundle = desktop_bundle_for_tests(icon_source);
+    auto options = desktop_bundle_options_for_tests(root);
+
+    const auto report = ld::apply_bundle(bundle, options);
+    require(!report.ok, "desktop bundle apply should fail when one staged artifact fails");
+    require(has_effect_status(report, ld::effect_kind::desktop_entry, ld::registration_status::staged),
+        "desktop bundle partial failure should keep successful artifact status");
+    require(has_effect_status(report, ld::effect_kind::icon, ld::registration_status::failed),
+        "desktop bundle partial failure should mark the failed artifact");
+    require(has_diagnostic(report.diagnostics, "icon-source-path-not-file"),
+        "desktop bundle partial failure should aggregate failed child diagnostics");
+    const auto icon = find_effect_report(report, ld::effect_kind::icon);
+    require(icon != nullptr && has_diagnostic(icon->diagnostics, "icon-source-path-not-file"),
+        "desktop bundle partial failure should preserve per-effect icon diagnostics");
+    require(report.policy_reports.front().status == ld::registration_status::staged,
+        "desktop bundle partial failure should keep successful policy status");
+    require(has_activation_step(report, ld::activation_step_kind::refresh_desktop_database),
+        "desktop bundle partial failure should still report activation follow-up for staged artifacts");
 #endif
 }
 
@@ -1088,6 +1223,8 @@ int main()
     autostart_linux_routes_config_home_through_paths();
     desktop_flavors_share_standard_xdg_autostart_contract();
     desktop_flavor_capabilities_do_not_create_per_desktop_backends();
+    desktop_bundle_applies_queries_and_removes_staged_artifacts();
+    desktop_bundle_partial_failure_preserves_per_effect_diagnostics();
     xdg_desktop_entry_writes_queries_removes_and_reports_activation_plan();
     xdg_registration_rejects_hostile_ids_names_paths_and_global_writes();
     xdg_icon_stages_copy_and_reports_cache_activation_plan();
