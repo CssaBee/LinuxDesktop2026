@@ -16,7 +16,7 @@ boundary:
 
 - migration planning,
 - regular-file copy and atomic file rename execution,
-- directory copy and best-effort copy-then-source-cleanup move execution,
+- directory copy and verified copy-then-source-cleanup move execution,
 - explicit dry-run previews,
 - per-action before/after reporting,
 - rollback reporting where practical,
@@ -80,11 +80,15 @@ cleanup.
   filesystem metadata.
 - Treat file migration renames as atomic rename operations. Cross-device copy/remove
   fallback is not supported.
-- Treat directory moves as best-effort copy plus source-tree cleanup. Partial
-  copy failures block the action before cleanup; cleanup failures are reported
-  with rollback details where the copied target can be removed. Concurrent
-  source mutation, destination substitution, disk-full behavior, and complete
-  rollback remain outside the supported guarantee.
+- Treat directory moves as copy, verify, then source-tree cleanup. After the
+  copy step, every supported source directory entry must have a target entry of
+  the same file/directory kind, and every regular file must match by content
+  before source cleanup starts. Partial copy, destination substitution, kind
+  mismatch, read-back failure, and content mismatch block cleanup and report
+  the failed verification path or stage. Cleanup failures after a verified copy
+  are reported with rollback details where the copied target can be removed.
+  Concurrent source mutation, disk-full behavior, metadata replication, and
+  complete rollback remain outside the supported guarantee.
 
 ## Validation Required
 
@@ -93,6 +97,9 @@ Before `ld_migration` is a ship candidate, tests and examples must cover:
 - dry-run plans for every action kind,
 - file copy, atomic file rename, and directory copy/move success paths within
   the supported object model,
+- directory move verification failures before source cleanup, including partial
+  copy, destination substitution, file/directory kind mismatch, and content
+  mismatch,
 - missing source, wrong source kind, existing target, and parent creation
   failures,
 - hostile paths, including relative escape attempts and target collisions,

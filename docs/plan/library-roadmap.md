@@ -293,6 +293,6 @@ Near-term planning changes:
 - Keep `ld_process` as research-only until two integrations show the same process boundary and an existing-tool decision explains why `std::process`-like libraries, Qt/GLib process APIs, Boost.Process-style wrappers, or direct platform APIs are not enough for the shared case.
 - Keep `ld_ipc` as research-only until two integrations show the same activation/IPC boundary and an existing-tool decision covers D-Bus, local sockets, Windows named pipes, toolkit single-instance helpers, and Windows window-message activation.
 - Extract desktop integration work into `ld_desktop` for `.desktop` files, command escaping, icon installation, MIME types, file associations, URL protocols, AppImage executable discovery, policy, autostart, Registry-equivalent shell/system behavior, and uninstall cleanup.
-- Extract migration work into `ld_migration` for file/directory moves, rollback reporting, app-settings Registry migration compatibility, and later cross-module migration orchestration.
+- Extract migration work into `ld_migration` for file moves, verified directory moves, rollback reporting, app-settings Registry migration compatibility, and later cross-module migration orchestration.
 - Keep service/daemon lifecycle work parked until `ld_process` and `ld_ipc` mature enough to support it cleanly.
 - Keep `ld_dynlib` research-only and run an existing-tool decision for `dylib`, Boost.DLL-style wrappers, direct `dlopen`/`LoadLibrary`, and plugin-framework alternatives before implementing a dynamic loader module.

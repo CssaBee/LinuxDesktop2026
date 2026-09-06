@@ -1,4 +1,5 @@
 #include "linuxdesktop/migration.hpp"
+#include "migration_internal.hpp"
 
 #include <cstddef>
 #include <filesystem>
@@ -359,6 +360,107 @@ void directory_move_reports_best_effort_semantics()
     require(!std::filesystem::exists(source), "directory move should remove source after copy");
     require(read_file(target / "subdir" / "settings.ini").find("copied=true") != std::string::npos,
         "directory move should copy supported nested files");
+}
+
+void directory_move_verifies_substituted_destination_before_cleanup()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    const auto substituted = root / "substituted";
+    std::filesystem::create_directories(source / "subdir");
+    std::filesystem::create_directories(substituted);
+    {
+        std::ofstream file(source / "subdir" / "settings.ini");
+        file << "copied=true\n";
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directory_symlink(substituted, target, ec);
+    if (ec) {
+        return;
+    }
+
+    ld::options plan_options;
+    plan_options.allow_dangerous = true;
+    plan_options.overwrite_existing = true;
+    const auto plan = ld::plan_move_directory(source, target, plan_options);
+
+    ld::options execute_options;
+    execute_options.dry_run = false;
+    execute_options.allow_dangerous = true;
+    execute_options.overwrite_existing = true;
+    const auto report = ld::execute_migration_plan(plan, execute_options);
+
+    require(!report.ok, "directory move should reject substituted destination before cleanup");
+    require(report.actions.size() == 1, "substituted destination failure should report the action");
+    require(report.actions[0].state == ld::migration_action_state::partially_executed,
+        "substituted destination should report partial execution after copy but before cleanup");
+    require(has_diagnostic(report.actions[0].diagnostics, "migration-directory-verify-kind-mismatch"),
+        "substituted destination should be reported as a verification kind mismatch");
+    require(std::filesystem::exists(source / "subdir" / "settings.ini"),
+        "failed directory verification should preserve the source tree");
+}
+
+void directory_verification_reports_partial_copy()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    std::filesystem::create_directories(source / "subdir");
+    std::filesystem::create_directories(target);
+    {
+        std::ofstream file(source / "subdir" / "settings.ini");
+        file << "copied=true\n";
+    }
+
+    std::vector<linuxdesktop::diagnostic> diagnostics;
+    require(!linuxdesktop::migration::internal::verify_supported_directory_copy(source, target, diagnostics),
+        "directory verification should reject missing copied entries");
+    require(has_diagnostic(diagnostics, "migration-directory-verify-target-missing"),
+        "partial copy verification should name the missing target path");
+}
+
+void directory_verification_reports_file_directory_kind_mismatch()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    std::filesystem::create_directories(source);
+    std::filesystem::create_directories(target / "settings.ini");
+    {
+        std::ofstream file(source / "settings.ini");
+        file << "copied=true\n";
+    }
+
+    std::vector<linuxdesktop::diagnostic> diagnostics;
+    require(!linuxdesktop::migration::internal::verify_supported_directory_copy(source, target, diagnostics),
+        "directory verification should reject file/directory mismatches");
+    require(has_diagnostic(diagnostics, "migration-directory-verify-kind-mismatch"),
+        "kind mismatch verification should name the mismatched target path");
+}
+
+void directory_verification_reports_content_mismatch()
+{
+    const auto root = test_root();
+    const auto source = root / "old-profile";
+    const auto target = root / "new-profile";
+    std::filesystem::create_directories(source);
+    std::filesystem::create_directories(target);
+    {
+        std::ofstream file(source / "settings.ini");
+        file << "copied=true\n";
+    }
+    {
+        std::ofstream file(target / "settings.ini");
+        file << "copied=false\n";
+    }
+
+    std::vector<linuxdesktop::diagnostic> diagnostics;
+    require(!linuxdesktop::migration::internal::verify_supported_directory_copy(source, target, diagnostics),
+        "directory verification should reject copied content mismatches");
+    require(has_diagnostic(diagnostics, "migration-directory-verify-content-mismatch"),
+        "content mismatch verification should name the mismatched target path");
 }
 
 void symlink_sources_are_unsupported()
@@ -899,6 +1001,12 @@ int main()
         {"execute_renames_file_with_permission", execute_renames_file_with_permission},
         {"file_rename_failure_does_not_copy_remove_fallback", file_rename_failure_does_not_copy_remove_fallback},
         {"directory_move_reports_best_effort_semantics", directory_move_reports_best_effort_semantics},
+        {"directory_move_verifies_substituted_destination_before_cleanup",
+            directory_move_verifies_substituted_destination_before_cleanup},
+        {"directory_verification_reports_partial_copy", directory_verification_reports_partial_copy},
+        {"directory_verification_reports_file_directory_kind_mismatch",
+            directory_verification_reports_file_directory_kind_mismatch},
+        {"directory_verification_reports_content_mismatch", directory_verification_reports_content_mismatch},
         {"symlink_sources_are_unsupported", symlink_sources_are_unsupported},
         {"directory_symlinks_are_unsupported", directory_symlinks_are_unsupported},
         {"hard_link_topology_reports_not_preserved", hard_link_topology_reports_not_preserved},

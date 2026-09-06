@@ -3,7 +3,9 @@
 #include "linuxdesktop/migration.hpp"
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
+#include <fstream>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -188,6 +190,205 @@ inline void append_source_object_model_diagnostics(
             return;
         }
     }
+}
+
+inline bool append_target_directory_status_diagnostic(
+    const std::filesystem::path& target_path,
+    const char* code,
+    std::vector<diagnostic>& diagnostics)
+{
+    diagnostics.push_back(make_diagnostic(
+        severity::error,
+        code,
+        "Copied directory verification failed before source cleanup",
+        target_path));
+    return false;
+}
+
+inline bool regular_files_have_same_content(
+    const std::filesystem::path& source_path,
+    const std::filesystem::path& target_path,
+    std::vector<diagnostic>& diagnostics)
+{
+    std::error_code ec;
+    const auto source_size = std::filesystem::file_size(source_path, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-source-read-failed",
+            ec.message(),
+            source_path));
+        return false;
+    }
+
+    const auto target_size = std::filesystem::file_size(target_path, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-target-read-failed",
+            ec.message(),
+            target_path));
+        return false;
+    }
+
+    if (source_size != target_size) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-content-mismatch",
+            "Copied file size does not match the source before cleanup",
+            target_path));
+        return false;
+    }
+
+    std::ifstream source(source_path, std::ios::binary);
+    std::ifstream target(target_path, std::ios::binary);
+    if (!source || !target) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-content-mismatch",
+            "Copied file content could not be read back before cleanup",
+            target_path));
+        return false;
+    }
+
+    std::array<char, 8192> source_buffer{};
+    std::array<char, 8192> target_buffer{};
+    while (source && target) {
+        source.read(source_buffer.data(), source_buffer.size());
+        target.read(target_buffer.data(), target_buffer.size());
+        if (source.gcount() != target.gcount() ||
+            !std::equal(
+                source_buffer.begin(),
+                source_buffer.begin() + source.gcount(),
+                target_buffer.begin())) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-directory-verify-content-mismatch",
+                "Copied file content does not match the source before cleanup",
+                target_path));
+            return false;
+        }
+    }
+
+    return source.eof() && target.eof();
+}
+
+inline bool verify_supported_directory_copy(
+    const std::filesystem::path& source_root,
+    const std::filesystem::path& target_root,
+    std::vector<diagnostic>& diagnostics)
+{
+    std::error_code ec;
+    const auto source_status = std::filesystem::symlink_status(source_root, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-source-status-failed",
+            ec.message(),
+            source_root));
+        return false;
+    }
+
+    const auto target_status = std::filesystem::symlink_status(target_root, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-target-status-failed",
+            ec.message(),
+            target_root));
+        return false;
+    }
+
+    if (!std::filesystem::is_directory(source_status)) {
+        append_unsupported_object_diagnostic(source_root, diagnostics);
+        return false;
+    }
+    if (!std::filesystem::is_directory(target_status) || std::filesystem::is_symlink(target_status)) {
+        return append_target_directory_status_diagnostic(
+            target_root,
+            "migration-directory-verify-kind-mismatch",
+            diagnostics);
+    }
+
+    auto iterator = std::filesystem::recursive_directory_iterator(source_root, std::filesystem::directory_options::none, ec);
+    if (ec) {
+        diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "migration-directory-verify-source-scan-failed",
+            ec.message(),
+            source_root));
+        return false;
+    }
+
+    for (const auto end = std::filesystem::recursive_directory_iterator(); iterator != end; iterator.increment(ec)) {
+        if (ec) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-directory-verify-source-scan-failed",
+                ec.message(),
+                source_root));
+            return false;
+        }
+
+        const auto relative = iterator->path().lexically_relative(source_root);
+        const auto target_path = target_root / relative;
+        const auto entry_status = iterator->symlink_status(ec);
+        if (ec) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-directory-verify-source-status-failed",
+                ec.message(),
+                iterator->path()));
+            return false;
+        }
+
+        const auto copied_status = std::filesystem::symlink_status(target_path, ec);
+        if (ec) {
+            diagnostics.push_back(make_diagnostic(
+                severity::error,
+                "migration-directory-verify-target-missing",
+                ec.message(),
+                target_path));
+            return false;
+        }
+
+        if (std::filesystem::is_symlink(entry_status)) {
+            append_unsupported_object_diagnostic(iterator->path(), diagnostics);
+            return false;
+        }
+        if (std::filesystem::is_symlink(copied_status)) {
+            return append_target_directory_status_diagnostic(
+                target_path,
+                "migration-directory-verify-kind-mismatch",
+                diagnostics);
+        }
+        if (std::filesystem::is_directory(entry_status)) {
+            if (!std::filesystem::is_directory(copied_status)) {
+                return append_target_directory_status_diagnostic(
+                    target_path,
+                    "migration-directory-verify-kind-mismatch",
+                    diagnostics);
+            }
+            continue;
+        }
+        if (std::filesystem::is_regular_file(entry_status)) {
+            if (!std::filesystem::is_regular_file(copied_status)) {
+                return append_target_directory_status_diagnostic(
+                    target_path,
+                    "migration-directory-verify-kind-mismatch",
+                    diagnostics);
+            }
+            if (!regular_files_have_same_content(iterator->path(), target_path, diagnostics)) {
+                return false;
+            }
+            continue;
+        }
+
+        append_unsupported_object_diagnostic(iterator->path(), diagnostics);
+        return false;
+    }
+
+    return true;
 }
 
 inline void record_after_paths(migration_action_result& result)

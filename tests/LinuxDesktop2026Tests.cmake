@@ -64,6 +64,7 @@ add_test(NAME ld_desktop_c_tests COMMAND ld_desktop_c_tests)
 add_executable(ld_migration_tests
     tests/migration_tests.cpp
 )
+target_include_directories(ld_migration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(ld_migration_tests PRIVATE LinuxDesktop2026::ld_migration)
 
 add_test(NAME ld_migration_tests COMMAND ld_migration_tests)

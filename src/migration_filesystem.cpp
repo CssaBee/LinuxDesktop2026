@@ -139,6 +139,17 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             }
         }
 
+        if (internal::is_directory_action(action.kind) &&
+            !internal::verify_supported_directory_copy(action.source_path, action.target_path, result.diagnostics)) {
+            result.state = internal::is_move_action(action.kind)
+                ? migration_action_state::partially_executed
+                : migration_action_state::blocked;
+            report.ok = false;
+            internal::record_after_paths(result);
+            report.actions.push_back(std::move(result));
+            continue;
+        }
+
         if (internal::is_move_action(action.kind)) {
             if (!internal::is_directory_action(action.kind)) {
                 std::filesystem::rename(action.source_path, action.target_path, ec);
