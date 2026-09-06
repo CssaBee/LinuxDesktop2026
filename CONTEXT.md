@@ -112,6 +112,10 @@ _Avoid_: Toy exercises, tutorial-only examples, unrelated coding katas
 A small adapter-and-test harness that rewrites a real upstream seam against LinuxDesktop2026 APIs and measures how little glue is needed to integrate it.
 _Avoid_: Toy example, mock-only compatibility test, benchmark suite
 
+**Review-hardening FlavorTest probe**:
+A Flavor test chosen specifically to expose a suspected review blind spot or API-boundary risk in the active hardening queue.
+_Avoid_: Random new sample, adoption proof, release blocker by default
+
 **Flavor review round**:
 A later critique/defense pass over completed flavor tests that judges how well the refactor blends into the original product shape.
 _Avoid_: Unit test result, implementation gate, pass/fail criterion

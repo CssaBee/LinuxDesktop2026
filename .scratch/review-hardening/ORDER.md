@@ -16,6 +16,9 @@ list below.
 - `101` - Decide Semantic Cross-Device File Move
 - `102` - Run Native Watch Performance Evidence
 - `103` - Decide Diagnostic Stringification Location
+- `105` - Add Amiberry Root Topology FlavorTest Probe
+- `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
+- `107` - Add Minifox Portable Launcher FlavorTest Probe
 
 ## 0.2.0 Release Gate
 
@@ -37,6 +40,9 @@ native-backend evidence makes them release-critical:
 - `101` - Decide Semantic Cross-Device File Move
 - `102` - Run Native Watch Performance Evidence
 - `103` - Decide Diagnostic Stringification Location
+- `105` - Add Amiberry Root Topology FlavorTest Probe
+- `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
+- `107` - Add Minifox Portable Launcher FlavorTest Probe
 
 ## Implemented
 
