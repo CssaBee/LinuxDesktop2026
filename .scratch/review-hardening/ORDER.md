@@ -7,8 +7,6 @@ list below.
 ## Current Order
 
 - `82` - Reduce Bus Factor And Write Governance
-- `105` - Add Amiberry Root Topology FlavorTest Probe
-- `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
 - `107` - Add Minifox Portable Launcher FlavorTest Probe
 
 ## 0.2.0 Release Gate
@@ -23,12 +21,12 @@ These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
 
 - `82` - Reduce Bus Factor And Write Governance
-- `105` - Add Amiberry Root Topology FlavorTest Probe
-- `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
 - `107` - Add Minifox Portable Launcher FlavorTest Probe
 
 ## Implemented
 
+- `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
+- `105` - Add Amiberry Root Topology FlavorTest Probe
 - `103` - Decide Diagnostic Stringification Location
 - `102` - Run Native Watch Performance Evidence
 - `96` - Decide Desktop Registration C ABI Expansion

@@ -443,6 +443,53 @@ Boundary notes:
 - Public KickCAT tool results expose tool and master-launch vocabulary.
   LinuxDesktop2026 reports stay inside the optional tooling adapter.
 
+## Amiberry
+
+Fit:
+
+- `linuxdesktop::root::request_builder` fits Amiberry's ordinary bootstrap
+  config root and named data/state roots while leaving emulator media policy in
+  the adapter.
+- Portable root handling fits the executable-adjacent `amiberry.portable`
+  marker and keeps the distinction between requested and active portable mode.
+
+Friction:
+
+- Amiberry's `base_content_path` is a bulk product root that intentionally
+  overrides many derived leaves. LinuxDesktop2026 can express the surrounding
+  default topology, but the base-content fan-out remains product code.
+- Plugin lookup has install-library, user-home, and executable fallbacks that do
+  not fit a single named root cleanly without hiding product order.
+
+Boundary notes:
+
+- Bootstrap files such as `amiberry.conf` remain platform-settings files, while
+  `.uae` configuration files and emulator content are product-managed roots.
+- Public Amiberry results expose emulator path names. LinuxDesktop2026 root
+  reports stay inside the adapter.
+
+## Endless Sky
+
+Fit:
+
+- `linuxdesktop::root` named resource/data roots fit the paired plugin search
+  roots: one bundled resource root and one user-owned plugin root for
+  downloaded content.
+- Named data roots fit saves and preferences without moving game-specific file
+  names into LinuxDesktop2026.
+
+Friction:
+
+- Component roots currently scope relative paths under
+  `components/<component>/...`, which is mechanically clear but not the natural
+  Endless Sky path shape of `plugins/` directly under the user data root.
+
+Boundary notes:
+
+- Endless Sky owns plugin metadata, validation, load order, saves, and game data
+  formats. LinuxDesktop2026 only resolves the platform roots that those product
+  paths hang from.
+
 ## Dependency Pain
 
 Current desired dependency shape:

@@ -105,6 +105,15 @@ Selected upstream subprojects:
   EtherCAT master/slave stack, network interface selection, and real-time
   behavior product-owned. It is requirements/challenge evidence for separating
   optional desktop tooling from embedded or real-time core code.
+- `amiberry/`: refactors Amiberry-style managed root topology for bootstrap
+  config, content roots, plugins, `base_content_path`, environment overrides,
+  and executable-adjacent portable mode. It keeps emulator media, Kickstart,
+  WHDLoad, and plugin loading policy in product code while using `ld_root` for
+  the ordinary app/user topology.
+- `endless_sky/`: refactors Endless Sky-style resource and user plugin roots.
+  It keeps plugin scanning, downloadable plugin ownership, saves, preferences,
+  and game content semantics in product code while using `ld_root` named roots
+  to keep bundled and user-owned plugin locations separate.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -125,6 +134,8 @@ methods rather than against generic helper functions:
 - `ctrlrx_flavor_tests`
 - `smartservo_flavor_tests`
 - `kickcat_flavor_tests`
+- `amiberry_flavor_tests`
+- `endless_sky_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers

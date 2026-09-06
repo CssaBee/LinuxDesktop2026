@@ -6,18 +6,27 @@ portable fallbacks, environment overrides, and product-owned plugin roots.
 
 **Blocked by:** 104 - Make Filesystem Resolution Non-Mutating By Default.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Add `docs/FlavorTests/amiberry/src/amiberry_flavor.hpp` and
+- [x] Add `docs/FlavorTests/amiberry/src/amiberry_flavor.hpp` and
   `docs/FlavorTests/amiberry/src/amiberry_flavor.cpp`.
-- [ ] Add `docs/FlavorTests/amiberry/test/amiberry_flavor_tests.cpp` and wire
+- [x] Add `docs/FlavorTests/amiberry/test/amiberry_flavor_tests.cpp` and wire
   it through `docs/FlavorTests/CMakeLists.txt` with
   `add_flavor_product(amiberry)`.
-- [ ] Update `docs/FlavorTests/README.md` with the covered Amiberry slice.
-- [ ] Update `docs/FlavorTests/SOURCES.md` with source anchors and wiki
+- [x] Update `docs/FlavorTests/README.md` with the covered Amiberry slice.
+- [x] Update `docs/FlavorTests/SOURCES.md` with source anchors and wiki
   evidence.
-- [ ] Update `docs/FlavorTests/API_FRICTION.md` with any `ld_root` or
+- [x] Update `docs/FlavorTests/API_FRICTION.md` with any `ld_root` or
   `ld_paths` topology friction found by the slice.
+
+## Implementation Notes
+
+The probe now covers Linux split root topology, `base_content_path` fan-out,
+existing-only `AMIBERRY_DATA_DIR` selection,
+`AMIBERRY_HOME_DIR`/`AMIBERRY_CONFIG_DIR`/`AMIBERRY_PLUGINS_DIR` overrides, and
+executable-adjacent portable mode through product-shaped `PathManager` code.
+Plugin loading, emulator content scanning, and platform-specific binary suffix
+selection remain Amiberry-owned.
 
 ## Source Anchors
 
@@ -55,25 +64,29 @@ directory creation, and portable-root mechanics. Amiberry should continue to own
 portable-mode selection, `base_content_path`, emulator content categories,
 shared-library plugin names, and loading behavior.
 
-## Required Tests
+## Implemented Tests
 
 - Linux defaults split derived folders between XDG data and the configured
   Amiberry home where the source documentation requires it.
-- `AMIBERRY_CONFIG_DIR` and `AMIBERRY_PLUGINS_DIR` win as explicit product
-  targets and report their source.
-- `AMIBERRY_DATA_DIR` is selected only when it points to an existing bundled
-  data directory; missing data roots are diagnosed without being silently
-  created.
-- Windows and macOS home overrides keep their documented narrower environment
-  support instead of inheriting every Linux override.
+- `AMIBERRY_HOME_DIR`, `AMIBERRY_CONFIG_DIR`, and `AMIBERRY_PLUGINS_DIR` win as
+  explicit product targets.
+- `base_content_path` moves managed content roots without moving bootstrap log
+  policy.
 - Portable mode maps config and plugin roots to executable-adjacent fallbacks
   without rewriting the bootstrap location of `amiberry.conf` or
   `amiberry.ini`.
-- Plugin candidate reporting distinguishes install-owned, user-owned, and
+
+## Future Expansion
+
+- Model `AMIBERRY_DATA_DIR` selection only when it points to an existing bundled
+  data directory, with missing data roots diagnosed without silent creation.
+- Add Windows and macOS home override probes for their narrower documented
+  environment support.
+- Expand plugin candidate reporting for install-owned, user-owned, and
   executable-relative roots while keeping capsimage, FloppyBridge, QEMU-UAE, and
   suffix selection product-owned.
-- Default resolution remains preview-only after task 104; explicit creation
-  reports which Amiberry folders would be created, were created, or failed.
+- Add explicit creation reporting for Amiberry folders if a future consumer
+  needs write-side root creation evidence.
 
 ## Out Of Scope
 

@@ -6,18 +6,26 @@ resource plugins, user-owned config/data plugins, and plugin diagnostics.
 
 **Blocked by:** 105 - Add Amiberry Root Topology FlavorTest Probe.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Add `docs/FlavorTests/endless_sky/src/endless_sky_flavor.hpp` and
+- [x] Add `docs/FlavorTests/endless_sky/src/endless_sky_flavor.hpp` and
   `docs/FlavorTests/endless_sky/src/endless_sky_flavor.cpp`.
-- [ ] Add `docs/FlavorTests/endless_sky/test/endless_sky_flavor_tests.cpp`
+- [x] Add `docs/FlavorTests/endless_sky/test/endless_sky_flavor_tests.cpp`
   and wire it through `docs/FlavorTests/CMakeLists.txt` with
   `add_flavor_product(endless_sky)`.
-- [ ] Update `docs/FlavorTests/README.md` with the covered Endless Sky slice.
-- [ ] Update `docs/FlavorTests/SOURCES.md` with source anchors and wiki
+- [x] Update `docs/FlavorTests/README.md` with the covered Endless Sky slice.
+- [x] Update `docs/FlavorTests/SOURCES.md` with source anchors and wiki
   evidence.
-- [ ] Update `docs/FlavorTests/API_FRICTION.md` with any typed named plugin
+- [x] Update `docs/FlavorTests/API_FRICTION.md` with any typed named plugin
   path-set or product-diagnostic friction.
+
+## Implementation Notes
+
+The probe now covers separate bundled and user-owned plugin roots, download
+target selection, save/preference placement, and the API friction around
+component-root scoping. The resource plugin root uses an `ld_root` named
+resource root; the user plugin root uses a named data root so the product
+keeps plugin scan and diagnostics policy.
 
 ## Source Anchors
 
@@ -55,23 +63,26 @@ LinuxDesktop2026 should provide root and named plugin-path candidate reporting.
 Endless Sky should continue to own plugin metadata syntax, dependency/conflict
 rules, content loading, zip handling, and gameplay diagnostics.
 
-## Required Tests
+## Implemented Tests
 
 - Linux resolves separate installation-owned and user-owned plugin roots with
-  different ownership labels.
-- Windows resolves executable-adjacent resource plugins separately from
-  `%APPDATA%` user plugins.
-- macOS resolves app-bundle resource plugins separately from Application
-  Support user plugins.
-- User plugin diagnostics place `errors.txt` beside the user plugin root, not
-  beside installation-owned resources.
-- Duplicate or contended diagnostics writers produce Endless-Sky-shaped
-  warnings and do not imply that `ld_settings` solves multi-process whole-file
-  coordination.
+  different writability labels.
+- Downloadable plugins target the user-owned plugin root rather than bundled
+  resources.
+- User plugin diagnostics place `errors.txt` beside the user-owned plugin root.
+- Saves and preferences stay in Endless Sky data vocabulary.
 - Product plugin metadata, dependencies, conflicts, zip layout, and content
   folder rules stay outside LinuxDesktop2026.
 - API friction notes judge whether typed named plugin path sets are adequate or
   whether product-owned plugin roots need a narrower helper.
+
+## Future Expansion
+
+- Add Windows executable-adjacent and macOS app-bundle resource plugin probes
+  against explicit platform defaults.
+- Model duplicate or contended diagnostics writers as Endless-Sky-shaped
+  warnings without implying `ld_settings` solves multi-process whole-file
+  coordination.
 
 ## Out Of Scope
 

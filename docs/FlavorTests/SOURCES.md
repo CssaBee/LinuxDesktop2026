@@ -307,3 +307,43 @@ network interface selection, real-time behavior, bus launch rules, and ESI
 requirements in KickCAT-shaped code. LinuxDesktop2026 is limited to optional
 desktop tooling paths and GUI config writes, making this a boundary challenge
 for avoiding accidental coupling to real-time or embedded modules.
+
+## Amiberry
+
+- Upstream repository: `BlitterStudio/amiberry`
+- Source snapshot: reviewed from upstream wiki/source-facing documentation on
+  2026-09-06.
+- Upstream areas: directory topology, path panel, `amiberry.conf` path entries,
+  and portable-mode behavior.
+- Anchors: `AMIBERRY_HOME_DIR`, `AMIBERRY_CONFIG_DIR`,
+  `AMIBERRY_PLUGINS_DIR`, `base_content_path`, `config_path`,
+  `whdboot_path`, `controllers_path`, `rom_path`, `savestate_dir`,
+  `screenshot_dir`, `logfile_path`, `plugins_dir`, and
+  executable-adjacent `amiberry.portable`.
+- Refactored files: `amiberry/src/amiberry_flavor.*`
+- Tests: `amiberry/test/amiberry_flavor_tests.cpp`
+
+The extracted slice does not build the emulator, SDL frontend, WHDLoad booter,
+Kickstart scanner, or shared-library plugin loading. It keeps Amiberry's
+derived folder names, environment override precedence, base-content fan-out,
+and install/user/executable plugin fallback order in product-shaped code.
+LinuxDesktop2026 supplies root topology resolution for the platform config,
+data, state, and portable branches.
+
+## Endless Sky
+
+- Upstream repository: `endless-sky/endless-sky`
+- Source snapshot: reviewed from upstream plugin documentation on 2026-09-06.
+- Upstream areas: resource directory, user data/config directory, save and
+  preferences paths, and plugin search/download locations.
+- Anchors: bundled `plugins/` under the resource directory, user-owned
+  `plugins/` under the user data directory, plugin metadata/content
+  subdirectories, saves, and `preferences.txt`.
+- Refactored files: `endless_sky/src/endless_sky_flavor.*`
+- Tests: `endless_sky/test/endless_sky_flavor_tests.cpp`
+
+The extracted slice does not build the game engine, parser, renderer, content
+loader, or plugin manifest validation. It keeps plugin ownership, scan order,
+download target choice, save names, and preference file names in Endless
+Sky-shaped code. LinuxDesktop2026 is used only for resource/user root
+resolution and named plugin roots.

@@ -43,21 +43,41 @@ flavor_tests::kicad::SETTINGS_MANAGER make_manager(const std::filesystem::path& 
     return flavor_tests::kicad::SETTINGS_MANAGER({root / "home", {{"XDG_CONFIG_HOME", (root / "xdg-config").string()}}});
 }
 
+std::filesystem::path kicad_config_root(const std::filesystem::path& root)
+{
+    return root / "xdg-config" / "KiCad" / "kicad";
+}
+
 void user_color_and_toolbar_settings_resolve_to_named_roots()
 {
     const auto root = test_root();
+    std::filesystem::create_directories(kicad_config_root(root));
     auto manager = make_manager(root);
 
     require(manager.SettingsDirectoryValid(), "KiCad settings directory should be valid");
     require(manager.GetPathForSettingsFile({"eeschema.json", flavor_tests::kicad::SettingsLocation::User}) ==
-            root / "xdg-config" / "KiCad" / "kicad" / "eeschema.json",
+            kicad_config_root(root) / "eeschema.json",
         "user settings should stay under KiCad config root");
     require(manager.GetPathForSettingsFile({"dark.json", flavor_tests::kicad::SettingsLocation::Colors}) ==
-            root / "xdg-config" / "KiCad" / "kicad" / "colors" / "dark.json",
+            kicad_config_root(root) / "colors" / "dark.json",
         "color settings should use the colors named root");
     require(manager.GetPathForSettingsFile({"pcbnew.tb", flavor_tests::kicad::SettingsLocation::Toolbars}) ==
             manager.GetToolbarSettingsPath() / "pcbnew.tb",
         "toolbar settings should use the toolbar path helper");
+}
+
+void unresolved_settings_directory_is_not_created_by_resolution()
+{
+    const auto root = test_root();
+    auto manager = make_manager(root);
+
+    require(!std::filesystem::exists(kicad_config_root(root)),
+        "KiCad root resolution should not create the settings directory");
+    require(!manager.SettingsDirectoryValid(),
+        "missing KiCad settings directory should not be reported as valid");
+    require(manager.GetPathForSettingsFile({"eeschema.json", flavor_tests::kicad::SettingsLocation::User}) ==
+            kicad_config_root(root) / "eeschema.json",
+        "missing settings directory should still resolve to the expected path");
 }
 
 void project_settings_resolve_beside_the_project()
@@ -116,6 +136,7 @@ int main()
 {
     try {
         user_color_and_toolbar_settings_resolve_to_named_roots();
+        unresolved_settings_directory_is_not_created_by_resolution();
         project_settings_resolve_beside_the_project();
         backup_root_honors_project_dir_policy();
         backup_root_honors_user_dir_policy_with_project_disambiguation();

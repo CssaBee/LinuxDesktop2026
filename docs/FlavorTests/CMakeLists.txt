@@ -89,3 +89,7 @@ add_flavor_product(smartservo
 add_flavor_product(kickcat
     LinuxDesktop2026::ld_paths
     LinuxDesktop2026::ld_settings)
+add_flavor_product(amiberry
+    LinuxDesktop2026::ld_root)
+add_flavor_product(endless_sky
+    LinuxDesktop2026::ld_root)
