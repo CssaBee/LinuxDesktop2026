@@ -21,6 +21,14 @@ tests are local and deterministic; they can use temporary filesystem topology
 and injected environment maps, but they should remain fast enough for the
 normal hardening suite.
 
+Review-derived tickets should also name the evidence source that fits the
+claim under review. Boundedness, activation, parser scope, public status,
+ownership, naming, and failure-mode claims may need unit tests, adversarial
+tests, FlavorTests, maintained consumer proof, source review, CI, or a docs
+ledger. Passing one evidence source does not imply the others; for example, a
+bounded raw watcher queue does not prove bounded settled-file readiness, and a
+generated desktop artifact does not prove an activated desktop effect.
+
 ## Rationale
 
 Ordinary happy-path tests can miss regressions in behavior that users depend
@@ -46,3 +54,7 @@ The added detail increases maintenance cost, but the target is public behavior
 rather than private shape. When an implementation changes intentionally, the
 test update should explain the new caller-visible contract instead of weakening
 the hardening lane.
+
+The September 2026 retrospective in
+`docs/review-hardening-retrospective.md` is the current checklist for matching
+review claims to evidence before a hardening ticket is accepted as complete.

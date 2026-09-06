@@ -7,13 +7,19 @@ list below.
 ## Current Order
 
 - `82` - Reduce Bus Factor And Write Governance
-- `83` - Run Review Blind-Spot Retrospective
-- `86` - Design Desktop Bundle Registration Surface
 - `87` - Add Staged XDG Desktop Registration Artifacts
 - `88` - Prove Windows Registration Capability Posture
+- `91` - Add Desktop Bundle API And Report Vocabulary
+- `92` - Wire Desktop Bundle To Staged Registration Effects
+- `93` - Add Desktop Registration Cleanup Reports
+- `94` - Add Desktop Flavor Registration Validation
+- `95` - Add Maintained Desktop Registration Proof
+- `96` - Decide Desktop Registration C ABI Expansion
 
 ## Implemented
 
+- `86` - Design Desktop Bundle Registration Surface
+- `83` - Run Review Blind-Spot Retrospective
 - `80` - Decompose Root CMake Before Next Module Wave
 - `81` - Add Coverage Failure-Mode And Watch Performance Evidence
 - `90` - Implement Versioned Settings Commit API
@@ -222,6 +228,19 @@ ADR: `docs/adr/0014-adopt-invasive-and-adversarial-hardening-tests.md`
 
 - Public-facing status claims should point to one current ledger instead of
   repeating branch, remote, CI, or maintenance details in multiple docs.
+- Before ticketing or closing review-derived work, identify the evidence source
+  that fits the claim: unit test, adversarial test, FlavorTest, maintained
+  proof, source review, CI, or docs ledger.
+- Challenge boundedness beyond the already-bounded structure: deferred work,
+  coalescing maps, retry loops, and backend queues can grow independently.
+- Distinguish staged artifacts, activation requests, and verified system
+  effects in public names, capability reports, and docs.
+- Scope parsers explicitly as format implementations, schema-bound importers,
+  or fixture helpers before broadening public compatibility claims.
+- Check cleanup, overflow, and teardown paths for unrelated state owned by a
+  different watch, backend, file, user, or generated artifact.
+- Rename or split APIs when the plain-English name implies a stronger
+  filesystem, write, or migration guarantee than the contract provides.
 
 ## Review-Derived Hardening Batch
 

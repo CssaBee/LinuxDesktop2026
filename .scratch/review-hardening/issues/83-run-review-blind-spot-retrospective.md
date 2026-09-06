@@ -5,18 +5,28 @@ the answer into reusable review checks.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] For each September 2026 finding, classify the missed question: workload
+- [x] For each September 2026 finding, classify the missed question: workload
   shape, lifecycle invariant, public-claim drift, semantic naming, parser
   grammar, failure mode, or ownership boundary.
-- [ ] Identify which current evidence source should have caught it: unit test,
+- [x] Identify which current evidence source should have caught it: unit test,
   adversarial test, FlavorTest, maintained proof, source review, CI, or docs
   ledger.
-- [ ] Add a short pre-ticket checklist for future hardening reviews so bounded
+- [x] Add a short pre-ticket checklist for future hardening reviews so bounded
   claims, activation claims, parser scope, and public examples are challenged.
-- [ ] Update ADR 0014 or adjacent hardening docs only if the retrospective
+- [x] Update ADR 0014 or adjacent hardening docs only if the retrospective
   changes the testing posture.
+
+## Result
+
+Added `docs/review-hardening-retrospective.md` with a concise classification
+of the September 2026 findings by missed question and matching evidence source.
+The pre-ticket checklist now lives in both that retrospective and the active
+review order. ADR 0014 now says review-derived tickets must name the evidence
+source that fits the claim, because adversarial input tests alone would not
+have caught public status drift, activation drift, maintained-proof drift, or
+some workload-shape bugs.
 
 ## Initial Hypothesis
 
