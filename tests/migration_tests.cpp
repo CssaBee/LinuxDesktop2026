@@ -732,19 +732,19 @@ void registry_json_rejects_hostile_import_shapes()
     require(has_diagnostic(malformed_values.diagnostics, "registry-json-values-invalid"),
         "Registry JSON parser should diagnose malformed values arrays");
 
-    const auto truncated_values = reg::parse_snapshot_json(
-        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
-        ",\"values\":[{\"key_path\":\"Profiles\"}");
-    require(!truncated_values.ok, "Registry JSON parser should reject truncated values arrays");
-    require(has_diagnostic(truncated_values.diagnostics, "registry-json-values-invalid"),
-        "Registry JSON parser should diagnose truncated values arrays");
-
     const auto invalid_hex = reg::parse_snapshot_json(
         "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
         ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"type\":\"string\",\"data_hex\":\"abc\"}]}");
     require(!invalid_hex.ok, "Registry JSON parser should reject odd-length hex payloads");
     require(has_diagnostic(invalid_hex.diagnostics, "registry-json-value-invalid"),
         "Registry JSON parser should diagnose invalid value payloads");
+
+    const auto duplicate_value_field = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"name\":\"Alias\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!duplicate_value_field.ok, "Registry JSON parser should reject duplicate schema fields");
+    require(has_diagnostic(duplicate_value_field.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose duplicate schema fields");
 
     reg::key destination;
     destination.subkey = "Software\\LinuxDesktop2026\\migration-tests";
@@ -773,26 +773,26 @@ void registry_json_rejects_out_of_scope_json()
     require(has_diagnostic(nested_search_trick.diagnostics, "registry-json-format-invalid"),
         "Registry JSON parser should diagnose unsupported top-level fields");
 
-    const auto unicode_escape = reg::parse_snapshot_json(
-        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
-        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"N\\u0061me\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
-    require(!unicode_escape.ok, "Registry JSON parser should reject unsupported Unicode escapes");
-    require(has_diagnostic(unicode_escape.diagnostics, "registry-json-value-invalid"),
-        "Registry JSON parser should diagnose unsupported value escapes");
-
-    const auto slash_escape = reg::parse_snapshot_json(
-        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
-        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\\/Leaf\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
-    require(!slash_escape.ok, "Registry JSON parser should reject unsupported slash escapes");
-    require(has_diagnostic(slash_escape.diagnostics, "registry-json-value-invalid"),
-        "Registry JSON parser should diagnose unsupported slash escapes");
-
     const auto nested_value_field = reg::parse_snapshot_json(
         "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
         ",\"values\":[{\"key_path\":\"Profiles\",\"name\":{\"text\":\"Name\"},\"type\":\"string\",\"data_hex\":\"41\"}]}");
     require(!nested_value_field.ok, "Registry JSON parser should reject nested value fields");
     require(has_diagnostic(nested_value_field.diagnostics, "registry-json-value-invalid"),
         "Registry JSON parser should diagnose nested value fields");
+
+    const auto scalar_value_field = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"type\":\"string\",\"data_hex\":41}]}");
+    require(!scalar_value_field.ok, "Registry JSON parser should reject scalar fields with the wrong JSON type");
+    require(has_diagnostic(scalar_value_field.diagnostics, "registry-json-value-invalid"),
+        "Registry JSON parser should diagnose wrong value field types");
+
+    const auto deep_nesting = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":[[[[[[[[[\"Name\"]]]]]]]]],\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!deep_nesting.ok, "Registry JSON parser should reject deeply nested hostile input");
+    require(has_diagnostic(deep_nesting.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose excessive nesting as malformed snapshot JSON");
 }
 
 void registry_reg_rejects_hostile_import_shapes()

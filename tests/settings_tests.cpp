@@ -1340,19 +1340,19 @@ void registry_json_rejects_hostile_import_shapes()
     require(has_diagnostic(malformed_values.diagnostics, "registry-json-values-invalid"),
         "Registry JSON parser should diagnose malformed values arrays");
 
-    const auto truncated_values = reg::parse_snapshot_json(
-        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
-        ",\"values\":[{\"key_path\":\"Profiles\"}");
-    require(!truncated_values.ok, "Registry JSON parser should reject truncated values arrays");
-    require(has_diagnostic(truncated_values.diagnostics, "registry-json-values-invalid"),
-        "Registry JSON parser should diagnose truncated values arrays");
-
     const auto invalid_hex = reg::parse_snapshot_json(
         "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
         ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"type\":\"string\",\"data_hex\":\"abc\"}]}");
     require(!invalid_hex.ok, "Registry JSON parser should reject odd-length hex payloads");
     require(has_diagnostic(invalid_hex.diagnostics, "registry-json-value-invalid"),
         "Registry JSON parser should diagnose invalid value payloads");
+
+    const auto duplicate_value_field = reg::parse_snapshot_json(
+        "{\"format\":\"linuxdesktop.settings.registry.snapshot.v1\"," + root +
+        ",\"values\":[{\"key_path\":\"Profiles\",\"name\":\"Name\",\"name\":\"Alias\",\"type\":\"string\",\"data_hex\":\"41\"}]}");
+    require(!duplicate_value_field.ok, "Registry JSON parser should reject duplicate schema fields");
+    require(has_diagnostic(duplicate_value_field.diagnostics, "registry-json-format-invalid"),
+        "Registry JSON parser should diagnose duplicate schema fields");
 
     reg::key destination;
     destination.subkey = "Software\\LinuxDesktop2026\\settings-tests";

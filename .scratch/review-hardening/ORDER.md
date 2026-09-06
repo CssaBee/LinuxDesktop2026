@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `97` - Replace Migration JSON Parser
 - `98` - Add Coverage Reporting To CI
 - `99` - Add Formatting Policy
 - `104` - Make Filesystem Resolution Non-Mutating By Default
@@ -26,7 +25,6 @@ These tickets block `0.2.0` because they protect the release's public support
 matrix, parser contract, mutation guarantees, CI evidence, or contributor
 baseline:
 
-- `97` - Replace Migration JSON Parser
 - `98` - Add Coverage Reporting To CI
 - `99` - Add Formatting Policy
 - `104` - Make Filesystem Resolution Non-Mutating By Default
@@ -46,6 +44,7 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `97` - Replace Migration JSON Parser
 - `95` - Add Maintained Desktop Registration Proof
 - `94` - Add Desktop Flavor Registration Validation
 - `93` - Add Desktop Registration Cleanup Reports
