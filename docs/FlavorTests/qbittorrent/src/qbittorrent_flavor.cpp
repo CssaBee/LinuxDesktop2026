@@ -232,6 +232,12 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     portable_root.marker = portable_profile_path;
     portable_root.level = linuxdesktop::root::portable_root_level::profile;
 
+    const auto logs_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_log_root_request(
+            "logs",
+            linuxdesktop::root::ownership_kind::user_local,
+            "logs"));
+
     auto builder = linuxdesktop::root::request_builder()
         .app("qBittorrent", "qBittorrent" + configurationSuffix())
         .resource_root(environment.executable_dir)
@@ -239,10 +245,7 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
         .environment(environment.variables)
         .use_process_environment(false)
         .portable_root(portable_root)
-        .named_root(linuxdesktop::root::make_log_root_request(
-            "logs",
-            linuxdesktop::root::ownership_kind::user_local,
-            "logs"));
+        .named_root(logs_root);
     if (args.profile_dir) {
         builder.app_root_override(*args.profile_dir);
     }
@@ -252,7 +255,7 @@ bool Profile::init(const RuntimeEnvironment& environment, const CommandLineArgs&
     data_root_ = report.roots.data;
     fastresume_root_ = relative_fastresume_paths_ ? profile_root_ / "BT_backup" : data_root_ / "BT_backup";
     logs_root_ = report.roots.state / "logs";
-    if (const auto* logs = linuxdesktop::root::find_named_root(report, "logs")) {
+    if (const auto* logs = linuxdesktop::root::find_named_root(report, logs_root)) {
         logs_root_ = logs->path;
     }
     return !profile_root_.empty();

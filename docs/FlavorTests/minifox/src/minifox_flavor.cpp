@@ -120,6 +120,25 @@ LaunchPlan LauncherPlanner::plan(
     portable_root.requested = true;
     portable_root.level = linuxdesktop::root::portable_root_level::profile;
 
+    const auto data_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "minifox-data",
+            linuxdesktop::root::purpose_kind::data,
+            linuxdesktop::root::ownership_kind::app_local,
+            ".minifox"));
+    const auto cache_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "minifox-cache",
+            linuxdesktop::root::purpose_kind::cache,
+            linuxdesktop::root::ownership_kind::app_local,
+            ".cache"));
+    const auto runtime_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "minifox-runtime",
+            linuxdesktop::root::purpose_kind::runtime,
+            linuxdesktop::root::ownership_kind::app_local,
+            ".minifox/runtime"));
+
     auto builder = linuxdesktop::root::request_builder()
         .app("Minifox", "ComfyUI Launcher")
         .resource_root(environment.executable_directory)
@@ -127,21 +146,9 @@ LaunchPlan LauncherPlanner::plan(
         .environment(environment.environment)
         .use_process_environment(false)
         .portable_root(portable_root)
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "minifox-data",
-            linuxdesktop::root::purpose_kind::data,
-            linuxdesktop::root::ownership_kind::app_local,
-            ".minifox"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "minifox-cache",
-            linuxdesktop::root::purpose_kind::cache,
-            linuxdesktop::root::ownership_kind::app_local,
-            ".cache"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "minifox-runtime",
-            linuxdesktop::root::purpose_kind::runtime,
-            linuxdesktop::root::ownership_kind::app_local,
-            ".minifox/runtime"));
+        .named_root(data_root)
+        .named_root(cache_root)
+        .named_root(runtime_root);
 
     if (environment.home_directory) {
         builder.platform_defaults(linuxdesktop2026::generated::platform_path_defaults_for_home(
@@ -164,16 +171,16 @@ LaunchPlan LauncherPlanner::plan(
     plan.triton_cache_root = environment.executable_directory / ".cache" / "triton";
     plan.torchinductor_cache_root = environment.executable_directory / ".cache" / "torchinductor";
 
-    if (const auto* data = linuxdesktop::root::find_named_root(report, "minifox-data")) {
+    if (const auto* data = linuxdesktop::root::find_named_root(report, data_root)) {
         plan.application_settings_file = data->path / "application-settings.json";
         plan.profile_settings_file = data->path / "profiles" / (profile_file_stem(profile.name) + ".json");
     }
-    if (const auto* cache = linuxdesktop::root::find_named_root(report, "minifox-cache")) {
+    if (const auto* cache = linuxdesktop::root::find_named_root(report, cache_root)) {
         plan.zluda_cache_root = cache->path / "zluda";
         plan.triton_cache_root = cache->path / "triton";
         plan.torchinductor_cache_root = cache->path / "torchinductor";
     }
-    if (const auto* runtime = linuxdesktop::root::find_named_root(report, "minifox-runtime")) {
+    if (const auto* runtime = linuxdesktop::root::find_named_root(report, runtime_root)) {
         plan.runtime_root = runtime->path;
     }
 

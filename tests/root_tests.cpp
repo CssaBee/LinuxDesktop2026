@@ -155,6 +155,39 @@ void builder_preserves_options()
     require(!std::filesystem::exists(app), "builder should preserve create-directories policy");
 }
 
+void named_root_handles_request_and_lookup_with_one_label()
+{
+    const auto root = test_root() / "app";
+    const auto logs = ld::make_named_root_handle(
+        ld::make_log_root_request("logs", ld::ownership_kind::user_local, "Logs"));
+    const auto profiles = ld::make_named_root_handle(
+        ld::make_profiles_root_request("profiles", ld::ownership_kind::user_roaming, "Profiles"));
+
+    ld::options options;
+    options.app_root_override = root;
+    options.named_roots = {logs.request};
+
+    const auto options_report = ld::resolve_app_roots(identity(), options);
+    const auto* options_logs = ld::find_named_root(options_report, logs);
+    require(options_logs != nullptr, "handle should find named roots requested through raw options");
+    require(options_logs->path == root / "Logs", "handle lookup should use the declared request name");
+
+    const auto builder_report = ld::request_builder(identity())
+        .app_root_override(root)
+        .named_root(logs)
+        .named_root(profiles)
+        .resolve();
+
+    const auto* builder_logs = ld::find_named_root(builder_report, logs);
+    const auto* builder_profiles = ld::find_named_root(builder_report, profiles);
+    require(builder_logs != nullptr, "builder should accept named-root handles");
+    require(builder_profiles != nullptr, "builder should preserve multiple named-root handles");
+    require(builder_logs->name == logs.name(), "handle name should match resolved root name");
+    require(builder_profiles->path == root / "Profiles", "handle should find the matching resolved profile root");
+    require(ld::find_named_root(builder_report, "logs") == builder_logs,
+        "existing string lookup should remain available for dynamic names");
+}
+
 void helper_factories_match_explicit_request_shapes()
 {
     const auto config = ld::make_config_root_request("config", ld::ownership_kind::user_roaming, "Config");
@@ -413,6 +446,8 @@ int main()
         {"resolves_named_roots", resolves_named_roots},
         {"resolves_component_roots", resolves_component_roots},
         {"builder_preserves_options", builder_preserves_options},
+        {"named_root_handles_request_and_lookup_with_one_label",
+            named_root_handles_request_and_lookup_with_one_label},
         {"helper_factories_match_explicit_request_shapes", helper_factories_match_explicit_request_shapes},
         {"activates_portable_root_from_install_adjacent_marker", activates_portable_root_from_install_adjacent_marker},
         {"explicit_portable_root_does_not_need_marker_file", explicit_portable_root_does_not_need_marker_file},

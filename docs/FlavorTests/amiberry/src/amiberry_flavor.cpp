@@ -53,6 +53,31 @@ RootTopology PathManager::resolve(const RuntimeEnvironment& environment, const P
     portable.level = linuxdesktop::root::portable_root_level::profile;
     portable.deny_in_privileged_install = true;
 
+    const auto whdboot_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "whdboot",
+            linuxdesktop::root::purpose_kind::data,
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "whdboot"));
+    const auto controllers_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "controllers",
+            linuxdesktop::root::purpose_kind::data,
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "controllers"));
+    const auto savestates_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "savestates",
+            linuxdesktop::root::purpose_kind::state,
+            linuxdesktop::root::ownership_kind::user_local,
+            "savestates"));
+    const auto screenshots_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "screenshots",
+            linuxdesktop::root::purpose_kind::data,
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "screenshots"));
+
     auto builder = linuxdesktop::root::request_builder()
         .app("BlitterStudio", "amiberry")
         .resource_root(environment.executable_directory)
@@ -60,26 +85,10 @@ RootTopology PathManager::resolve(const RuntimeEnvironment& environment, const P
         .environment(environment.environment)
         .use_process_environment(false)
         .portable_root(portable)
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "whdboot",
-            linuxdesktop::root::purpose_kind::data,
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "whdboot"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "controllers",
-            linuxdesktop::root::purpose_kind::data,
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "controllers"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "savestates",
-            linuxdesktop::root::purpose_kind::state,
-            linuxdesktop::root::ownership_kind::user_local,
-            "savestates"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "screenshots",
-            linuxdesktop::root::purpose_kind::data,
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "screenshots"));
+        .named_root(whdboot_root)
+        .named_root(controllers_root)
+        .named_root(savestates_root)
+        .named_root(screenshots_root);
 
     if (environment.home_directory) {
         builder.platform_defaults(linuxdesktop2026::generated::platform_path_defaults_for_home(
@@ -129,19 +138,19 @@ RootTopology PathManager::resolve(const RuntimeEnvironment& environment, const P
     topology.screenshots = content_root / "screenshots";
     topology.log_file = home_root / "amiberry.log";
 
-    if (const auto* whdboot = linuxdesktop::root::find_named_root(report, "whdboot");
+    if (const auto* whdboot = linuxdesktop::root::find_named_root(report, whdboot_root);
         whdboot && !topology.portable_active && !options.base_content_path) {
         topology.whdboot = whdboot->path;
     }
-    if (const auto* controllers = linuxdesktop::root::find_named_root(report, "controllers");
+    if (const auto* controllers = linuxdesktop::root::find_named_root(report, controllers_root);
         controllers && !topology.portable_active && !options.base_content_path) {
         topology.controllers = controllers->path;
     }
-    if (const auto* savestates = linuxdesktop::root::find_named_root(report, "savestates");
+    if (const auto* savestates = linuxdesktop::root::find_named_root(report, savestates_root);
         savestates && !topology.portable_active && !options.base_content_path) {
         topology.savestates = savestates->path;
     }
-    if (const auto* screenshots = linuxdesktop::root::find_named_root(report, "screenshots");
+    if (const auto* screenshots = linuxdesktop::root::find_named_root(report, screenshots_root);
         screenshots && !topology.portable_active && !options.base_content_path) {
         topology.screenshots = screenshots->path;
     }

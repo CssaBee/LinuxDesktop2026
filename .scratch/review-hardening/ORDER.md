@@ -6,6 +6,8 @@ list below.
 
 ## Current Order
 
+- `109` - Document Root Builder And Raw Options Selection Rule
+- `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `82` - Reduce Bus Factor And Write Governance
 
 ## 0.2.0 Release Gate
@@ -14,15 +16,17 @@ These tickets block `0.2.0` because they protect the release's public support
 matrix, parser contract, mutation guarantees, CI evidence, or contributor
 baseline:
 
-- None currently.
+- `109` - Document Root Builder And Raw Options Selection Rule
 
 These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
 
+- `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `82` - Reduce Bus Factor And Write Governance
 
 ## Implemented
 
+- `108` - Reduce Named-Root String Lookup Friction
 - `107` - Add Minifox Portable Launcher FlavorTest Probe
 - `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
 - `105` - Add Amiberry Root Topology FlavorTest Probe
@@ -237,6 +241,13 @@ topology for the repeated Notepad++, qBittorrent, and KiCad seams without
 inheriting `ld_paths` ambiguity. Task 48 removes or reshapes the duplicated
 settings-owned generic root-builder surface so `ld_settings` returns to settings
 lifecycle ownership.
+
+The post-FlavorTest API-friction pass adds a small root-ergonomics gate before
+`0.2.0`: decide whether named-root request/lookup needs a typed convenience
+path, and document when consumers should use `request_builder` versus raw
+`root::options`. Product-facing FlavorTest type leakage is tracked separately
+because it improves example honesty, but does not by itself change the release
+support line.
 
 By the end of task 48, the hardening lane should have no known root/path API
 tech debt left by design: `ld_paths` is enough for path families, locations,

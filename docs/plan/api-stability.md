@@ -142,6 +142,12 @@ for named/component roots, set the individual request `create` flag to true.
 `ld_paths` keeps resolution non-mutating and exposes directory creation through
 `ensure_directory()`, whose default report remains a dry-run `would_create`.
 
+For `0.2.0`, `ld_root` keeps string-key named-root lookup for dynamic maps and
+adds `named_root_handle` as a C++ convenience for static named roots. A handle
+owns the caller-provided request label, can be passed to `request_builder`, and
+can be reused to find the resolved root from a report without repeating the
+string key. The helper does not add product-specific root kinds.
+
 `ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until release-candidate status so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
 
 ## Pre-1.0 Rules

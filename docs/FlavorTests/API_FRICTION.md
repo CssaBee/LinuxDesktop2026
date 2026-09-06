@@ -90,9 +90,9 @@ Friction:
 - The cross-port builds `linuxdesktop::root::options` manually while the in-tree
   FlavorTest uses `request_builder`. Both are valid, but the split makes it
   harder to tell which style should be recommended for real consumers.
-- Named roots such as `"xml-config"`, `"session"`, and `"plugin-config"` are
-  stringly typed. Product adapters must look them up by the same names they
-  requested.
+- Static named roots can now be declared once with a `named_root_handle`, passed
+  to `request_builder`, and used for lookup without repeating the string key.
+  Dynamic roots still use the original string lookup surface.
 - Desktop registration bundle construction is verbose for a product that thinks
   in one preference or installer action. The verbosity did not require a new
   helper from this single proof because it keeps staged artifacts, activation,
@@ -149,8 +149,8 @@ Fit:
 
 Friction:
 
-- Log placement is a named root request and lookup pair. The lookup is still
-  string keyed.
+- Log placement uses a named root, but the static request/lookup pair no longer
+  repeats the string key when declared through `named_root_handle`.
 - Desktop registration still requires product translation for what the user
   sees as one "integrate qBittorrent with the desktop" setting. The adapter
   maps staged artifacts, unsupported Windows-shaped mappings, activation
@@ -212,8 +212,8 @@ Friction:
 - LinuxDesktop2026 can provide a generic backup named root for KiCad, but there
   is no helper for keyed-by-project fallback paths. The adapter still owns that
   lookup logic.
-- The named-root request/lookup pattern is readable for three roots, but it
-  would get noisy for a larger KiCad component map.
+- Static named-root handles keep the three-root request/lookup pattern readable
+  and leave larger dynamic component maps on the string-key API.
 
 Boundary notes:
 
@@ -460,6 +460,12 @@ Friction:
   default topology, but the base-content fan-out remains product code.
 - Plugin lookup has install-library, user-home, and executable fallbacks that do
   not fit a single named root cleanly without hiding product order.
+
+Implementation note:
+
+- Amiberry's larger static named-root map now uses `named_root_handle` for
+  request and lookup so the adapter names each LinuxDesktop2026 root once while
+  keeping `base_content_path` fan-out and plugin fallback order in product code.
 
 Boundary notes:
 

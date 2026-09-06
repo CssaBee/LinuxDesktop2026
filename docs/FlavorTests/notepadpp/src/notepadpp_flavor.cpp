@@ -119,6 +119,12 @@ SaveResult to_save_result(const linuxdesktop::settings::write_report& report)
 
 bool NppParameters::load(const startup_environment& environment)
 {
+    const auto plugin_config_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_plugin_config_root_request(
+            "plugin-config",
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "plugins/Config"));
+
     linuxdesktop::root::portable_root_request portable_root;
     portable_root.marker = environment.install_root / "doLocalConf.xml";
     portable_root.level = linuxdesktop::root::portable_root_level::profile;
@@ -132,10 +138,7 @@ bool NppParameters::load(const startup_environment& environment)
         .app_root_override(environment.command_line_settings_dir)
         .user_config_override(environment.cloud_choice_dir)
         .portable_root(portable_root)
-        .named_root(linuxdesktop::root::make_plugin_config_root_request(
-            "plugin-config",
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "plugins/Config"))
+        .named_root(plugin_config_root)
         .resolve();
 
     state_.npp_path = report.roots.resources;
@@ -145,7 +148,7 @@ bool NppParameters::load(const startup_environment& environment)
         state_.session_path = report.roots.config;
     }
     state_.user_plugin_config_dir = report.roots.plugin_config;
-    if (const auto* plugin_config = linuxdesktop::root::find_named_root(report, "plugin-config")) {
+    if (const auto* plugin_config = linuxdesktop::root::find_named_root(report, plugin_config_root)) {
         state_.user_plugin_config_dir = plugin_config->path;
     }
     state_.is_local = report.portable_root_active;

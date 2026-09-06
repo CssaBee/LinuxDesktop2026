@@ -75,6 +75,12 @@ struct named_root_request {
     bool create = false;
 };
 
+struct named_root_handle {
+    named_root_request request;
+
+    const std::string& name() const noexcept { return request.name; }
+};
+
 struct named_root {
     std::string name;
     purpose_kind purpose = purpose_kind::custom;
@@ -116,6 +122,11 @@ inline named_root_request make_named_root_request(
     bool create = false)
 {
     return {std::move(name), purpose, ownership, std::move(relative_path), create};
+}
+
+inline named_root_handle make_named_root_handle(named_root_request request)
+{
+    return {std::move(request)};
 }
 
 inline named_root_request make_config_root_request(
@@ -269,6 +280,7 @@ public:
     request_builder& portable_root(portable_root_request request);
     request_builder& create_directories(bool enabled);
     request_builder& named_root(named_root_request request);
+    request_builder& named_root(const named_root_handle& handle);
     request_builder& component_roots(component_root_request request);
 
     const app_identity& identity() const { return identity_; }
@@ -287,6 +299,7 @@ std::string_view to_string(ownership_kind value);
 std::string_view to_string(component_kind value);
 
 const named_root* find_named_root(const report& report, const std::string& name);
+const named_root* find_named_root(const report& report, const named_root_handle& handle);
 const component_root_group* find_component_roots(const report& report, const std::string& name);
 const named_root* find_component_named_root(const component_root_group& component, const std::string& name);
 

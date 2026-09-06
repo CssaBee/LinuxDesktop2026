@@ -406,6 +406,11 @@ const named_root* find_named_root(const report& report, const std::string& name)
     return it == report.named_roots.end() ? nullptr : &*it;
 }
 
+const named_root* find_named_root(const report& report, const named_root_handle& handle)
+{
+    return find_named_root(report, handle.name());
+}
+
 const component_root_group* find_component_roots(const report& report, const std::string& name)
 {
     const auto it = std::find_if(report.component_roots.begin(), report.component_roots.end(), [&](const auto& component) {
@@ -487,6 +492,12 @@ request_builder& request_builder::create_directories(bool enabled)
 request_builder& request_builder::named_root(named_root_request request)
 {
     options_.named_roots.push_back(std::move(request));
+    return *this;
+}
+
+request_builder& request_builder::named_root(const named_root_handle& handle)
+{
+    options_.named_roots.push_back(handle.request);
     return *this;
 }
 

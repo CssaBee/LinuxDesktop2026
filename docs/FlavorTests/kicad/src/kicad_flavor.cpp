@@ -27,24 +27,31 @@ bool json_object_shape(const std::filesystem::path&, std::string& message)
 SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
     : environment_(std::move(environment))
 {
+    const auto colors_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_component_config_root_request(
+            "colors",
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "colors"));
+    const auto toolbars_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_component_config_root_request(
+            "toolbars",
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "toolbars"));
+    const auto project_backups_root = linuxdesktop::root::make_named_root_handle(
+        linuxdesktop::root::make_named_root_request(
+            "project-backups",
+            linuxdesktop::root::purpose_kind::backup,
+            linuxdesktop::root::ownership_kind::user_roaming,
+            "project-backups"));
+
     auto builder = linuxdesktop::root::request_builder()
         .app("KiCad", "kicad")
         .home_directory(environment_.home_directory)
         .environment(environment_.variables)
         .use_process_environment(false)
-        .named_root(linuxdesktop::root::make_component_config_root_request(
-            "colors",
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "colors"))
-        .named_root(linuxdesktop::root::make_component_config_root_request(
-            "toolbars",
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "toolbars"))
-        .named_root(linuxdesktop::root::make_named_root_request(
-            "project-backups",
-            linuxdesktop::root::purpose_kind::backup,
-            linuxdesktop::root::ownership_kind::user_roaming,
-            "project-backups"));
+        .named_root(colors_root)
+        .named_root(toolbars_root)
+        .named_root(project_backups_root);
     if (const auto config_home = environment_.variables.find("XDG_CONFIG_HOME");
         config_home != environment_.variables.end()) {
         builder.app_root_override(std::filesystem::path(config_home->second) / "KiCad" / "kicad");
@@ -55,13 +62,13 @@ SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
     color_settings_root_ = report.roots.config / "colors";
     toolbar_settings_root_ = report.roots.config / "toolbars";
     user_backup_root_ = report.roots.state / "project-backups";
-    if (const auto* colors = linuxdesktop::root::find_named_root(report, "colors")) {
+    if (const auto* colors = linuxdesktop::root::find_named_root(report, colors_root)) {
         color_settings_root_ = colors->path;
     }
-    if (const auto* toolbars = linuxdesktop::root::find_named_root(report, "toolbars")) {
+    if (const auto* toolbars = linuxdesktop::root::find_named_root(report, toolbars_root)) {
         toolbar_settings_root_ = toolbars->path;
     }
-    if (const auto* backups = linuxdesktop::root::find_named_root(report, "project-backups")) {
+    if (const auto* backups = linuxdesktop::root::find_named_root(report, project_backups_root)) {
         user_backup_root_ = backups->path;
     }
 }

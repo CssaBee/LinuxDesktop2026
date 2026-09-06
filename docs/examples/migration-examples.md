@@ -29,6 +29,9 @@ The FlavorTests now give stronger evidence than the early survey sketches:
 - `request_builder` is useful in Notepad++, qBittorrent, and KiCad, where
   a chain of app identity, resource root, portable marker, environment, and
   named-root declarations improves scanning.
+- `named_root_handle` is useful when a static product root must be declared and
+  later read from a report. It keeps the product-owned label in one place while
+  preserving string lookup for dynamic root maps.
 - Direct `root_options` or `ld_paths::resolver_options` are still more natural
   for products with strong existing root policy, such as KeePassXC, FreeCAD,
   Walnut, and OpenIPC Dashboard.
@@ -70,6 +73,10 @@ namespace settings = linuxdesktop::settings;
 
 bool NppParameters::load()
 {
+    const auto plugin_config_root = ld::make_named_root_handle(
+        ld::make_plugin_config_root_request(
+            "plugin-config", ld::ownership_kind::user_roaming, "plugins/Config"));
+
     const ld::root_report report = ld::request_builder()
         .app("Notepad-plus-plus", "Notepad++")
         .resource_root(detect_install_root_from_executable())
@@ -79,8 +86,7 @@ bool NppParameters::load()
         .privileged_install_roots(detect_privileged_install_roots())
         .sync_config_override(read_cloud_choice_if_present_and_valid())
         .settings_override(get_command_line_settings_dir_if_present())
-        .named_root(ld::make_plugin_config_root_request(
-            "plugin-config", ld::ownership_kind::user_roaming, "plugins/Config"))
+        .named_root(plugin_config_root)
         .named_root(ld::make_log_root_request(
             "logs", ld::ownership_kind::user_local, "logs"))
         .resolve();
@@ -90,7 +96,7 @@ bool NppParameters::load()
     _userPath = report.roots.config;
     _sessionPath = report.roots.session;
 
-    if (const auto* plugin_config = ld::find_named_root(report, "plugin-config"))
+    if (const auto* plugin_config = ld::find_named_root(report, plugin_config_root))
         _userPluginConfDir = plugin_config->path;
 
     // KEEP: diagnostics are translated to Notepad++ startup logging/warnings.
