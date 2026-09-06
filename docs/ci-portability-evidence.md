@@ -86,14 +86,17 @@ The proof repository is private. Configure `LD2026_CROSSPORT_READ_TOKEN` with
 read access to that repository before treating this workflow as observable CI
 evidence.
 
-This lane is evidence for package consumption, include/link propagation, and
-settings API ergonomics. It is not evidence for full Notepad++ native Linux UI
-parity, plugin ABI compatibility, printing, shell integration, or broad file
-watching.
+This lane is evidence for package consumption, include/link propagation,
+settings/root/migration API ergonomics, and the small staged
+desktop-registration proof adapter. It is not evidence for full Notepad++
+native Linux UI parity, plugin ABI compatibility, printing, live shell
+integration, or broad file watching.
 
-The proof workflow has one observed green manual run. Keep the exact run,
-commit, branch, and maintenance state in
-`docs/consumer-branches/notepadpp-settings-proof.md`.
+The proof workflow has observed green manual runs, including the 2026-09-06 run
+against LinuxDesktop2026 `0.2.0` commit
+`a153663d8cb148c8c81a57c6eafd5cb2e2229aed` and crossport commit
+`da1af1652f00657bc31db88ad317058f49521ea8`. Keep the exact run, commit,
+branch, and maintenance state in `docs/consumer-branches/notepadpp-settings-proof.md`.
 
 Keep it manual while the proof branch is private. Promote it to a scheduled or
 pull-request lane if it stays stable enough to be useful.

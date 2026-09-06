@@ -29,7 +29,7 @@ not production-stable and does not promise `1.0` source or binary compatibility.
 | `supported prototype` | `ld_watch` | Public C++ watcher API with native Linux `inotify`, native Windows `ReadDirectoryChangesW`, optional libuv backend, bounded pull delivery, recursive-watch diagnostics, and deadline-scheduled settled-file coalescing by path. |
 | `experimental` | `ld_desktop` | C++ and C extraction for autostart and managed/enforced policy. Broader desktop bundles, activation plans, cleanup reports, icons, MIME/default-app/protocol handling, and desktop-session validation remain experimental. |
 | `experimental` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and verified directory-tree moves within explicit metadata limits. App-settings Registry snapshot/import/export compatibility is present through a maintained JSON parser and a narrow schema. |
-| `experimental` | Maintained consumer proof | The Notepad++ proof branch exists locally, tracks its private GitHub remote, has an observed green manual settings-proof workflow, and has local desktop-registration proof changes with an upstream-following check. Exact branch, remote, commit, CI, and maintenance evidence live in `docs/consumer-branches/notepadpp-settings-proof.md`. |
+| `experimental` | Maintained consumer proof | The Notepad++ proof branch tracks its private GitHub remote and has an observed green manual GitHub Actions proof against LinuxDesktop2026 `0.2.0`, including the settings/root/migration path and the staged desktop-registration adapter. Exact branch, remote, commit, CI, and maintenance evidence live in `docs/consumer-branches/notepadpp-settings-proof.md`. |
 
 ## 0.2.0 Support Matrix
 
@@ -68,10 +68,11 @@ current evidence.
 - CI covers Ubuntu, Fedora, Windows/MSVC, shared-library Linux builds,
   ASan/UBSan sanitizer lanes, deterministic `ld_watch` ThreadSanitizer coverage,
   FlavorTests, and optional libuv watcher coverage.
-- The Notepad++ proof workflow is manual and has one observed green settings
-  run against the private crossport repository. The desktop-registration proof
-  has local build/CTest evidence plus a clean merge simulation against fetched
-  `upstream/master` on 2026-09-06; keep exact run and commit evidence in
+- The Notepad++ proof workflow is manual and has observed green runs against
+  the private crossport repository, including the current LinuxDesktop2026
+  `0.2.0` release commit and the crossport commit that requires `0.2.0`. The
+  proof covers settings/root/migration behavior plus the staged
+  desktop-registration adapter; keep exact run and commit evidence in
   `docs/consumer-branches/notepadpp-settings-proof.md`.
 
 ## Public-Claim Boundaries
@@ -88,10 +89,9 @@ current evidence.
 
 ## Planned Validation
 
-- Observe green Windows CI after the platform-path fixture cleanup.
 - Keep recording rebase/dependency/include/link friction for the Notepad++
-  proof branch as it is maintained, and promote the manual proof workflow only
-  when the private-repo setup is stable enough to justify that noise.
+  proof branch as it is maintained, especially after LinuxDesktop2026 release
+  tags and crossport dependency bumps.
 - Complete deeper Windows verification for `ld_paths`, especially UTF-8 paths,
   executable-root behavior, unavailable Known Folder fallback, and plugin
   defaults.

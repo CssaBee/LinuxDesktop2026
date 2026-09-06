@@ -205,7 +205,8 @@ The project uses these evidence layers:
 
 The CI matrix covers Ubuntu, Fedora, Windows/MSVC, shared-library builds on
 Linux, sanitizer lanes, FlavorTests, optional libuv watcher coverage, and a
-manual Notepad++ proof-branch workflow. See
+manual Notepad++ proof-branch workflow with observed green runs against the
+private crossport repository. See
 [CI portability evidence](docs/ci-portability-evidence.md).
 
 ## Documentation

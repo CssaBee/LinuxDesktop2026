@@ -10,14 +10,15 @@ or whether product code starts adapting around library weaknesses.
 
 ## First Target
 
-The first maintained branch target is a narrow Notepad++ settings proof:
+The first maintained branch target is a narrow Notepad++ proof:
 
 - default repository name: `LinuxDesktop2026-crossport-notepadpp`
 - default branch name: `linuxdesktop2026-settings-proof`
 - scope: settings-root selection, config-bundle hydration, validated backup
-  writes, and config/session persistence only
-- out of scope: GUI toolkit rewrites, plugin ABI, printing, shell integration,
-  broad file watching, and complete native Linux parity
+  writes, config/session persistence, migration planning, and staged
+  desktop-registration adapter behavior
+- out of scope: GUI toolkit rewrites, plugin ABI, printing, live shell
+  activation, broad file watching, and complete native Linux parity
 
 This branch must consume LinuxDesktop2026 through normal CMake integration
 (`FetchContent`, `add_subdirectory`, or installed `find_package`). It should not
@@ -61,7 +62,10 @@ checks out the current Notepad++ proof branch, installs the current
 LinuxDesktop2026 tree into a workflow-local CMake package prefix, then
 configures, builds, and tests the proof target against the exported package.
 
-This lane is a release-evidence input, not a full product-port claim.
+This lane is a release-evidence input, not a full product-port claim. The
+current green signal is the 2026-09-06 manual run against LinuxDesktop2026
+`0.2.0` and the crossport branch commit that requires the `0.2.0` CMake
+package.
 
 Because the crossport repository is private, the workflow should have
 `LD2026_CROSSPORT_READ_TOKEN` configured with read access to the proof

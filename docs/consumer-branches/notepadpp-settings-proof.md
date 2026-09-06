@@ -11,10 +11,11 @@ This is the evidence ledger for the first maintained consumer branch.
 - Branch: `linuxdesktop2026-settings-proof`
 - Tracking: `origin/linuxdesktop2026-settings-proof`
 - Current proof commit:
-  `d2bb3a3aa88801a2540fcd0893deb1652fbcf726`
-- Current observed CI: the 2026-09-05 manually dispatched
+  `da1af1652f00657bc31db88ad317058f49521ea8`
+- Current observed CI: the 2026-09-06 manually dispatched
   `Notepad++ Proof Branch` workflow passed CTest 1/1 against LinuxDesktop2026
-  `cf7de44f92a35b18add35529a58d8598b9c80321` on Ubuntu 24.04/GCC 13.3.
+  `a153663d8cb148c8c81a57c6eafd5cb2e2229aed` on Ubuntu 24.04/GCC 13.3. The
+  crossport proof commit requires the LinuxDesktop2026 `0.2.0` CMake package.
 - Current maintenance posture: keep recording upstream-following/rebase,
   dependency, include/link, compile, and API-friction evidence here while the
   proof branch is maintained.
@@ -33,7 +34,8 @@ This is the evidence ledger for the first maintained consumer branch.
 - LinuxDesktop2026 dependency mode: normal CMake consumption
 - Initial LinuxDesktop2026 modules allowed: `ld_core`, `ld_paths`,
   `ld_settings`, and `ld_migration`
-- Desktop registration module allowed after task 95: `ld_desktop`
+- Current additional modules allowed: `ld_root` for topology and named roots,
+  and `ld_desktop` for the staged desktop-registration adapter
 - Public C ABI expansion: out of scope until release-candidate status
 
 The branch should prove that a real Notepad++-shaped settings subsystem can use
@@ -192,9 +194,10 @@ not satisfy this ticket by itself.
 - API friction found: the proof continued to move through LinuxDesktop2026 API
   reshaping without needing product-side replacement headers or private path
   helpers; observed CI remains unproven
-- Disposition: the remote is no longer missing, but it is private. This
-  satisfies private crossport existence evidence only; public release evidence
-  still requires an observed green workflow run and later maintenance entries.
+- Disposition at the time: the remote was no longer missing, but it was
+  private. This satisfied private crossport existence evidence only; public
+  release evidence still required an observed green workflow run and later
+  maintenance entries.
 
 ### 2026-09-05 Current Main API Drift Sync
 
@@ -256,6 +259,33 @@ not satisfy this ticket by itself.
 - Disposition: satisfies the stable private proof repository, observed CI, and
   later maintenance-pass evidence for task 76.
 
+### 2026-09-06 Release 0.2.0 Proof Pass
+
+- LinuxDesktop2026 commit:
+  `a153663d8cb148c8c81a57c6eafd5cb2e2229aed`, tagged `0.2.0`.
+- Cross-port branch commit:
+  `da1af1652f00657bc31db88ad317058f49521ea8`.
+- Notepad++ base commit: `c057c0802`.
+- Dependency mode: GitHub Actions installed LinuxDesktop2026 as a Release CMake
+  package into a workflow-local prefix, then configured the private crossport
+  proof with `LinuxDesktop2026_DIR` pointing at the exported package.
+- Build result: `cmake --build LinuxDesktop2026-crossport-notepadpp/build-proof
+  --target linuxdesktop2026_notepadpp_settings_proof` passed on Ubuntu
+  24.04/GCC 13.3.
+- Test result: `ctest --test-dir LinuxDesktop2026-crossport-notepadpp/build-proof
+  --output-on-failure` passed, 1/1.
+- Workflow:
+  `https://github.com/CssaBee/LinuxDesktop2026/actions/workflows/notepadpp-proof.yml`
+- Evidence added: the maintained proof branch now requires
+  `find_package(LinuxDesktop2026 0.2.0 CONFIG REQUIRED)`, so the CI lane proves
+  the release package version file as well as exported include/link
+  propagation.
+- API friction found: no new blocking API friction from the `0.2.0` dependency
+  bump. The proof continues to keep LinuxDesktop2026 types inside
+  product-owned backend code and the root `CMakeLists.txt`.
+- Disposition: satisfies current `0.2.0` maintained-consumer proof evidence for
+  settings/root/migration behavior and the staged desktop-registration adapter.
+
 ## API Pain Log
 
 No blocking maintained-branch pain points have been recorded yet. The first
@@ -287,18 +317,21 @@ rows.
 ## Current Framework-Tax Snapshot
 
 Measured against crossport commit
-`a296934feedbae187fcd98981637bc45f8faceb5`.
+`da1af1652f00657bc31db88ad317058f49521ea8`.
 
-- Adapter size: `proof/notepadpp_settings_backend.cpp` is 252 lines and
-  `proof/notepadpp_settings_backend.hpp` is 109 lines. The proof harness adds
-  258 lines, but it is test/evidence code rather than product adapter surface.
+- Adapter size: `proof/notepadpp_settings_backend.cpp` is 326 lines,
+  `proof/notepadpp_settings_backend.hpp` is 132 lines,
+  `proof/notepadpp_desktop_registration.cpp` is 207 lines, and
+  `proof/notepadpp_desktop_registration.hpp` is 68 lines. The proof harness is
+  477 lines, but it is test/evidence code rather than product adapter surface.
 - LinuxDesktop2026 exposure: the product-facing header uses Notepad++
   vocabulary only. LinuxDesktop2026 headers and namespaces are confined to the
   backend implementation and CMake target wiring.
-- Concept families the consumer currently has to understand: 5
+- Concept families the consumer currently has to understand: 6
   (`ld_core` diagnostics, CMake-generated platform defaults, `ld_root`
   topology, `ld_settings` default/write lifecycle, and `ld_migration` dry-run
-  planning). `ld_watch` is not part of the current Notepad++ settings proof, so
+  planning, and `ld_desktop` staged desktop registration). `ld_watch` is not
+  part of the current Notepad++ proof, so
   this snapshot does not measure watcher concept tax.
 - Concrete LinuxDesktop2026 touchpoints in the adapter: `root::options`,
   `portable_root_request`, `portable_root_level`, `ownership_kind`,
@@ -306,12 +339,14 @@ Measured against crossport commit
   `find_named_root`, root report booleans/diagnostics,
   `settings::config_file`, `ensure_config_defaults`, `write_common_config`,
   config-write validation callback, `migration::plan_copy`, migration actions,
+  `desktop::registration_bundle`, desktop artifact/effect request types,
   `diagnostic`, `diagnostic_handling`, and classified product-diagnostic
   helpers.
 - Reports/options constructed or consumed: one root options object, one
   portable-root request, one app identity, three named-root requests, three
   settings file descriptors in the current proof scenario, one defaults report,
-  one write report, one migration plan, the top-level root report, and three
+  one write report, one migration plan, one desktop registration bundle and its
+  staged plan/apply/query/remove reports, the top-level root report, and three
   named-root subreports.
 - Platform branches in adapter code: 0 `#if` or platform-specific source
   branches under `proof/`. The generated platform defaults are the only
@@ -410,7 +445,8 @@ small Notepad++-owned desktop registration adapter.
   Bundle construction is verbose but honest for a maintained product adapter.
 
 Conclusion: the desktop proof is useful evidence only with the
-upstream-following check attached. The proof should not be cited as
-product-ready desktop registration until a committed crossport proof has an
-observed green workflow run and at least one future upstream rebase/merge pass
-that still avoids product-source patch churn.
+upstream-following check attached. The 2026-09-06 release proof has an observed
+green workflow run for the committed crossport proof, so the current claim can
+be "staged desktop-registration proof adapter builds and tests." It should
+still not be cited as product-ready desktop registration until at least one
+future upstream rebase/merge pass also avoids product-source patch churn.
