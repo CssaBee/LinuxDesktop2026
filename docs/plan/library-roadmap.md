@@ -191,8 +191,11 @@ Example documentation:
   file-version token, internal per-target advisory commit guard, stale-commit
   rejection diagnostics, and no library-owned merge/retry behavior.
 - Verify the shaped Windows backend on Windows, especially Known Folders and atomic replace behavior. Track this in `docs/plan/ld-settings-windows-verification.md`.
-- Keep shared C++ diagnostics in the tiny `ld_core` interface target. Do not add
-  module-level C++ aliases for the shared diagnostic names before 1.0.
+- Keep shared C++ diagnostics in the tiny `ld_core` interface target through
+  `0.2.0`. Do not add module-level C++ aliases for the shared diagnostic names
+  before 1.0, and defer diagnostic stringification/table cleanup to
+  release-candidate hardening unless measurements or maintained consumers make
+  it release-critical.
 - Keep the first API/ABI stability policy updated in `docs/plan/api-stability.md`.
 - Keep the existing C ABI covered by C tests and the conditional Rust FFI smoke test; defer new C ABI expansion until release-candidate status.
 - Keep the `0.2.0` desktop C ABI intentionally narrow: autostart and policy

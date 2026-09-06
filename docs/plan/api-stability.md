@@ -43,6 +43,39 @@ should use `linuxdesktop::severity`, `linuxdesktop::diagnostic`, and
 `linuxdesktop::to_string(linuxdesktop::severity)` directly, while module-specific
 enum stringification remains in each module namespace.
 
+Most public enum stringification is already declared in headers and defined in
+compiled module sources. The current inventory is:
+
+- `ld_settings`: `portable_level`, `config_layer_kind`, and
+  `storage_backend`.
+- `ld_paths`: `path_family`, `location_role`, `candidate_source`,
+  `directory_action`, `plugin_path_kind`, `plugin_asset_path_kind`,
+  `plugin_path_category`, and `platform_support`.
+- `ld_root`: `portable_root_level`, `purpose_kind`, `ownership_kind`, and
+  `component_kind`.
+- `ld_watch`: `event_kind`, `path_type`, `recursive_policy`,
+  `overflow_policy`, `stream_state`, and `backend_kind`.
+- `ld_migration`: `migration_action_kind`, `migration_action_state`, plus
+  Registry `hive`, `view`, and `value_type`.
+- `ld_desktop`: `effect_kind`, `capability_state`, `activation_step_kind`,
+  `registration_scope`, `registration_status`, and `cleanup_status`.
+
+The exception is `ld_core`, which remains a tiny header-only interface target.
+Its shared diagnostic helpers, severity/disposition stringification, diagnostic
+disposition table, and product-diagnostic translation templates stay
+header-defined through `0.2.0`. Moving them behind a compiled target before
+release-candidate work would add link and packaging surface without evidence
+that compile time, binary size, or ABI hygiene is currently a bottleneck.
+
+Named diagnostic-code constants are header-defined only where callers have
+already needed stable source vocabulary: `ld_paths::diagnostic_code` and
+`ld_watch::diagnostic_code`. Keep those `inline constexpr std::string_view`
+constants for `0.2.0`; they are source-level names, not a binary ABI promise or
+an ownership-bearing string API. New modules should not add large diagnostic
+constant tables casually. If repeated consumers need more named codes, prefer a
+small module-local namespace and keep user-facing wording in diagnostics or
+product adapters.
+
 C and Rust FFI consumers can read:
 
 ```c
@@ -149,9 +182,18 @@ no C ABI. The release support matrix in `docs/project-status.md` is the current
 source of truth for which modules are supported prototypes, experimental
 extractions, best-effort, or excluded.
 
+Diagnostic stringification cleanup is deferred to release-candidate hardening.
+That pass may move `ld_core` non-template helpers or diagnostic disposition
+tables out of headers, generate diagnostic-code tables from a single source, or
+add stronger exhaustiveness checks. It should preserve the existing
+module-level enum `to_string` declarations and provide source migration notes if
+any header-defined helper moves.
+
 ## Deferred
 
 - Symbol visibility policy for shared-library builds.
 - Stable ABI negotiation beyond version functions.
 - Rust crate semver policy.
 - Per-module versioning if the monorepo grows multiple independent release tracks.
+- Release-candidate diagnostic stringification/table cleanup if measured
+  compile-time, binary-size, or API hygiene costs justify it.

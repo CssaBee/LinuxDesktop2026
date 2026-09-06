@@ -44,7 +44,8 @@ promise beyond current evidence.
 | Filesystem resolution | Path, root, and settings resolution are non-mutating by default; directory creation and other filesystem mutation remain explicit opt-in behavior. |
 | Migration filesystem semantics | Regular-file copy, atomic file rename, and supported directory-tree migration are in scope. Directory moves verify copied content before source cleanup. Cross-device semantic file moves are excluded from `0.2.0`; failed atomic renames keep the existing unsupported-fallback diagnostic unless maintained consumer evidence proves the need for a separate semantic move action. |
 | Parser contract | Registry `.reg` compatibility remains a scoped app-settings subset. Registry JSON snapshot parsing must use a maintained JSON parser while preserving the narrow `linuxdesktop.settings.registry.snapshot.v1` schema. |
-| Watcher performance | Keep the current watcher path value API through `0.2.0`; native-backend performance measurements can reopen that after the release. |
+| Watcher performance | Keep the current watcher path value API through `0.2.0`; local native Linux evidence does not show path construction dominating watcher cost. Windows native measurements or maintained-consumer data can reopen that after the release. |
+| Diagnostics and stringification | Keep module enum `to_string` declarations with out-of-line definitions, and keep `ld_core` diagnostic helpers plus named `ld_paths`/`ld_watch` diagnostic-code constants header-defined through `0.2.0`. Release-candidate hardening may move or generate tables if evidence justifies it. |
 | Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and CI coverage reporting should be visible before `0.2.0`. |
 | Contributor baseline | A `.clang-format` baseline exists for new changes. CI formatting enforcement is deferred until a separate baseline-format pass. Governance/onboarding work remains important but does not block the tag. |
 

@@ -73,8 +73,9 @@ Result on 2026-09-05: passed.
 ## Watch Performance
 
 Status: `ld_watch_performance_probe` records bounded local watcher behavior
-with the simulated backend and test hooks enabled. The probe is a guardrail, not
-a portable benchmark suite.
+with the simulated backend and test hooks enabled. On Linux it also runs an
+equivalent native `inotify` measurement through the ordinary `ld::watcher`
+constructor. The probe is a guardrail, not a portable benchmark suite.
 
 Local command:
 
@@ -88,21 +89,58 @@ timeout 45s build-task81/ld_watch_tests
 timeout 20s build-task81/ld_watch_performance_probe
 ```
 
-Result on 2026-09-05 with GCC 13.3.0:
+Simulated-backend result on 2026-09-05 with GCC 13.3.0:
 
 ```text
-watch.performance.raw.delivered=480
-watch.performance.raw.throughput_events_per_second=174723
-watch.performance.raw.max_queue_depth=362
-watch.performance.raw.max_backend_depth=121
-watch.performance.raw.rss_growth_kib=364
-watch.performance.settled.delivered=96
-watch.performance.settled.max_pending=19
-watch.performance.settled.p50_latency_ms=0
-watch.performance.settled.p95_latency_ms=1
+watch.performance.simulated.raw.delivered=480
+watch.performance.simulated.raw.throughput_events_per_second=174723
+watch.performance.simulated.raw.max_queue_depth=362
+watch.performance.simulated.raw.max_backend_depth=121
+watch.performance.simulated.raw.rss_growth_kib=364
+watch.performance.simulated.settled.delivered=96
+watch.performance.simulated.settled.max_pending=19
+watch.performance.simulated.settled.p50_latency_ms=0
+watch.performance.simulated.settled.p95_latency_ms=1
 ```
 
-Decision: no evidence currently shows `std::filesystem::path` allocation as a
-real hot-path problem for the bounded simulated workload. Keep the current path
-value API; reopen only if a native-backend or maintained-consumer measurement
-shows path construction dominating watcher cost.
+Native Linux `inotify` result on 2026-09-06 with GCC 13.3.0:
+
+```text
+watch.performance.simulated.raw.delivered=480
+watch.performance.simulated.raw.throughput_events_per_second=159441
+watch.performance.simulated.raw.max_queue_depth=352
+watch.performance.simulated.raw.max_backend_depth=128
+watch.performance.simulated.raw.rss_growth_kib=368
+watch.performance.simulated.settled.delivered=96
+watch.performance.simulated.settled.max_pending=24
+watch.performance.simulated.settled.p50_latency_ms=0
+watch.performance.simulated.settled.p95_latency_ms=1
+watch.performance.inotify.raw.distinct_paths=240
+watch.performance.inotify.raw.events_observed=718
+watch.performance.inotify.raw.throughput_paths_per_second=16752.5
+watch.performance.inotify.raw.max_queue_depth=259
+watch.performance.inotify.raw.max_backend_depth=unobservable
+watch.performance.inotify.raw.rss_growth_kib=440
+watch.performance.inotify.raw.elapsed_us=14326
+watch.performance.inotify.raw.equivalent_path_construction_us=561
+watch.performance.inotify.settled.delivered=80
+watch.performance.inotify.settled.max_pending=4
+watch.performance.inotify.settled.p50_latency_ms=3
+watch.performance.inotify.settled.p95_latency_ms=3
+```
+
+The native raw measurement waits for 240 distinct file paths and observes 718
+events because `inotify` can report multiple create/write state transitions per
+path. Kernel queue depth is not exposed by this local probe, so only
+LinuxDesktop2026's public delivery queue depth is recorded. Equivalent
+construction of the same count of `std::filesystem::path` values took 561 us
+against 14326 us for the raw native measurement, so path construction did not
+dominate measured cost.
+
+Windows `ReadDirectoryChangesW` measurement has not run because no Windows lane
+was available on 2026-09-06.
+
+Decision: native Linux data still does not show `std::filesystem::path`
+construction dominating watcher cost. Keep the current path value API; reopen
+only if Windows native-backend data or maintained-consumer measurement shows
+path construction as the bottleneck.

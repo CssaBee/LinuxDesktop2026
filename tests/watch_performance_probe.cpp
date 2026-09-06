@@ -8,8 +8,10 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -272,6 +274,161 @@ settle_metrics measure_settled_delivery()
     return metrics;
 }
 
+#if defined(__linux__)
+
+void write_file(const std::filesystem::path& path, const std::string& content)
+{
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    output << content;
+}
+
+struct native_raw_metrics {
+    int distinct_paths = 0;
+    int events_observed = 0;
+    int overflow_events = 0;
+    std::size_t max_queue_depth = 0;
+    std::chrono::microseconds elapsed{0};
+    std::chrono::microseconds equivalent_path_construction{0};
+    double throughput_paths_per_second = 0.0;
+    std::size_t rss_growth_kib = 0;
+};
+
+std::chrono::microseconds measure_equivalent_path_construction(
+    const std::filesystem::path& root,
+    int event_count,
+    int distinct_paths)
+{
+    std::vector<std::filesystem::path> paths;
+    paths.reserve(static_cast<std::size_t>(event_count));
+    const auto started = std::chrono::steady_clock::now();
+    for (int i = 0; i < event_count; ++i) {
+        paths.push_back(root / ("native-burst-" + std::to_string(i % distinct_paths) + ".txt"));
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    std::size_t observed_size = 0;
+    for (const auto& path : paths) {
+        observed_size += path.native().size();
+    }
+    require(observed_size > 0, "equivalent path construction should produce paths");
+    return std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
+}
+
+native_raw_metrics measure_native_raw_delivery()
+{
+    constexpr int distinct_paths = 240;
+
+    const auto root = test_root() / "native-raw";
+    std::filesystem::create_directories(root);
+    ld::watcher watcher;
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native raw performance watch should start");
+    require(report.capabilities.backend == ld::backend_kind::inotify, "native raw performance watch should use inotify");
+
+    std::map<std::string, std::chrono::steady_clock::time_point> sent_at;
+    const auto rss_before = current_rss_kib();
+    const auto started = std::chrono::steady_clock::now();
+    for (int i = 0; i < distinct_paths; ++i) {
+        const auto name = "native-burst-" + std::to_string(i) + ".txt";
+        sent_at.emplace(name, std::chrono::steady_clock::now());
+        write_file(root / name, "native");
+    }
+
+    native_raw_metrics metrics;
+    std::set<std::string> seen_paths;
+    while (static_cast<int>(seen_paths.size()) < distinct_paths) {
+        metrics.max_queue_depth = std::max(metrics.max_queue_depth, ld::detail::queued_events_for_tests(watcher));
+        const auto event = watcher.wait_for(std::chrono::seconds{5});
+        require(event.has_value(), "native raw performance probe should observe every created path");
+        ++metrics.events_observed;
+        if (event->kind == ld::event_kind::overflow) {
+            ++metrics.overflow_events;
+            continue;
+        }
+        if (!event->path.root_relative.has_value()) {
+            continue;
+        }
+        const auto filename = event->path.root_relative->filename().string();
+        if (sent_at.find(filename) != sent_at.end()) {
+            seen_paths.insert(filename);
+        }
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    const auto rss_after = current_rss_kib();
+    metrics.distinct_paths = static_cast<int>(seen_paths.size());
+    metrics.max_queue_depth = std::max(metrics.max_queue_depth, ld::detail::queued_events_for_tests(watcher));
+    metrics.elapsed = std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
+    metrics.equivalent_path_construction =
+        measure_equivalent_path_construction(root, metrics.events_observed, distinct_paths);
+    metrics.throughput_paths_per_second =
+        static_cast<double>(metrics.distinct_paths) /
+        std::chrono::duration<double>(elapsed).count();
+    if (rss_after > rss_before) {
+        metrics.rss_growth_kib = rss_after - rss_before;
+    }
+    watcher.stop();
+    return metrics;
+}
+
+settle_metrics measure_native_settled_delivery()
+{
+    constexpr int distinct_paths = 80;
+
+    const auto root = test_root() / "native-settled";
+    std::filesystem::create_directories(root);
+    ld::watcher watcher;
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{1},
+        std::nullopt};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native settled performance watch should start");
+    require(report.capabilities.backend == ld::backend_kind::inotify,
+        "native settled performance watch should use inotify");
+
+    std::map<std::string, std::chrono::steady_clock::time_point> sent_at;
+    for (int i = 0; i < distinct_paths; ++i) {
+        const auto name = "native-settled-" + std::to_string(i) + ".txt";
+        sent_at.emplace(name, std::chrono::steady_clock::now());
+        write_file(root / name, "stable");
+    }
+
+    settle_metrics metrics;
+    std::set<std::string> seen_paths;
+    std::vector<std::chrono::milliseconds> latencies;
+    latencies.reserve(distinct_paths);
+    while (static_cast<int>(seen_paths.size()) < distinct_paths) {
+        metrics.max_pending = std::max(metrics.max_pending, ld::detail::pending_settle_work_for_tests(watcher));
+        const auto event = watcher.wait_for(std::chrono::seconds{5});
+        require(event.has_value(), "native settled performance probe should observe every created path");
+        if (event->kind == ld::event_kind::overflow || !event->path.root_relative.has_value()) {
+            continue;
+        }
+        const auto filename = event->path.root_relative->filename().string();
+        const auto sent = sent_at.find(filename);
+        if (sent == sent_at.end() || !seen_paths.insert(filename).second) {
+            continue;
+        }
+        latencies.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - sent->second));
+    }
+    std::sort(latencies.begin(), latencies.end());
+    metrics.delivered = static_cast<int>(seen_paths.size());
+    metrics.max_pending = std::max(metrics.max_pending, ld::detail::pending_settle_work_for_tests(watcher));
+    metrics.p50_latency = latencies.at(latencies.size() / 2);
+    metrics.p95_latency = latencies.at((latencies.size() * 95) / 100);
+    watcher.stop();
+    return metrics;
+}
+
+#endif
+
 } // namespace
 
 int main()
@@ -286,15 +443,44 @@ int main()
         require(settled.delivered == 96, "settled performance probe should deliver all distinct paths");
         require(settled.max_pending <= 96, "settled work should be bounded by distinct path count");
 
-        std::cout << "watch.performance.raw.delivered=" << raw.delivered << "\n";
-        std::cout << "watch.performance.raw.throughput_events_per_second=" << raw.throughput_events_per_second << "\n";
-        std::cout << "watch.performance.raw.max_queue_depth=" << raw.max_queue_depth << "\n";
-        std::cout << "watch.performance.raw.max_backend_depth=" << raw.max_backend_depth << "\n";
-        std::cout << "watch.performance.raw.rss_growth_kib=" << raw.rss_growth_kib << "\n";
-        std::cout << "watch.performance.settled.delivered=" << settled.delivered << "\n";
-        std::cout << "watch.performance.settled.max_pending=" << settled.max_pending << "\n";
-        std::cout << "watch.performance.settled.p50_latency_ms=" << settled.p50_latency.count() << "\n";
-        std::cout << "watch.performance.settled.p95_latency_ms=" << settled.p95_latency.count() << "\n";
+        std::cout << "watch.performance.simulated.raw.delivered=" << raw.delivered << "\n";
+        std::cout << "watch.performance.simulated.raw.throughput_events_per_second="
+                  << raw.throughput_events_per_second << "\n";
+        std::cout << "watch.performance.simulated.raw.max_queue_depth=" << raw.max_queue_depth << "\n";
+        std::cout << "watch.performance.simulated.raw.max_backend_depth=" << raw.max_backend_depth << "\n";
+        std::cout << "watch.performance.simulated.raw.rss_growth_kib=" << raw.rss_growth_kib << "\n";
+        std::cout << "watch.performance.simulated.settled.delivered=" << settled.delivered << "\n";
+        std::cout << "watch.performance.simulated.settled.max_pending=" << settled.max_pending << "\n";
+        std::cout << "watch.performance.simulated.settled.p50_latency_ms=" << settled.p50_latency.count() << "\n";
+        std::cout << "watch.performance.simulated.settled.p95_latency_ms=" << settled.p95_latency.count() << "\n";
+
+#if defined(__linux__)
+        const auto native_raw = measure_native_raw_delivery();
+        const auto native_settled = measure_native_settled_delivery();
+
+        require(native_raw.distinct_paths == 240, "native raw performance probe should observe every distinct path");
+        require(native_raw.overflow_events == 0, "native raw performance probe should stay below overflow threshold");
+        require(native_raw.max_queue_depth <= 512, "native watcher queue depth should stay bounded");
+        require(native_settled.delivered == 80, "native settled performance probe should deliver all distinct paths");
+        require(native_settled.max_pending <= 80, "native settled work should be bounded by distinct path count");
+
+        std::cout << "watch.performance.inotify.raw.distinct_paths=" << native_raw.distinct_paths << "\n";
+        std::cout << "watch.performance.inotify.raw.events_observed=" << native_raw.events_observed << "\n";
+        std::cout << "watch.performance.inotify.raw.throughput_paths_per_second="
+                  << native_raw.throughput_paths_per_second << "\n";
+        std::cout << "watch.performance.inotify.raw.max_queue_depth=" << native_raw.max_queue_depth << "\n";
+        std::cout << "watch.performance.inotify.raw.max_backend_depth=unobservable\n";
+        std::cout << "watch.performance.inotify.raw.rss_growth_kib=" << native_raw.rss_growth_kib << "\n";
+        std::cout << "watch.performance.inotify.raw.elapsed_us=" << native_raw.elapsed.count() << "\n";
+        std::cout << "watch.performance.inotify.raw.equivalent_path_construction_us="
+                  << native_raw.equivalent_path_construction.count() << "\n";
+        std::cout << "watch.performance.inotify.settled.delivered=" << native_settled.delivered << "\n";
+        std::cout << "watch.performance.inotify.settled.max_pending=" << native_settled.max_pending << "\n";
+        std::cout << "watch.performance.inotify.settled.p50_latency_ms=" << native_settled.p50_latency.count() << "\n";
+        std::cout << "watch.performance.inotify.settled.p95_latency_ms=" << native_settled.p95_latency.count() << "\n";
+#else
+        std::cout << "watch.performance.inotify.status=not_run_non_linux\n";
+#endif
     } catch (const probe_failure& failure) {
         std::cerr << failure.message << "\n";
         return EXIT_FAILURE;
