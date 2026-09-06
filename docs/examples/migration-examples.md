@@ -44,6 +44,29 @@ When a usage does not feel natural, do not contort the product around the tool.
 That is evidence to either improve the API later or avoid the abstraction at
 that seam.
 
+## Choosing Root Construction Style
+
+Use `linuxdesktop::root::request_builder` when the call site describes ordinary
+application topology: app identity, resource roots, portable markers, explicit
+environment/home test seams, command-line or cloud-root overrides, named roots,
+and component roots. The builder is the recommended reader-facing style for
+Notepad++, qBittorrent, KiCad, Amiberry, Endless Sky, and Minifox because the
+fluent chain makes the product's root policy easier to scan.
+
+Use raw `linuxdesktop::root::options` when the product already has a dense
+platform or root model and a fluent chain would hide the meaningful local
+vocabulary. KeePassXC is the current positive example: its roaming/local split
+and local-settings root are clearer as explicit options than as a builder chain.
+
+Use `linuxdesktop::paths::resolver_options` when the seam is simple path-family
+or resource-location resolution and does not need `ld_root` topology. Walnut,
+FreeCAD, OpenRGB, and OpenIPC Dashboard desktop profiles should not pay
+root-builder framework tax just to ask for config/data/resource paths.
+
+Use `linuxdesktop::root::named_root_handle` for static named roots that are
+declared and later read from the same report. Keep string lookup for dynamic
+root maps assembled from product data.
+
 ## Example 1: Notepad++ Settings Roots
 
 FlavorTest anchor:
@@ -265,6 +288,10 @@ void Profile::init(const RuntimeEnvironment& environment)
     const auto executable_root = environment.executable_path.parent_path();
     const auto portable_marker = executable_root / "profile";
 
+    const auto logs_root = ld::make_named_root_handle(
+        ld::make_log_root_request(
+            "logs", ld::ownership_kind::user_local, "logs"));
+
     const ld::root_report report = ld::request_builder()
         .app("qBittorrent", configuration_name())
         .resource_root(executable_root)
@@ -272,14 +299,13 @@ void Profile::init(const RuntimeEnvironment& environment)
         .environment(environment.variables)
         .portable_marker(portable_marker)
         .portable(ld::portable_level::profile)
-        .named_root(ld::make_log_root_request(
-            "logs", ld::ownership_kind::user_local, "logs"))
+        .named_root(logs_root)
         .resolve();
 
     setProfileRoot(report.roots.config);
     setFastResumeRoot(report.roots.data / "BT_backup");
 
-    if (const auto* logs = ld::find_named_root(report, "logs"))
+    if (const auto* logs = ld::find_named_root(report, logs_root))
         setLogRoot(logs->path);
 }
 ```
@@ -392,23 +418,30 @@ namespace settings = linuxdesktop::settings;
 
 SETTINGS_MANAGER::SETTINGS_MANAGER(RuntimeEnvironment environment)
 {
+    const auto colors_root = ld::make_named_root_handle(
+        ld::make_config_root_request(
+            "colors", ld::ownership_kind::user_roaming, "colors"));
+    const auto toolbars_root = ld::make_named_root_handle(
+        ld::make_config_root_request(
+            "toolbars", ld::ownership_kind::user_roaming, "toolbars"));
+    const auto backups_root = ld::make_named_root_handle(
+        ld::make_named_root_request(
+            "project-backups", ld::purpose_kind::backup,
+            ld::ownership_kind::user_local, "backups"));
+
     const auto report = ld::request_builder()
         .app("KiCad", "KiCad")
         .home_directory(environment.home)
         .environment(environment.variables)
-        .named_root(ld::make_config_root_request(
-            "colors", ld::ownership_kind::user_roaming, "colors"))
-        .named_root(ld::make_config_root_request(
-            "toolbars", ld::ownership_kind::user_roaming, "toolbars"))
-        .named_root(ld::make_named_root_request(
-            "project-backups", ld::purpose_kind::backup,
-            ld::ownership_kind::user_local, "backups"))
+        .named_root(colors_root)
+        .named_root(toolbars_root)
+        .named_root(backups_root)
         .resolve();
 
     user_root_ = report.roots.config;
-    colors_root_ = required_named_root(report, "colors");
-    toolbars_root_ = required_named_root(report, "toolbars");
-    backup_root_ = required_named_root(report, "project-backups");
+    colors_root_ = required_named_root(report, colors_root);
+    toolbars_root_ = required_named_root(report, toolbars_root);
+    backup_root_ = required_named_root(report, backups_root);
 }
 ```
 
@@ -740,9 +773,11 @@ the limit: resolving paths is not the same as loading plugins.
   `ld_desktop`.
 - `write_common_config()` has enough positive FlavorTest evidence to be the
   default recommendation for ordinary validated config saves.
-- `request_builder` remains experimental. Use it where it clarifies a
-  cluster of settings-root mechanics, and avoid it where direct product code is
-  clearer.
+- `request_builder` is the recommended `ld_root` style for ordinary app
+  topology, portable policy, overrides, and named roots. Raw
+  `linuxdesktop::root::options` remain the clearer style when a product already
+  has a dense root model, and `linuxdesktop::paths::resolver_options` remain the
+  lighter choice when topology would add framework tax.
 - Raw migration plans and rich diagnostics should usually stay internal to
   adapters. Product-facing methods should return product-shaped save results,
   migration prompts, warnings, or logs.

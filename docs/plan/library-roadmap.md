@@ -32,6 +32,12 @@ excluded from `0.2.0`; `rename_file` stays atomic-only unless later maintained
 consumer evidence justifies a separate semantic move action. Governance, watcher
 path-type optimization, and diagnostic stringification cleanup remain follow-up
 work unless new consumer evidence makes one of them release-critical.
+The root/topology documentation pass records the `0.2.0` construction rule:
+consumers should see `ld_root::request_builder` as the recommended style for
+ordinary app topology, portable policy, overrides, named roots, and component
+roots, while raw `ld_root::options` remains valid for dense product-owned root
+models and `ld_paths::resolver_options` remains the lighter choice for plain
+path-family or resource-location resolution.
 
 ## API Principles
 

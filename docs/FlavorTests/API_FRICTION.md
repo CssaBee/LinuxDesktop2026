@@ -55,6 +55,12 @@ Current global pain:
   ergonomics. Callers that need desktop effects should link `ld_desktop`
   directly, even when settings, paths, migration, and desktop work happen in
   the same product adapter.
+- Root construction style is now a documented choice instead of an unresolved
+  inconsistency: use `linuxdesktop::root::request_builder` for ordinary app
+  topology, portable policy, overrides, named roots, and component roots; use
+  raw `linuxdesktop::root::options` when product-specific root policy would be
+  obscured by a fluent chain; use `linuxdesktop::paths::resolver_options` when
+  the seam only needs path families or resource locations.
 
 ## Notepad++
 
@@ -87,9 +93,13 @@ Friction:
 - Local config needs both requested and active state. The API exposes that, but
   product code must keep the two flags straight or it will blur "marker exists"
   with "portable mode accepted."
-- The cross-port builds `linuxdesktop::root::options` manually while the in-tree
-  FlavorTest uses `request_builder`. Both are valid, but the split makes it
-  harder to tell which style should be recommended for real consumers.
+- The in-tree FlavorTest uses `request_builder`, which is the recommended style
+  for Notepad++'s startup topology because app identity, install resources,
+  portable marker policy, command-line/cloud overrides, and plugin/log roots
+  read as one root request. Existing cross-port code that still builds raw
+  `linuxdesktop::root::options` is valid during the maintained proof, but new
+  examples should prefer the builder unless the surrounding product model is
+  already clearer as an options object.
 - Static named roots can now be declared once with a `named_root_handle`, passed
   to `request_builder`, and used for lookup without repeating the string key.
   Dynamic roots still use the original string lookup surface.
@@ -186,8 +196,9 @@ Fit:
 Friction:
 
 - KeePassXC has enough XDG and roaming/local vocabulary that the raw options
-  object is clearer than the fluent builder. The API does not clearly signal
-  when callers should prefer raw options over `request_builder`.
+  object is clearer than the fluent builder. This is the intended exception to
+  the builder recommendation: keep dense product root policy explicit when a
+  chain would make the adapter harder to audit.
 - The product still needs to translate generic portable/root diagnostics into
   KeePassXC prompts or warnings.
 - The local-settings root uses LinuxDesktop2026 purpose and ownership terms in
@@ -532,7 +543,8 @@ Current desired dependency shape:
   lightweight bootstrap adapters.
 - Link `LinuxDesktop2026::ld_root` when the caller needs user/app-owned root
   topology, portable policy, overrides, named roots, or component
-  roots.
+  roots. Prefer `request_builder` for ordinary readable topology, and prefer
+  raw `root::options` when a product already has a stronger root-policy object.
 - Link `LinuxDesktop2026::ld_settings` when the caller needs settings
   hydration, settings layers, or validated settings writes.
 - Link `LinuxDesktop2026::ld_migration` when the caller needs dry-run

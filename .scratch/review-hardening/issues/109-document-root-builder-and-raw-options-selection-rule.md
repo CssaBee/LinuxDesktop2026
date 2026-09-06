@@ -6,18 +6,18 @@ real consumers by documenting when to use `request_builder` and when raw
 
 **Blocked by:** 108 - Reduce Named-Root String Lookup Friction.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Compare current FlavorTest usage of `linuxdesktop::root::request_builder`
+- [x] Compare current FlavorTest usage of `linuxdesktop::root::request_builder`
   and manual `linuxdesktop::root::options`.
-- [ ] Write the selection rule into the root examples and roadmap: use
+- [x] Write the selection rule into the root examples and roadmap: use
   `request_builder` for ordinary app topology, portable policy, overrides, and
   named roots; use raw options when the product already has a dense
   platform/root model that would be obscured by fluent construction.
-- [ ] Update Notepad++ and KeePassXC friction notes with the final guidance.
-- [ ] Check install-tree examples so downstream users see the same recommended
+- [x] Update Notepad++ and KeePassXC friction notes with the final guidance.
+- [x] Check install-tree examples so downstream users see the same recommended
   style as the in-tree FlavorTests.
-- [ ] Avoid introducing a new API unless the documentation pass proves a real
+- [x] Avoid introducing a new API unless the documentation pass proves a real
   contradiction in the current surface.
 
 ## Evidence Anchor

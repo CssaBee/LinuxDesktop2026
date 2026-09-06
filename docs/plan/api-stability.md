@@ -148,6 +148,15 @@ owns the caller-provided request label, can be passed to `request_builder`, and
 can be reused to find the resolved root from a report without repeating the
 string key. The helper does not add product-specific root kinds.
 
+The recommended `0.2.0` C++ construction style for ordinary `ld_root` topology
+is `request_builder`: app identity, install/resource roots, portable markers,
+root overrides, named roots, and component roots should read as one request
+chain when that improves scanning. Raw `ld_root::options` remains source-stable
+prototype surface and is still the clearer integration point when a product
+already has a dense root-policy object. Plain `ld_paths::resolver_options`
+remains the lighter API for path-family and resource-location lookup that does
+not need root topology.
+
 `ld_watch` intentionally has no C ABI yet. Its C ABI design is postponed until release-candidate status so callback, queue, ownership, settled-file, and `watch_path` semantics can settle in C++ first.
 
 ## Pre-1.0 Rules

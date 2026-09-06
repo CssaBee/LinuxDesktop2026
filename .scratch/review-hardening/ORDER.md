@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `109` - Document Root Builder And Raw Options Selection Rule
 - `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `82` - Reduce Bus Factor And Write Governance
 
@@ -16,7 +15,7 @@ These tickets block `0.2.0` because they protect the release's public support
 matrix, parser contract, mutation guarantees, CI evidence, or contributor
 baseline:
 
-- `109` - Document Root Builder And Raw Options Selection Rule
+There is no current review-hardening ticket blocking the `0.2.0` support line.
 
 These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
@@ -26,6 +25,7 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `109` - Document Root Builder And Raw Options Selection Rule
 - `108` - Reduce Named-Root String Lookup Friction
 - `107` - Add Minifox Portable Launcher FlavorTest Probe
 - `106` - Add Endless Sky Owned Plugin Root FlavorTest Probe
