@@ -1,4 +1,4 @@
-# Notepad++ Settings Proof Branch
+# Notepad++ Proof Branch
 
 This is the evidence ledger for the first maintained consumer branch.
 
@@ -10,12 +10,14 @@ This is the evidence ledger for the first maintained consumer branch.
 - Local checkout: `../LinuxDesktop2026-crossport-notepadpp`
 - Branch: `linuxdesktop2026-settings-proof`
 - Tracking: `origin/linuxdesktop2026-settings-proof`
-- Current proof commit: `a296934feedbae187fcd98981637bc45f8faceb5`
+- Current proof commit:
+  `d2bb3a3aa88801a2540fcd0893deb1652fbcf726`
 - Current observed CI: the 2026-09-05 manually dispatched
   `Notepad++ Proof Branch` workflow passed CTest 1/1 against LinuxDesktop2026
   `cf7de44f92a35b18add35529a58d8598b9c80321` on Ubuntu 24.04/GCC 13.3.
-- Current maintenance posture: keep recording rebase, dependency, include/link,
-  compile, and API-friction evidence here while the proof branch is maintained.
+- Current maintenance posture: keep recording upstream-following/rebase,
+  dependency, include/link, compile, and API-friction evidence here while the
+  proof branch is maintained.
 
 ## Branch Contract
 
@@ -31,6 +33,7 @@ This is the evidence ledger for the first maintained consumer branch.
 - LinuxDesktop2026 dependency mode: normal CMake consumption
 - Initial LinuxDesktop2026 modules allowed: `ld_core`, `ld_paths`,
   `ld_settings`, and `ld_migration`
+- Desktop registration module allowed after task 95: `ld_desktop`
 - Public C ABI expansion: out of scope until release-candidate status
 
 The branch should prove that a real Notepad++-shaped settings subsystem can use
@@ -270,6 +273,17 @@ The platform-default rebase added one API fix: `ld_settings` now accepts
 `platform_path_defaults` and passes them to `ld_paths`. This keeps consumers on
 the settings-level API while still allowing CMake-generated OS defaults.
 
+The task-95 desktop registration pass added `ld_desktop` as an explicit
+crossport dependency instead of letting settings or root APIs imply desktop
+behavior. The adapter stayed Notepad++-owned: the public proof header names
+Notepad++ registration requests, result statuses, activation follow-up, and
+diagnostic codes, while LinuxDesktop2026 bundle reports remain private to the
+implementation. No blocking API change was found, but callers still have to
+translate one product concept, "register Notepad++ with the desktop", into a
+desktop bundle with launcher metadata, icon reference, autostart intent, MIME
+association/default intent, staging roots, activation follow-up, and cleanup
+rows.
+
 ## Current Framework-Tax Snapshot
 
 Measured against crossport commit
@@ -358,3 +372,45 @@ Conclusion: the implemented proof supports stale-write rejection for
 participating whole-file settings commits. It still does not justify library
 merge callbacks, automatic retry/reread behavior, XML-specific merging, or a
 general settings transaction system.
+
+## Desktop Registration Proof Evidence
+
+Task 95 extends the maintained Notepad++ proof branch beyond settings into a
+small Notepad++-owned desktop registration adapter.
+
+- LinuxDesktop2026 base commit for this proof:
+  `fd64e1ed01cba5f58e4047af8a53fd15b0cf2c9c`; task-95 evidence is recorded
+  by the current documentation commit.
+- Cross-port branch commit:
+  `d2bb3a3aa88801a2540fcd0893deb1652fbcf726`; changes are confined to
+  `CMakeLists.txt`, `proof/notepadpp_desktop_registration.cpp`,
+  `proof/notepadpp_desktop_registration.hpp`, and the proof harness.
+- Upstream Notepad++ base before update: `c057c0802`
+- Current fetched upstream: `upstream/master` at `26afde31c` on 2026-09-06.
+- Upstream-following check: `git merge-tree HEAD upstream/master` returned a
+  clean automatic merge for the task-95 proof commit. The proof additions are
+  in `proof/` plus the crossport-owned root `CMakeLists.txt`; current upstream
+  changes touch `PowerEditor/...` files and do not overlap the desktop proof
+  files.
+- Dependency mode: freshly staged installed CMake package at
+  `/tmp/linuxdesktop2026-task95-prefix`.
+- Build result: `cmake --build build/task95-proof --target
+  linuxdesktop2026_notepadpp_settings_proof` passed on local Linux/GCC 13.3.
+- Test result: `ctest --test-dir build/task95-proof --output-on-failure`
+  passed, 1/1.
+- Flows exercised: advisory desktop registration planning, staged XDG apply,
+  query, and remove for a Notepad++ launcher, icon, autostart entry,
+  `text/plain` association/default intent, activation follow-up, and generated
+  cleanup rows.
+- Include/link evidence: the proof target links
+  `LinuxDesktop2026::ld_desktop` explicitly alongside the settings/root/migration
+  targets; the product-facing desktop proof header does not include
+  LinuxDesktop2026 headers.
+- API friction found: no blocking `ld_desktop` change from this proof alone.
+  Bundle construction is verbose but honest for a maintained product adapter.
+
+Conclusion: the desktop proof is useful evidence only with the
+upstream-following check attached. The proof should not be cited as
+product-ready desktop registration until a committed crossport proof has an
+observed green workflow run and at least one future upstream rebase/merge pass
+that still avoids product-source patch churn.

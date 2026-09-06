@@ -70,6 +70,11 @@ Fit:
   config writes.
 - `linuxdesktop::migration` fits the legacy config import mechanic when the raw
   plan stays behind the Notepad++ adapter.
+- `linuxdesktop::desktop::desktop_bundle` fits Notepad++ desktop registration
+  when the product adapter owns the public "register Notepad++ with the
+  desktop" vocabulary and translates it into launcher metadata, icon staging,
+  optional autostart, text-file association/default intent, activation
+  follow-up, and cleanup reporting.
 - `ld_core` provides product-diagnostic translation helpers so adapters can map
   shared severity, codes, messages, related paths, and diagnostic handling flags
   into product-owned diagnostics without hand-copying each report shape.
@@ -88,6 +93,10 @@ Friction:
 - Named roots such as `"xml-config"`, `"session"`, and `"plugin-config"` are
   stringly typed. Product adapters must look them up by the same names they
   requested.
+- Desktop registration bundle construction is verbose for a product that thinks
+  in one preference or installer action. The verbosity did not require a new
+  helper from this single proof because it keeps staged artifacts, activation,
+  and cleanup explicit.
 
 Leakage:
 
@@ -96,12 +105,16 @@ Leakage:
   validated write backup, and dry-run import actions. That is honest evidence,
   but still asks the product adapter to translate library mechanics into
   application behavior names.
+- `notepadpp_desktop_registration.hpp` keeps LinuxDesktop2026 headers out of the
+  product-facing surface, but its result still mirrors registration statuses and
+  activation follow-up because those are the behaviors a Notepad++ installer or
+  first-run setup would have to present.
 
 Boundary notes:
 
-- The CMake dependency list in the cross-port is `ld_root`, `ld_settings`, and
-  `ld_migration`. The cross-port does not link `ld_paths` directly because
-  `ld_root` carries that dependency.
+- The CMake dependency list in the cross-port is now `ld_desktop`, `ld_root`,
+  `ld_settings`, and `ld_migration`. The cross-port does not link `ld_paths`
+  directly because `ld_root` carries that dependency.
 - Current maintained-proof metrics are recorded in
   `docs/consumer-branches/notepadpp-settings-proof.md`. The live snapshot is
   252 lines of backend implementation, 109 lines of product-shaped header, five
