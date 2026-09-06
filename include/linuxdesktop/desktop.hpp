@@ -59,6 +59,17 @@ enum class registration_status {
     failed
 };
 
+enum class cleanup_status {
+    planned,
+    removed,
+    already_absent,
+    skipped_duplicate,
+    parent_removed,
+    parent_not_empty,
+    manual_follow_up,
+    failed
+};
+
 struct activation_step {
     activation_step_kind kind = activation_step_kind::refresh_desktop_database;
     bool required = false;
@@ -214,6 +225,17 @@ struct cleanup_rule {
     bool remove_empty_parent = false;
 };
 
+struct cleanup_report {
+    cleanup_rule rule;
+    cleanup_status status = cleanup_status::planned;
+    bool ok = false;
+    bool dry_run = false;
+    bool present = false;
+    bool parent_attempted = false;
+    std::optional<std::filesystem::path> parent_path;
+    std::vector<diagnostic> diagnostics;
+};
+
 struct desktop_bundle {
     registration_scope scope = registration_scope::user;
     std::optional<autostart_entry> autostart;
@@ -233,7 +255,7 @@ struct desktop_bundle_report {
     std::vector<effect_report> artifact_reports;
     std::vector<policy_report> policy_reports;
     std::vector<activation_step> activation_plan;
-    std::vector<cleanup_rule> cleanup_plan;
+    std::vector<cleanup_report> cleanup_reports;
     std::vector<diagnostic> diagnostics;
 };
 
@@ -242,6 +264,7 @@ std::string_view to_string(capability_state value);
 std::string_view to_string(activation_step_kind value);
 std::string_view to_string(registration_scope value);
 std::string_view to_string(registration_status value);
+std::string_view to_string(cleanup_status value);
 
 capability_report query_capabilities(const apply_options& options = {});
 

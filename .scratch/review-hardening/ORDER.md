@@ -7,13 +7,13 @@ list below.
 ## Current Order
 
 - `82` - Reduce Bus Factor And Write Governance
-- `93` - Add Desktop Registration Cleanup Reports
 - `94` - Add Desktop Flavor Registration Validation
 - `95` - Add Maintained Desktop Registration Proof
 - `96` - Decide Desktop Registration C ABI Expansion
 
 ## Implemented
 
+- `93` - Add Desktop Registration Cleanup Reports
 - `92` - Wire Desktop Bundle To Staged Registration Effects
 - `91` - Add Desktop Bundle API And Report Vocabulary
 - `88` - Prove Windows Registration Capability Posture

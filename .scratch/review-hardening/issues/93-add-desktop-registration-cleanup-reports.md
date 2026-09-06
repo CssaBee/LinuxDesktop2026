@@ -6,18 +6,27 @@ permission-denied, and parent-cleanup outcomes.
 
 **Blocked by:** 92 - Wire Desktop Bundle To Staged Registration Effects.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Bundle remove and cleanup-plan queries report every generated artifact
+- [x] Bundle remove and cleanup-plan queries report every generated artifact
   that would be removed, skipped, or left for manual follow-up.
-- [ ] Cleanup does not delete unrelated user files, unrelated desktop entries,
+- [x] Cleanup does not delete unrelated user files, unrelated desktop entries,
   or directories that are not known-empty generated parents.
-- [ ] Missing artifacts are reported as already absent rather than as hard
+- [x] Missing artifacts are reported as already absent rather than as hard
   failures when that preserves uninstall idempotence.
-- [ ] Permission-denied and global-write cases keep diagnostics specific enough
+- [x] Permission-denied and global-write cases keep diagnostics specific enough
   for a product installer or uninstaller to decide what to show next.
 
 ## Evidence Fit
 
 Adversarial tests plus source review should catch this: the risk is cleanup
 erasing unrelated state or producing unusable uninstall reports.
+
+## Implementation Note
+
+`desktop_bundle_report` now carries structured `cleanup_reports` with
+`cleanup_status` outcomes. Bundle plan/query/remove records generated artifact
+paths, explicit cleanup rules, duplicate skips, already-absent paths,
+shared-file manual follow-up, parent cleanup diagnostics, and global-write
+denial. Removal only deletes generated file artifacts; directories and shared
+stores are preserved unless a requested parent is known empty.

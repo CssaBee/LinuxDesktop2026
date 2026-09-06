@@ -795,6 +795,29 @@ std::string_view to_string(registration_status value)
     return "unknown";
 }
 
+std::string_view to_string(cleanup_status value)
+{
+    switch (value) {
+    case cleanup_status::planned:
+        return "planned";
+    case cleanup_status::removed:
+        return "removed";
+    case cleanup_status::already_absent:
+        return "already_absent";
+    case cleanup_status::skipped_duplicate:
+        return "skipped_duplicate";
+    case cleanup_status::parent_removed:
+        return "parent_removed";
+    case cleanup_status::parent_not_empty:
+        return "parent_not_empty";
+    case cleanup_status::manual_follow_up:
+        return "manual_follow_up";
+    case cleanup_status::failed:
+        return "failed";
+    }
+    return "unknown";
+}
+
 capability_report query_capabilities(const apply_options& options)
 {
     capability_report report;
@@ -1146,6 +1169,11 @@ effect_report remove_desktop_entry(const desktop_entry& entry, const apply_optio
         return report;
     }
     std::error_code ec;
+    report.present = std::filesystem::exists(*report.path, ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(severity::error, "desktop-entry-remove-probe-failed", ec.message(), *report.path));
+        return report;
+    }
     std::filesystem::remove(*report.path, ec);
     if (ec) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "desktop-entry-remove-failed", ec.message(), *report.path));
@@ -1281,6 +1309,11 @@ effect_report remove_icon(const icon_entry& entry, const apply_options& options)
         return report;
     }
     std::error_code ec;
+    report.present = std::filesystem::exists(*report.path, ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(severity::error, "icon-remove-probe-failed", ec.message(), *report.path));
+        return report;
+    }
     std::filesystem::remove(*report.path, ec);
     if (ec) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "icon-remove-failed", ec.message(), *report.path));
@@ -1432,6 +1465,11 @@ effect_report remove_mime_declaration(const mime_declaration& declaration, const
         return report;
     }
     std::error_code ec;
+    report.present = std::filesystem::exists(*report.path, ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(severity::error, "mime-declaration-remove-probe-failed", ec.message(), *report.path));
+        return report;
+    }
     std::filesystem::remove(*report.path, ec);
     if (ec) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "mime-declaration-remove-failed", ec.message(), *report.path));
@@ -1671,6 +1709,7 @@ effect_report remove_mime_association(const mime_association& association, const
         report.ok = true;
         return report;
     }
+    report.present = !ids.empty() && query_mimeapps_key(*report.path, "Added Associations", association.mime_type, ids.front(), report.diagnostics);
     report.ok = update_mimeapps_key(*report.path, "Added Associations", association.mime_type, ids, true, report.diagnostics);
     if (!report.ok) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "mimeapps-write-failed", "Failed to update mimeapps.list", *report.path));
@@ -1748,6 +1787,12 @@ effect_report apply_default_application(const default_application_intent& intent
     if (ec) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "mimeapps-create-directory-failed", ec.message(), report.path->parent_path()));
         return report;
+    }
+    if (!intent.make_default) {
+        report.present = !ids.empty() && query_mimeapps_key(*report.path, "Default Applications", intent.mime_type_or_scheme, ids.front(), report.diagnostics);
+        if (has_error(report.diagnostics)) {
+            return report;
+        }
     }
     report.ok = update_mimeapps_key(*report.path, "Default Applications", intent.mime_type_or_scheme, ids, !intent.make_default, report.diagnostics);
     if (!report.ok) {
@@ -1999,6 +2044,11 @@ policy_report remove_policy(const policy_entry& entry, const apply_options& opti
     }
 
     std::error_code ec;
+    report.present = std::filesystem::exists(*report.path, ec);
+    if (ec) {
+        report.diagnostics.push_back(make_diagnostic(severity::error, "policy-remove-probe-failed", ec.message(), *report.path));
+        return report;
+    }
     std::filesystem::remove(*report.path, ec);
     if (ec) {
         report.diagnostics.push_back(make_diagnostic(severity::error, "policy-remove-failed", ec.message(), *report.path));
@@ -2202,6 +2252,235 @@ registration_status status_for_policy(bundle_operation operation, const policy_r
     return report.dry_run ? registration_status::planned : registration_status::staged;
 }
 
+std::string cleanup_key(const std::filesystem::path& path)
+{
+    return path.lexically_normal().string();
+}
+
+diagnostic cleanup_permission_diagnostic(const std::string& operation, const std::filesystem::path& path, const std::error_code& ec)
+{
+    const bool denied = ec == std::errc::permission_denied || ec == std::errc::operation_not_permitted;
+    return make_diagnostic(
+        severity::error,
+        denied ? "cleanup-permission-denied" : "cleanup-" + operation + "-failed",
+        ec.message(),
+        path);
+}
+
+void append_cleanup_diagnostics(const cleanup_report& source, desktop_bundle_report& target)
+{
+    target.diagnostics.insert(target.diagnostics.end(), source.diagnostics.begin(), source.diagnostics.end());
+}
+
+cleanup_report make_cleanup_report(
+    bundle_operation operation,
+    cleanup_rule rule,
+    bool owns_path,
+    bool allow_write,
+    bool child_ok,
+    bool child_present)
+{
+    cleanup_report report;
+    report.rule = std::move(rule);
+    report.dry_run = operation == bundle_operation::query ? false : operation == bundle_operation::plan || operation == bundle_operation::apply;
+    report.present = child_present;
+
+    if (report.rule.path.empty()) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(severity::error, "cleanup-path-empty", "Cleanup rule path must not be empty"));
+        return report;
+    }
+    if (!report.rule.path.is_absolute()) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(severity::error, "cleanup-path-relative", "Cleanup rule path must be absolute", report.rule.path));
+        return report;
+    }
+    if (!allow_write && operation == bundle_operation::remove) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "cleanup-global-write-denied",
+            "Global cleanup requires allow_global_write",
+            report.rule.path));
+        return report;
+    }
+    if (!owns_path) {
+        report.status = cleanup_status::manual_follow_up;
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "cleanup-shared-artifact-manual-follow-up",
+            "Shared registration file may contain generated entries, but the whole file is not owned by ld_desktop cleanup",
+            report.rule.path));
+        return report;
+    }
+    if (operation == bundle_operation::plan || operation == bundle_operation::apply) {
+        report.status = cleanup_status::planned;
+        report.ok = true;
+        return report;
+    }
+    if (operation == bundle_operation::query) {
+        std::error_code ec;
+        report.present = std::filesystem::exists(report.rule.path, ec);
+        if (ec) {
+            report.status = cleanup_status::failed;
+            report.diagnostics.push_back(cleanup_permission_diagnostic("probe", report.rule.path, ec));
+            return report;
+        }
+        report.status = report.present ? cleanup_status::planned : cleanup_status::already_absent;
+        report.ok = true;
+        return report;
+    }
+    if (!child_ok) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::error,
+            "cleanup-artifact-remove-failed",
+            "Generated artifact cleanup follows a failed remove report",
+            report.rule.path));
+        return report;
+    }
+    report.status = child_present ? cleanup_status::removed : cleanup_status::already_absent;
+    report.ok = true;
+    return report;
+}
+
+void append_generated_cleanup_report(
+    bundle_operation operation,
+    const cleanup_rule& rule,
+    bool owns_path,
+    bool allow_write,
+    bool child_ok,
+    bool child_present,
+    std::set<std::string>& seen_cleanup_paths,
+    desktop_bundle_report& bundle_report)
+{
+    if (rule.path.empty()) {
+        return;
+    }
+
+    cleanup_report cleanup;
+    const auto key = cleanup_key(rule.path);
+    if (!seen_cleanup_paths.insert(key).second) {
+        cleanup.rule = rule;
+        cleanup.status = cleanup_status::skipped_duplicate;
+        cleanup.ok = true;
+        cleanup.dry_run = operation == bundle_operation::query ? false : operation == bundle_operation::plan || operation == bundle_operation::apply;
+        cleanup.diagnostics.push_back(make_diagnostic(severity::info, "cleanup-duplicate-skipped", "Duplicate cleanup path was reported once and skipped", rule.path));
+    } else {
+        cleanup = make_cleanup_report(operation, rule, owns_path, allow_write, child_ok, child_present);
+    }
+    append_cleanup_diagnostics(cleanup, bundle_report);
+    bundle_report.cleanup_reports.push_back(std::move(cleanup));
+}
+
+cleanup_report run_explicit_cleanup_rule(
+    bundle_operation operation,
+    const cleanup_rule& rule,
+    bool allow_write,
+    std::set<std::string>& seen_cleanup_paths)
+{
+    cleanup_report report;
+    report.rule = rule;
+    report.dry_run = operation == bundle_operation::query ? false : operation == bundle_operation::plan || operation == bundle_operation::apply;
+
+    if (rule.path.empty()) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(severity::error, "cleanup-path-empty", "Cleanup rule path must not be empty"));
+        return report;
+    }
+    if (!rule.path.is_absolute()) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(severity::error, "cleanup-path-relative", "Cleanup rule path must be absolute", rule.path));
+        return report;
+    }
+
+    const auto key = cleanup_key(rule.path);
+    if (!seen_cleanup_paths.insert(key).second) {
+        report.status = cleanup_status::skipped_duplicate;
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(severity::info, "cleanup-duplicate-skipped", "Duplicate cleanup path was reported once and skipped", rule.path));
+        return report;
+    }
+
+    if (!allow_write && operation == bundle_operation::remove) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(make_diagnostic(severity::error, "cleanup-global-write-denied", "Global cleanup requires allow_global_write", rule.path));
+        return report;
+    }
+
+    std::error_code ec;
+    const auto status = std::filesystem::symlink_status(rule.path, ec);
+    if (ec) {
+        if (ec == std::errc::no_such_file_or_directory) {
+            report.status = cleanup_status::already_absent;
+            report.ok = true;
+            report.present = false;
+            return report;
+        }
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(cleanup_permission_diagnostic("probe", rule.path, ec));
+        return report;
+    }
+    report.present = std::filesystem::exists(status);
+    if (!report.present) {
+        report.status = cleanup_status::already_absent;
+        report.ok = true;
+        return report;
+    }
+
+    if (operation == bundle_operation::plan || operation == bundle_operation::apply || operation == bundle_operation::query) {
+        report.status = cleanup_status::planned;
+        report.ok = true;
+        return report;
+    }
+
+    if (!std::filesystem::is_regular_file(status) && !std::filesystem::is_symlink(status)) {
+        report.status = cleanup_status::manual_follow_up;
+        report.ok = true;
+        report.diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            "cleanup-manual-follow-up",
+            "Cleanup path is not a generated file artifact; remove it manually if appropriate",
+            rule.path));
+        return report;
+    }
+
+    std::filesystem::remove(rule.path, ec);
+    if (ec) {
+        report.status = cleanup_status::failed;
+        report.diagnostics.push_back(cleanup_permission_diagnostic("remove", rule.path, ec));
+        return report;
+    }
+    report.status = cleanup_status::removed;
+    report.ok = true;
+
+    if (rule.remove_empty_parent) {
+        const auto parent = rule.path.parent_path();
+        if (!parent.empty()) {
+            report.parent_attempted = true;
+            report.parent_path = parent;
+            std::filesystem::remove(parent, ec);
+            if (ec) {
+                if (ec == std::errc::directory_not_empty || ec == std::errc::file_exists) {
+                    report.diagnostics.push_back(make_diagnostic(severity::info, "cleanup-parent-not-empty", "Cleanup parent was left in place because it is not empty", parent));
+                    return report;
+                }
+                report.status = cleanup_status::failed;
+                report.ok = false;
+                report.diagnostics.push_back(cleanup_permission_diagnostic("parent-remove", parent, ec));
+                return report;
+            }
+            if (std::filesystem::exists(parent)) {
+                report.diagnostics.push_back(make_diagnostic(severity::info, "cleanup-parent-not-empty", "Cleanup parent was left in place because it is not empty", parent));
+            } else {
+                report.diagnostics.push_back(make_diagnostic(severity::info, "cleanup-parent-removed", "Cleanup parent directory was empty and removed", parent));
+            }
+        }
+    }
+    return report;
+}
+
 effect_report run_effect(bundle_operation operation, const autostart_entry& entry, const apply_options& options)
 {
     switch (operation) {
@@ -2315,17 +2594,42 @@ policy_report run_policy(bundle_operation operation, const policy_entry& entry, 
 }
 
 template <typename Entry>
-void append_effect_report(bundle_operation operation, effect_kind kind, const Entry& entry, const apply_options& options, desktop_bundle_report& report)
+void append_effect_report(
+    bundle_operation operation,
+    effect_kind kind,
+    const Entry& entry,
+    const apply_options& options,
+    bool owns_cleanup_path,
+    bool allow_cleanup_write,
+    std::set<std::string>& seen_cleanup_paths,
+    desktop_bundle_report& report)
 {
     auto effect = run_effect(operation, entry, options);
     effect.kind = kind;
     effect.status = status_for_effect(operation, effect);
     append_activation_plan(effect, report);
     append_report_diagnostics(effect, report);
+    if (effect.path) {
+        append_generated_cleanup_report(
+            operation,
+            {*effect.path, false},
+            owns_cleanup_path,
+            allow_cleanup_write,
+            effect.ok,
+            effect.present || effect.enabled,
+            seen_cleanup_paths,
+            report);
+    }
     report.artifact_reports.push_back(std::move(effect));
 }
 
-void append_policy_report(bundle_operation operation, const policy_entry& entry, const apply_options& options, desktop_bundle_report& report)
+void append_policy_report(
+    bundle_operation operation,
+    const policy_entry& entry,
+    const apply_options& options,
+    bool allow_cleanup_write,
+    std::set<std::string>& seen_cleanup_paths,
+    desktop_bundle_report& report)
 {
     auto policy = run_policy(operation, entry, options);
     policy.kind = effect_kind::managed_policy;
@@ -2334,6 +2638,32 @@ void append_policy_report(bundle_operation operation, const policy_entry& entry,
         append_policy_activation_plan(entry, report);
     }
     append_report_diagnostics(policy, report);
+    if (policy.path) {
+        append_generated_cleanup_report(
+            operation,
+            {*policy.path, false},
+            true,
+            allow_cleanup_write,
+            policy.ok,
+            policy.present,
+            seen_cleanup_paths,
+            report);
+    }
+    if (entry.enforced) {
+        auto diagnostics = policy.diagnostics;
+        const auto lock_path = policy_lock_path(entry, options, diagnostics);
+        if (!lock_path.empty()) {
+            append_generated_cleanup_report(
+                operation,
+                {lock_path, false},
+                true,
+                allow_cleanup_write,
+                policy.ok,
+                policy.present,
+                seen_cleanup_paths,
+                report);
+        }
+    }
     report.policy_reports.push_back(std::move(policy));
 }
 
@@ -2345,40 +2675,46 @@ desktop_bundle_report run_bundle(bundle_operation operation, const desktop_bundl
 
     desktop_bundle_report report;
     report.dry_run = operation == bundle_operation::query ? false : options.dry_run;
-    report.cleanup_plan = bundle.cleanup;
+    std::set<std::string> seen_cleanup_paths;
+    const bool allow_cleanup_write = bundle.scope == registration_scope::user || options.allow_global_write;
 
     if (bundle.entry) {
-        append_effect_report(operation, effect_kind::desktop_entry, desktop_entry_from_bundle(bundle), options, report);
+        append_effect_report(operation, effect_kind::desktop_entry, desktop_entry_from_bundle(bundle), options, true, allow_cleanup_write, seen_cleanup_paths, report);
     }
     if (bundle.autostart) {
         auto autostart = *bundle.autostart;
         autostart.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, effect_kind::autostart, autostart, options, report);
+        append_effect_report(operation, effect_kind::autostart, autostart, options, true, allow_cleanup_write, seen_cleanup_paths, report);
     }
     for (const auto& icon : bundle.icons) {
         for (const auto& entry : icon_entries_from_reference(icon, bundle.scope)) {
-            append_effect_report(operation, effect_kind::icon, entry, options, report);
+            append_effect_report(operation, effect_kind::icon, entry, options, true, allow_cleanup_write, seen_cleanup_paths, report);
         }
     }
     for (auto declaration : bundle.mime_declarations) {
         declaration.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, effect_kind::mime_association, declaration, options, report);
+        append_effect_report(operation, effect_kind::mime_association, declaration, options, true, allow_cleanup_write, seen_cleanup_paths, report);
     }
     for (auto association : bundle.mime_associations) {
         association.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, effect_kind::mime_association, association, options, report);
+        append_effect_report(operation, effect_kind::mime_association, association, options, false, allow_cleanup_write, seen_cleanup_paths, report);
     }
     for (auto intent : bundle.default_applications) {
         intent.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, effect_kind::default_application, intent, options, report);
+        append_effect_report(operation, effect_kind::default_application, intent, options, false, allow_cleanup_write, seen_cleanup_paths, report);
     }
     for (auto handler : bundle.url_scheme_handlers) {
         handler.user_scope = bundle_user_scope(bundle.scope);
-        append_effect_report(operation, effect_kind::url_protocol_handler, handler, options, report);
+        append_effect_report(operation, effect_kind::url_protocol_handler, handler, options, false, allow_cleanup_write, seen_cleanup_paths, report);
     }
     for (auto policy : bundle.policies) {
         policy.user_scope = bundle_user_scope(bundle.scope);
-        append_policy_report(operation, policy, options, report);
+        append_policy_report(operation, policy, options, allow_cleanup_write, seen_cleanup_paths, report);
+    }
+    for (const auto& rule : bundle.cleanup) {
+        auto cleanup = run_explicit_cleanup_rule(operation, rule, allow_cleanup_write, seen_cleanup_paths);
+        append_cleanup_diagnostics(cleanup, report);
+        report.cleanup_reports.push_back(std::move(cleanup));
     }
 
     report.ok = !has_error(report.diagnostics) &&
@@ -2386,6 +2722,9 @@ desktop_bundle_report run_bundle(bundle_operation operation, const desktop_bundl
             return item.ok;
         }) &&
         std::all_of(report.policy_reports.begin(), report.policy_reports.end(), [](const policy_report& item) {
+            return item.ok;
+        }) &&
+        std::all_of(report.cleanup_reports.begin(), report.cleanup_reports.end(), [](const cleanup_report& item) {
             return item.ok;
         });
     return report;

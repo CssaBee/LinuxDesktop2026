@@ -106,6 +106,22 @@ bool has_effect_status(const ld::desktop_bundle_report& report, ld::effect_kind 
     });
 }
 
+const ld::cleanup_report* find_cleanup_report(const ld::desktop_bundle_report& report, const std::filesystem::path& path)
+{
+    for (const auto& cleanup : report.cleanup_reports) {
+        if (cleanup.rule.path == path) {
+            return &cleanup;
+        }
+    }
+    return nullptr;
+}
+
+bool has_cleanup_status(const ld::desktop_bundle_report& report, const std::filesystem::path& path, ld::cleanup_status status)
+{
+    const auto* cleanup = find_cleanup_report(report, path);
+    return cleanup != nullptr && cleanup->status == status;
+}
+
 #if !defined(_WIN32)
 class scoped_env_var {
 public:
@@ -279,6 +295,12 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
     require(ld::to_string(ld::registration_status::missing) == "missing", "bundle reports should name missing artifact status");
     require(ld::to_string(ld::registration_status::unsupported) == "unsupported", "bundle reports should name unsupported artifact status");
     require(ld::to_string(ld::registration_status::failed) == "failed", "bundle reports should name failed artifact status");
+    require(ld::to_string(ld::cleanup_status::planned) == "planned", "bundle cleanup reports should name planned cleanup");
+    require(ld::to_string(ld::cleanup_status::removed) == "removed", "bundle cleanup reports should name removed cleanup");
+    require(ld::to_string(ld::cleanup_status::already_absent) == "already_absent", "bundle cleanup reports should name absent cleanup");
+    require(ld::to_string(ld::cleanup_status::skipped_duplicate) == "skipped_duplicate", "bundle cleanup reports should name duplicate cleanup");
+    require(ld::to_string(ld::cleanup_status::manual_follow_up) == "manual_follow_up", "bundle cleanup reports should name manual cleanup");
+    require(ld::to_string(ld::cleanup_status::failed) == "failed", "bundle cleanup reports should name failed cleanup");
 
     const auto root = test_root() / "bundle-vocabulary";
     const auto icon_source = root / "icon.png";
@@ -305,7 +327,7 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
     require(planned.dry_run, "desktop bundle plan should stay dry-run");
     require(planned.artifact_reports.size() == 7, "desktop bundle plan should report every artifact group");
     require(planned.policy_reports.size() == 1, "desktop bundle plan should report policy groups separately");
-    require(planned.cleanup_plan.size() == 1, "desktop bundle plan should preserve cleanup rules");
+    require(!planned.cleanup_reports.empty(), "desktop bundle plan should report cleanup outcomes");
     require(has_effect_status(planned, ld::effect_kind::desktop_entry, ld::registration_status::planned),
         "desktop bundle plan should mark staged artifacts as planned");
     require(planned.policy_reports.front().kind == ld::effect_kind::managed_policy,
@@ -377,6 +399,8 @@ void desktop_bundle_applies_queries_and_removes_staged_artifacts()
     const auto desktop = find_effect_report(applied, ld::effect_kind::desktop_entry);
     require(desktop != nullptr && desktop->path.has_value() && std::filesystem::exists(*desktop->path),
         "desktop bundle apply should write the desktop entry through the staged effect path");
+    require(has_cleanup_status(applied, *desktop->path, ld::cleanup_status::planned),
+        "desktop bundle apply should include generated desktop entry in cleanup reports");
     require(read_file(*desktop->path).find("MimeType=text/x-linuxdesktop2026-test;x-scheme-handler/ld2026;") != std::string::npos,
         "desktop bundle apply should merge MIME and URL scheme metadata into the desktop entry");
 
@@ -395,6 +419,8 @@ void desktop_bundle_applies_queries_and_removes_staged_artifacts()
         "desktop bundle remove should mark desktop entry as missing");
     require(removed.policy_reports.front().status == ld::registration_status::missing,
         "desktop bundle remove should mark policy as missing");
+    require(has_cleanup_status(removed, *desktop->path, ld::cleanup_status::removed),
+        "desktop bundle remove should report generated desktop entry removal");
 
     const auto queried_after_remove = ld::query_bundle(bundle, options);
     require(queried_after_remove.ok, "desktop bundle query should succeed after remove");
@@ -402,6 +428,78 @@ void desktop_bundle_applies_queries_and_removes_staged_artifacts()
         "desktop bundle query after remove should report missing desktop entry");
     require(queried_after_remove.policy_reports.front().status == ld::registration_status::missing,
         "desktop bundle query after remove should report missing policy artifact");
+    require(has_cleanup_status(queried_after_remove, *desktop->path, ld::cleanup_status::already_absent),
+        "desktop bundle query after remove should report generated desktop entry as already absent");
+#endif
+}
+
+void desktop_bundle_cleanup_reports_are_idempotent_and_parent_safe()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "bundle-explicit-cleanup";
+    std::filesystem::remove_all(root);
+    const auto generated_parent = root / "generated-parent";
+    const auto generated = generated_parent / "generated.tmp";
+    const auto sibling = generated_parent / "keep.txt";
+    const auto absent = root / "already-absent.tmp";
+    const auto directory = root / "not-a-file";
+    std::filesystem::create_directories(directory);
+    std::filesystem::create_directories(generated_parent);
+    {
+        std::ofstream file(generated);
+        file << "generated";
+    }
+    {
+        std::ofstream file(sibling);
+        file << "user";
+    }
+
+    ld::desktop_bundle bundle;
+    bundle.cleanup = {
+        {generated, true},
+        {generated, true},
+        {absent, true},
+        {directory, true},
+    };
+
+    auto options = desktop_bundle_options_for_tests(root);
+    const auto queried = ld::query_bundle(bundle, options);
+    require(queried.ok, "desktop bundle cleanup query should succeed");
+    require(has_cleanup_status(queried, generated, ld::cleanup_status::planned),
+        "desktop bundle cleanup query should report existing generated artifact as removable");
+    require(has_cleanup_status(queried, absent, ld::cleanup_status::already_absent),
+        "desktop bundle cleanup query should report missing artifact as already absent");
+    require(has_cleanup_status(queried, directory, ld::cleanup_status::planned),
+        "desktop bundle cleanup query should not delete directories");
+
+    const auto removed = ld::remove_bundle(bundle, options);
+    require(!std::filesystem::exists(generated), "desktop bundle cleanup remove should remove explicit generated file");
+    require(std::filesystem::exists(sibling), "desktop bundle cleanup remove should preserve unrelated sibling files");
+    require(std::filesystem::exists(generated_parent), "desktop bundle cleanup remove should not remove non-empty parents");
+    require(std::filesystem::exists(directory), "desktop bundle cleanup remove should preserve directories for manual follow-up");
+    require(has_cleanup_status(removed, generated, ld::cleanup_status::removed),
+        "desktop bundle cleanup remove should report removed explicit artifact");
+    require(has_cleanup_status(removed, absent, ld::cleanup_status::already_absent),
+        "desktop bundle cleanup remove should report missing explicit artifact as already absent");
+    require(has_cleanup_status(removed, directory, ld::cleanup_status::manual_follow_up),
+        "desktop bundle cleanup remove should report directory cleanup as manual follow-up");
+    require(has_diagnostic(removed.diagnostics, "cleanup-duplicate-skipped"),
+        "desktop bundle cleanup remove should report duplicate cleanup rules");
+    require(has_diagnostic(removed.diagnostics, "cleanup-parent-not-empty"),
+        "desktop bundle cleanup remove should report parent cleanup outcome");
+
+    ld::desktop_bundle global_bundle;
+    global_bundle.scope = ld::registration_scope::global;
+    global_bundle.cleanup = {{generated_parent / "global.tmp", false}};
+    {
+        std::ofstream file(global_bundle.cleanup.front().path);
+        file << "global";
+    }
+    options.allow_global_write = false;
+    const auto denied = ld::remove_bundle(global_bundle, options);
+    require(!denied.ok, "global cleanup should require explicit global write permission");
+    require(has_diagnostic(denied.diagnostics, "cleanup-global-write-denied"),
+        "global cleanup denial should be specific enough for uninstall UI");
 #endif
 }
 
@@ -1225,6 +1323,7 @@ int main()
     desktop_flavor_capabilities_do_not_create_per_desktop_backends();
     desktop_bundle_applies_queries_and_removes_staged_artifacts();
     desktop_bundle_partial_failure_preserves_per_effect_diagnostics();
+    desktop_bundle_cleanup_reports_are_idempotent_and_parent_safe();
     xdg_desktop_entry_writes_queries_removes_and_reports_activation_plan();
     xdg_registration_rejects_hostile_ids_names_paths_and_global_writes();
     xdg_icon_stages_copy_and_reports_cache_activation_plan();
