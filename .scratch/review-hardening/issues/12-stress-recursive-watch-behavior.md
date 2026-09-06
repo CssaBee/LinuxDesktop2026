@@ -6,6 +6,14 @@
 
 **Status:** done
 
-- [ ] Stress tests cover rename storms, deep recursive creation, remove/recreate churn, and large event bursts.
-- [ ] Recursive watch docs describe events as hints and rescan as authoritative after degradation.
-- [ ] Test results provide enough evidence to decide whether native backends should remain, be wrapped, or be de-scoped.
+- [x] Stress tests cover rename storms, deep recursive creation, remove/recreate churn, and large event bursts.
+- [x] Recursive watch docs describe events as hints and rescan as authoritative after degradation.
+- [x] Test results provide enough evidence to decide whether native backends should remain, be wrapped, or be de-scoped.
+
+## Implementation Note
+
+The recursive watcher evidence was completed across the watcher hardening batch,
+especially tasks 16, 58, 62, 63, and 84. The current decision is to keep native
+Linux and Windows backends as owned pre-1.0 behavior, keep libuv optional for
+libuv-shaped consumers, and reopen wrapping only from CI, stress-test, or
+maintained-consumer evidence.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 13 — Add Fedora CI Baseline; 15 — Validate APIs With One Maintained Consumer Branch.
 
-**Status:** implemented-awaiting-ci
+**Status:** implemented
 
 - [x] Build policy applies `-Wall -Wextra -Wpedantic -Wconversion` on GCC and Clang, with a reasonable MSVC warning level.
 - [x] CI has one Ubuntu sanitizer lane using ASan/UBSan.

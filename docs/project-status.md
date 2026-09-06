@@ -41,6 +41,7 @@ promise beyond current evidence.
 | Supported prototype modules | `ld_core`, `ld_settings`, `ld_paths`, and `ld_watch` may be described as usable prototypes with tests, examples, install-tree consumption evidence, and explicit caveats. |
 | Experimental extraction modules | `ld_desktop` and `ld_migration` remain experimental extraction modules. They may be used by proof integrations, but their broader desktop registration, migration execution, and C ABI surfaces are not release-candidate-stable. |
 | Research-only modules | `ld_process`, `ld_ipc`, `ld_dynlib`, service/daemon lifecycle helpers, and GUI/windowing, clipboard, drag-and-drop, and common-dialog helpers remain research-only. |
+| Filesystem resolution | Path, root, and settings resolution should be non-mutating by default before `0.2.0`; directory creation and other filesystem mutation must remain explicit opt-in behavior. |
 | Migration filesystem semantics | Regular-file and supported directory-tree migration are in scope. Directory moves must verify copied content before source cleanup before `0.2.0`. Cross-device semantic file moves remain excluded unless maintained consumer evidence proves the need. |
 | Parser contract | Registry `.reg` compatibility remains a scoped app-settings subset. Registry JSON snapshot parsing must use a maintained JSON parser while preserving the narrow `linuxdesktop.settings.registry.snapshot.v1` schema. |
 | Watcher performance | Keep the current watcher path value API through `0.2.0`; native-backend performance measurements can reopen that after the release. |
@@ -104,5 +105,6 @@ The active review-hardening ticket order is tracked in
 execution order follows that file rather than numeric order.
 
 The current `0.2.0` release gate is: replace the migration JSON parser, add
-coverage reporting to CI, add the formatting baseline, and strengthen directory
-migration verification before cleanup.
+coverage reporting to CI, add the formatting baseline, make filesystem
+resolution non-mutating by default, and strengthen directory migration
+verification before cleanup.

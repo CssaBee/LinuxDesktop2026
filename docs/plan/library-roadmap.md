@@ -23,11 +23,12 @@ module status, platform status, and validation gates have one current ledger.
 Release-gating work for `0.2.0` is limited to the review findings that protect
 public claims and user data: replace the migration JSON parser with a maintained
 dependency while preserving the narrow Registry snapshot schema, add coverage
-reporting to CI, add a `.clang-format` baseline, and verify directory migration
-copies before source cleanup. Governance, desktop registration C ABI expansion,
-semantic cross-device file moves, watcher path-type optimization, and diagnostic
-stringification cleanup remain follow-up work unless new consumer evidence makes
-one of them release-critical.
+reporting to CI, add a `.clang-format` baseline, make filesystem resolution
+non-mutating by default, and verify directory migration copies before source
+cleanup. Governance, desktop registration C ABI expansion, semantic
+cross-device file moves, watcher path-type optimization, and diagnostic
+stringification cleanup remain follow-up work unless new consumer evidence
+makes one of them release-critical.
 
 ## API Principles
 

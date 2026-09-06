@@ -6,6 +6,13 @@
 
 **Status:** done
 
-- [ ] Public watcher documentation states which thread may invoke callbacks and that UI-thread dispatch is not promised.
-- [ ] Public watcher documentation states whether callbacks may call `stop`, remove watches, replace callbacks, or destroy the watcher.
-- [ ] Public watcher documentation states whether callbacks may throw and what happens if they do.
+- [x] Public watcher documentation states which thread may invoke callbacks and that UI-thread dispatch is not promised.
+- [x] Public watcher documentation states whether callbacks may call `stop`, remove watches, replace callbacks, or destroy the watcher.
+- [x] Public watcher documentation states whether callbacks may throw and what happens if they do.
+
+## Implementation Note
+
+The contract was completed through the later watcher lifecycle hardening work,
+especially task 57. Callback-triggered stop, callback replacement, watch
+removal, callback exceptions, and last-owner release during callback delivery
+are covered by the same lifecycle suite.

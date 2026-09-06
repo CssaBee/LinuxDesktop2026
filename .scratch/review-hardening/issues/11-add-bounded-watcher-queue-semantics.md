@@ -6,6 +6,13 @@
 
 **Status:** done
 
-- [ ] Watcher queues have documented bounds or backpressure behavior.
-- [ ] Queue overflow emits a degraded event with rescan guidance.
-- [ ] Tests show slow consumers receive overflow/rescan behavior instead of unlimited queued events.
+- [x] Watcher queues have documented bounds or backpressure behavior.
+- [x] Queue overflow emits a degraded event with rescan guidance.
+- [x] Tests show slow consumers receive overflow/rescan behavior instead of unlimited queued events.
+
+## Implementation Note
+
+The bounded queue contract was completed by later watcher hardening, especially
+tasks 62, 63, and 84. Raw delivery is bounded, settled-file readiness is
+coalesced by path, overflow degrades the stream with a diagnostic, and
+overflow no longer erases unrelated queued events.

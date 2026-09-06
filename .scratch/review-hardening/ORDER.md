@@ -9,6 +9,7 @@ list below.
 - `97` - Replace Migration JSON Parser
 - `98` - Add Coverage Reporting To CI
 - `99` - Add Formatting Policy
+- `104` - Make Filesystem Resolution Non-Mutating By Default
 - `100` - Strengthen Directory Migration Verification
 - `96` - Decide Desktop Registration C ABI Expansion
 - `82` - Reduce Bus Factor And Write Governance
@@ -25,6 +26,7 @@ baseline:
 - `97` - Replace Migration JSON Parser
 - `98` - Add Coverage Reporting To CI
 - `99` - Add Formatting Policy
+- `104` - Make Filesystem Resolution Non-Mutating By Default
 - `100` - Strengthen Directory Migration Verification
 
 These review follow-ups do not block `0.2.0` unless new maintained-consumer or
@@ -96,6 +98,46 @@ native-backend evidence makes them release-critical:
 - `39` - Add Consumer CMake Path Default Generation
 - `38` - Mirror Platform Path Defaults In C ABI
 - `37` - Add Runtime Platform Path Defaults
+
+## Earlier Implemented
+
+These earlier tickets are complete and retained as issue files for historical
+traceability. They are not part of the active execution order.
+
+- `01` - Stabilize Public Claims Around Prototype Status
+- `02` - Make Pre-RC Compatibility Policy Honest
+- `03` - Define Settings Module Boundaries
+- `04` - Route Settings Root Resolution Through Paths
+- `05` - Narrow Settings Effects To Prototype Validated Behavior
+- `06` - Correct Write Safety Semantics
+- `07` - Implement Secure Temporary Writes
+- `08` - Add Durable Write Mode Where Promised
+- `09` - Define Watcher Callback Contract Publicly
+- `10` - Harden Watcher Callback Lifecycle
+- `11` - Add Bounded Watcher Queue Semantics
+- `12` - Stress Recursive Watch Behavior
+- `13` - Add Fedora CI Baseline
+- `14` - Add Adversarial Parser And Filesystem Tests
+- `16` - Decide Keep Wrap Or Retire Native Watch Backends
+- `18` - Expand CI Into Portability Evidence
+- `19` - Extract Desktop Integration Effects
+- `20` - Extract Migration Module
+- `21` - Define Flavor API Exposure Budget
+- `22` - Translate Library Reports At Product Boundaries
+- `23` - Add Common Config Write Facade
+- `24` - Add Settings Root Construction Helpers
+- `25` - Replace Config Defaults Hydration Name
+- `26` - Add Ergonomic Migration Action Helpers
+- `27` - Record FlavorTest API Friction Notes
+- `28` - Remove ld_settings Desktop Compatibility Facade
+- `29` - Remove ld_settings Migration Compatibility Facade
+- `30` - Translate Migration Plans At Product Boundaries
+- `31` - Finish Common Config Write Audit
+- `32` - Prototype Root Request Builder
+- `33` - Add Walnut FlavorTest Candidate
+- `34` - Add OpenIPC Dashboard FlavorTest Candidate
+- `35` - Record OpenIPC Dashboard As Reference Case
+- `36` - Add OBS Cross-Port Flavor Review
 
 ## Maintained Consumer Evidence In Progress
 

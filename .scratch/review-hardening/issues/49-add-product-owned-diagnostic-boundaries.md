@@ -9,7 +9,7 @@ product seam should speak in the adopting application's vocabulary.
 
 **Blocked by:** 48 - Contract Settings-Owned Root Builder.
 
-**Status:** completed
+**Status:** implemented
 
 - [x] Add a small `ld_core` helper for translating LinuxDesktop2026 diagnostics
   into caller-owned diagnostic structs with caller-owned severity enums,

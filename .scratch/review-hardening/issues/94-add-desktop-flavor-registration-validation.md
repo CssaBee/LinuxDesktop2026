@@ -6,18 +6,25 @@ registration without claiming live desktop consumption.
 
 **Blocked by:** 92 - Wire Desktop Bundle To Staged Registration Effects; 93 - Add Desktop Registration Cleanup Reports.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Flavor coverage exercises GNOME-like, KDE-like, Xfce-like, bare
+- [x] Flavor coverage exercises GNOME-like, KDE-like, Xfce-like, bare
   window-manager, and Windows-shaped registration scenarios through the same
   product-facing bundle vocabulary.
-- [ ] Assertions focus on staged artifacts, activation plans, capability
+- [x] Assertions focus on staged artifacts, activation plans, capability
   reporting, cleanup reports, and diagnostics rather than live shell behavior.
-- [ ] The validation keeps runtime shell-open, reveal-in-file-manager, and
+- [x] The validation keeps runtime shell-open, reveal-in-file-manager, and
   single-instance activation outside `ld_desktop` unless new consumer evidence
   reopens that boundary.
-- [ ] API friction notes record where the bundle path reduces or adds framework
+- [x] API friction notes record where the bundle path reduces or adds framework
   tax for product-shaped callers.
+
+## Implementation Note
+
+The Desktop Flavor registration validation completed before task 95's maintained
+desktop proof. The coverage stays hermetic: it validates staged artifacts,
+activation plans, capability reports, cleanup reports, diagnostics, and API
+friction without claiming live desktop-session consumption.
 
 ## Evidence Fit
 
