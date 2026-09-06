@@ -117,6 +117,7 @@ watch.performance.simulated.settled.p50_latency_ms=0
 watch.performance.simulated.settled.p95_latency_ms=1
 watch.performance.inotify.raw.distinct_paths=240
 watch.performance.inotify.raw.events_observed=718
+watch.performance.inotify.raw.overflow_events=0
 watch.performance.inotify.raw.throughput_paths_per_second=16752.5
 watch.performance.inotify.raw.max_queue_depth=259
 watch.performance.inotify.raw.max_backend_depth=unobservable
@@ -132,7 +133,10 @@ watch.performance.inotify.settled.p95_latency_ms=3
 The native raw measurement waits for 240 distinct file paths and observes 718
 events because `inotify` can report multiple create/write state transitions per
 path. Kernel queue depth is not exposed by this local probe, so only
-LinuxDesktop2026's public delivery queue depth is recorded. Equivalent
+LinuxDesktop2026's public delivery queue depth is recorded. Native raw queue
+overflow is recorded as a portability signal; strict distinct-path coverage is
+required only when the public queue did not overflow under runner scheduling.
+Equivalent
 construction of the same count of `std::filesystem::path` values took 561 us
 against 14326 us for the raw native measurement, so path construction did not
 dominate measured cost.
