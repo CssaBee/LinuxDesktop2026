@@ -156,7 +156,7 @@ void desktop_registration_flavors_plan_product_bundle_without_live_shell_claims(
         require(result.has_cleanup_reports, "desktop registration plan should include uninstall cleanup rows");
 
 #if defined(_WIN32)
-        require(!result.ok, "Windows-shaped registration should not claim complete staged support yet");
+        require(result.ok, "Windows-shaped registration plan should complete as advisory dry-run");
         require(result.unsupported_count > 0, "Windows-shaped registration should expose limited shell and Registry mappings");
         require(result.has_windows_shell_activation, "Windows-shaped registration should keep shell refresh as follow-up");
         require(result.has_windows_default_apps_follow_up, "Windows-shaped default-app registration should remain user mediated");

@@ -324,7 +324,7 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
     auto bundle = desktop_bundle_for_tests(icon_source);
     const auto planned = ld::plan_bundle(bundle, options);
 #if defined(_WIN32)
-    require(!planned.ok, "Windows desktop bundle plan should report limited backends as unsupported");
+    require(planned.ok, "Windows desktop bundle plan should complete as advisory dry-run");
 #else
     require(planned.ok, "desktop bundle plan should validate every registration artifact");
 #endif
