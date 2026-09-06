@@ -205,7 +205,7 @@ ld::mime_declaration mime_declaration_for_tests()
     return declaration;
 }
 
-ld::desktop_bundle desktop_bundle_for_tests(const std::filesystem::path& icon_source)
+ld::desktop_bundle desktop_bundle_for_tests(const std::filesystem::path& icon_source, const std::filesystem::path& root)
 {
     ld::desktop_bundle bundle;
     bundle.scope = ld::registration_scope::user;
@@ -235,7 +235,7 @@ ld::desktop_bundle desktop_bundle_for_tests(const std::filesystem::path& icon_so
     bundle.default_applications = {{"text/x-linuxdesktop2026-test", "org.linuxdesktop2026.DesktopTests", true, true}};
     bundle.url_scheme_handlers = {{"ld2026", "org.linuxdesktop2026.DesktopTests", true}};
     bundle.policies = {policy_entry_for_tests()};
-    bundle.cleanup = {{"/tmp/linuxdesktop2026-desktop-tests", true}};
+    bundle.cleanup = {{root / "explicit-cleanup.tmp", true}};
     return bundle;
 }
 
@@ -321,7 +321,7 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
     options.policy_defaults_directory_override = root / "dconf" / "defaults";
     options.policy_locks_directory_override = root / "dconf" / "locks";
 
-    auto bundle = desktop_bundle_for_tests(icon_source);
+    auto bundle = desktop_bundle_for_tests(icon_source, root);
     const auto planned = ld::plan_bundle(bundle, options);
 #if defined(_WIN32)
     require(planned.ok, "Windows desktop bundle plan should complete as advisory dry-run");
@@ -392,7 +392,7 @@ void desktop_bundle_applies_queries_and_removes_staged_artifacts()
         file << "png-ish";
     }
 
-    auto bundle = desktop_bundle_for_tests(icon_source);
+    auto bundle = desktop_bundle_for_tests(icon_source, root);
     auto options = desktop_bundle_options_for_tests(root);
 
     const auto applied = ld::apply_bundle(bundle, options);
@@ -524,7 +524,7 @@ void desktop_bundle_partial_failure_preserves_per_effect_diagnostics()
     const auto icon_source = root / "missing.png";
     std::filesystem::create_directories(root);
 
-    auto bundle = desktop_bundle_for_tests(icon_source);
+    auto bundle = desktop_bundle_for_tests(icon_source, root);
     auto options = desktop_bundle_options_for_tests(root);
 
     const auto report = ld::apply_bundle(bundle, options);
