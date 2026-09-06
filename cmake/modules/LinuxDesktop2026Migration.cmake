@@ -21,11 +21,14 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
     include(FetchContent)
     set(JSON_BuildTests OFF CACHE INTERNAL "")
     set(JSON_Install OFF CACHE INTERNAL "")
-    FetchContent_Declare(nlohmann_json
+    set(LD2026_NLOHMANN_JSON_FETCH_ARGS
         URL "https://github.com/nlohmann/json/releases/download/v${LD2026_NLOHMANN_JSON_VERSION}/json.tar.xz"
         URL_HASH "SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d"
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+        list(APPEND LD2026_NLOHMANN_JSON_FETCH_ARGS DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    endif()
+    FetchContent_Declare(nlohmann_json ${LD2026_NLOHMANN_JSON_FETCH_ARGS})
     FetchContent_MakeAvailable(nlohmann_json)
 endif()
 

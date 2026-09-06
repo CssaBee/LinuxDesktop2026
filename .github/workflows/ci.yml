@@ -97,6 +97,41 @@ jobs:
         run: |
           Write-Host "This job verifies Windows compile/test behavior for Known Folders, atomic replace, Registry, autostart, policy, and ReadDirectoryChangesW watcher backend shapes."
 
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install coverage dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcovr ninja-build
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-coverage -G Ninja
+          -DLD2026_BUILD_TESTS=ON
+          -DLD2026_BUILD_EXAMPLES=OFF
+          -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
+          -DLD2026_ENABLE_COVERAGE=ON
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=gcc
+          -DCMAKE_CXX_COMPILER=g++
+
+      - name: Build
+        run: cmake --build build-coverage
+
+      - name: Generate coverage report
+        run: cmake --build build-coverage --target ld2026_coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ld2026-coverage-report
+          path: build-coverage/coverage
+          if-no-files-found: error
+
   sanitizers:
     name: Sanitizers (${{ matrix.name }})
     runs-on: ubuntu-latest

@@ -5,8 +5,8 @@ visible without turning `project-status.md` into a build log.
 
 ## Coverage
 
-Status: coverage instrumentation is available; HTML/XML report generation needs
-`gcovr` on the local machine.
+Status: CI now runs coverage instrumentation on Ubuntu/GCC and uploads the
+generated HTML/XML report artifact.
 
 Local command:
 
@@ -19,10 +19,33 @@ cmake --build build-task81-coverage \
   --target ld_settings_tests ld_watch_tests ld_watch_performance_probe
 ```
 
-Result on 2026-09-05: configuration and instrumented build passed with GCC
-13.3.0. `gcovr` was not installed, so the `ld2026_coverage` report target was
-not generated in this local run. When `gcovr` is available, the target writes
-`coverage/index.html` and `coverage/coverage.xml` in the coverage build tree.
+CI command:
+
+```sh
+sudo apt-get update && sudo apt-get install -y gcovr ninja-build
+cmake -S . -B build-coverage -G Ninja \
+  -DLD2026_BUILD_TESTS=ON \
+  -DLD2026_BUILD_EXAMPLES=OFF \
+  -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON \
+  -DLD2026_ENABLE_COVERAGE=ON \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++
+cmake --build build-coverage
+cmake --build build-coverage --target ld2026_coverage
+```
+
+The `.github/workflows/ci.yml` coverage job uploads
+`ld2026-coverage-report`, containing `coverage/index.html` and
+`coverage/coverage.xml` from the `build-coverage` tree.
+
+Intentional exclusions: examples are not built in the coverage lane, gcovr
+filters the report to `src/` and `include/` while excluding `tests/`, and
+`ld2026_coverage` skips `ld_settings_install_tree_consumer` because that test
+validates installed package consumption rather than source-line coverage.
+FlavorTest candidate projects, sanitizer lanes, the private Notepad++ proof
+workflow, and watcher performance measurements remain separate validation
+signals rather than coverage inputs.
 
 ## Failure Modes
 

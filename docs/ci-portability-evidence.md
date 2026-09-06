@@ -26,6 +26,11 @@ backend disabled. That lane is race evidence for the portable watcher
 lifecycle, queue, callback, and settled-file code; it does not replace the
 ASan/UBSan suite.
 
+The coverage lane runs Ubuntu/GCC Debug with
+`LD2026_ENABLE_COVERAGE=ON`, builds the test suite, invokes the
+`ld2026_coverage` target, and uploads the `ld2026-coverage-report` artifact.
+The artifact contains `coverage/index.html` and `coverage/coverage.xml`.
+
 ## Watcher Coverage
 
 The default Linux lanes exercise the native inotify path. The separate libuv

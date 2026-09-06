@@ -124,7 +124,7 @@ if(LD2026_ENABLE_COVERAGE)
     find_program(LD2026_GCOVR gcovr)
     if(LD2026_GCOVR)
         add_custom_target(ld2026_coverage
-            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -E "^ld_settings_install_tree_consumer$"
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/coverage
             COMMAND ${LD2026_GCOVR}
                 --root ${CMAKE_CURRENT_SOURCE_DIR}

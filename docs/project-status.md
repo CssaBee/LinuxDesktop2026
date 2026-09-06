@@ -45,7 +45,7 @@ promise beyond current evidence.
 | Migration filesystem semantics | Regular-file and supported directory-tree migration are in scope. Directory moves must verify copied content before source cleanup before `0.2.0`. Cross-device semantic file moves remain excluded unless maintained consumer evidence proves the need. |
 | Parser contract | Registry `.reg` compatibility remains a scoped app-settings subset. Registry JSON snapshot parsing must use a maintained JSON parser while preserving the narrow `linuxdesktop.settings.registry.snapshot.v1` schema. |
 | Watcher performance | Keep the current watcher path value API through `0.2.0`; native-backend performance measurements can reopen that after the release. |
-| Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and coverage reporting should be visible. Coverage must run in CI before `0.2.0`. |
+| Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and CI coverage reporting should be visible before `0.2.0`. |
 | Contributor baseline | A `.clang-format` baseline is required before `0.2.0`. Governance/onboarding work remains important but does not block the tag. |
 
 ## Validation Status
