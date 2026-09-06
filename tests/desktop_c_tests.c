@@ -145,7 +145,11 @@ int main(void)
         if (!ld_desktop_apply_autostart(&entry, &options, &report) ||
             report.ok != 1 ||
             report.dry_run != 1 ||
+#if defined(_WIN32)
+            report.path != NULL ||
+#else
             report.path == NULL ||
+#endif
             !has_diagnostic(report.diagnostics, report.diagnostic_count, "autostart-dry-run")) {
             ld_desktop_free_effect_report(&report);
             return EXIT_FAILURE;

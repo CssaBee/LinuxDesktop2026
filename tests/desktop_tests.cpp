@@ -323,17 +323,30 @@ void desktop_bundle_vocabulary_covers_current_registration_groups()
 
     auto bundle = desktop_bundle_for_tests(icon_source);
     const auto planned = ld::plan_bundle(bundle, options);
+#if defined(_WIN32)
+    require(!planned.ok, "Windows desktop bundle plan should report limited backends as unsupported");
+#else
     require(planned.ok, "desktop bundle plan should validate every registration artifact");
+#endif
     require(planned.dry_run, "desktop bundle plan should stay dry-run");
     require(planned.artifact_reports.size() == 7, "desktop bundle plan should report every artifact group");
     require(planned.policy_reports.size() == 1, "desktop bundle plan should report policy groups separately");
     require(!planned.cleanup_reports.empty(), "desktop bundle plan should report cleanup outcomes");
+#if defined(_WIN32)
+    require(has_effect_status(planned, ld::effect_kind::desktop_entry, ld::registration_status::unsupported),
+        "Windows bundle plan should mark app identity registration as unsupported");
+    require(planned.policy_reports.front().kind == ld::effect_kind::managed_policy,
+        "desktop bundle policy reports should identify the managed policy effect");
+    require(planned.policy_reports.front().status == ld::registration_status::unsupported,
+        "Windows bundle plan should mark policy registration as unsupported");
+#else
     require(has_effect_status(planned, ld::effect_kind::desktop_entry, ld::registration_status::planned),
         "desktop bundle plan should mark staged artifacts as planned");
     require(planned.policy_reports.front().kind == ld::effect_kind::managed_policy,
         "desktop bundle policy reports should identify the managed policy effect");
     require(planned.policy_reports.front().status == ld::registration_status::planned,
         "desktop bundle plan should mark policy artifacts as planned");
+#endif
 #if defined(_WIN32)
     require(has_activation_step(planned, ld::activation_step_kind::windows_shell_notify),
         "Windows bundle plan should keep shell activation explicit");

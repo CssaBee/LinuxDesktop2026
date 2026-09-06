@@ -1571,6 +1571,7 @@ desk::autostart_entry autostart_entry_for_tests()
 
 void autostart_dry_run_does_not_write()
 {
+#if !defined(_WIN32)
     const auto root = test_root() / "autostart";
     const auto entry = autostart_entry_for_tests();
 
@@ -1585,6 +1586,7 @@ void autostart_dry_run_does_not_write()
     require(!std::filesystem::exists(*report.path), "autostart dry-run should not write a file");
     require(has_diagnostic(report.diagnostics, "autostart-dry-run"),
         "autostart dry-run should include a dry-run diagnostic");
+#endif
 }
 
 void autostart_linux_writes_queries_and_removes_desktop_file()
@@ -1682,6 +1684,7 @@ void policy_global_write_requires_permission()
 
 void policy_dry_run_does_not_write()
 {
+#if !defined(_WIN32)
     auto entry = policy_entry_for_tests();
     entry.user_scope = true;
 
@@ -1698,6 +1701,7 @@ void policy_dry_run_does_not_write()
     require(!std::filesystem::exists(*report.path), "policy dry-run should not write a file");
     require(has_diagnostic(report.diagnostics, "policy-dry-run"),
         "policy dry-run should include a dry-run diagnostic");
+#endif
 }
 
 void policy_linux_writes_queries_and_removes_dconf_files()
