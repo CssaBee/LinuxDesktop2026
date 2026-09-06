@@ -223,20 +223,26 @@ which are easy to make painful for C callers if exposed prematurely.
 
 - `include/linuxdesktop/desktop.hpp` exposes the C++ `ld_desktop` API.
 - `include/linuxdesktop/desktop_c.h` exposes the C ABI `ld_desktop` surface.
-- `ld_desktop` reports capabilities for autostart, desktop entries, icons,
-  MIME/file associations, default applications, URL protocol handlers,
+- `ld_desktop` reports capabilities for autostart, Linux/XDG desktop entries,
+  icons, MIME/file associations, default applications, URL protocol handlers,
   shell-equivalent integration, desktop database updates, and managed policy.
   Managed policy is reported as backend-limited on Linux because the current
   implementation generates dconf-compatible source files but does not run
   `dconf update` or otherwise verify active dconf database state.
-- Linux autostart and managed/enforced policy use the same dry-run-first file
-  behavior proven by the earlier prototype. Policy reports include diagnostics
-  that generated files still require system dconf installation and activation.
+- Linux autostart, desktop entries, icons, shared-mime-info package XML,
+  `mimeapps.list` associations, default applications, URL scheme handlers, and
+  managed/enforced policy use dry-run-first staged artifact behavior.
+  Successful reports mean the expected artifact was staged, not that the
+  running desktop, MIME database, icon cache, or dconf database consumed it.
+- Linux/XDG registration reports return activation plans for
+  `update-desktop-database`, `update-mime-database`, icon-cache refreshes, and
+  dconf activation instead of running those commands by default.
 - Windows autostart and policy currently report backend-missing capability
   diagnostics from `ld_desktop`; a non-cyclic Registry/system layer is required
   before those writes should move into this module.
-- Desktop Flavor variance is currently covered by hermetic capability and XDG
-  path tests. Live desktop-session consumption is not yet release evidence.
+- Desktop Flavor variance is currently covered by hermetic capability, XDG
+  path, and staged artifact tests. Live desktop-session consumption is not yet
+  release evidence.
 - New C++ callers should include `linuxdesktop/desktop.hpp` and link
   `LinuxDesktop2026::ld_desktop`.
 - New C callers should include `linuxdesktop/desktop_c.h` and link

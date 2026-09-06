@@ -7,7 +7,6 @@ list below.
 ## Current Order
 
 - `82` - Reduce Bus Factor And Write Governance
-- `87` - Add Staged XDG Desktop Registration Artifacts
 - `88` - Prove Windows Registration Capability Posture
 - `91` - Add Desktop Bundle API And Report Vocabulary
 - `92` - Wire Desktop Bundle To Staged Registration Effects
@@ -18,6 +17,7 @@ list below.
 
 ## Implemented
 
+- `87` - Add Staged XDG Desktop Registration Artifacts
 - `86` - Design Desktop Bundle Registration Surface
 - `83` - Run Review Blind-Spot Retrospective
 - `80` - Decompose Root CMake Before Next Module Wave

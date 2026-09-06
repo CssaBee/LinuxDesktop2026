@@ -119,6 +119,38 @@ ld::policy_entry policy_entry_for_tests()
     return entry;
 }
 
+ld::desktop_entry desktop_entry_for_tests()
+{
+    ld::desktop_entry entry;
+    entry.id = "org.linuxdesktop2026.DesktopTests";
+    entry.display_name = "LinuxDesktop2026 Desktop Tests";
+    entry.comment = "Desktop\nregistration";
+    entry.executable = "/usr/bin/ld-desktop-test";
+    entry.arguments = {"--profile", "Default User"};
+    entry.categories = {"Utility", "Development"};
+    entry.keywords = {"LinuxDesktop2026", "Desktop"};
+    entry.mime_types = {"text/x-linuxdesktop2026-test", "x-scheme-handler/ld2026"};
+    return entry;
+}
+
+ld::icon_entry icon_entry_for_tests(const std::filesystem::path& source)
+{
+    ld::icon_entry entry;
+    entry.name = "org.linuxdesktop2026.DesktopTests";
+    entry.source_path = source;
+    entry.size = 64;
+    return entry;
+}
+
+ld::mime_declaration mime_declaration_for_tests()
+{
+    ld::mime_declaration declaration;
+    declaration.name = "text/x-linuxdesktop2026-test";
+    declaration.comment = "LinuxDesktop2026 Test Document";
+    declaration.glob_patterns = {"*.ld2026"};
+    return declaration;
+}
+
 void capability_report_covers_extraction_scope()
 {
     ld::apply_options options;
@@ -410,16 +442,263 @@ void desktop_flavor_capabilities_do_not_create_per_desktop_backends()
         for (const auto kind : registration_artifacts) {
             const auto* capability = find_capability(report, kind);
             require(capability != nullptr, "Desktop Flavor capability report should include every registration artifact");
-            require(capability->state == ld::capability_state::backend_missing,
-                "Unimplemented registration artifacts should report backend_missing instead of per-desktop pseudo-support");
+            require(capability->state == ld::capability_state::supported,
+                "Staged registration artifacts should report standards-backed Linux support");
             require(!capability->can_write_user,
-                "Unimplemented registration artifacts should not advertise user writes for any Desktop Flavor");
+                "Staged registration artifacts should still require explicit write permission");
         }
 
         const auto* shell = find_capability(report, ld::effect_kind::shell_integration);
         require(shell != nullptr, "Desktop Flavor capability report should include shell integration");
         require(shell->state == ld::capability_state::backend_missing,
             "Runtime shell integration should stay outside the registration-artifact tranche");
+    }
+#endif
+}
+
+void xdg_desktop_entry_writes_queries_removes_and_reports_activation_plan()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "desktop-entry";
+    const auto entry = desktop_entry_for_tests();
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.applications_directory_override = root / "applications";
+
+    const auto applied = ld::apply_desktop_entry(entry, options);
+    require(applied.ok, "desktop entry write should succeed");
+    require(applied.present, "desktop entry write should report a present artifact");
+    require(applied.path.has_value(), "desktop entry write should report path");
+    require(!applied.activation_plan.empty(), "desktop entry write should return activation plan");
+    require(applied.activation_plan.front().kind == ld::activation_step_kind::refresh_desktop_database,
+        "desktop entry write should plan desktop database refresh");
+
+    const auto content = read_file(*applied.path);
+    require(content.find("Name=LinuxDesktop2026 Desktop Tests") != std::string::npos, "desktop entry should include name");
+    require(content.find("Comment=Desktop\\nregistration") != std::string::npos, "desktop entry should escape newlines");
+    require(content.find("MimeType=text/x-linuxdesktop2026-test;x-scheme-handler/ld2026;") != std::string::npos,
+        "desktop entry should include MIME metadata");
+
+    const auto queried = ld::query_desktop_entry(entry, options);
+    require(queried.ok && queried.present, "desktop entry query should find staged file");
+
+    const auto removed = ld::remove_desktop_entry(entry, options);
+    require(removed.ok, "desktop entry remove should succeed");
+    require(!std::filesystem::exists(*applied.path), "desktop entry remove should delete staged file");
+#endif
+}
+
+void xdg_registration_rejects_hostile_ids_names_paths_and_global_writes()
+{
+#if !defined(_WIN32)
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.applications_directory_override = test_root() / "hostile" / "applications";
+
+    auto hostile_entry = desktop_entry_for_tests();
+    hostile_entry.id = "../bad";
+    hostile_entry.working_directory = "relative";
+    const auto entry_report = ld::apply_desktop_entry(hostile_entry, options);
+    require(!entry_report.ok, "desktop entry should reject hostile ids and relative paths");
+    require(has_diagnostic(entry_report.diagnostics, "desktop-entry-id-invalid"), "desktop entry should diagnose hostile id");
+    require(has_diagnostic(entry_report.diagnostics, "desktop-entry-working-directory-relative"),
+        "desktop entry should diagnose relative working directory");
+
+    auto global_entry = desktop_entry_for_tests();
+    global_entry.user_scope = false;
+    const auto global_report = ld::apply_desktop_entry(global_entry, options);
+    require(!global_report.ok, "desktop entry global write should require explicit permission");
+    require(has_diagnostic(global_report.diagnostics, "desktop-entry-global-write-denied"),
+        "desktop entry global write should diagnose missing global permission");
+
+    ld::mime_declaration hostile_mime = mime_declaration_for_tests();
+    hostile_mime.name = "bad/../name";
+    hostile_mime.glob_patterns = {"../*.bad"};
+    const auto mime_report = ld::apply_mime_declaration(hostile_mime, options);
+    require(!mime_report.ok, "MIME declaration should reject hostile names and path-like globs");
+    require(has_diagnostic(mime_report.diagnostics, "mime-name-invalid"), "MIME declaration should diagnose hostile name");
+    require(has_diagnostic(mime_report.diagnostics, "mime-glob-invalid"), "MIME declaration should diagnose path-like glob");
+
+    ld::url_scheme_handler handler;
+    handler.scheme = "1bad";
+    handler.desktop_entry_id = "org.linuxdesktop2026.DesktopTests";
+    const auto scheme_report = ld::apply_url_scheme_handler(handler, options);
+    require(!scheme_report.ok, "URL handler should reject invalid schemes");
+    require(has_diagnostic(scheme_report.diagnostics, "url-scheme-invalid"), "URL handler should diagnose invalid scheme");
+#endif
+}
+
+void xdg_icon_stages_copy_and_reports_cache_activation_plan()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "icon";
+    const auto source = root / "source.png";
+    std::filesystem::create_directories(source.parent_path());
+    {
+        std::ofstream file(source, std::ios::binary);
+        file << "png-ish";
+    }
+
+    const auto entry = icon_entry_for_tests(source);
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.icons_directory_override = root / "icons";
+
+    const auto applied = ld::apply_icon(entry, options);
+    require(applied.ok, "icon stage should copy source icon");
+    require(applied.path.has_value(), "icon stage should report target path");
+    require(applied.path->filename() == "org.linuxdesktop2026.DesktopTests.png", "icon stage should preserve source extension");
+    require(read_file(*applied.path) == "png-ish", "icon stage should copy source bytes");
+    require(!applied.activation_plan.empty() && applied.activation_plan.front().kind == ld::activation_step_kind::refresh_icon_cache,
+        "icon stage should plan icon cache refresh");
+
+    auto relative = entry;
+    relative.source_path = "relative.png";
+    const auto relative_report = ld::apply_icon(relative, options);
+    require(!relative_report.ok, "icon stage should reject relative source paths");
+    require(has_diagnostic(relative_report.diagnostics, "icon-source-path-invalid"), "icon stage should diagnose relative source paths");
+#endif
+}
+
+void xdg_mime_declaration_stages_xml_and_reports_activation_plan()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "mime-declaration";
+    const auto declaration = mime_declaration_for_tests();
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.mime_packages_directory_override = root / "mime" / "packages";
+
+    const auto applied = ld::apply_mime_declaration(declaration, options);
+    require(applied.ok, "MIME declaration write should succeed");
+    require(applied.path.has_value(), "MIME declaration should report path");
+    require(read_file(*applied.path).find("<mime-type type=\"text/x-linuxdesktop2026-test\">") != std::string::npos,
+        "MIME declaration should write shared-mime-info XML");
+    require(!applied.activation_plan.empty() && applied.activation_plan.front().kind == ld::activation_step_kind::refresh_mime_database,
+        "MIME declaration should plan MIME database refresh");
+
+    const auto queried = ld::query_mime_declaration(declaration, options);
+    require(queried.ok && queried.present, "MIME declaration query should find staged XML");
+
+    const auto removed = ld::remove_mime_declaration(declaration, options);
+    require(removed.ok, "MIME declaration remove should succeed");
+    require(!std::filesystem::exists(*applied.path), "MIME declaration remove should delete staged XML");
+#endif
+}
+
+void xdg_mimeapps_updates_preserve_unrelated_entries_and_deduplicate()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "mimeapps";
+    const auto mimeapps = root / "mimeapps.list";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream file(mimeapps);
+        file << "[Added Associations]\n";
+        file << "text/plain=other.desktop;\n";
+        file << "[Default Applications]\n";
+        file << "image/png=image-viewer.desktop;\n";
+    }
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.mimeapps_file_override = mimeapps;
+
+    ld::mime_association association;
+    association.mime_type = "text/x-linuxdesktop2026-test";
+    association.desktop_entry_ids = {"org.linuxdesktop2026.DesktopTests", "org.linuxdesktop2026.DesktopTests.desktop"};
+    const auto first = ld::apply_mime_association(association, options);
+    const auto second = ld::apply_mime_association(association, options);
+    require(first.ok && second.ok, "MIME association repeated writes should succeed");
+
+    const auto content = read_file(mimeapps);
+    require(content.find("text/plain=other.desktop;") != std::string::npos, "mimeapps update should preserve unrelated association");
+    require(content.find("image/png=image-viewer.desktop;") != std::string::npos, "mimeapps update should preserve unrelated default");
+    require(content.find("text/x-linuxdesktop2026-test=org.linuxdesktop2026.DesktopTests.desktop;") != std::string::npos,
+        "mimeapps update should add and deduplicate desktop ids");
+
+    const auto queried = ld::query_mime_association(association, options);
+    require(queried.ok && queried.present, "MIME association query should find staged association");
+
+    const auto removed = ld::remove_mime_association(association, options);
+    require(removed.ok, "MIME association removal should succeed");
+    require(read_file(mimeapps).find("text/x-linuxdesktop2026-test=") == std::string::npos,
+        "MIME association removal should remove only targeted association");
+#endif
+}
+
+void xdg_default_application_and_url_scheme_stage_mimeapps_entries()
+{
+#if !defined(_WIN32)
+    const auto mimeapps = test_root() / "defaults" / "mimeapps.list";
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.mimeapps_file_override = mimeapps;
+
+    ld::default_application_intent intent;
+    intent.mime_type_or_scheme = "text/x-linuxdesktop2026-test";
+    intent.desktop_entry_id = "org.linuxdesktop2026.DesktopTests";
+    intent.make_default = true;
+    const auto default_report = ld::apply_default_application(intent, options);
+    require(default_report.ok, "default application write should succeed");
+    require(ld::query_default_application(intent, options).present, "default application query should find staged default");
+
+    ld::url_scheme_handler handler;
+    handler.scheme = "ld2026";
+    handler.desktop_entry_id = "org.linuxdesktop2026.DesktopTests";
+    const auto scheme_report = ld::apply_url_scheme_handler(handler, options);
+    require(scheme_report.ok, "URL scheme handler write should succeed");
+    require(ld::query_url_scheme_handler(handler, options).present, "URL scheme query should find x-scheme-handler default");
+
+    const auto content = read_file(mimeapps);
+    require(content.find("text/x-linuxdesktop2026-test=org.linuxdesktop2026.DesktopTests.desktop;") != std::string::npos,
+        "default application should update Default Applications");
+    require(content.find("x-scheme-handler/ld2026=org.linuxdesktop2026.DesktopTests.desktop;") != std::string::npos,
+        "URL scheme handler should update x-scheme-handler default");
+
+    require(ld::remove_url_scheme_handler(handler, options).ok, "URL scheme removal should succeed");
+    require(!ld::query_url_scheme_handler(handler, options).present, "URL scheme removal should clear targeted default");
+#endif
+}
+
+void desktop_flavors_share_standard_xdg_registration_paths()
+{
+#if !defined(_WIN32)
+    struct flavor_case {
+        const char* name;
+        const char* xdg_current_desktop;
+    };
+
+    const flavor_case flavors[] = {
+        {"xdg_full_gnome", "ubuntu:GNOME"},
+        {"xdg_full_kde", "KDE"},
+        {"xdg_light_xfce", "XFCE"},
+        {"xdg_minimal_bare_wm", "i3"},
+    };
+
+    for (const auto& flavor : flavors) {
+        const auto root = test_root() / "registration-flavors" / flavor.name;
+        scoped_env_var config_home_env("XDG_CONFIG_HOME", (root / "config").string());
+        scoped_env_var data_home_env("XDG_DATA_HOME", (root / "data").string());
+        scoped_env_var desktop_env("XDG_CURRENT_DESKTOP", flavor.xdg_current_desktop);
+
+        const auto entry = desktop_entry_for_tests();
+        const auto desktop_report = ld::query_desktop_entry(entry);
+        require(desktop_report.ok, "Desktop Flavor registration query should resolve desktop entry path");
+        require(*desktop_report.path == root / "data" / "applications" / "org.linuxdesktop2026.DesktopTests.desktop",
+            "Desktop Flavors should share the standard XDG desktop entry location");
+
+        const auto mimeapps_report = ld::query_default_application({"text/x-linuxdesktop2026-test", "org.linuxdesktop2026.DesktopTests", true, true});
+        require(mimeapps_report.ok, "Desktop Flavor registration query should resolve mimeapps path");
+        require(*mimeapps_report.path == root / "config" / "mimeapps.list",
+            "Desktop Flavors should share the standard XDG mimeapps.list location");
     }
 #endif
 }
@@ -584,6 +863,13 @@ int main()
     autostart_linux_routes_config_home_through_paths();
     desktop_flavors_share_standard_xdg_autostart_contract();
     desktop_flavor_capabilities_do_not_create_per_desktop_backends();
+    xdg_desktop_entry_writes_queries_removes_and_reports_activation_plan();
+    xdg_registration_rejects_hostile_ids_names_paths_and_global_writes();
+    xdg_icon_stages_copy_and_reports_cache_activation_plan();
+    xdg_mime_declaration_stages_xml_and_reports_activation_plan();
+    xdg_mimeapps_updates_preserve_unrelated_entries_and_deduplicate();
+    xdg_default_application_and_url_scheme_stage_mimeapps_entries();
+    desktop_flavors_share_standard_xdg_registration_paths();
     policy_write_requires_explicit_permission();
     policy_reports_sanitized_ids_and_rejects_malformed_directories();
     policy_linux_writes_queries_and_removes_dconf_files();
