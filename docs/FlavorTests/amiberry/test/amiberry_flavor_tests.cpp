@@ -11,6 +11,11 @@ namespace {
 
 int failures = 0;
 
+enum class root_kind {
+    config,
+    data
+};
+
 void expect(bool condition, const std::string& name)
 {
     if (condition) {
@@ -33,18 +38,38 @@ amiberry::RuntimeEnvironment default_env(const std::string& name)
     return env;
 }
 
+std::filesystem::path platform_root(const amiberry::RuntimeEnvironment& env, root_kind kind)
+{
+    const auto& home = *env.home_directory;
+    switch (kind) {
+    case root_kind::config:
+#if defined(_WIN32)
+        return home / "AppData" / "Roaming" / "BlitterStudio" / "amiberry";
+#else
+        return home / ".config" / "BlitterStudio" / "amiberry";
+#endif
+    case root_kind::data:
+#if defined(_WIN32)
+        return home / "AppData" / "Roaming" / "BlitterStudio" / "amiberry";
+#else
+        return home / ".local" / "share" / "BlitterStudio" / "amiberry";
+#endif
+    }
+    return {};
+}
+
 void linux_split_layout_keeps_bootstrap_config_in_xdg_and_content_under_data_or_home()
 {
     const auto env = default_env("amiberry-split");
 
     const auto topology = amiberry::PathManager{}.resolve(env, {});
 
-    expect(topology.bootstrap_config_file == *env.home_directory / ".config" / "BlitterStudio" / "amiberry" / "amiberry.conf",
+    expect(topology.bootstrap_config_file == platform_root(env, root_kind::config) / "amiberry.conf",
         "bootstrap config uses platform config root");
-    expect(topology.whdboot == *env.home_directory / ".local" / "share" / "BlitterStudio" / "amiberry" / "whdboot",
-        "whdboot follows XDG data root");
-    expect(topology.controllers == *env.home_directory / ".local" / "share" / "BlitterStudio" / "amiberry" / "controllers",
-        "controllers follow XDG data root");
+    expect(topology.whdboot == platform_root(env, root_kind::data) / "whdboot",
+        "whdboot follows platform data root");
+    expect(topology.controllers == platform_root(env, root_kind::data) / "controllers",
+        "controllers follow platform data root");
     expect(topology.roms == *env.home_directory / "Amiberry" / "roms",
         "ROMs remain under Amiberry home content");
     expect(topology.configuration_files == *env.home_directory / "Amiberry" / "conf",

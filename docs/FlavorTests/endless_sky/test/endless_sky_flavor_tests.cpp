@@ -32,6 +32,15 @@ endless_sky::RuntimeEnvironment default_env(const std::string& name)
     return env;
 }
 
+std::filesystem::path expected_data_root(const endless_sky::RuntimeEnvironment& env)
+{
+#if defined(_WIN32)
+    return *env.home_directory / "AppData" / "Roaming" / "endless-sky" / "endless-sky";
+#else
+    return *env.home_directory / ".local" / "share" / "endless-sky" / "endless-sky";
+#endif
+}
+
 void owned_plugin_roots_keep_bundled_and_user_plugins_separate()
 {
     const auto env = default_env("endless-sky-plugins");
@@ -44,7 +53,7 @@ void owned_plugin_roots_keep_bundled_and_user_plugins_separate()
         "bundled plugins stay resource-owned");
     expect(!paths.plugin_roots[0].user_writable, "bundled plugins are not user writable");
     expect(paths.plugin_roots[1].name == "local", "local plugin root keeps product name");
-    expect(paths.plugin_roots[1].path == *env.home_directory / ".local" / "share" / "endless-sky" / "endless-sky" / "plugins",
+    expect(paths.plugin_roots[1].path == expected_data_root(env) / "plugins",
         "local plugins resolve under the user data root");
     expect(paths.plugin_roots[1].user_writable, "local plugins are user writable");
 }
@@ -67,7 +76,7 @@ void saves_and_preferences_stay_in_endless_sky_data_vocabulary()
 
     const auto paths = endless_sky::Files{}.initialize(env);
 
-    expect(paths.config_root == *env.home_directory / ".local" / "share" / "endless-sky" / "endless-sky",
+    expect(paths.config_root == expected_data_root(env),
         "config root follows Endless Sky user data location");
     expect(paths.save_root == paths.config_root / "saves", "save root stays a product data child");
     expect(paths.preferences_file == paths.config_root / "preferences.txt",

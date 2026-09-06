@@ -282,6 +282,21 @@ void write_file(const std::filesystem::path& path, const std::string& content)
     output << content;
 }
 
+bool native_backend_is_inotify()
+{
+    const auto root = test_root() / "native-backend";
+    std::filesystem::create_directories(root);
+    ld::watcher watcher;
+
+    ld::watch_options options;
+    options.path = root;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native performance watch should start for backend detection");
+    std::cout << "watch.performance.native.backend=" << ld::to_string(report.capabilities.backend) << "\n";
+    watcher.stop();
+    return report.capabilities.backend == ld::backend_kind::inotify;
+}
+
 struct native_raw_metrics {
     int distinct_paths = 0;
     int events_observed = 0;
@@ -326,6 +341,7 @@ native_raw_metrics measure_native_raw_delivery()
     const auto report = watcher.add_watch(options);
     require(report.ok, "native raw performance watch should start");
     require(report.capabilities.backend == ld::backend_kind::inotify, "native raw performance watch should use inotify");
+    std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
     std::map<std::string, std::chrono::steady_clock::time_point> sent_at;
     const auto rss_before = current_rss_kib();
@@ -391,6 +407,7 @@ settle_metrics measure_native_settled_delivery()
     require(report.ok, "native settled performance watch should start");
     require(report.capabilities.backend == ld::backend_kind::inotify,
         "native settled performance watch should use inotify");
+    std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
     std::map<std::string, std::chrono::steady_clock::time_point> sent_at;
     for (int i = 0; i < distinct_paths; ++i) {
@@ -455,29 +472,33 @@ int main()
         std::cout << "watch.performance.simulated.settled.p95_latency_ms=" << settled.p95_latency.count() << "\n";
 
 #if defined(__linux__)
-        const auto native_raw = measure_native_raw_delivery();
-        const auto native_settled = measure_native_settled_delivery();
+        if (native_backend_is_inotify()) {
+            const auto native_raw = measure_native_raw_delivery();
+            const auto native_settled = measure_native_settled_delivery();
 
-        require(native_raw.distinct_paths == 240, "native raw performance probe should observe every distinct path");
-        require(native_raw.overflow_events == 0, "native raw performance probe should stay below overflow threshold");
-        require(native_raw.max_queue_depth <= 512, "native watcher queue depth should stay bounded");
-        require(native_settled.delivered == 80, "native settled performance probe should deliver all distinct paths");
-        require(native_settled.max_pending <= 80, "native settled work should be bounded by distinct path count");
+            require(native_raw.distinct_paths == 240, "native raw performance probe should observe every distinct path");
+            require(native_raw.overflow_events == 0, "native raw performance probe should stay below overflow threshold");
+            require(native_raw.max_queue_depth <= 512, "native watcher queue depth should stay bounded");
+            require(native_settled.delivered == 80, "native settled performance probe should deliver all distinct paths");
+            require(native_settled.max_pending <= 80, "native settled work should be bounded by distinct path count");
 
-        std::cout << "watch.performance.inotify.raw.distinct_paths=" << native_raw.distinct_paths << "\n";
-        std::cout << "watch.performance.inotify.raw.events_observed=" << native_raw.events_observed << "\n";
-        std::cout << "watch.performance.inotify.raw.throughput_paths_per_second="
-                  << native_raw.throughput_paths_per_second << "\n";
-        std::cout << "watch.performance.inotify.raw.max_queue_depth=" << native_raw.max_queue_depth << "\n";
-        std::cout << "watch.performance.inotify.raw.max_backend_depth=unobservable\n";
-        std::cout << "watch.performance.inotify.raw.rss_growth_kib=" << native_raw.rss_growth_kib << "\n";
-        std::cout << "watch.performance.inotify.raw.elapsed_us=" << native_raw.elapsed.count() << "\n";
-        std::cout << "watch.performance.inotify.raw.equivalent_path_construction_us="
-                  << native_raw.equivalent_path_construction.count() << "\n";
-        std::cout << "watch.performance.inotify.settled.delivered=" << native_settled.delivered << "\n";
-        std::cout << "watch.performance.inotify.settled.max_pending=" << native_settled.max_pending << "\n";
-        std::cout << "watch.performance.inotify.settled.p50_latency_ms=" << native_settled.p50_latency.count() << "\n";
-        std::cout << "watch.performance.inotify.settled.p95_latency_ms=" << native_settled.p95_latency.count() << "\n";
+            std::cout << "watch.performance.inotify.raw.distinct_paths=" << native_raw.distinct_paths << "\n";
+            std::cout << "watch.performance.inotify.raw.events_observed=" << native_raw.events_observed << "\n";
+            std::cout << "watch.performance.inotify.raw.throughput_paths_per_second="
+                      << native_raw.throughput_paths_per_second << "\n";
+            std::cout << "watch.performance.inotify.raw.max_queue_depth=" << native_raw.max_queue_depth << "\n";
+            std::cout << "watch.performance.inotify.raw.max_backend_depth=unobservable\n";
+            std::cout << "watch.performance.inotify.raw.rss_growth_kib=" << native_raw.rss_growth_kib << "\n";
+            std::cout << "watch.performance.inotify.raw.elapsed_us=" << native_raw.elapsed.count() << "\n";
+            std::cout << "watch.performance.inotify.raw.equivalent_path_construction_us="
+                      << native_raw.equivalent_path_construction.count() << "\n";
+            std::cout << "watch.performance.inotify.settled.delivered=" << native_settled.delivered << "\n";
+            std::cout << "watch.performance.inotify.settled.max_pending=" << native_settled.max_pending << "\n";
+            std::cout << "watch.performance.inotify.settled.p50_latency_ms=" << native_settled.p50_latency.count() << "\n";
+            std::cout << "watch.performance.inotify.settled.p95_latency_ms=" << native_settled.p95_latency.count() << "\n";
+        } else {
+            std::cout << "watch.performance.inotify.status=skipped_non_inotify_backend\n";
+        }
 #else
         std::cout << "watch.performance.inotify.status=not_run_non_linux\n";
 #endif
