@@ -277,6 +277,14 @@ _Avoid_: Link dump, anecdotal example
 The first project state worth publishing publicly on GitHub, consisting of at least one tiny working code sample plus the supporting survey and design docs.
 _Avoid_: Docs-only launch, full release
 
+**0.2.0 support matrix**:
+The release-facing table that names which modules, platforms, API surfaces, and validation claims are supported prototypes, experimental extractions, best-effort, or explicitly excluded for `0.2.0`.
+_Avoid_: Release roadmap, complete support promise
+
+**0.2.0 release gate**:
+A review-derived ticket that must be completed before tagging `0.2.0` because it protects a public claim, parser contract, mutation guarantee, CI evidence claim, or formatting baseline used by contributors.
+_Avoid_: Nice-to-have cleanup, long-range roadmap item
+
 **Staged sample selection**:
 The rule that the first working code sample is chosen only after the initial survey, module scoring, and focused follow-up search identify the strongest module candidate.
 _Avoid_: Premature first sample, settings-first assumption

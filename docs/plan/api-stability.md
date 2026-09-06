@@ -1,6 +1,8 @@
 # API And ABI Stability
 
-LinuxDesktop2026 is currently `0.1.0`.
+LinuxDesktop2026 is currently `0.1.0`. The next planned milestone is `0.2.0`,
+which remains a public prototype milestone rather than a production-stable or
+release-candidate line.
 
 ## Current Promise
 
@@ -126,6 +128,11 @@ reports. Plain C structs are easier to bind than C++ values, but they can
 still freeze layout too early. Until then, existing C ABI maintenance is a
 best-effort compatibility practice, not a promise to keep expanding binary
 interfaces during prototype work.
+
+For `0.2.0`, new C ABI expansion is not required for desktop registration or
+watching. The release support matrix in `docs/project-status.md` is the current
+source of truth for which modules are supported prototypes, experimental
+extractions, best-effort, or excluded.
 
 ## Deferred
 

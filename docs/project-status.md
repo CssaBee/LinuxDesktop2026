@@ -28,6 +28,25 @@ boundaries, but it is not a production-stable release.
 | `active` | `ld_migration` | C++ extraction for dry-run-first application-settings migration. Filesystem execution supports regular files and directories containing regular files/subdirectories; symlinks, special files, ownership, permissions, timestamps, xattrs, ACLs, sparse extents, and hard-link topology are not replicated as filesystem metadata. App-settings Registry snapshot/import/export compatibility is present; broader rollback and adversarial hardening remain before ship-candidate status. |
 | `active` | Maintained consumer proof | The Notepad++ proof branch exists locally, tracks its private GitHub remote, has an observed green manual settings-proof workflow, and now has local desktop-registration proof changes with an upstream-following check. Keep the exact branch, remote, commit, CI, and maintenance evidence in `docs/consumer-branches/notepadpp-settings-proof.md`; this status page reports only the current gate state. |
 
+## 0.2.0 Support Matrix
+
+`0.2.0` is the next public prototype milestone, not a production-stable release.
+It should make the support line easier to follow without expanding the project
+promise beyond current evidence.
+
+| Area | `0.2.0` support line |
+| --- | --- |
+| Platforms | Windows 10/11 and Ubuntu LTS are the phase-one targets. Other XDG-like Linux distributions remain best-effort. macOS is not promised. |
+| API stability | C++ APIs remain pre-1.0 source-compatibility interfaces that may break on deliberate minor releases. Existing C ABI entry points remain best-effort compatible where practical; new C ABI expansion remains release-candidate-gated. |
+| Supported prototype modules | `ld_core`, `ld_settings`, `ld_paths`, and `ld_watch` may be described as usable prototypes with tests, examples, install-tree consumption evidence, and explicit caveats. |
+| Experimental extraction modules | `ld_desktop` and `ld_migration` remain experimental extraction modules. They may be used by proof integrations, but their broader desktop registration, migration execution, and C ABI surfaces are not release-candidate-stable. |
+| Research-only modules | `ld_process`, `ld_ipc`, `ld_dynlib`, service/daemon lifecycle helpers, and GUI/windowing, clipboard, drag-and-drop, and common-dialog helpers remain research-only. |
+| Migration filesystem semantics | Regular-file and supported directory-tree migration are in scope. Directory moves must verify copied content before source cleanup before `0.2.0`. Cross-device semantic file moves remain excluded unless maintained consumer evidence proves the need. |
+| Parser contract | Registry `.reg` compatibility remains a scoped app-settings subset. Registry JSON snapshot parsing must use a maintained JSON parser while preserving the narrow `linuxdesktop.settings.registry.snapshot.v1` schema. |
+| Watcher performance | Keep the current watcher path value API through `0.2.0`; native-backend performance measurements can reopen that after the release. |
+| Validation | CI portability, sanitizer lanes, FlavorTests, install-tree consumers, and coverage reporting should be visible. Coverage must run in CI before `0.2.0`. |
+| Contributor baseline | A `.clang-format` baseline is required before `0.2.0`. Governance/onboarding work remains important but does not block the tag. |
+
 ## Validation Status
 
 - Main unit and smoke tests cover settings, paths, desktop, migration, watcher,
@@ -83,3 +102,7 @@ boundaries, but it is not a production-stable release.
 The active review-hardening ticket order is tracked in
 `.scratch/review-hardening/ORDER.md`. Historical ticket numbers are stable, but
 execution order follows that file rather than numeric order.
+
+The current `0.2.0` release gate is: replace the migration JSON parser, add
+coverage reporting to CI, add the formatting baseline, and strengthen directory
+migration verification before cleanup.

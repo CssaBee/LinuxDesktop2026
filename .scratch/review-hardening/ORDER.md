@@ -6,8 +6,35 @@ list below.
 
 ## Current Order
 
+- `97` - Replace Migration JSON Parser
+- `98` - Add Coverage Reporting To CI
+- `99` - Add Formatting Policy
+- `100` - Strengthen Directory Migration Verification
+- `96` - Decide Desktop Registration C ABI Expansion
+- `82` - Reduce Bus Factor And Write Governance
+- `101` - Decide Semantic Cross-Device File Move
+- `102` - Run Native Watch Performance Evidence
+- `103` - Decide Diagnostic Stringification Location
+
+## 0.2.0 Release Gate
+
+These tickets block `0.2.0` because they protect the release's public support
+matrix, parser contract, mutation guarantees, CI evidence, or contributor
+baseline:
+
+- `97` - Replace Migration JSON Parser
+- `98` - Add Coverage Reporting To CI
+- `99` - Add Formatting Policy
+- `100` - Strengthen Directory Migration Verification
+
+These review follow-ups do not block `0.2.0` unless new maintained-consumer or
+native-backend evidence makes them release-critical:
+
 - `82` - Reduce Bus Factor And Write Governance
 - `96` - Decide Desktop Registration C ABI Expansion
+- `101` - Decide Semantic Cross-Device File Move
+- `102` - Run Native Watch Performance Evidence
+- `103` - Decide Diagnostic Stringification Location
 
 ## Implemented
 

@@ -14,6 +14,21 @@ module gates. The current implementation ledger lives in
 - Use CMake consumption paths: FetchContent, add_subdirectory, and installed package configuration.
 - Include examples for each capability and integration examples that combine modules.
 
+## 0.2.0 Direction
+
+The `0.2.0` milestone should clarify support rather than broaden it. The
+current support matrix lives in `docs/project-status.md` so release claims,
+module status, platform status, and validation gates have one current ledger.
+
+Release-gating work for `0.2.0` is limited to the review findings that protect
+public claims and user data: replace the migration JSON parser with a maintained
+dependency while preserving the narrow Registry snapshot schema, add coverage
+reporting to CI, add a `.clang-format` baseline, and verify directory migration
+copies before source cleanup. Governance, desktop registration C ABI expansion,
+semantic cross-device file moves, watcher path-type optimization, and diagnostic
+stringification cleanup remain follow-up work unless new consumer evidence makes
+one of them release-critical.
+
 ## API Principles
 
 - Prefer a portable core with explicit capability reporting.
