@@ -40,15 +40,15 @@ manager, and forwarding a later invocation to an already-running process are
 outside this expansion. They should be handled by a later process/shell or IPC
 design pass unless repeated consumer evidence proves they belong here.
 
-The preferred C++ surface for app registration should be a coherent desktop
-bundle that can plan, dry-run, apply, query, and remove the normal registration
-set together. Individual effect calls remain useful for advanced callers,
+The preferred C++ surface for app registration is a coherent desktop bundle
+that can plan, dry-run, apply, query, and remove the normal registration set
+together. Individual effect calls remain useful for advanced callers,
 tests, and partial integrations, but they should not create per-desktop public
 APIs.
 
-## Desktop Bundle Design
+## Desktop Bundle API
 
-The next C++ expansion should make `desktop_bundle` the preferred path for
+The current C++ surface exposes `desktop_bundle` as the preferred path for
 ordinary application registration. The bundle is a product-owned description of
 the artifacts and intents an installer, first-run setup, or migration tool
 wants to stage:
@@ -119,6 +119,7 @@ struct cleanup_rule {
 
 struct desktop_bundle {
     registration_scope scope = registration_scope::user;
+    std::optional<autostart_entry> autostart;
     std::optional<desktop_entry_metadata> entry;
     std::vector<icon_reference> icons;
     std::vector<mime_declaration> mime_declarations;
@@ -155,11 +156,11 @@ desktop_bundle_report remove_bundle(const desktop_bundle&, const apply_options& 
 } // namespace linuxdesktop::desktop
 ```
 
-The names above are design shape, not yet API. They intentionally keep live
-activation as an explicit plan. A successful bundle write means the expected
-files or Registry artifacts were staged. It does not mean the desktop database,
-MIME database, icon cache, dconf database, or Windows default-app state has
-already consumed those artifacts.
+The first implementation intentionally keeps live activation as an explicit
+plan. A successful bundle write means the expected files or Registry artifacts
+were staged. It does not mean the desktop database, MIME database, icon cache,
+dconf database, or Windows default-app state has already consumed those
+artifacts.
 
 Bundle reports should preserve per-artifact diagnostics instead of collapsing
 everything into a single success flag. A bundle can partially plan successfully
@@ -221,7 +222,9 @@ which are easy to make painful for C callers if exposed prematurely.
 
 ## Current Implementation
 
-- `include/linuxdesktop/desktop.hpp` exposes the C++ `ld_desktop` API.
+- `include/linuxdesktop/desktop.hpp` exposes the C++ `ld_desktop` API,
+  including the first `desktop_bundle` request/report vocabulary and
+  `plan_bundle`, `apply_bundle`, `query_bundle`, and `remove_bundle`.
 - `include/linuxdesktop/desktop_c.h` exposes the C ABI `ld_desktop` surface.
 - `ld_desktop` reports capabilities for autostart, Linux/XDG desktop entries,
   icons, MIME/file associations, default applications, URL protocol handlers,

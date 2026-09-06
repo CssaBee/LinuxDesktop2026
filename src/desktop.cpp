@@ -763,6 +763,17 @@ std::string_view to_string(activation_step_kind value)
     return "unknown";
 }
 
+std::string_view to_string(registration_scope value)
+{
+    switch (value) {
+    case registration_scope::user:
+        return "user";
+    case registration_scope::global:
+        return "global";
+    }
+    return "unknown";
+}
+
 capability_report query_capabilities(const apply_options& options)
 {
     capability_report report;
@@ -2031,6 +2042,305 @@ policy_report query_policy(const policy_entry& entry, const apply_options& optio
     report.diagnostics.push_back(dconf_activation_required_diagnostic());
     return report;
 #endif
+}
+
+namespace {
+
+bool bundle_user_scope(registration_scope scope)
+{
+    return scope == registration_scope::user;
+}
+
+desktop_entry desktop_entry_from_bundle(const desktop_bundle& bundle)
+{
+    desktop_entry entry;
+    if (!bundle.entry) {
+        return entry;
+    }
+
+    entry.id = bundle.entry->id;
+    entry.display_name = bundle.entry->display_name;
+    entry.generic_name = bundle.entry->generic_name;
+    entry.comment = bundle.entry->comment;
+    entry.executable = bundle.entry->executable;
+    entry.arguments = bundle.entry->arguments;
+    entry.working_directory = bundle.entry->working_directory;
+    entry.categories = bundle.entry->categories;
+    entry.keywords = bundle.entry->keywords;
+    entry.terminal = bundle.entry->terminal;
+    entry.user_scope = bundle_user_scope(bundle.scope);
+
+    for (const auto& association : bundle.mime_associations) {
+        entry.mime_types.push_back(association.mime_type);
+    }
+    for (const auto& intent : bundle.default_applications) {
+        if (intent.mime_type_or_scheme.rfind("x-scheme-handler/", 0) == 0) {
+            entry.mime_types.push_back(intent.mime_type_or_scheme);
+        }
+    }
+    for (const auto& handler : bundle.url_scheme_handlers) {
+        entry.mime_types.push_back("x-scheme-handler/" + handler.scheme);
+    }
+    std::sort(entry.mime_types.begin(), entry.mime_types.end());
+    entry.mime_types.erase(std::unique(entry.mime_types.begin(), entry.mime_types.end()), entry.mime_types.end());
+    return entry;
+}
+
+std::vector<icon_entry> icon_entries_from_reference(const icon_reference& reference, registration_scope scope)
+{
+    std::vector<icon_entry> entries;
+    if (reference.sizes.empty()) {
+        entries.push_back({reference.name, reference.source_path, reference.theme, 0, bundle_user_scope(scope)});
+        return entries;
+    }
+    for (const auto size : reference.sizes) {
+        entries.push_back({reference.name, reference.source_path, reference.theme, size, bundle_user_scope(scope)});
+    }
+    return entries;
+}
+
+template <typename Report>
+void append_report_diagnostics(const Report& source, desktop_bundle_report& target)
+{
+    target.diagnostics.insert(target.diagnostics.end(), source.diagnostics.begin(), source.diagnostics.end());
+}
+
+void append_activation_plan(const effect_report& source, desktop_bundle_report& target)
+{
+    target.activation_plan.insert(target.activation_plan.end(), source.activation_plan.begin(), source.activation_plan.end());
+}
+
+void append_policy_activation_plan(const policy_entry& entry, desktop_bundle_report& report)
+{
+#if defined(_WIN32)
+    (void)entry;
+    report.activation_plan.push_back(activation_required(
+        activation_step_kind::windows_shell_notify,
+        "SHChangeNotify(SHCNE_ASSOCCHANGED)",
+        "windows-shell-notify-required",
+        "Notify the Windows shell after policy-backed registration artifacts change; ld_desktop only reports this activation step today"));
+#else
+    (void)entry;
+    report.activation_plan.push_back(activation_required(
+        activation_step_kind::refresh_dconf_database,
+        "dconf update",
+        "policy-dconf-activation-required",
+        "dconf-compatible policy source files were staged; refresh the dconf database before treating policy as active"));
+#endif
+}
+
+enum class bundle_operation {
+    plan,
+    apply,
+    query,
+    remove
+};
+
+effect_report run_effect(bundle_operation operation, const autostart_entry& entry, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_autostart(entry, options);
+    case bundle_operation::query:
+        return query_autostart(entry, options);
+    case bundle_operation::remove:
+        return remove_autostart(entry, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const desktop_entry& entry, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_desktop_entry(entry, options);
+    case bundle_operation::query:
+        return query_desktop_entry(entry, options);
+    case bundle_operation::remove:
+        return remove_desktop_entry(entry, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const icon_entry& entry, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_icon(entry, options);
+    case bundle_operation::query:
+        return query_icon(entry, options);
+    case bundle_operation::remove:
+        return remove_icon(entry, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const mime_declaration& declaration, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_mime_declaration(declaration, options);
+    case bundle_operation::query:
+        return query_mime_declaration(declaration, options);
+    case bundle_operation::remove:
+        return remove_mime_declaration(declaration, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const mime_association& association, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_mime_association(association, options);
+    case bundle_operation::query:
+        return query_mime_association(association, options);
+    case bundle_operation::remove:
+        return remove_mime_association(association, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const default_application_intent& intent, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_default_application(intent, options);
+    case bundle_operation::query:
+        return query_default_application(intent, options);
+    case bundle_operation::remove:
+        return remove_default_application(intent, options);
+    }
+    return {};
+}
+
+effect_report run_effect(bundle_operation operation, const url_scheme_handler& handler, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_url_scheme_handler(handler, options);
+    case bundle_operation::query:
+        return query_url_scheme_handler(handler, options);
+    case bundle_operation::remove:
+        return remove_url_scheme_handler(handler, options);
+    }
+    return {};
+}
+
+policy_report run_policy(bundle_operation operation, const policy_entry& entry, const apply_options& options)
+{
+    switch (operation) {
+    case bundle_operation::plan:
+    case bundle_operation::apply:
+        return apply_policy(entry, options);
+    case bundle_operation::query:
+        return query_policy(entry, options);
+    case bundle_operation::remove:
+        return remove_policy(entry, options);
+    }
+    return {};
+}
+
+template <typename Entry>
+void append_effect_report(bundle_operation operation, const Entry& entry, const apply_options& options, desktop_bundle_report& report)
+{
+    auto effect = run_effect(operation, entry, options);
+    append_activation_plan(effect, report);
+    append_report_diagnostics(effect, report);
+    report.artifact_reports.push_back(std::move(effect));
+}
+
+void append_policy_report(bundle_operation operation, const policy_entry& entry, const apply_options& options, desktop_bundle_report& report)
+{
+    auto policy = run_policy(operation, entry, options);
+    if (operation != bundle_operation::query) {
+        append_policy_activation_plan(entry, report);
+    }
+    append_report_diagnostics(policy, report);
+    report.policy_reports.push_back(std::move(policy));
+}
+
+desktop_bundle_report run_bundle(bundle_operation operation, const desktop_bundle& bundle, apply_options options)
+{
+    if (operation == bundle_operation::plan) {
+        options.dry_run = true;
+    }
+
+    desktop_bundle_report report;
+    report.dry_run = operation == bundle_operation::query ? false : options.dry_run;
+    report.cleanup_plan = bundle.cleanup;
+
+    if (bundle.entry) {
+        append_effect_report(operation, desktop_entry_from_bundle(bundle), options, report);
+    }
+    if (bundle.autostart) {
+        auto autostart = *bundle.autostart;
+        autostart.user_scope = bundle_user_scope(bundle.scope);
+        append_effect_report(operation, autostart, options, report);
+    }
+    for (const auto& icon : bundle.icons) {
+        for (const auto& entry : icon_entries_from_reference(icon, bundle.scope)) {
+            append_effect_report(operation, entry, options, report);
+        }
+    }
+    for (auto declaration : bundle.mime_declarations) {
+        declaration.user_scope = bundle_user_scope(bundle.scope);
+        append_effect_report(operation, declaration, options, report);
+    }
+    for (auto association : bundle.mime_associations) {
+        association.user_scope = bundle_user_scope(bundle.scope);
+        append_effect_report(operation, association, options, report);
+    }
+    for (auto intent : bundle.default_applications) {
+        intent.user_scope = bundle_user_scope(bundle.scope);
+        append_effect_report(operation, intent, options, report);
+    }
+    for (auto handler : bundle.url_scheme_handlers) {
+        handler.user_scope = bundle_user_scope(bundle.scope);
+        append_effect_report(operation, handler, options, report);
+    }
+    for (auto policy : bundle.policies) {
+        policy.user_scope = bundle_user_scope(bundle.scope);
+        append_policy_report(operation, policy, options, report);
+    }
+
+    report.ok = !has_error(report.diagnostics) &&
+        std::all_of(report.artifact_reports.begin(), report.artifact_reports.end(), [](const effect_report& item) {
+            return item.ok;
+        }) &&
+        std::all_of(report.policy_reports.begin(), report.policy_reports.end(), [](const policy_report& item) {
+            return item.ok;
+        });
+    return report;
+}
+
+} // namespace
+
+desktop_bundle_report plan_bundle(const desktop_bundle& bundle, const apply_options& options)
+{
+    return run_bundle(bundle_operation::plan, bundle, options);
+}
+
+desktop_bundle_report apply_bundle(const desktop_bundle& bundle, const apply_options& options)
+{
+    return run_bundle(bundle_operation::apply, bundle, options);
+}
+
+desktop_bundle_report query_bundle(const desktop_bundle& bundle, const apply_options& options)
+{
+    return run_bundle(bundle_operation::query, bundle, options);
+}
+
+desktop_bundle_report remove_bundle(const desktop_bundle& bundle, const apply_options& options)
+{
+    return run_bundle(bundle_operation::remove, bundle, options);
 }
 
 } // namespace linuxdesktop::desktop

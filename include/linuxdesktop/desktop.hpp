@@ -44,6 +44,11 @@ enum class activation_step_kind {
     windows_default_apps_ui
 };
 
+enum class registration_scope {
+    user,
+    global
+};
+
 struct activation_step {
     activation_step_kind kind = activation_step_kind::refresh_desktop_database;
     bool required = false;
@@ -92,12 +97,32 @@ struct desktop_entry {
     bool user_scope = true;
 };
 
+struct desktop_entry_metadata {
+    std::string id;
+    std::string display_name;
+    std::string generic_name;
+    std::string comment;
+    std::filesystem::path executable;
+    std::vector<std::string> arguments;
+    std::filesystem::path working_directory;
+    std::vector<std::string> categories;
+    std::vector<std::string> keywords;
+    bool terminal = false;
+};
+
 struct icon_entry {
     std::string name;
     std::filesystem::path source_path;
     std::string theme = "hicolor";
     int size = 0;
     bool user_scope = true;
+};
+
+struct icon_reference {
+    std::string name;
+    std::filesystem::path source_path;
+    std::string theme = "hicolor";
+    std::vector<int> sizes;
 };
 
 struct mime_declaration {
@@ -170,9 +195,38 @@ struct policy_report {
     std::vector<diagnostic> diagnostics;
 };
 
+struct cleanup_rule {
+    std::filesystem::path path;
+    bool remove_empty_parent = false;
+};
+
+struct desktop_bundle {
+    registration_scope scope = registration_scope::user;
+    std::optional<autostart_entry> autostart;
+    std::optional<desktop_entry_metadata> entry;
+    std::vector<icon_reference> icons;
+    std::vector<mime_declaration> mime_declarations;
+    std::vector<mime_association> mime_associations;
+    std::vector<default_application_intent> default_applications;
+    std::vector<url_scheme_handler> url_scheme_handlers;
+    std::vector<policy_entry> policies;
+    std::vector<cleanup_rule> cleanup;
+};
+
+struct desktop_bundle_report {
+    bool ok = false;
+    bool dry_run = true;
+    std::vector<effect_report> artifact_reports;
+    std::vector<policy_report> policy_reports;
+    std::vector<activation_step> activation_plan;
+    std::vector<cleanup_rule> cleanup_plan;
+    std::vector<diagnostic> diagnostics;
+};
+
 std::string_view to_string(effect_kind value);
 std::string_view to_string(capability_state value);
 std::string_view to_string(activation_step_kind value);
+std::string_view to_string(registration_scope value);
 
 capability_report query_capabilities(const apply_options& options = {});
 
@@ -207,5 +261,10 @@ effect_report query_url_scheme_handler(const url_scheme_handler& handler, const 
 policy_report apply_policy(const policy_entry& entry, const apply_options& options = {});
 policy_report remove_policy(const policy_entry& entry, const apply_options& options = {});
 policy_report query_policy(const policy_entry& entry, const apply_options& options = {});
+
+desktop_bundle_report plan_bundle(const desktop_bundle& bundle, const apply_options& options = {});
+desktop_bundle_report apply_bundle(const desktop_bundle& bundle, const apply_options& options = {});
+desktop_bundle_report query_bundle(const desktop_bundle& bundle, const apply_options& options = {});
+desktop_bundle_report remove_bundle(const desktop_bundle& bundle, const apply_options& options = {});
 
 } // namespace linuxdesktop::desktop

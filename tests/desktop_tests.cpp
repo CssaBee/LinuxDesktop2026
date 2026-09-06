@@ -52,6 +52,16 @@ bool has_activation_step(const ld::effect_report& report, ld::activation_step_ki
     return false;
 }
 
+bool has_activation_step(const ld::desktop_bundle_report& report, ld::activation_step_kind kind)
+{
+    for (const auto& step : report.activation_plan) {
+        if (step.kind == kind) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool has_temp_sibling(const std::filesystem::path& target)
 {
     std::error_code ec;
@@ -161,6 +171,40 @@ ld::mime_declaration mime_declaration_for_tests()
     return declaration;
 }
 
+ld::desktop_bundle desktop_bundle_for_tests(const std::filesystem::path& icon_source)
+{
+    ld::desktop_bundle bundle;
+    bundle.scope = ld::registration_scope::user;
+    bundle.autostart = autostart_entry_for_tests();
+
+    ld::desktop_entry_metadata metadata;
+    const auto entry = desktop_entry_for_tests();
+    metadata.id = entry.id;
+    metadata.display_name = entry.display_name;
+    metadata.generic_name = entry.generic_name;
+    metadata.comment = entry.comment;
+    metadata.executable = entry.executable;
+    metadata.arguments = entry.arguments;
+    metadata.working_directory = entry.working_directory;
+    metadata.categories = entry.categories;
+    metadata.keywords = entry.keywords;
+    metadata.terminal = entry.terminal;
+    bundle.entry = metadata;
+
+    ld::icon_reference icon;
+    icon.name = "org.linuxdesktop2026.DesktopTests";
+    icon.source_path = icon_source;
+    icon.sizes = {64};
+    bundle.icons = {icon};
+    bundle.mime_declarations = {mime_declaration_for_tests()};
+    bundle.mime_associations = {{"text/x-linuxdesktop2026-test", {"org.linuxdesktop2026.DesktopTests"}, true}};
+    bundle.default_applications = {{"text/x-linuxdesktop2026-test", "org.linuxdesktop2026.DesktopTests", true, true}};
+    bundle.url_scheme_handlers = {{"ld2026", "org.linuxdesktop2026.DesktopTests", true}};
+    bundle.policies = {policy_entry_for_tests()};
+    bundle.cleanup = {{"/tmp/linuxdesktop2026-desktop-tests", true}};
+    return bundle;
+}
+
 void capability_report_covers_extraction_scope()
 {
     ld::apply_options options;
@@ -178,6 +222,81 @@ void capability_report_covers_extraction_scope()
     require(find_capability(report, ld::effect_kind::shell_integration) != nullptr, "capabilities should include shell integration");
     require(find_capability(report, ld::effect_kind::desktop_database) != nullptr, "capabilities should include desktop database updates");
     require(find_capability(report, ld::effect_kind::managed_policy) != nullptr, "capabilities should include managed policy");
+}
+
+void desktop_bundle_vocabulary_covers_current_registration_groups()
+{
+    const ld::effect_kind effects[] = {
+        ld::effect_kind::autostart,
+        ld::effect_kind::desktop_entry,
+        ld::effect_kind::icon,
+        ld::effect_kind::mime_association,
+        ld::effect_kind::default_application,
+        ld::effect_kind::url_protocol_handler,
+        ld::effect_kind::shell_integration,
+        ld::effect_kind::desktop_database,
+        ld::effect_kind::managed_policy,
+    };
+    for (const auto kind : effects) {
+        require(ld::to_string(kind) != "unknown", "desktop effect vocabulary should have stable string names");
+    }
+
+    const ld::activation_step_kind activation_steps[] = {
+        ld::activation_step_kind::refresh_desktop_database,
+        ld::activation_step_kind::refresh_mime_database,
+        ld::activation_step_kind::refresh_icon_cache,
+        ld::activation_step_kind::refresh_dconf_database,
+        ld::activation_step_kind::windows_shell_notify,
+        ld::activation_step_kind::windows_default_apps_ui,
+    };
+    for (const auto kind : activation_steps) {
+        require(ld::to_string(kind) != "unknown", "desktop activation vocabulary should have stable string names");
+    }
+
+    require(ld::to_string(ld::registration_scope::user) == "user", "bundle scope should name user registration");
+    require(ld::to_string(ld::registration_scope::global) == "global", "bundle scope should name global registration");
+
+    const auto root = test_root() / "bundle-vocabulary";
+    const auto icon_source = root / "icon.png";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream file(icon_source, std::ios::binary);
+        file << "png-ish";
+    }
+
+    ld::apply_options options;
+    options.allow_desktop_integration_write = true;
+    options.allow_policy_write = true;
+    options.autostart_directory_override = root / "autostart";
+    options.applications_directory_override = root / "applications";
+    options.icons_directory_override = root / "icons";
+    options.mime_packages_directory_override = root / "mime" / "packages";
+    options.mimeapps_file_override = root / "mimeapps.list";
+    options.policy_defaults_directory_override = root / "dconf" / "defaults";
+    options.policy_locks_directory_override = root / "dconf" / "locks";
+
+    auto bundle = desktop_bundle_for_tests(icon_source);
+    const auto planned = ld::plan_bundle(bundle, options);
+    require(planned.ok, "desktop bundle plan should validate every registration artifact");
+    require(planned.dry_run, "desktop bundle plan should stay dry-run");
+    require(planned.artifact_reports.size() == 7, "desktop bundle plan should report every artifact group");
+    require(planned.policy_reports.size() == 1, "desktop bundle plan should report policy groups separately");
+    require(planned.cleanup_plan.size() == 1, "desktop bundle plan should preserve cleanup rules");
+#if defined(_WIN32)
+    require(has_activation_step(planned, ld::activation_step_kind::windows_shell_notify),
+        "Windows bundle plan should keep shell activation explicit");
+    require(has_activation_step(planned, ld::activation_step_kind::windows_default_apps_ui),
+        "Windows bundle plan should keep default-app user choice explicit");
+#else
+    require(has_activation_step(planned, ld::activation_step_kind::refresh_desktop_database),
+        "Linux bundle plan should keep desktop database activation explicit");
+    require(has_activation_step(planned, ld::activation_step_kind::refresh_mime_database),
+        "Linux bundle plan should keep MIME database activation explicit");
+    require(has_activation_step(planned, ld::activation_step_kind::refresh_icon_cache),
+        "Linux bundle plan should keep icon cache activation explicit");
+    require(has_activation_step(planned, ld::activation_step_kind::refresh_dconf_database),
+        "Linux bundle plan should keep dconf activation explicit");
+#endif
 }
 
 void managed_policy_capability_reports_dconf_activation_limit()
@@ -956,6 +1075,7 @@ void policy_atomic_write_cleans_temp_after_lock_replace_failure()
 int main()
 {
     capability_report_covers_extraction_scope();
+    desktop_bundle_vocabulary_covers_current_registration_groups();
     managed_policy_capability_reports_dconf_activation_limit();
     windows_registration_capabilities_report_limited_native_mapping();
     windows_registration_dry_runs_report_limits_without_mutation();

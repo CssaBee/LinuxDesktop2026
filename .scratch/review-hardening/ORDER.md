@@ -7,7 +7,6 @@ list below.
 ## Current Order
 
 - `82` - Reduce Bus Factor And Write Governance
-- `91` - Add Desktop Bundle API And Report Vocabulary
 - `92` - Wire Desktop Bundle To Staged Registration Effects
 - `93` - Add Desktop Registration Cleanup Reports
 - `94` - Add Desktop Flavor Registration Validation
@@ -16,6 +15,7 @@ list below.
 
 ## Implemented
 
+- `91` - Add Desktop Bundle API And Report Vocabulary
 - `88` - Prove Windows Registration Capability Posture
 - `87` - Add Staged XDG Desktop Registration Artifacts
 - `86` - Design Desktop Bundle Registration Surface
