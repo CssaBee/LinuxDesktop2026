@@ -16,6 +16,10 @@ list below.
 - `118` - Unify Or Rename Public App Identity Vocabulary
 - `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `114` - Reconsider Watch Callback Self-Destruction Contract
+- `121` - Add Nextcloud Watcher Overload FlavorTest Probe
+- `122` - Measure Large-Tree Watch Noise And Coalescing
+- `123` - Add Watch Coalescing Diagnostics For Product Boundaries
+- `124` - Document ld_watch Nextcloud Evidence
 - `82` - Reduce Bus Factor And Write Governance
 
 ## 0.2.1 Non-Blocking Watcher Hardening Candidates
