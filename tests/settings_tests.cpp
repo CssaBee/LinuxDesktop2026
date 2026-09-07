@@ -1631,7 +1631,7 @@ void autostart_linux_writes_queries_and_removes_desktop_file()
     require(content.find("Type=Application") != std::string::npos, "autostart file should be an application entry");
     require(content.find("Name=LinuxDesktop2026 Settings Tests") != std::string::npos,
         "autostart file should include display name");
-    require(content.find("Exec=/usr/bin/ld-settings-test --profile 'Default User'") != std::string::npos,
+    require(content.find("Exec=/usr/bin/ld-settings-test --profile \"Default User\"") != std::string::npos,
         "autostart file should quote arguments in Exec");
 
     auto queried = desk::query_autostart(entry, options);

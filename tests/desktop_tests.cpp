@@ -122,6 +122,11 @@ bool has_cleanup_status(const ld::desktop_bundle_report& report, const std::file
     return cleanup != nullptr && cleanup->status == status;
 }
 
+void require_contains(const std::string& content, const std::string& needle, const char* message)
+{
+    require(content.find(needle) != std::string::npos, message);
+}
+
 #if !defined(_WIN32)
 class scoped_env_var {
 public:
@@ -708,8 +713,60 @@ void autostart_reports_sanitized_ids_and_escaped_arguments()
     const auto content = read_file(*report.path);
     require(content.find("Name=LinuxDesktop2026\\nDesktop Tests") != std::string::npos,
         "desktop autostart should escape desktop-file newlines");
-    require(content.find("Exec=/usr/bin/ld-desktop-test --profile 'O'\\\\''Brien'") != std::string::npos,
-        "desktop autostart should shell-quote arguments with apostrophes");
+    require(content.find("Exec=/usr/bin/ld-desktop-test --profile \"O'Brien\"") != std::string::npos,
+        "desktop autostart should use desktop-entry quotes for arguments with apostrophes");
+#endif
+}
+
+void autostart_exec_uses_freedesktop_argument_grammar()
+{
+#if !defined(_WIN32)
+    const auto root = test_root() / "autostart-exec-grammar";
+    auto entry = autostart_entry_for_tests();
+    entry.executable = root / "Program Files" / "ld desktop test 日本語";
+    entry.arguments = {
+        "--plain",
+        "Default User",
+        "O'Brien",
+        "he said \"hi\"",
+        R"(C:\Users\Test)",
+        "$HOME",
+        "`date`",
+        "100%",
+        "one;two",
+        "日本語",
+        "",
+    };
+
+    ld::apply_options options;
+    options.dry_run = false;
+    options.allow_desktop_integration_write = true;
+    options.autostart_directory_override = root / "autostart";
+
+    const auto report = ld::apply_autostart(entry, options);
+    require(report.ok, "desktop autostart should write entry with freedesktop Exec tokens");
+    require(report.path.has_value(), "desktop autostart should report path for Exec grammar test");
+
+    const auto content = read_file(*report.path);
+    const std::vector<std::string> expected_tokens = {
+        "Exec=\"" + entry.executable.string() + "\"",
+        "--plain",
+        "\"Default User\"",
+        "\"O'Brien\"",
+        "\"he said \\\"hi\\\"\"",
+        R"("C:\\Users\\Test")",
+        R"("\$HOME")",
+        R"("\`date\`")",
+        "100%%",
+        "\"one;two\"",
+        "日本語",
+        "\"\"",
+    };
+    for (const auto& token : expected_tokens) {
+        require_contains(content, token, "desktop autostart Exec should format every adversarial token");
+    }
+    require(content.find("'Default User'") == std::string::npos,
+        "desktop autostart Exec should not use shell-style single quotes");
 #endif
 }
 
@@ -764,7 +821,7 @@ void autostart_linux_writes_queries_and_removes_desktop_file()
     const auto content = read_file(*applied.path);
     require(content.find("[Desktop Entry]") != std::string::npos, "desktop autostart file should be a desktop entry");
     require(content.find("Name=LinuxDesktop2026 Desktop Tests") != std::string::npos, "desktop autostart file should include display name");
-    require(content.find("Exec=/usr/bin/ld-desktop-test --profile 'Default User'") != std::string::npos, "desktop autostart file should quote Exec arguments");
+    require(content.find("Exec=/usr/bin/ld-desktop-test --profile \"Default User\"") != std::string::npos, "desktop autostart file should quote Exec arguments");
 
     auto queried = ld::query_autostart(entry, options);
     require(queried.ok, "desktop Linux autostart query should succeed");
@@ -1335,6 +1392,7 @@ int main()
     windows_registration_dry_runs_report_limits_without_mutation();
     autostart_dry_run_does_not_write();
     autostart_reports_sanitized_ids_and_escaped_arguments();
+    autostart_exec_uses_freedesktop_argument_grammar();
     autostart_rejects_relative_or_file_backed_output_directory();
     autostart_linux_writes_queries_and_removes_desktop_file();
     autostart_linux_removal_only_deletes_generated_entry();

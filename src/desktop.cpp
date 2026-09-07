@@ -313,39 +313,58 @@ std::string desktop_escape(const std::string& value)
     return escaped;
 }
 
-std::string shell_quote(const std::string& value)
+bool desktop_exec_token_needs_quotes(std::string_view value)
 {
     if (value.empty()) {
-        return "''";
+        return true;
     }
-    bool simple = true;
     for (const char ch : value) {
-        if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '/' && ch != '.' && ch != '_' && ch != '-' && ch != ':') {
-            simple = false;
+        const auto uch = static_cast<unsigned char>(ch);
+        if (std::isspace(uch) || ch == '"' || ch == '\'' || ch == '\\' || ch == '<' || ch == '>' || ch == '~' ||
+            ch == '|' || ch == '&' || ch == ';' || ch == '$' || ch == '*' || ch == '?' || ch == '#' ||
+            ch == '(' || ch == ')' || ch == '`') {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string desktop_exec_token(const std::string& value)
+{
+    const bool quoted = desktop_exec_token_needs_quotes(value);
+    std::string token;
+    if (quoted) {
+        token.push_back('"');
+    }
+    for (const char ch : value) {
+        switch (ch) {
+        case '%':
+            token += "%%";
+            break;
+        case '"':
+        case '\\':
+        case '$':
+        case '`':
+            token.push_back('\\');
+            token.push_back(ch);
+            break;
+        default:
+            token.push_back(ch);
             break;
         }
     }
-    if (simple) {
-        return value;
+    if (quoted) {
+        token.push_back('"');
     }
-    std::string quoted = "'";
-    for (const char ch : value) {
-        if (ch == '\'') {
-            quoted += "'\\''";
-        } else {
-            quoted.push_back(ch);
-        }
-    }
-    quoted += "'";
-    return quoted;
+    return token;
 }
 
 std::string autostart_command(const autostart_entry& entry)
 {
-    std::string command = shell_quote(entry.executable.string());
+    std::string command = desktop_exec_token(entry.executable.string());
     for (const auto& argument : entry.arguments) {
         command += " ";
-        command += shell_quote(argument);
+        command += desktop_exec_token(argument);
     }
     return command;
 }
@@ -406,7 +425,7 @@ std::string desktop_file_content(const autostart_entry& entry)
     output << "[Desktop Entry]\n";
     output << "Type=Application\n";
     output << "Name=" << desktop_escape(entry.display_name) << "\n";
-    output << "Exec=" << desktop_escape(autostart_command(entry)) << "\n";
+    output << "Exec=" << autostart_command(entry) << "\n";
     if (!entry.working_directory.empty()) {
         output << "Path=" << desktop_escape(entry.working_directory.string()) << "\n";
     }
@@ -1077,7 +1096,7 @@ std::string desktop_entry_content(const desktop_entry& entry)
     if (!entry.comment.empty()) {
         output << "Comment=" << desktop_escape(entry.comment) << "\n";
     }
-    output << "Exec=" << desktop_escape(autostart_command({entry.id, entry.display_name, entry.executable, entry.arguments, entry.working_directory, true, entry.user_scope})) << "\n";
+    output << "Exec=" << autostart_command({entry.id, entry.display_name, entry.executable, entry.arguments, entry.working_directory, true, entry.user_scope}) << "\n";
     if (!entry.working_directory.empty()) {
         output << "Path=" << desktop_escape(entry.working_directory.string()) << "\n";
     }

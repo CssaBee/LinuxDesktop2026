@@ -6,7 +6,35 @@ list below.
 
 ## Current Order
 
+- `111` - Fix Desktop Exec Field Quoting
+- `112` - Contain Migration Rooted Path Resolution
+- `113` - Serialize Watch Callback Delivery
+- `116` - Move Recursive Inotify Discovery Off Ingest Path
+- `115` - Bound Settled Event Scheduler State
+- `120` - Define Versioned Settings Lock Domain
+- `119` - Collapse Migration Action Result State Machine
+- `118` - Unify Or Rename Public App Identity Vocabulary
+- `117` - Make Pre-1.0 CMake Package Compatibility Honest
+- `114` - Reconsider Watch Callback Self-Destruction Contract
 - `82` - Reduce Bus Factor And Write Governance
+
+## 0.2.1 Release Gate
+
+These tickets block `0.2.1` because the September 6, 2026 clean re-review
+classified each as a major finding. They must be fixed, deliberately rescoped,
+or retired with new source-level evidence before publishing the next patch
+release:
+
+- `111` - Fix Desktop Exec Field Quoting
+- `112` - Contain Migration Rooted Path Resolution
+- `113` - Serialize Watch Callback Delivery
+- `114` - Reconsider Watch Callback Self-Destruction Contract
+- `115` - Bound Settled Event Scheduler State
+- `116` - Move Recursive Inotify Discovery Off Ingest Path
+- `117` - Make Pre-1.0 CMake Package Compatibility Honest
+- `118` - Unify Or Rename Public App Identity Vocabulary
+- `119` - Collapse Migration Action Result State Machine
+- `120` - Define Versioned Settings Lock Domain
 
 ## 0.2.0 Release Gate
 

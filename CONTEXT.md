@@ -116,6 +116,12 @@ _Avoid_: Toy example, mock-only compatibility test, benchmark suite
 A Flavor test chosen specifically to expose a suspected review blind spot or API-boundary risk in the active hardening queue.
 _Avoid_: Random new sample, adoption proof, release blocker by default
 
+**0.2.1 review-hardening blocker**:
+A confirmed major finding from the September 6, 2026 clean re-review that must
+be resolved, deliberately rescoped, or explicitly retired with evidence before
+publishing `0.2.1`.
+_Avoid_: Nice-to-have cleanup, release-candidate-only hygiene, ordinary backlog item
+
 **Flavor review round**:
 A later critique/defense pass over completed flavor tests that judges how well the refactor blends into the original product shape.
 _Avoid_: Unit test result, implementation gate, pass/fail criterion
