@@ -18,6 +18,17 @@ list below.
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `82` - Reduce Bus Factor And Write Governance
 
+## 0.2.1 Non-Blocking Watcher Hardening Candidates
+
+These tickets came from the September 7, 2026 external scan. They do not block
+`0.2.1` unless new evidence promotes a correctness, boundedness, or public-claim
+problem into the release gate.
+
+- `121` - Add Nextcloud Watcher Overload FlavorTest Probe
+- `122` - Measure Large-Tree Watch Noise And Coalescing
+- `123` - Add Watch Coalescing Diagnostics For Product Boundaries
+- `124` - Document ld_watch Nextcloud Evidence
+
 ## 0.2.1 Release Gate
 
 These tickets block `0.2.1` because the September 6, 2026 clean re-review
