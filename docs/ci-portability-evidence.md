@@ -19,12 +19,14 @@ Shared-library builds are Linux-only for now. Windows shared libraries need an
 explicit symbol-export policy and should stay out of routine CI until the
 project is ready to make that decision.
 
-The sanitizer workflow runs ASan/UBSan on Ubuntu with both GCC and Clang.
-The watcher ThreadSanitizer lane is a separate Ubuntu/Clang job that builds only
-the deterministic `ld_watch_tests` hardening target with the optional libuv
-backend disabled. That lane is race evidence for the portable watcher
-lifecycle, queue, callback, and settled-file code; it does not replace the
-ASan/UBSan suite.
+The sanitizer workflow runs ASan/UBSan on Ubuntu with both GCC and Clang. A
+separate blocking Ubuntu/Clang LeakSanitizer lane mirrors the sanitizer build
+shape and runs the full CTest suite with ASan leak detection enabled. The
+watcher ThreadSanitizer lane is a separate Ubuntu/Clang job that builds only the
+deterministic `ld_watch_tests` hardening target with the optional libuv backend
+disabled. That lane is race evidence for the portable watcher lifecycle, queue,
+callback, and settled-file code; it does not replace the ASan/UBSan or
+LeakSanitizer suites.
 
 The coverage lane runs Ubuntu/GCC Debug with
 `LD2026_ENABLE_COVERAGE=ON`, builds the test suite, invokes the
@@ -109,6 +111,9 @@ pull-request lane if it stays stable enough to be useful.
   rules are relying on static-link assumptions.
 - A sanitizer failure blocks confidence in the affected module until reproduced
   or explained.
+- A LeakSanitizer failure blocks confidence in project-owned C/C++ ownership
+  and lifetime behavior until reproduced, fixed, or identified as a justified
+  third-party/runtime suppression case.
 - A watcher ThreadSanitizer failure blocks confidence in callback, settlement,
   queueing, or shutdown lifecycle behavior until reproduced or explained.
 - A consumer-proof failure should be recorded in

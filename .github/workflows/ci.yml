@@ -171,6 +171,36 @@ jobs:
       - name: Test
         run: ctest --test-dir ${{ matrix['build-dir'] }} --output-on-failure
 
+  linux-leak-sanitizer:
+    name: Linux LeakSanitizer
+    runs-on: ubuntu-latest
+    env:
+      CFLAGS: -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+      CXXFLAGS: -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+      LDFLAGS: -fsanitize=address,undefined
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      LSAN_OPTIONS: detect_leaks=1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-lsan-clang -G Ninja
+          -DLD2026_BUILD_TESTS=ON
+          -DLD2026_BUILD_EXAMPLES=ON
+          -DLD2026_WATCH_ENABLE_TEST_HOOKS=ON
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build
+        run: cmake --build build-lsan-clang
+
+      - name: Test
+        run: ctest --test-dir build-lsan-clang --output-on-failure
+
   watcher-thread-sanitizer:
     name: Watcher ThreadSanitizer
     runs-on: ubuntu-latest
