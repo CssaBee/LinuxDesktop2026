@@ -6,19 +6,34 @@ without logging one discarded native event per source notification.
 
 **Blocked by:** None; unblocked by implemented ticket `122`.
 
-**Status:** proposed
+**Status:** implemented
 
-- [ ] Review existing `ld_watch` diagnostics and performance counters against
+- [x] Review existing `ld_watch` diagnostics and performance counters against
   the large-tree probe results.
-- [ ] If existing reports already expose the needed signal, document the
+- [x] If existing reports already expose the needed signal, document the
   product-owned diagnostic translation pattern instead of adding API.
-- [ ] If signal is missing, add narrow aggregate counters or diagnostics such
+- [x] If signal is missing, add narrow aggregate counters or diagnostics such
   as received, coalesced, delivered, dropped, overflowed, settle-timeout, and
   validation-call counts.
-- [ ] Keep diagnostics aggregate-first for noisy paths; avoid creating a
+- [x] Keep diagnostics aggregate-first for noisy paths; avoid creating a
   product burden to log one library diagnostic per discarded backend event.
-- [ ] Add tests proving diagnostics remain bounded during repeated notifications
+- [x] Add tests proving diagnostics remain bounded during repeated notifications
   for the same path and during queue saturation.
+
+## Implementation Notes
+
+The large-tree probe already exposes aggregate received, coalesced, delivered,
+overflow, dropped, pending, and validation-call measurements for validation
+runs, while the public `ld_watch` contract exposes bounded delivery, settled
+coalescing, and overflow/rescan diagnostics. Task `123` therefore does not add a
+public watcher API.
+
+The Nextcloud-shaped FlavorTest now records the product-owned aggregate batch
+shape: raw events observed, overflow events observed, candidates retained,
+candidates dropped for rescan, candidates validated, sync work, ignored
+spurious candidates, and summary log lines. Tests prove repeated same-path
+noise and candidate saturation stay bounded and summarized instead of creating
+per-event validation or log chatter.
 
 ## Review Anchor
 

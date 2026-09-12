@@ -7,19 +7,31 @@ measurements produce concrete results.
 **Blocked by:** None; unblocked for source-anchor notes by implemented ticket
 `121` and for measurement claims by implemented ticket `122`.
 
-**Status:** proposed
+**Status:** implemented
 
-- [ ] Add the Nextcloud Desktop issue `#7873` source anchor to the appropriate
+- [x] Add the Nextcloud Desktop issue `#7873` source anchor to the appropriate
   watcher survey or validation-evidence document.
-- [ ] Record that qBittorrent `#24444` remains a watch item for possible
+- [x] Record that qBittorrent `#24444` remains a watch item for possible
   `ld_desktop` reveal-folder behavior and is not current `ld_watch` evidence.
-- [ ] After ticket `122`, summarize what the large-tree workload proves and
+- [x] After ticket `122`, summarize what the large-tree workload proves and
   what remains unproven.
-- [ ] Update `docs/plan/library-roadmap.md` only if the evidence changes the
+- [x] Update `docs/plan/library-roadmap.md` only if the evidence changes the
   `ld_watch` direction, capability fields, wrap decision, or release posture.
-- [ ] Avoid public claims that LinuxDesktop2026 solves Nextcloud's upstream
+- [x] Avoid public claims that LinuxDesktop2026 solves Nextcloud's upstream
   issue unless a maintained proof branch or upstream-shaped patch demonstrates
   that integration.
+
+## Implementation Notes
+
+The source anchor lives in `docs/FlavorTests/SOURCES.md`, and
+`docs/validation-evidence.md` now records the bounded scope of the evidence:
+Nextcloud Desktop issue `#7873` is concrete pressure for large-tree watcher
+overload and per-event logging, while the LinuxDesktop2026 proof remains
+synthetic and hermetic. qBittorrent issue `#24444` is kept as a possible
+`ld_desktop` reveal-folder watch item rather than `ld_watch` evidence.
+
+No `docs/plan/library-roadmap.md` change was needed. The evidence did not alter
+the watcher direction, capability fields, wrap decision, or release posture.
 
 ## Review Anchor
 

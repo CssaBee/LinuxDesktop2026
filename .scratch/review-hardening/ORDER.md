@@ -13,11 +13,9 @@ public-claim problem.
 
 ## Current Order
 
-1. `issues/123-add-watch-coalescing-diagnostics-for-product-boundaries.md`
-2. `issues/124-document-ld-watch-nextcloud-evidence.md`
-3. `issues/82-reduce-bus-factor-and-write-governance.md`
-4. `issues/15-validate-apis-with-one-maintained-consumer-branch.md`
-5. `issues/17-reopen-roadmap-only-from-consumer-evidence.md`
+1. `issues/82-reduce-bus-factor-and-write-governance.md`
+2. `issues/15-validate-apis-with-one-maintained-consumer-branch.md`
+3. `issues/17-reopen-roadmap-only-from-consumer-evidence.md`
 
 ## Evidence Cadence
 

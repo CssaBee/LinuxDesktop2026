@@ -58,6 +58,8 @@ void noisy_spurious_events_validate_once_and_log_once()
     expect(batch.candidates_validated == 1, "spurious path is validated once");
     expect(batch.sync_work_items == 0, "unchanged final state does not schedule sync work");
     expect(batch.ignored_spurious_candidates == 1, "unchanged candidate is ignored after validation");
+    expect(batch.overflow_events_observed == 0, "quiet coalescing does not report overflow");
+    expect(batch.candidates_dropped_for_rescan == 0, "same-path coalescing does not drop candidates");
     expect(batch.summary_log_lines == 1, "noisy batch emits one summary log line");
 }
 
@@ -103,10 +105,13 @@ void overflow_requests_rescan_without_per_path_validation()
 
     adapter.ingest(modified("a.txt"));
     adapter.ingest({"/sync", {}, nextcloud::FileSignalKind::Overflow, true});
+    adapter.ingest(modified("b.txt"));
 
     const auto batch = adapter.flush(snapshot);
 
     expect(batch.full_rescan_required, "overflow asks product to rescan");
+    expect(batch.overflow_events_observed == 1, "overflow is counted as one aggregate signal");
+    expect(batch.candidates_dropped_for_rescan == 1, "post-overflow candidates are counted as aggregate drops");
     expect(batch.candidates_validated == 0, "overflow skips stale candidate validation");
     expect(batch.summary_log_lines == 1, "overflow emits one summary log line");
     expect(adapter.pendingCandidates() == 0, "flush clears pending candidates");
@@ -124,8 +129,28 @@ void candidate_limit_degrades_to_rescan()
     const auto batch = adapter.flush(snapshot);
 
     expect(batch.full_rescan_required, "candidate limit degrades to full rescan");
+    expect(batch.candidates_seen == 2, "candidate overload preserves only the bounded pending set");
+    expect(batch.candidates_dropped_for_rescan == 1, "candidate overload counts the first dropped candidate");
     expect(batch.candidates_validated == 0, "degraded batch avoids partial validation claims");
     expect(batch.summary_log_lines == 1, "candidate overload is summarized");
+}
+
+void repeated_candidate_overload_stays_aggregate()
+{
+    nextcloud::SyncTreeSnapshot snapshot;
+    nextcloud::WatcherOverloadAdapter adapter(2);
+
+    for (int i = 0; i < 100; ++i) {
+        adapter.ingest(modified(std::string{"overload-"} + std::to_string(i) + ".txt"));
+    }
+
+    const auto batch = adapter.flush(snapshot);
+
+    expect(batch.raw_events_observed == 100, "candidate overload counts raw event pressure");
+    expect(batch.candidates_seen == 2, "candidate overload keeps bounded pending candidates");
+    expect(batch.candidates_dropped_for_rescan == 98, "candidate overload reports dropped candidates as one count");
+    expect(batch.candidates_validated == 0, "candidate overload avoids per-path validation after rescan");
+    expect(batch.summary_log_lines == 1, "candidate saturation still emits one summary log line");
 }
 
 } // namespace
@@ -137,5 +162,6 @@ int main()
     deleted_final_state_becomes_sync_work();
     overflow_requests_rescan_without_per_path_validation();
     candidate_limit_degrades_to_rescan();
+    repeated_candidate_overload_stays_aggregate();
     return failures == 0 ? 0 : 1;
 }

@@ -45,6 +45,8 @@ struct ValidationBatch {
     std::size_t candidates_validated = 0;
     std::size_t sync_work_items = 0;
     std::size_t ignored_spurious_candidates = 0;
+    std::size_t overflow_events_observed = 0;
+    std::size_t candidates_dropped_for_rescan = 0;
     std::size_t summary_log_lines = 0;
     bool full_rescan_required = false;
     std::vector<ValidationDecision> decisions;
@@ -76,6 +78,8 @@ public:
 private:
     std::size_t max_pending_candidates_;
     std::size_t raw_events_observed_ = 0;
+    std::size_t overflow_events_observed_ = 0;
+    std::size_t candidates_dropped_for_rescan_ = 0;
     bool full_rescan_required_ = false;
     std::map<std::filesystem::path, FilesystemSignal> pending_;
 };

@@ -477,14 +477,18 @@ Current pain:
 - Aggregate overload status matters more than per-event detail. A product
   adapter should be able to summarize ignored spurious candidates without
   recreating the log volume that caused the pressure.
+- The current `ld_watch` public surface already reports overflow and bounded
+  delivery/settle behavior. Candidate coalescing counts, validation-call counts,
+  and user-facing summary lines remain product-boundary diagnostics because
+  they depend on sync policy, not watcher mechanics.
 - The synthetic probe is useful source-anchored evidence, but it is not a
   maintained Nextcloud branch and must not become a public claim that
   LinuxDesktop2026 fixes Nextcloud Desktop issue `#7873`.
 
 `0.2.1` disposition: non-blocking evidence. Keep sync validation,
-rescan policy, and user-facing log wording in Nextcloud-shaped code; use future
-watcher measurement tickets to decide whether aggregate diagnostics need public
-API support.
+rescan policy, aggregate dropped-candidate counts, and user-facing log wording
+in Nextcloud-shaped code. Do not add public `ld_watch` coalescing counters from
+this evidence alone.
 
 ## Dependency Guardrails
 

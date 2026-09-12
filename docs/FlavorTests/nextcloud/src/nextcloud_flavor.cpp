@@ -111,12 +111,19 @@ void WatcherOverloadAdapter::ingest(const FilesystemSignal& signal)
     ++raw_events_observed_;
     if (signal.rescan_recommended || signal.kind == FileSignalKind::Overflow ||
         signal.relative_path.empty()) {
+        ++overflow_events_observed_;
         full_rescan_required_ = true;
+        return;
+    }
+
+    if (full_rescan_required_) {
+        ++candidates_dropped_for_rescan_;
         return;
     }
 
     if (pending_.size() >= max_pending_candidates_ &&
         pending_.find(signal.relative_path) == pending_.end()) {
+        ++candidates_dropped_for_rescan_;
         full_rescan_required_ = true;
         return;
     }
@@ -134,6 +141,8 @@ ValidationBatch WatcherOverloadAdapter::flush(const SyncTreeSnapshot& snapshot)
     ValidationBatch batch;
     batch.raw_events_observed = raw_events_observed_;
     batch.candidates_seen = pending_.size();
+    batch.overflow_events_observed = overflow_events_observed_;
+    batch.candidates_dropped_for_rescan = candidates_dropped_for_rescan_;
     batch.full_rescan_required = full_rescan_required_;
 
     if (!full_rescan_required_) {
@@ -154,6 +163,8 @@ ValidationBatch WatcherOverloadAdapter::flush(const SyncTreeSnapshot& snapshot)
     }
 
     raw_events_observed_ = 0;
+    overflow_events_observed_ = 0;
+    candidates_dropped_for_rescan_ = 0;
     full_rescan_required_ = false;
     pending_.clear();
     return batch;

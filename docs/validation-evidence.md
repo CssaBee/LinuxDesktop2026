@@ -264,6 +264,21 @@ to 657 delivered events while still validating the same 561 final candidate
 paths; the separate saturation pass kept the public queue bounded at 512 and
 reported 239 dropped events through one overflow event.
 
+Product-boundary diagnostics remain aggregate-first. The Nextcloud-shaped
+FlavorTest adapter turns repeated raw events, overflow signals, and candidate
+capacity pressure into one batch summary containing raw-event, overflow, dropped
+candidate, candidate, validation, sync-work, and ignored-spurious counts. This
+is intentionally product-owned: `ld_watch` reports watcher overflow and bounded
+settled delivery, while sync validation and user-facing log wording depend on
+application policy. The evidence does not justify adding public `ld_watch`
+coalescing counters for `0.2.1`.
+
+Source-anchor scope: Nextcloud Desktop issue `#7873` is concrete pressure for
+large-tree watcher overload and per-event logging, but the local probe is
+synthetic and does not prove that LinuxDesktop2026 fixes the upstream issue.
+qBittorrent issue `#24444` remains a watch item for possible `ld_desktop`
+reveal-folder behavior; it is not current `ld_watch` evidence.
+
 The native raw measurement waits for 240 distinct file paths and observes 718
 events because `inotify` can report multiple create/write state transitions per
 path. Kernel queue depth is not exposed by this local probe, so only
