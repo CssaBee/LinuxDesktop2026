@@ -37,6 +37,10 @@ cleanup.
   explicit permission flags.
 - Report skipped, blocked, unsupported, partially executed, rollback-missing,
   and rollback-failed states per action.
+- Treat `migration_action_result::state` as the authoritative action outcome.
+  Convenience queries such as `executed()` and `skipped()` are derived from it;
+  rollback reporting uses `migration_rollback_state` plus `rollback_path`
+  instead of independent booleans.
 - Keep payload parsing app-owned unless a migration helper explicitly documents
   a supported format.
 - Route path selection through `ld_paths`.

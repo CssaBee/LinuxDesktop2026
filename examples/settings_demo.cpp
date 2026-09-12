@@ -255,7 +255,7 @@ int main(int argc, char** argv)
         for (const auto& action : migration_preview.actions) {
             std::cout << "  " << linuxdesktop::migration::to_string(action.action.kind)
                       << " " << action.action.name
-                      << ": " << (action.executed ? "executed" : "planned") << "\n";
+                      << ": " << linuxdesktop::migration::to_string(action.state) << "\n";
             print_diagnostics(action.diagnostics);
         }
         print_diagnostics(migration_preview.diagnostics);

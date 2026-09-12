@@ -47,6 +47,26 @@ FlavorTest candidate projects, sanitizer lanes, the private Notepad++ proof
 workflow, and watcher performance measurements remain separate validation
 signals rather than coverage inputs.
 
+## Migration Action Result State Machine
+
+Status: task 119 collapses `migration_action_result` to one stored action
+outcome, `migration_action_state`, and one stored rollback outcome,
+`migration_rollback_state`. The former public action and rollback booleans are
+now derived query helpers.
+
+Local commands on 2026-09-12:
+
+```sh
+cmake --build build --target ld_migration_tests
+./build/ld_migration_tests
+cmake --build build --target ld_settings_tests
+./build/ld_settings_tests
+```
+
+Result: passed. `ld_migration_tests` includes
+`action_result_queries_are_derived_from_authoritative_state`, which exercises
+the query helpers against the authoritative action and rollback states.
+
 ## Failure Modes
 
 Status: deterministic write failure-mode tests are part of

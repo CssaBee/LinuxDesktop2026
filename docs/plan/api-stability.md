@@ -54,8 +54,8 @@ compiled module sources. The current inventory is:
   `component_kind`.
 - `ld_watch`: `event_kind`, `path_type`, `recursive_policy`,
   `overflow_policy`, `stream_state`, and `backend_kind`.
-- `ld_migration`: `migration_action_kind`, `migration_action_state`, plus
-  Registry `hive`, `view`, and `value_type`.
+- `ld_migration`: `migration_action_kind`, `migration_action_state`,
+  `migration_rollback_state`, plus Registry `hive`, `view`, and `value_type`.
 - `ld_desktop`: `effect_kind`, `capability_state`, `activation_step_kind`,
   `registration_scope`, `registration_status`, and `cleanup_status`.
 

@@ -50,6 +50,21 @@ std::string_view to_string(migration_action_state value)
     return "unknown";
 }
 
+std::string_view to_string(migration_rollback_state value)
+{
+    switch (value) {
+    case migration_rollback_state::unavailable:
+        return "unavailable";
+    case migration_rollback_state::available:
+        return "available";
+    case migration_rollback_state::succeeded:
+        return "succeeded";
+    case migration_rollback_state::failed:
+        return "failed";
+    }
+    return "unknown";
+}
+
 rooted_path_report resolve_rooted_path(const rooted_path_request& request)
 {
     rooted_path_report report;

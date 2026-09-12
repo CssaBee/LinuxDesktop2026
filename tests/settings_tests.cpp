@@ -1243,8 +1243,9 @@ void migration_plan_is_dry_run_first()
     require(dry_run.ok, "dry-run execution should succeed for valid file action");
     require(dry_run.dry_run, "dry-run execution should report dry_run");
     require(dry_run.actions.size() == 1, "dry-run execution should report each action");
-    require(dry_run.actions[0].planned, "dry-run action should be planned");
-    require(!dry_run.actions[0].executed, "dry-run action should not execute");
+    require(dry_run.actions[0].state == mig::migration_action_state::skipped,
+        "dry-run action should report skipped state");
+    require(!dry_run.actions[0].executed(), "dry-run action should not execute");
     require(!std::filesystem::exists(target), "dry-run should not create target");
 }
 
@@ -1268,7 +1269,7 @@ void migration_execute_copies_file()
 
     require(report.ok, "migration execution should succeed");
     require(!report.dry_run, "migration execution should report non-dry-run");
-    require(report.actions[0].executed, "copy action should execute");
+    require(report.actions[0].executed(), "copy action should execute");
     require(read_file(target).find("copied") != std::string::npos, "target should contain copied file");
 }
 

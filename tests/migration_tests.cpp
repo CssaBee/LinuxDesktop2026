@@ -104,8 +104,8 @@ void plan_is_dry_run_first()
     require(dry_run.ok, "dry-run execution should succeed for valid file action");
     require(dry_run.dry_run, "dry-run execution should report dry_run");
     require(dry_run.actions.size() == 1, "dry-run execution should report each action");
-    require(dry_run.actions[0].planned, "dry-run action should be planned");
-    require(!dry_run.actions[0].executed, "dry-run action should not execute");
+    require(!dry_run.actions[0].planned(), "dry-run action should leave the initial planned state");
+    require(!dry_run.actions[0].executed(), "dry-run action should not execute");
     require(dry_run.actions[0].state == ld::migration_action_state::skipped,
         "dry-run action should report skipped state");
     require(!std::filesystem::exists(target), "dry-run should not create target");
@@ -130,7 +130,7 @@ void execute_copies_file()
 
     require(report.ok, "migration execution should succeed");
     require(!report.dry_run, "migration execution should report non-dry-run");
-    require(report.actions[0].executed, "copy action should execute");
+    require(report.actions[0].executed(), "copy action should execute");
     require(report.actions[0].state == ld::migration_action_state::executed,
         "copy action should report executed state");
     require(report.actions[0].source_existed_before, "copy action should report source existed before execution");
@@ -171,7 +171,7 @@ void execute_overwrite_records_before_and_after_state()
     require(report.actions[0].source_existed_before, "migration overwrite should record existing source before execution");
     require(report.actions[0].source_exists_after, "migration overwrite should leave copy source in place");
     require(report.actions[0].target_exists_after, "migration overwrite should keep target after execution");
-    require(report.actions[0].executed, "migration overwrite should mark action executed");
+    require(report.actions[0].executed(), "migration overwrite should mark action executed");
     require(read_file(target).find("new") != std::string::npos, "migration overwrite should replace target content");
 }
 
@@ -322,7 +322,7 @@ void file_rename_failure_does_not_copy_remove_fallback()
     require(report.actions.size() == 1, "failed file rename should report the action");
     require(report.actions[0].state == ld::migration_action_state::rollback_missing,
         "failed atomic file rename should not claim rollback is available");
-    require(!report.actions[0].rollback_attempted,
+    require(!report.actions[0].rollback_attempted(),
         "failed atomic file rename should not attempt copy-target rollback");
     require(has_diagnostic(report.actions[0].diagnostics, "migration-file-rename-failed"),
         "failed atomic file rename should report the narrow rename diagnostic");
@@ -534,6 +534,35 @@ void hard_link_topology_reports_not_preserved()
     require(has_diagnostic(plan.diagnostics, "migration-hard-link-topology-not-preserved"),
         "hard-linked regular files should warn that topology is not preserved");
     require(!has_error_diagnostic(plan.diagnostics), "hard-link topology warning should not block content migration");
+}
+
+void action_result_queries_are_derived_from_authoritative_state()
+{
+    ld::migration_action_result result;
+
+    result.state = ld::migration_action_state::planned;
+    require(result.planned(), "planned query should derive from planned state");
+    require(!result.executed(), "planned state should not report executed");
+    require(!result.skipped(), "planned state should not report skipped");
+
+    result.state = ld::migration_action_state::executed;
+    require(result.executed(), "executed query should derive from executed state");
+    require(!result.planned(), "executed state should not report planned");
+    require(!result.skipped(), "executed state should not report skipped");
+
+    result.state = ld::migration_action_state::blocked;
+    require(result.skipped(), "blocked state should be reported through the skipped convenience query");
+
+    result.rollback_state = ld::migration_rollback_state::succeeded;
+    require(result.rollback_available(), "successful rollback should report rollback availability");
+    require(result.rollback_attempted(), "successful rollback should report rollback attempt");
+    require(result.rollback_succeeded(), "successful rollback should report rollback success");
+
+    result.rollback_state = ld::migration_rollback_state::failed;
+    require(result.rollback_available(), "failed rollback should report rollback availability");
+    require(result.rollback_attempted(), "failed rollback should report rollback attempt");
+    require(!result.rollback_succeeded(), "failed rollback should not report rollback success");
+    require(ld::to_string(result.rollback_state) == "failed", "rollback state should stringify");
 }
 
 void rooted_paths_resolve_through_ld_paths()
@@ -1084,6 +1113,8 @@ int main()
         {"symlink_sources_are_unsupported", symlink_sources_are_unsupported},
         {"directory_symlinks_are_unsupported", directory_symlinks_are_unsupported},
         {"hard_link_topology_reports_not_preserved", hard_link_topology_reports_not_preserved},
+        {"action_result_queries_are_derived_from_authoritative_state",
+            action_result_queries_are_derived_from_authoritative_state},
         {"rooted_paths_resolve_through_ld_paths", rooted_paths_resolve_through_ld_paths},
         {"rooted_paths_reject_root_escape_tails", rooted_paths_reject_root_escape_tails},
         {"plan_copy_infers_source_kind", plan_copy_infers_source_kind},

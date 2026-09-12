@@ -20,8 +20,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             migration_action_result result;
             result.action = action;
             result.state = migration_action_state::blocked;
-            result.planned = true;
-            result.skipped = true;
             result.source_existed_before = internal::path_exists_noerror(action.source_path);
             result.target_existed_before = internal::path_exists_noerror(action.target_path);
             internal::append_action_gate_diagnostics(action, options, result.diagnostics);
@@ -37,7 +35,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
     for (const auto& action : plan.actions) {
         migration_action_result result;
         result.action = action;
-        result.planned = true;
         result.source_existed_before = internal::path_exists_noerror(action.source_path);
         result.target_existed_before = internal::path_exists_noerror(action.target_path);
         internal::append_action_gate_diagnostics(action, options, result.diagnostics);
@@ -45,7 +42,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
 
         if (internal::has_error(result.diagnostics)) {
             result.state = migration_action_state::blocked;
-            result.skipped = true;
             report.ok = false;
             internal::record_after_paths(result);
             report.actions.push_back(std::move(result));
@@ -54,7 +50,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
 
         if (options.dry_run) {
             result.state = migration_action_state::skipped;
-            result.skipped = true;
             result.diagnostics.push_back(internal::make_diagnostic(
                 severity::info,
                 "migration-dry-run",
@@ -66,7 +61,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
 
         if (!internal::is_file_action(action.kind)) {
             result.state = migration_action_state::unsupported;
-            result.skipped = true;
             report.ok = false;
             result.diagnostics.push_back(internal::make_diagnostic(
                 severity::error,
@@ -79,7 +73,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
 
         if (!options.allow_dangerous && internal::action_requires_dangerous_permission(action.kind)) {
             result.state = migration_action_state::blocked;
-            result.skipped = true;
             report.ok = false;
             result.diagnostics.push_back(internal::make_diagnostic(
                 severity::error,
@@ -95,7 +88,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             std::filesystem::create_directories(action.target_path.parent_path(), ec);
             if (ec) {
                 result.state = migration_action_state::blocked;
-                result.skipped = true;
                 report.ok = false;
                 result.diagnostics.push_back(internal::make_diagnostic(
                     severity::error,
@@ -126,7 +118,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             }
             if (ec) {
                 result.state = migration_action_state::blocked;
-                result.skipped = true;
                 report.ok = false;
                 result.diagnostics.push_back(internal::make_diagnostic(
                     severity::error,
@@ -158,25 +149,29 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
             }
             if (ec) {
                 report.ok = false;
-                result.rollback_available = internal::is_directory_action(action.kind) &&
+                const bool rollback_available = internal::is_directory_action(action.kind) &&
                     internal::path_exists_noerror(action.target_path) &&
                     !result.target_existed_before;
-                result.state = result.rollback_available
+                result.rollback_state = rollback_available
+                    ? migration_rollback_state::available
+                    : migration_rollback_state::unavailable;
+                result.state = rollback_available
                     ? migration_action_state::partially_executed
                     : migration_action_state::rollback_missing;
-                if (result.rollback_available) {
-                    result.rollback_attempted = true;
+                if (rollback_available) {
                     result.rollback_path = action.target_path;
                     std::error_code rollback_ec;
                     std::filesystem::remove_all(action.target_path, rollback_ec);
-                    result.rollback_succeeded = !rollback_ec;
-                    if (!result.rollback_succeeded) {
+                    result.rollback_state = rollback_ec
+                        ? migration_rollback_state::failed
+                        : migration_rollback_state::succeeded;
+                    if (result.rollback_state == migration_rollback_state::failed) {
                         result.state = migration_action_state::rollback_failed;
                     }
                     result.diagnostics.push_back(internal::make_diagnostic(
-                        result.rollback_succeeded ? severity::warning : severity::error,
-                        result.rollback_succeeded ? "migration-rollback-succeeded" : "migration-rollback-failed",
-                        result.rollback_succeeded ? "Removed copied target after move cleanup failed" : rollback_ec.message(),
+                        result.rollback_succeeded() ? severity::warning : severity::error,
+                        result.rollback_succeeded() ? "migration-rollback-succeeded" : "migration-rollback-failed",
+                        result.rollback_succeeded() ? "Removed copied target after move cleanup failed" : rollback_ec.message(),
                         action.target_path));
                 }
                 result.diagnostics.push_back(internal::make_diagnostic(
@@ -193,7 +188,6 @@ migration_execution_report execute_migration_plan(const migration_plan& plan, co
         }
 
         result.state = migration_action_state::executed;
-        result.executed = true;
         internal::record_after_paths(result);
         report.actions.push_back(std::move(result));
     }

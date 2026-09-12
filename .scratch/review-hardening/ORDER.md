@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `119` - Collapse Migration Action Result State Machine
 - `118` - Unify Or Rename Public App Identity Vocabulary
 - `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `114` - Reconsider Watch Callback Self-Destruction Contract
@@ -37,7 +36,6 @@ release:
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `118` - Unify Or Rename Public App Identity Vocabulary
-- `119` - Collapse Migration Action Result State Machine
 
 ## 0.2.0 Release Gate
 
@@ -54,6 +52,7 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `119` - Collapse Migration Action Result State Machine
 - `120` - Define Versioned Settings Lock Domain
 - `115` - Bound Settled Event Scheduler State
 - `116` - Move Recursive Inotify Discovery Off Ingest Path

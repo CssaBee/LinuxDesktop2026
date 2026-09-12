@@ -40,6 +40,13 @@ enum class migration_action_state {
     rollback_failed
 };
 
+enum class migration_rollback_state {
+    unavailable,
+    available,
+    succeeded,
+    failed
+};
+
 struct migration_action {
     // Filesystem actions are for app-owned settings state: regular files and
     // directories containing regular files/subdirectories. Symlinks, special
@@ -126,18 +133,46 @@ inline migration_plan plan_path_inference(
 struct migration_action_result {
     migration_action action;
     migration_action_state state = migration_action_state::planned;
-    bool planned = false;
-    bool executed = false;
-    bool skipped = false;
     bool source_existed_before = false;
     bool target_existed_before = false;
     bool source_exists_after = false;
     bool target_exists_after = false;
-    bool rollback_available = false;
-    bool rollback_attempted = false;
-    bool rollback_succeeded = false;
+    migration_rollback_state rollback_state = migration_rollback_state::unavailable;
     std::filesystem::path rollback_path;
     std::vector<diagnostic> diagnostics;
+
+    [[nodiscard]] bool planned() const noexcept
+    {
+        return state == migration_action_state::planned;
+    }
+
+    [[nodiscard]] bool executed() const noexcept
+    {
+        return state == migration_action_state::executed;
+    }
+
+    [[nodiscard]] bool skipped() const noexcept
+    {
+        return state == migration_action_state::skipped ||
+            state == migration_action_state::blocked ||
+            state == migration_action_state::unsupported;
+    }
+
+    [[nodiscard]] bool rollback_available() const noexcept
+    {
+        return rollback_state != migration_rollback_state::unavailable;
+    }
+
+    [[nodiscard]] bool rollback_attempted() const noexcept
+    {
+        return rollback_state == migration_rollback_state::succeeded ||
+            rollback_state == migration_rollback_state::failed;
+    }
+
+    [[nodiscard]] bool rollback_succeeded() const noexcept
+    {
+        return rollback_state == migration_rollback_state::succeeded;
+    }
 };
 
 struct rooted_path_request {
@@ -164,6 +199,7 @@ struct migration_execution_report {
 
 std::string_view to_string(migration_action_kind value);
 std::string_view to_string(migration_action_state value);
+std::string_view to_string(migration_rollback_state value);
 
 inline migration_plan plan_copy_file(
     std::filesystem::path source_path,
