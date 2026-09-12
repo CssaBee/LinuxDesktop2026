@@ -8,6 +8,11 @@
 
 namespace linuxdesktop {
 
+struct app_identity {
+    std::string organization;
+    std::string application;
+};
+
 enum class severity {
     info,
     warning,

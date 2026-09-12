@@ -35,10 +35,7 @@ inline constexpr std::string_view xdg_user_dir_unreadable = "paths.xdg_user_dir.
 inline constexpr std::string_view legacy_path_relative_ignored = "paths.legacy.relative_ignored";
 } // namespace diagnostic_code
 
-struct app_identity {
-    std::string organization;
-    std::string application;
-};
+using app_identity = ::linuxdesktop::app_identity;
 
 enum class path_family {
     config,

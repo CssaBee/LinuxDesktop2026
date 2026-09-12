@@ -73,7 +73,7 @@ Implement:
 - `ld_core` diagnostics reused from existing modules,
 - `ld_paths` CMake library target,
 - `LinuxDesktop2026::ld_paths` namespaced target,
-- app identity,
+- canonical `linuxdesktop::app_identity`,
 - resolver options,
 - standard root report for config, data, state, cache, temp, runtime, documents, desktop, downloads, music, pictures, videos, templates, and public share,
 - executable path, executable directory, install prefix, and resource root as location roles,
@@ -190,12 +190,18 @@ Windows compatibility rule: keep callers on `ld_paths` root families, source lab
 Sketch only:
 
 ```cpp
-namespace linuxdesktop::paths {
+namespace linuxdesktop {
 
 struct app_identity {
     std::string organization;
     std::string application;
 };
+
+}
+
+namespace linuxdesktop::paths {
+
+using app_identity = ::linuxdesktop::app_identity;
 
 enum class path_family {
     config,

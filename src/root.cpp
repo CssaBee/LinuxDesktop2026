@@ -581,10 +581,7 @@ report resolve_app_roots(const app_identity& identity, const options& options)
 {
     report report;
 
-    ld_paths::app_identity path_identity;
-    path_identity.organization = identity.organization;
-    path_identity.application = identity.application;
-    const auto path_report = ld_paths::resolve_app_paths(path_identity, path_options_from_options(options));
+    const auto path_report = ld_paths::resolve_app_paths(identity, path_options_from_options(options));
     report.diagnostics.insert(report.diagnostics.end(), path_report.diagnostics.begin(), path_report.diagnostics.end());
     report.roots.resources = selected_location_or_empty(path_report, ld_paths::location_role::resources);
 

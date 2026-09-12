@@ -139,6 +139,8 @@ Current settings/config prototype:
 
 - `ld_core` interface target.
 - `LinuxDesktop2026::ld_core` namespaced target.
+- Shared C++ application identity through `linuxdesktop::app_identity`, with
+  module-local aliases in `ld_paths`, `ld_root`, and `ld_settings`.
 - Shared C++ diagnostics through `linuxdesktop::severity` and
   `linuxdesktop::diagnostic`; module namespaces do not re-export those names.
 - `ld_settings` library target.

@@ -16,10 +16,7 @@ inline constexpr int version_major = 0;
 inline constexpr int version_minor = 2;
 inline constexpr int version_patch = 0;
 
-struct app_identity {
-    std::string organization;
-    std::string application;
-};
+using app_identity = ::linuxdesktop::app_identity;
 
 enum class portable_root_level {
     off,

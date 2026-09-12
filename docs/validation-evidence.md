@@ -67,6 +67,22 @@ Result: passed. `ld_migration_tests` includes
 `action_result_queries_are_derived_from_authoritative_state`, which exercises
 the query helpers against the authoritative action and rollback states.
 
+## Public App Identity Vocabulary
+
+Task 118 validation on 2026-09-12 with GCC 13.3.0:
+
+```text
+cmake -S . -B build
+cmake --build build --target ld_public_app_identity_tests
+./build/ld_public_app_identity_tests
+```
+
+`linuxdesktop::app_identity` is now the canonical public C++ application
+identity value. `ld_paths`, `ld_root`, and `ld_settings` expose module-qualified
+aliases for source ergonomics. The public compile test uses `std::is_same_v` to
+prevent those aliases, plus migration rooted-path identity, from diverging into
+parallel public concepts again.
+
 ## Failure Modes
 
 Status: deterministic write failure-mode tests are part of

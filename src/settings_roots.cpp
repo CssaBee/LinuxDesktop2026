@@ -259,10 +259,7 @@ root_report resolve_settings_roots(const app_identity& identity, const root_opti
 {
     root_report result;
 
-    ld_root::app_identity root_identity;
-    root_identity.organization = identity.organization;
-    root_identity.application = identity.application;
-    const auto root_result = ld_root::resolve_app_roots(root_identity, to_options(options));
+    const auto root_result = ld_root::resolve_app_roots(identity, to_options(options));
 
     result.roots = root_result.roots;
     result.portable_requested = root_result.portable_root_requested;

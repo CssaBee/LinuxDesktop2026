@@ -47,11 +47,12 @@ that seam.
 ## Choosing Root Construction Style
 
 Use `linuxdesktop::root::request_builder` when the call site describes ordinary
-application topology: app identity, resource roots, portable markers, explicit
-environment/home test seams, command-line or cloud-root overrides, named roots,
-and component roots. The builder is the recommended reader-facing style for
-Notepad++, qBittorrent, KiCad, Amiberry, Endless Sky, and Minifox because the
-fluent chain makes the product's root policy easier to scan.
+application topology: shared `linuxdesktop::app_identity`, resource roots,
+portable markers, explicit environment/home test seams, command-line or
+cloud-root overrides, named roots, and component roots. The builder is the
+recommended reader-facing style for Notepad++, qBittorrent, KiCad, Amiberry,
+Endless Sky, and Minifox because the fluent chain makes the product's root
+policy easier to scan.
 
 Use raw `linuxdesktop::root::options` when the product already has a dense
 platform or root model and a fluent chain would hide the meaningful local

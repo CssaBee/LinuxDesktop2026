@@ -26,6 +26,19 @@ target_link_libraries(ld_paths_tests PRIVATE LinuxDesktop2026::ld_paths)
 
 add_test(NAME ld_paths_tests COMMAND ld_paths_tests)
 
+add_executable(ld_public_app_identity_tests
+    tests/public_app_identity_tests.cpp
+)
+target_link_libraries(ld_public_app_identity_tests
+    PRIVATE
+        LinuxDesktop2026::ld_paths
+        LinuxDesktop2026::ld_root
+        LinuxDesktop2026::ld_settings
+        LinuxDesktop2026::ld_migration
+)
+
+add_test(NAME ld_public_app_identity_tests COMMAND ld_public_app_identity_tests)
+
 add_executable(ld_root_tests
     tests/root_tests.cpp
 )

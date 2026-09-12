@@ -28,6 +28,10 @@ C++ consumers can read:
 ```cpp
 linuxdesktop::severity
 linuxdesktop::diagnostic
+linuxdesktop::app_identity
+linuxdesktop::paths::app_identity    // alias of linuxdesktop::app_identity
+linuxdesktop::root::app_identity     // alias of linuxdesktop::app_identity
+linuxdesktop::settings::app_identity // alias of linuxdesktop::app_identity
 linuxdesktop::to_string(linuxdesktop::severity::warning)
 linuxdesktop::settings::version_major
 linuxdesktop::settings::version_minor
@@ -41,6 +45,12 @@ Module namespaces do not re-export the shared diagnostic C++ names. Consumers
 should use `linuxdesktop::severity`, `linuxdesktop::diagnostic`, and
 `linuxdesktop::to_string(linuxdesktop::severity)` directly, while module-specific
 enum stringification remains in each module namespace.
+
+App identity is different from diagnostics: `linuxdesktop::app_identity` is the
+canonical public value type for an application organization/application pair.
+`ld_paths`, `ld_root`, and `ld_settings` keep module-qualified
+`app_identity` aliases for pre-1.0 source ergonomics, but they are the same
+type and must not drift apart.
 
 Most public enum stringification is already declared in headers and defined in
 compiled module sources. The current inventory is:
