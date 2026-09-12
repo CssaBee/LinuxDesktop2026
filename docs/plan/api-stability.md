@@ -21,6 +21,17 @@ The project promises:
 - C ABI callers own no returned memory directly; they release reports through the matching free function.
 - Runtime version functions should match the version macros in the installed C header.
 
+Installed CMake packages encode the same pre-1.0 compatibility policy in
+`LinuxDesktop2026ConfigVersion.cmake`: while `PROJECT_VERSION_MAJOR == 0`,
+`find_package(LinuxDesktop2026 <version> CONFIG REQUIRED)` requires an exact
+project version. A later `0.x` package must not satisfy an older `0.x`
+requested version because minor releases may deliberately break C++ source
+compatibility. The installed config also exposes
+`LinuxDesktop2026_PACKAGE_VERSION_COMPATIBILITY` and
+`LinuxDesktop2026_PRE_1_0_EXACT_VERSION_REQUIRED` so consumers and tests can
+read the active policy. Once the project reaches `1.0`, package generation is
+set up to return to same-major compatibility.
+
 ## Version Surface
 
 C++ consumers can read:

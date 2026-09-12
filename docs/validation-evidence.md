@@ -83,6 +83,22 @@ aliases for source ergonomics. The public compile test uses `std::is_same_v` to
 prevent those aliases, plus migration rooted-path identity, from diverging into
 parallel public concepts again.
 
+## Pre-1.0 CMake Package Compatibility
+
+Task 117 validation on 2026-09-12 with GCC 13.3.0:
+
+```text
+cmake -S . -B build
+ctest --test-dir build --output-on-failure -R ld_settings_install_tree_consumer
+```
+
+The install-tree consumer configures once without a requested package version,
+once with the exact installed version, and once with an intentionally
+incompatible older pre-1.0 requested version. The incompatible configure is
+expected to fail, proving that an installed `0.x` package does not advertise
+same-major compatibility while the project still allows deliberate minor-version
+source breaks.
+
 ## Failure Modes
 
 Status: deterministic write failure-mode tests are part of

@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `121` - Add Nextcloud Watcher Overload FlavorTest Probe
 - `122` - Measure Large-Tree Watch Noise And Coalescing
@@ -51,6 +50,7 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `118` - Unify Or Rename Public App Identity Vocabulary
 - `119` - Collapse Migration Action Result State Machine
 - `120` - Define Versioned Settings Lock Domain

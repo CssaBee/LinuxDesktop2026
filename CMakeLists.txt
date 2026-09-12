@@ -14,6 +14,13 @@ option(LD2026_WATCH_ENABLE_TEST_HOOKS "Compile ld_watch test-only backend inject
 set(LD2026_CONFIG_HAS_LIBUV OFF)
 set(LD2026_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/LinuxDesktop2026"
     CACHE STRING "Install path for LinuxDesktop2026 CMake package files")
+if(PROJECT_VERSION_MAJOR EQUAL 0)
+    set(LD2026_PACKAGE_VERSION_COMPATIBILITY ExactVersion)
+    set(LD2026_PRE_1_0_EXACT_VERSION_REQUIRED TRUE)
+else()
+    set(LD2026_PACKAGE_VERSION_COMPATIBILITY SameMajorVersion)
+    set(LD2026_PRE_1_0_EXACT_VERSION_REQUIRED FALSE)
+endif()
 
 if(MSVC)
     add_compile_options(/W4 /permissive- /we4062)
@@ -52,7 +59,7 @@ configure_package_config_file(
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/LinuxDesktop2026ConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
+    COMPATIBILITY ${LD2026_PACKAGE_VERSION_COMPATIBILITY}
 )
 
 install(FILES

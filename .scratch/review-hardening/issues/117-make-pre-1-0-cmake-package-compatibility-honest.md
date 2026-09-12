@@ -5,16 +5,27 @@ project's pre-1.0 source-compatibility policy.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Replace `SameMajorVersion` compatibility for `0.x` packages with exact
+- [x] Replace `SameMajorVersion` compatibility for `0.x` packages with exact
   version matching or a custom compatibility interval.
-- [ ] Preserve a sensible post-1.0 path where same-major compatibility can be
+- [x] Preserve a sensible post-1.0 path where same-major compatibility can be
   reintroduced once the project promises it.
-- [ ] Add install-tree consumer tests that prove incompatible `0.x` versions
+- [x] Add install-tree consumer tests that prove incompatible `0.x` versions
   are rejected by `find_package()` version checks.
-- [ ] Update API stability and CMake consumption docs with the machine-readable
+- [x] Update API stability and CMake consumption docs with the machine-readable
   compatibility policy.
+
+## Implementation Notes
+
+- Top-level package generation now uses `ExactVersion` while
+  `PROJECT_VERSION_MAJOR == 0` and `SameMajorVersion` for `1.0+`.
+- `LinuxDesktop2026Config.cmake` exposes
+  `LinuxDesktop2026_PACKAGE_VERSION_COMPATIBILITY` and
+  `LinuxDesktop2026_PRE_1_0_EXACT_VERSION_REQUIRED`.
+- The install-tree consumer test configures the installed package with no
+  requested version, the exact installed version, and an intentionally
+  incompatible older pre-1.0 version that must be rejected.
 
 ## Review Anchor
 

@@ -18,7 +18,20 @@ if(NOT DEFINED LD2026_PACKAGE_DIR)
     message(FATAL_ERROR "LD2026_PACKAGE_DIR is required")
 endif()
 
-file(REMOVE_RECURSE "${LD2026_CONSUMER_BINARY_DIR}" "${LD2026_INSTALL_PREFIX}")
+if(NOT DEFINED LD2026_PACKAGE_VERSION)
+    message(FATAL_ERROR "LD2026_PACKAGE_VERSION is required")
+endif()
+
+if(NOT DEFINED LD2026_INCOMPATIBLE_PRE_1_0_VERSION)
+    message(FATAL_ERROR "LD2026_INCOMPATIBLE_PRE_1_0_VERSION is required")
+endif()
+
+file(REMOVE_RECURSE
+    "${LD2026_CONSUMER_BINARY_DIR}"
+    "${LD2026_CONSUMER_BINARY_DIR}-exact-version"
+    "${LD2026_CONSUMER_BINARY_DIR}-incompatible-version"
+    "${LD2026_INSTALL_PREFIX}"
+)
 
 execute_process(
     COMMAND "${CMAKE_COMMAND}" --install "${LD2026_BUILD_DIR}" --prefix "${LD2026_INSTALL_PREFIX}"
@@ -32,32 +45,55 @@ if(NOT EXISTS "${LD2026_PACKAGE_DIR}/LinuxDesktop2026Config.cmake")
     message(FATAL_ERROR "Installed package config was not found at ${LD2026_PACKAGE_DIR}")
 endif()
 
-set(ld2026_package_dir_arg "-DLinuxDesktop2026_DIR=${LD2026_PACKAGE_DIR}")
-set(ld2026_configure_args
-    "${CMAKE_COMMAND}"
-    -S "${LD2026_CONSUMER_SOURCE_DIR}"
-    -B "${LD2026_CONSUMER_BINARY_DIR}"
-    "${ld2026_package_dir_arg}"
-)
-if(DEFINED LD2026_CONSUMER_GENERATOR AND NOT LD2026_CONSUMER_GENERATOR STREQUAL "")
-    list(APPEND ld2026_configure_args -G "${LD2026_CONSUMER_GENERATOR}")
-endif()
-if(DEFINED LD2026_CONSUMER_C_COMPILER AND NOT LD2026_CONSUMER_C_COMPILER STREQUAL "")
-    list(APPEND ld2026_configure_args "-DCMAKE_C_COMPILER=${LD2026_CONSUMER_C_COMPILER}")
-endif()
-if(DEFINED LD2026_CONSUMER_CXX_COMPILER AND NOT LD2026_CONSUMER_CXX_COMPILER STREQUAL "")
-    list(APPEND ld2026_configure_args "-DCMAKE_CXX_COMPILER=${LD2026_CONSUMER_CXX_COMPILER}")
-endif()
-if(DEFINED LD2026_CONSUMER_EXE_LINKER_FLAGS AND NOT LD2026_CONSUMER_EXE_LINKER_FLAGS STREQUAL "")
-    list(APPEND ld2026_configure_args "-DCMAKE_EXE_LINKER_FLAGS=${LD2026_CONSUMER_EXE_LINKER_FLAGS}")
-endif()
+function(ld2026_configure_consumer output_result binary_dir)
+    set(ld2026_package_dir_arg "-DLinuxDesktop2026_DIR=${LD2026_PACKAGE_DIR}")
+    set(ld2026_configure_args
+        "${CMAKE_COMMAND}"
+        -S "${LD2026_CONSUMER_SOURCE_DIR}"
+        -B "${binary_dir}"
+        "${ld2026_package_dir_arg}"
+    )
+    if(DEFINED LD2026_FIND_PACKAGE_VERSION AND NOT LD2026_FIND_PACKAGE_VERSION STREQUAL "")
+        list(APPEND ld2026_configure_args "-DLD2026_FIND_PACKAGE_VERSION=${LD2026_FIND_PACKAGE_VERSION}")
+    endif()
+    if(DEFINED LD2026_CONSUMER_GENERATOR AND NOT LD2026_CONSUMER_GENERATOR STREQUAL "")
+        list(APPEND ld2026_configure_args -G "${LD2026_CONSUMER_GENERATOR}")
+    endif()
+    if(DEFINED LD2026_CONSUMER_C_COMPILER AND NOT LD2026_CONSUMER_C_COMPILER STREQUAL "")
+        list(APPEND ld2026_configure_args "-DCMAKE_C_COMPILER=${LD2026_CONSUMER_C_COMPILER}")
+    endif()
+    if(DEFINED LD2026_CONSUMER_CXX_COMPILER AND NOT LD2026_CONSUMER_CXX_COMPILER STREQUAL "")
+        list(APPEND ld2026_configure_args "-DCMAKE_CXX_COMPILER=${LD2026_CONSUMER_CXX_COMPILER}")
+    endif()
+    if(DEFINED LD2026_CONSUMER_EXE_LINKER_FLAGS AND NOT LD2026_CONSUMER_EXE_LINKER_FLAGS STREQUAL "")
+        list(APPEND ld2026_configure_args "-DCMAKE_EXE_LINKER_FLAGS=${LD2026_CONSUMER_EXE_LINKER_FLAGS}")
+    endif()
 
-execute_process(
-    COMMAND ${ld2026_configure_args}
-    RESULT_VARIABLE configure_result
-)
+    execute_process(
+        COMMAND ${ld2026_configure_args}
+        RESULT_VARIABLE configure_result
+    )
+    set(${output_result} "${configure_result}" PARENT_SCOPE)
+endfunction()
+
+ld2026_configure_consumer(configure_result "${LD2026_CONSUMER_BINARY_DIR}")
 if(NOT configure_result EQUAL 0)
     message(FATAL_ERROR "Configuring install-tree consumer failed with ${configure_result}")
+endif()
+
+set(LD2026_FIND_PACKAGE_VERSION "${LD2026_PACKAGE_VERSION}")
+ld2026_configure_consumer(version_configure_result "${LD2026_CONSUMER_BINARY_DIR}-exact-version")
+if(NOT version_configure_result EQUAL 0)
+    message(FATAL_ERROR "Configuring exact-version install-tree consumer failed with ${version_configure_result}")
+endif()
+
+if(LD2026_PACKAGE_VERSION VERSION_LESS 1.0.0)
+    set(LD2026_FIND_PACKAGE_VERSION "${LD2026_INCOMPATIBLE_PRE_1_0_VERSION}")
+    ld2026_configure_consumer(incompatible_configure_result "${LD2026_CONSUMER_BINARY_DIR}-incompatible-version")
+    if(incompatible_configure_result EQUAL 0)
+        message(FATAL_ERROR
+            "Pre-1.0 package accepted incompatible requested version ${LD2026_INCOMPATIBLE_PRE_1_0_VERSION}")
+    endif()
 endif()
 
 set(ld2026_build_args "${CMAKE_COMMAND}" --build "${LD2026_CONSUMER_BINARY_DIR}")

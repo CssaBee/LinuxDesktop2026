@@ -152,7 +152,12 @@ Current settings/config prototype:
 - Atomic namespace replacement before committing high-value config files, with opt-in durable writes where the platform supports them.
 - `ld_settings_tests` executable target with `ctest` coverage for root priority and write recovery.
 - Install/export package files for `find_package(LinuxDesktop2026 CONFIG REQUIRED)`.
-- Install-tree consumer smoke test that proves a separate CMake project can link `LinuxDesktop2026::ld_settings`.
+- Installed CMake package version checks require exact version matches while
+  LinuxDesktop2026 remains `0.x`; same-major compatibility is reserved for
+  `1.0+`.
+- Install-tree consumer smoke test that proves a separate CMake project can
+  link `LinuxDesktop2026::ld_settings` and that incompatible pre-1.0 package
+  versions are rejected.
 - Existing pre-RC C ABI surface for root/layer reports, config hydration, and atomic replacement writes, with explicit ownership and matching free functions.
 - Public version constants/functions for C++ and C ABI consumers.
 - `ld_desktop` C++ extraction started with Linux XDG Autostart files,
