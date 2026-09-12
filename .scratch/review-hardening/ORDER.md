@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `112` - Contain Migration Rooted Path Resolution
 - `113` - Serialize Watch Callback Delivery
 - `116` - Move Recursive Inotify Discovery Off Ingest Path
 - `115` - Bound Settled Event Scheduler State
@@ -39,7 +38,6 @@ classified each as a major finding. They must be fixed, deliberately rescoped,
 or retired with new source-level evidence before publishing the next patch
 release:
 
-- `112` - Contain Migration Rooted Path Resolution
 - `113` - Serialize Watch Callback Delivery
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `115` - Bound Settled Event Scheduler State
@@ -65,6 +63,7 @@ native-backend evidence makes them release-critical:
 ## Implemented
 
 - `111` - Fix Desktop Exec Field Quoting
+- `112` - Contain Migration Rooted Path Resolution
 - `110` - Remove LinuxDesktop2026 Types From Product-Facing FlavorTest Surfaces
 - `109` - Document Root Builder And Raw Options Selection Rule
 - `108` - Reduce Named-Root String Lookup Friction

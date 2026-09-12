@@ -144,6 +144,9 @@ struct rooted_path_request {
     linuxdesktop::paths::app_identity identity;
     linuxdesktop::paths::resolver_options resolver_options;
     linuxdesktop::paths::path_family family = linuxdesktop::paths::path_family::config;
+    // Resolved lexically under the selected family root. The helper normalizes
+    // harmless dot components and verifies containment, but it does not resolve
+    // symlinks or inspect filesystem objects.
     std::filesystem::path relative_path;
 };
 

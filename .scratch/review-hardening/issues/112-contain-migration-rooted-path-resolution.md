@@ -5,19 +5,27 @@ a caller-provided relative path outside the selected root.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Reject absolute relative-path tails.
-- [ ] Reject parent traversal that would escape the selected root.
-- [ ] Normalize harmless `.` components while preserving a documented symlink
+- [x] Reject absolute relative-path tails.
+- [x] Reject parent traversal that would escape the selected root.
+- [x] Normalize harmless `.` components while preserving a documented symlink
   policy.
-- [ ] Verify the final lexical result remains beneath the selected root before
+- [x] Verify the final lexical result remains beneath the selected root before
   returning success.
-- [ ] Reuse or extract the same containment helper used by hardened root/path
+- [x] Reuse or extract the same containment helper used by hardened root/path
   resolution instead of creating a subtly different implementation.
-- [ ] Add adversarial tests for `..`, mixed `.`/`..`, empty paths, absolute
+- [x] Add adversarial tests for `..`, mixed `.`/`..`, empty paths, absolute
   paths, platform separators, symlink-adjacent paths, and roots with similar
   prefixes.
+
+## Implementation Notes
+
+Implemented in `src/migration.cpp` by normalizing the selected root and joined
+tail lexically, then checking containment with the shared helper in
+`src/path_internal.hpp`. The helper does not resolve symlinks; rooted migration
+path resolution is a lexical containment API, and later filesystem execution
+continues to own object-model checks.
 
 ## Review Anchor
 

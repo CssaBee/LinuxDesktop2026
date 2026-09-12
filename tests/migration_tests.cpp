@@ -566,6 +566,80 @@ void rooted_paths_resolve_through_ld_paths()
         "rooted migration path should reject absolute tails");
 }
 
+void rooted_paths_reject_root_escape_tails()
+{
+    const auto root = test_root();
+
+    ld::rooted_path_request request;
+    request.identity.application = "migration-tests";
+    request.resolver_options.home_directory = root / "home";
+    request.resolver_options.use_process_environment = false;
+    request.family = linuxdesktop::paths::path_family::state;
+#if defined(_WIN32)
+    request.resolver_options.environment = {{"LOCALAPPDATA", (root / "state").string()}};
+    const auto selected_root = root / "state" / "migration-tests" / "state";
+#else
+    request.resolver_options.environment = {{"XDG_STATE_HOME", (root / "state").string()}};
+    const auto selected_root = root / "state" / "migration-tests";
+#endif
+
+    request.relative_path = std::filesystem::path{};
+    const auto empty = ld::resolve_rooted_path(request);
+    require(empty.path == selected_root, "empty rooted migration tail should resolve to the selected root");
+    require(!has_error_diagnostic(empty.diagnostics), "empty rooted migration tail should not report errors");
+
+    request.relative_path = std::filesystem::path{"."} / "snapshots" / "." / "registry.json";
+    const auto dotted = ld::resolve_rooted_path(request);
+    require(dotted.path == selected_root / "snapshots" / "registry.json",
+        "rooted migration path should normalize harmless dot components");
+    require(!has_error_diagnostic(dotted.diagnostics), "harmless dot components should not report errors");
+
+    request.relative_path = std::filesystem::path{"snapshots"} / ".." / "registry.json";
+    const auto contained_parent = ld::resolve_rooted_path(request);
+    require(contained_parent.path == selected_root / "registry.json",
+        "contained parent traversal should normalize inside the selected root");
+    require(!has_error_diagnostic(contained_parent.diagnostics),
+        "contained parent traversal should not report errors");
+
+    request.relative_path = "..";
+    const auto parent = ld::resolve_rooted_path(request);
+    require(parent.path.empty(), "escaping parent traversal should not return a path");
+    require(has_diagnostic(parent.diagnostics, "migration-rooted-path-escapes-root"),
+        "escaping parent traversal should report root containment failure");
+
+    request.relative_path = std::filesystem::path{"snapshots"} / "." / ".." / ".." / "outside.json";
+    const auto mixed = ld::resolve_rooted_path(request);
+    require(mixed.path.empty(), "mixed dot and parent traversal should not escape the selected root");
+    require(has_diagnostic(mixed.diagnostics, "migration-rooted-path-escapes-root"),
+        "mixed escaping traversal should report root containment failure");
+
+    request.relative_path = root / "absolute.json";
+    const auto absolute = ld::resolve_rooted_path(request);
+    require(absolute.path.empty(), "absolute rooted migration tail should not return a path");
+    require(has_diagnostic(absolute.diagnostics, "migration-rooted-path-relative-required"),
+        "absolute rooted migration tail should report relative-path requirement");
+
+    request.relative_path = "snapshots\\registry.json";
+    const auto platform_separator = ld::resolve_rooted_path(request);
+    require(!has_error_diagnostic(platform_separator.diagnostics),
+        "platform spelling accepted as a relative filename should remain contained");
+    require(platform_separator.path == (selected_root / request.relative_path).lexically_normal(),
+        "platform separator spelling should be resolved through the same lexical containment path");
+
+    request.relative_path = std::filesystem::path{"symlink-adjacent"} / ".." / "registry.json";
+    const auto symlink_adjacent = ld::resolve_rooted_path(request);
+    require(symlink_adjacent.path == selected_root / "registry.json",
+        "rooted path containment should be lexical and should not resolve symlink-adjacent names");
+    require(!has_error_diagnostic(symlink_adjacent.diagnostics),
+        "symlink-adjacent lexical containment should not inspect the filesystem");
+
+    request.relative_path = std::filesystem::path{".."} / "migration-tests-extra" / "registry.json";
+    const auto similar_prefix = ld::resolve_rooted_path(request);
+    require(similar_prefix.path.empty(), "similar root prefixes should not satisfy containment");
+    require(has_diagnostic(similar_prefix.diagnostics, "migration-rooted-path-escapes-root"),
+        "similar root prefixes should report root containment failure");
+}
+
 void plan_copy_infers_source_kind()
 {
     const auto root = test_root();
@@ -1011,6 +1085,7 @@ int main()
         {"directory_symlinks_are_unsupported", directory_symlinks_are_unsupported},
         {"hard_link_topology_reports_not_preserved", hard_link_topology_reports_not_preserved},
         {"rooted_paths_resolve_through_ld_paths", rooted_paths_resolve_through_ld_paths},
+        {"rooted_paths_reject_root_escape_tails", rooted_paths_reject_root_escape_tails},
         {"plan_copy_infers_source_kind", plan_copy_infers_source_kind},
         {"plan_copy_missing_source_reports_diagnostic", plan_copy_missing_source_reports_diagnostic},
         {"dangerous_actions_are_denied_by_default", dangerous_actions_are_denied_by_default},

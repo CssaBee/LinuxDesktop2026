@@ -1,5 +1,7 @@
 #include "migration_internal.hpp"
 
+#include "path_internal.hpp"
+
 namespace linuxdesktop::migration {
 
 std::string_view to_string(migration_action_kind value)
@@ -51,7 +53,10 @@ std::string_view to_string(migration_action_state value)
 rooted_path_report resolve_rooted_path(const rooted_path_request& request)
 {
     rooted_path_report report;
-    if (!request.relative_path.empty() && request.relative_path.is_absolute()) {
+    if (!request.relative_path.empty() &&
+        (request.relative_path.is_absolute() ||
+            request.relative_path.has_root_name() ||
+            request.relative_path.has_root_directory())) {
         report.diagnostics.push_back(internal::make_diagnostic(
             severity::error,
             "migration-rooted-path-relative-required",
@@ -71,7 +76,20 @@ rooted_path_report resolve_rooted_path(const rooted_path_request& request)
         return report;
     }
 
-    report.path = selected->second / request.relative_path;
+    const auto selected_root = selected->second.lexically_normal();
+    const auto resolved = request.relative_path.empty()
+        ? selected_root
+        : (selected_root / request.relative_path).lexically_normal();
+    if (!::linuxdesktop::detail::path_is_at_or_under(resolved, selected_root)) {
+        report.diagnostics.push_back(internal::make_diagnostic(
+            severity::error,
+            "migration-rooted-path-escapes-root",
+            "Rooted migration paths must remain beneath the selected root after lexical normalization",
+            request.relative_path));
+        return report;
+    }
+
+    report.path = resolved;
     return report;
 }
 

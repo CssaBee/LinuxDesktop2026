@@ -1,6 +1,7 @@
 #include "root_internal.hpp"
 
 #include "linuxdesktop/paths.hpp"
+#include "path_internal.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -163,8 +164,6 @@ bool path_contains_parent_reference(const std::filesystem::path& path)
     return false;
 }
 
-bool path_is_at_or_under(const std::filesystem::path& candidate, const std::filesystem::path& root);
-
 named_root resolve_named_root(const named_root_request& request, const app_roots& roots, bool create_directories)
 {
     named_root result;
@@ -208,7 +207,7 @@ named_root resolve_named_root(const named_root_request& request, const app_roots
     }
 
     result.path = relative.empty() ? base : base / relative;
-    if (!path_is_at_or_under(result.path, base)) {
+    if (!::linuxdesktop::detail::path_is_at_or_under(result.path, base)) {
         result.diagnostics.push_back(detail::make_diagnostic(
             severity::error,
             "named-root-relative-path-traversal",
@@ -238,31 +237,6 @@ void append_unique_name_diagnostics(std::vector<named_root>& roots)
     }
 }
 
-std::filesystem::path comparable_path(const std::filesystem::path& path)
-{
-    std::error_code ec;
-    auto absolute = path.is_absolute() ? path : std::filesystem::absolute(path, ec);
-    if (ec) {
-        absolute = path;
-    }
-    return absolute.lexically_normal();
-}
-
-bool path_is_at_or_under(const std::filesystem::path& candidate, const std::filesystem::path& root)
-{
-    const auto normalized_candidate = comparable_path(candidate);
-    const auto normalized_root = comparable_path(root);
-    auto candidate_part = normalized_candidate.begin();
-    auto root_part = normalized_root.begin();
-
-    for (; root_part != normalized_root.end(); ++root_part, ++candidate_part) {
-        if (candidate_part == normalized_candidate.end() || *candidate_part != *root_part) {
-            return false;
-        }
-    }
-    return true;
-}
-
 std::vector<std::filesystem::path> default_privileged_install_roots()
 {
 #if defined(_WIN32)
@@ -290,7 +264,7 @@ bool is_under_privileged_install_root(const std::filesystem::path& path, const p
         : request.privileged_install_roots;
 
     for (const auto& root : roots) {
-        if (!root.empty() && path_is_at_or_under(path, root)) {
+        if (!root.empty() && ::linuxdesktop::detail::path_is_at_or_under(path, root)) {
             return true;
         }
     }
