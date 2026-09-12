@@ -32,6 +32,17 @@ not promise protection against unrelated writers that ignore the protocol,
 network filesystems with broken lock semantics, or application-level merge
 conflicts.
 
+The guard's lock domain is filesystem-resolution scoped where the platform can
+provide it. Existing targets are canonicalized before deriving the sidecar lock
+path, so two lexical aliases such as a symlink and its resolved target
+participate in the same versioned commit guard. Missing targets use a
+weak-canonical path: existing parent components are resolved and the absent file
+name remains lexical, which lets aliases to an existing parent coordinate but
+does not claim a pre-creation file identity. If even weak resolution fails, the
+implementation falls back to the normalized absolute path and emits
+`settings-version-lock-domain-lexical-fallback`; that fallback can be weakened
+by aliases, broken symlinks, or filesystems without reliable path resolution.
+
 Do not add application merge callbacks, automatic reread/retry, XML/INI/JSON
 merge helpers, or silent overwrite behavior in this contract. Applications own
 payload semantics and must decide whether a stale commit means prompt, reload,
@@ -80,6 +91,9 @@ Implementation must add deterministic tests for at least:
 - `session.xml` validation-after-write with a stale expected token,
 - `shortcuts.xml` stale rejection before the HMAC source is refreshed,
 - missing-file token behavior,
+- Linux symlink alias behavior where a token captured through one lexical path
+  can commit through the resolved target and alias commits use the same sidecar
+  lock domain,
 - advisory-guard failure diagnostics where the platform can expose them
   deterministically.
 

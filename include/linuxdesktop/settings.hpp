@@ -274,6 +274,7 @@ private:
     friend write_report write_versioned(versioned_write_request request, validation_callback validate);
 
     std::filesystem::path target_;
+    std::filesystem::path lock_domain_;
     bool valid_ = false;
     bool existed_ = false;
     std::string content_;

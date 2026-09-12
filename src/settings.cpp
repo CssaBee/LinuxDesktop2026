@@ -37,12 +37,34 @@ std::string target_key(const std::filesystem::path& target)
     return normalized_target(target).generic_string();
 }
 
-std::shared_ptr<std::mutex> mutex_for_target(const std::filesystem::path& target)
+struct settings_lock_domain {
+    std::filesystem::path target;
+    bool filesystem_resolved = false;
+};
+
+settings_lock_domain lock_domain_for_target(const std::filesystem::path& target)
+{
+    std::error_code ec;
+    auto canonical = std::filesystem::canonical(target, ec);
+    if (!ec) {
+        return {canonical.lexically_normal(), true};
+    }
+
+    ec.clear();
+    auto weak = std::filesystem::weakly_canonical(target, ec);
+    if (!ec) {
+        return {weak.lexically_normal(), true};
+    }
+
+    return {normalized_target(target), false};
+}
+
+std::shared_ptr<std::mutex> mutex_for_target(const settings_lock_domain& domain)
 {
     static std::mutex registry_mutex;
     static std::map<std::string, std::weak_ptr<std::mutex>> registry;
 
-    const auto key = target_key(target);
+    const auto key = target_key(domain.target);
     std::lock_guard<std::mutex> lock(registry_mutex);
     if (auto existing = registry[key].lock()) {
         return existing;
@@ -113,11 +135,11 @@ bool target_matches_token(
 
 class target_commit_guard {
 public:
-    explicit target_commit_guard(const std::filesystem::path& target, std::vector<diagnostic>& diagnostics)
-        : process_mutex_(mutex_for_target(target))
+    explicit target_commit_guard(const settings_lock_domain& domain, std::vector<diagnostic>& diagnostics)
+        : process_mutex_(mutex_for_target(domain))
         , process_lock_(*process_mutex_)
     {
-        const auto lock_path = target.string() + ".ld2026.commit.lock";
+        const auto lock_path = domain.target.string() + ".ld2026.commit.lock";
 #if defined(_WIN32)
         handle_ = CreateFileW(
             std::filesystem::path(lock_path).wstring().c_str(),
@@ -147,7 +169,11 @@ public:
             return;
         }
 #else
-        handle_ = ::open(lock_path.c_str(), O_RDWR | O_CREAT, 0600);
+        int flags = O_RDWR | O_CREAT;
+#if defined(O_CLOEXEC)
+        flags |= O_CLOEXEC;
+#endif
+        handle_ = ::open(lock_path.c_str(), flags, 0600);
         if (handle_ == -1) {
             diagnostics.push_back(detail::make_diagnostic(
                 severity::error,
@@ -348,6 +374,7 @@ file_version_read_report read_file_version(const std::filesystem::path& target)
 
     report.ok = true;
     report.version.target_ = normalized;
+    report.version.lock_domain_ = lock_domain_for_target(target).target;
     report.version.valid_ = true;
     report.version.existed_ = true;
     report.version.content_ = report.content;
@@ -358,6 +385,7 @@ file_version_token missing_file_version(std::filesystem::path target)
 {
     file_version_token token;
     token.target_ = normalized_target(target);
+    token.lock_domain_ = lock_domain_for_target(token.target_).target;
     token.valid_ = true;
     token.existed_ = false;
     return token;
@@ -404,7 +432,7 @@ write_report write_versioned(versioned_write_request request, validation_callbac
     write_report report;
     report.durable_write = request.durable_write;
 
-    const auto target = normalized_target(request.target);
+    const auto lock_domain = lock_domain_for_target(request.target);
     if (!request.expected_version.valid_) {
         report.diagnostics.push_back(detail::make_diagnostic(
             severity::error,
@@ -413,7 +441,7 @@ write_report write_versioned(versioned_write_request request, validation_callbac
             request.target));
         return report;
     }
-    if (request.expected_version.target_ != target) {
+    if (request.expected_version.lock_domain_ != lock_domain.target) {
         report.diagnostics.push_back(detail::make_diagnostic(
             severity::error,
             "settings-version-target-mismatch",
@@ -421,13 +449,20 @@ write_report write_versioned(versioned_write_request request, validation_callbac
             request.target));
         return report;
     }
+    if (!lock_domain.filesystem_resolved) {
+        report.diagnostics.push_back(detail::make_diagnostic(
+            severity::warning,
+            "settings-version-lock-domain-lexical-fallback",
+            "Versioned settings commit guard could not resolve a stable filesystem lock domain and is scoped to the normalized path",
+            request.target));
+    }
 
     ::linuxdesktop::detail::create_directory_if_needed(request.target.parent_path(), report.diagnostics);
     if (::linuxdesktop::detail::has_error(report.diagnostics)) {
         return report;
     }
 
-    target_commit_guard guard(request.target, report.diagnostics);
+    target_commit_guard guard(lock_domain, report.diagnostics);
     if (!guard.locked()) {
         return report;
     }

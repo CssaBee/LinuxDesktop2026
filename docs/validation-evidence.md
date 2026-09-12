@@ -176,3 +176,17 @@ Decision: native Linux data still does not show `std::filesystem::path`
 construction dominating watcher cost. Keep the current path value API; reopen
 only if Windows native-backend data or maintained-consumer measurement shows
 path construction as the bottleneck.
+
+## Versioned Settings Lock-Domain Evidence
+
+Task 120 validation on 2026-09-12 with GCC 13.3.0:
+
+```text
+cmake --build build --target ld_settings_tests
+./build/ld_settings_tests
+```
+
+The Linux settings suite now includes symlink alias probes for versioned
+settings commits. A token captured through a symlink alias can commit through
+the resolved target, and a stale alias writer uses the resolved target sidecar
+instead of creating an independent alias lock file.

@@ -960,6 +960,83 @@ void versioned_missing_file_token_commits_once()
         "stale missing-file retry should not replace the created file");
 }
 
+#if !defined(_WIN32)
+void versioned_write_accepts_symlink_alias_for_same_existing_target()
+{
+    const auto root = test_root();
+    const auto actual_dir = root / "actual";
+    const auto target = actual_dir / "config.xml";
+    const auto alias = root / "config-alias.xml";
+    std::filesystem::create_directories(actual_dir);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+    std::filesystem::create_symlink(target, alias);
+
+    const auto alias_view = ld::read_file_version(alias);
+    require(alias_view.ok, "alias read should capture a version token");
+
+    const auto report = ld::write_versioned({
+        alias_view.version,
+        target,
+        "<Config saved=\"new\" />\n",
+        true,
+        true,
+        false,
+    });
+
+    require(report.ok, "version token captured through a symlink alias should commit through the resolved target");
+    require(read_file(target).find("new") != std::string::npos, "resolved target should receive alias-token commit");
+    require(std::filesystem::is_symlink(alias), "committing through the resolved target should not replace the alias");
+}
+
+void versioned_write_uses_resolved_sidecar_for_symlink_alias()
+{
+    const auto root = test_root();
+    const auto actual_dir = root / "actual";
+    const auto target = actual_dir / "config.xml";
+    const auto alias = root / "config-alias.xml";
+    std::filesystem::create_directories(actual_dir);
+    {
+        std::ofstream existing(target);
+        existing << "<Config saved=\"old\" />\n";
+    }
+    std::filesystem::create_symlink(target, alias);
+
+    const auto target_view = ld::read_file_version(target);
+    const auto alias_view = ld::read_file_version(alias);
+    require(target_view.ok, "target read should capture a version token");
+    require(alias_view.ok, "alias read should capture a version token");
+
+    const auto first = ld::write_versioned({
+        target_view.version,
+        target,
+        "<Config saved=\"new\" />\n",
+        true,
+        true,
+        false,
+    });
+    const auto stale_alias = ld::write_versioned({
+        alias_view.version,
+        alias,
+        "<Config saved=\"stale\" />\n",
+        true,
+        true,
+        false,
+    });
+
+    const auto resolved_lock = std::filesystem::path(target.string() + ".ld2026.commit.lock");
+    const auto alias_lock = std::filesystem::path(alias.string() + ".ld2026.commit.lock");
+    require(first.ok, "first writer should commit through the resolved target");
+    require(!stale_alias.ok, "stale alias writer should reject after the resolved target changes");
+    require(has_diagnostic(stale_alias.diagnostics, "settings-version-stale"),
+        "stale alias writer should report the stale version diagnostic");
+    require(std::filesystem::exists(resolved_lock), "resolved target sidecar lock should be used");
+    require(!std::filesystem::exists(alias_lock), "symlink alias should not receive an independent lock sidecar");
+}
+#endif
+
 void versioned_session_write_rejects_stale_before_validation()
 {
     const auto root = test_root();
@@ -1893,6 +1970,10 @@ int main()
         {"common_config_write_does_not_merge_stale_interprocess_payloads", common_config_write_does_not_merge_stale_interprocess_payloads},
         {"versioned_write_rejects_second_participating_writer", versioned_write_rejects_second_participating_writer},
         {"versioned_missing_file_token_commits_once", versioned_missing_file_token_commits_once},
+#if !defined(_WIN32)
+        {"versioned_write_accepts_symlink_alias_for_same_existing_target", versioned_write_accepts_symlink_alias_for_same_existing_target},
+        {"versioned_write_uses_resolved_sidecar_for_symlink_alias", versioned_write_uses_resolved_sidecar_for_symlink_alias},
+#endif
         {"versioned_session_write_rejects_stale_before_validation", versioned_session_write_rejects_stale_before_validation},
         {"versioned_shortcuts_write_rejects_before_hmac_source_refresh", versioned_shortcuts_write_rejects_before_hmac_source_refresh},
         {"common_config_write_validation_keeps_original_target", common_config_write_validation_keeps_original_target},
