@@ -191,6 +191,12 @@ public:
         return capabilities_;
     }
 
+    bool stopped() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return stopped_;
+    }
+
     void push(ld::watch_event event)
     {
         {
@@ -460,6 +466,10 @@ void callback_last_owner_release_is_safe()
         require(sync->cv.wait_for(lock, std::chrono::seconds(2), [&] { return sync->callback_survived_release; }),
             "callback should survive releasing the last watcher facade owner");
         require(!watcher.has_value(), "callback should release the watcher facade");
+        lock.unlock();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds{5});
+        require(backend->stopped(), "last facade release from callback should stop backend resources");
     }
 }
 

@@ -151,9 +151,11 @@ using event_callback = std::function<void(const watch_event&)>;
 // Callbacks run serially on one watcher-owned delivery thread. They are not
 // promised on a UI thread, but one watcher will not execute multiple callbacks
 // concurrently. Callbacks may call stop(), remove_watch(), set_callback(), or
-// destroy the watcher facade from inside the callback. Destroying the facade
-// stops the watcher and waits for worker threads other than the callback's
-// current delivery thread.
+// release/destroy the final watcher facade from inside the callback. Final
+// facade destruction is part of the supported lifecycle contract, but callers
+// should treat it only as a shutdown path: the watcher stops, releases backend
+// resources, and waits for worker threads other than the callback's current
+// delivery thread before returning.
 // Callback exceptions are caught, mark the stream degraded, and fall back to
 // queued delivery with a diagnostic error event.
 

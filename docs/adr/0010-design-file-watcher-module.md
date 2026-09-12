@@ -201,7 +201,7 @@ The first `watcher` object owns backend resources and an internal event queue.
 - `set_callback` installs process-local callback delivery; passing an empty callback returns future events to `poll`/`wait` delivery.
 - Callbacks are invoked from the watcher delivery thread or caller-pumped backend thread, never promised on a UI thread.
 - Callback and pull delivery are mode-switched: events delivered to a callback are not also returned from `poll`/`wait`.
-- Callbacks may call `stop`, `remove_watch`, `set_callback`, or destroy the watcher facade from inside the callback. Destroying the facade stops the watcher and waits for worker threads other than the callback's current delivery thread.
+- Callbacks may call `stop`, `remove_watch`, `set_callback`, or destroy the watcher facade from inside the callback. Destroying the final facade is supported only as a shutdown path: it stops the watcher, releases backend resources, and waits for worker threads other than the callback's current delivery thread.
 - Callback exceptions are caught, degrade the stream, and fall back to queued delivery with a diagnostic error event rather than escaping the delivery thread.
 - Pull delivery is bounded by event depth. If pull-mode delivery falls behind, the watcher discards queued events, emits a degraded overflow event with rescan guidance, and resumes once the queue is drained. Settled-file readiness is coalesced by distinct pending path so repeated events for one file do not allocate unbounded stale work.
 
@@ -501,6 +501,20 @@ Before `ld_watch` can move from prototype to ship candidate:
 - Add user-space queue limits and overflow/rescan semantics.
 - Keep callback delivery process-local and honest about thread ownership; if a later toolkit adapter becomes the preferred integration point, let it live above `ld_watch` instead of weakening the public contract.
 - Keep libuv and efsw as serious fallback/wrap candidates if native backend maintenance cost starts dominating feature work. The decision should be reopened from CI, stress-test, or maintained-consumer evidence, not from general fear that file watching is hard.
+
+## Callback Self-Destruction Review
+
+Task 114 reconsidered whether `ld_watch` should continue to support releasing
+the final watcher facade from inside its own callback. The project keeps that
+contract for the prototype because it lets application-owned callback adapters
+tear down naturally during migration code, but narrows the wording to a
+shutdown-only promise rather than a general ownership pattern.
+
+The invariant is explicit in `src/watch.cpp`: worker entry points retain a
+strong implementation owner, `stop()` detaches only the current worker, and it
+joins every other joinable worker. Future worker, backend-resource, logging,
+metrics, or executor changes must preserve that invariant before touching
+watcher-owned state after stop.
 
 ## Related Docs
 
