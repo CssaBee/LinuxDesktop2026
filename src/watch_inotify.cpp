@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <condition_variable>
 #include <cstring>
 #include <deque>
 #include <fstream>
@@ -9,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <system_error>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -24,6 +26,13 @@ namespace {
 diagnostic make_diagnostic(severity level, std::string code, std::string message, std::filesystem::path path = {})
 {
     return diagnostic{level, std::move(code), std::move(message), std::move(path)};
+}
+
+std::string discovery_overflow_message(std::size_t dropped_count)
+{
+    return "Recursive inotify discovery queue overflowed; dropped " + std::to_string(dropped_count) +
+        (dropped_count == 1 ? " subtree" : " subtrees") +
+        "; rescan watched roots before trusting further events";
 }
 
 path_type classify_existing_path(const std::filesystem::path& path)
@@ -86,6 +95,11 @@ public:
     inotify_backend()
         : fd_(inotify_init1(IN_NONBLOCK | IN_CLOEXEC))
     {
+        if (fd_ >= 0) {
+            discovery_worker_ = std::thread([this] {
+                run_discovery();
+            });
+        }
     }
 
     ~inotify_backend() override
@@ -205,24 +219,38 @@ public:
                 return event.source.value == id.value;
             }),
             ready_events_.end());
+        discovery_queue_.erase(
+            std::remove_if(discovery_queue_.begin(), discovery_queue_.end(), [id](const discovery_request& request) {
+                return request.parent.id.value == id.value;
+            }),
+            discovery_queue_.end());
         return true;
     }
 
     void stop() override
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (stopped_) {
-            return;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stopped_) {
+                return;
+            }
+            stopped_ = true;
+            if (fd_ >= 0) {
+                close(fd_);
+                fd_ = -1;
+            }
+            watch_by_wd_.clear();
+            watches_by_id_.clear();
+            pending_moves_.clear();
+            discovery_queue_.clear();
+            discovery_queue_overflowed_ = false;
+            discovery_queue_overflow_drop_count_ = 0;
+            ready_events_.clear();
         }
-        stopped_ = true;
-        if (fd_ >= 0) {
-            close(fd_);
-            fd_ = -1;
+        discovery_cv_.notify_all();
+        if (discovery_worker_.joinable()) {
+            discovery_worker_.join();
         }
-        watch_by_wd_.clear();
-        watches_by_id_.clear();
-        pending_moves_.clear();
-        ready_events_.clear();
     }
 
     std::optional<watch_event> wait_event() override
@@ -232,9 +260,7 @@ public:
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 if (!ready_events_.empty()) {
-                    auto event = std::move(ready_events_.front());
-                    ready_events_.pop_front();
-                    return event;
+                    return pop_ready_event_locked();
                 }
                 if (stopped_) {
                     return std::nullopt;
@@ -317,6 +343,11 @@ private:
         bool watch_files = true;
         bool watch_directories = true;
         bool recursive_emulated = false;
+    };
+
+    struct discovery_request {
+        watch_record parent;
+        std::filesystem::path root;
     };
 
     capability_report capabilities_locked() const
@@ -550,10 +581,52 @@ private:
 
         if (record.recursive_emulated && is_directory &&
             (kind == event_kind::created || kind == event_kind::renamed_new)) {
-            add_discovered_tree(record, absolute);
+            enqueue_discovered_tree(record, absolute);
         }
 
         return event;
+    }
+
+    void enqueue_discovered_tree(const watch_record& parent, std::filesystem::path root)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (stopped_) {
+            return;
+        }
+        if (discovery_queue_overflowed_) {
+            ++discovery_queue_overflow_drop_count_;
+            refresh_discovery_overflow_diagnostic_locked();
+            return;
+        }
+        if (discovery_queue_.size() >= max_discovery_queue_depth) {
+            discovery_queue_.pop_front();
+            discovery_queue_overflow_drop_count_ = 1;
+            ready_events_.push_front(discovery_overflow_event_locked(parent, discovery_queue_overflow_drop_count_));
+            discovery_queue_overflowed_ = true;
+            discovery_cv_.notify_all();
+            return;
+        }
+        discovery_queue_.push_back(discovery_request{parent, std::move(root)});
+        discovery_cv_.notify_all();
+    }
+
+    void run_discovery()
+    {
+        for (;;) {
+            discovery_request request;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                discovery_cv_.wait(lock, [this] {
+                    return stopped_ || !discovery_queue_.empty();
+                });
+                if (stopped_) {
+                    return;
+                }
+                request = std::move(discovery_queue_.front());
+                discovery_queue_.pop_front();
+            }
+            add_discovered_tree(request.parent, request.root);
+        }
     }
 
     void add_discovered_tree(const watch_record& parent, const std::filesystem::path& root)
@@ -570,20 +643,19 @@ private:
         options.overflow = parent.overflow;
 
         std::error_code exists_ec;
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (stopped_ || !std::filesystem::is_directory(root, exists_ec)) {
+        if (!std::filesystem::is_directory(root, exists_ec)) {
             return;
         }
         std::error_code symlink_ec;
         if (std::filesystem::is_symlink(std::filesystem::symlink_status(root, symlink_ec))) {
-            ready_events_.push_back(diagnostic_event(parent, make_diagnostic(
+            push_ready_event(diagnostic_event(parent, make_diagnostic(
                 severity::warning,
                 std::string(diagnostic_code::recursive_symlink_skipped),
                 "Recursive emulation does not follow symlinked directories",
                 root)));
             return;
         }
-        add_one_locked(parent.id, root, parent.watched_absolute, std::nullopt, path_type::directory, options, report);
+        add_discovered_watch(parent, root, options, report);
 
         std::error_code ec;
         for (std::filesystem::recursive_directory_iterator it(root, ec), end; !ec && it != end; it.increment(ec)) {
@@ -593,7 +665,7 @@ private:
                 if (it->is_directory(entry_ec)) {
                     it.disable_recursion_pending();
                 }
-                ready_events_.push_back(diagnostic_event(parent, make_diagnostic(
+                push_ready_event(diagnostic_event(parent, make_diagnostic(
                     severity::warning,
                     std::string(diagnostic_code::recursive_symlink_skipped),
                     "Recursive emulation does not follow symlinked directories",
@@ -604,16 +676,44 @@ private:
             const bool is_directory = it->is_directory(entry_ec);
             const bool is_regular_file = !is_directory && it->is_regular_file(entry_ec);
             if (is_directory) {
-                add_one_locked(parent.id, absolute, parent.watched_absolute, std::nullopt, path_type::directory, options, report);
+                add_discovered_watch(parent, absolute, options, report);
             }
             if (parent.watch_directories && is_directory) {
-                ready_events_.push_back(synthetic_event(parent, event_kind::created, absolute, path_type::directory));
+                push_ready_event(synthetic_event(parent, event_kind::created, absolute, path_type::directory));
             } else if (parent.watch_files && is_regular_file) {
-                ready_events_.push_back(synthetic_event(parent, event_kind::created, absolute, path_type::file));
+                push_ready_event(synthetic_event(parent, event_kind::created, absolute, path_type::file));
             }
         }
+        if (ec) {
+            report.diagnostics.push_back(make_diagnostic(
+                severity::warning,
+                std::string(diagnostic_code::backend_error),
+                ec.message(),
+                root));
+        }
         for (auto& diagnostic : report.diagnostics) {
-            ready_events_.push_back(diagnostic_event(parent, std::move(diagnostic)));
+            push_ready_event(diagnostic_event(parent, std::move(diagnostic)));
+        }
+    }
+
+    void add_discovered_watch(
+        const watch_record& parent,
+        const std::filesystem::path& root,
+        const watch_options& options,
+        start_report& report)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (stopped_ || watches_by_id_.find(parent.id.value) == watches_by_id_.end()) {
+            return;
+        }
+        add_one_locked(parent.id, root, parent.watched_absolute, std::nullopt, path_type::directory, options, report);
+    }
+
+    void push_ready_event(watch_event event)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!stopped_ && watches_by_id_.find(event.source.value) != watches_by_id_.end()) {
+            ready_events_.push_back(std::move(event));
         }
     }
 
@@ -687,6 +787,55 @@ private:
         return event;
     }
 
+    watch_event pop_ready_event_locked()
+    {
+        auto event = std::move(ready_events_.front());
+        ready_events_.pop_front();
+        if (event.kind == event_kind::overflow) {
+            for (const auto& diagnostic : event.diagnostics) {
+                if (diagnostic.code == diagnostic_code::queue_overflow) {
+                    discovery_queue_overflowed_ = false;
+                    discovery_queue_overflow_drop_count_ = 0;
+                    break;
+                }
+            }
+        }
+        return event;
+    }
+
+    watch_event discovery_overflow_event_locked(const watch_record& record, std::size_t dropped_count) const
+    {
+        auto event = diagnostic_event(record, make_diagnostic(
+            severity::error,
+            std::string(diagnostic_code::queue_overflow),
+            discovery_overflow_message(dropped_count),
+            record.watched_absolute));
+        event.kind = event_kind::overflow;
+        event.state = stream_state::degraded;
+        event.rescan_recommended = true;
+        event.diagnostics.push_back(make_diagnostic(
+            severity::warning,
+            std::string(diagnostic_code::rescan_recommended),
+            "Rescan watched roots before trusting further events",
+            record.watched_absolute));
+        return event;
+    }
+
+    void refresh_discovery_overflow_diagnostic_locked()
+    {
+        for (auto& event : ready_events_) {
+            if (event.kind != event_kind::overflow) {
+                continue;
+            }
+            for (auto& diagnostic : event.diagnostics) {
+                if (diagnostic.code == diagnostic_code::queue_overflow) {
+                    diagnostic.message = discovery_overflow_message(discovery_queue_overflow_drop_count_);
+                    return;
+                }
+            }
+        }
+    }
+
     watch_event error_event(std::string code, std::string message)
     {
         watch_event event;
@@ -698,12 +847,18 @@ private:
     }
 
     mutable std::mutex mutex_;
+    std::condition_variable discovery_cv_;
     int fd_ = -1;
     bool stopped_ = false;
+    static constexpr std::size_t max_discovery_queue_depth = 512;
+    std::thread discovery_worker_;
     std::map<int, std::vector<watch_record>> watch_by_wd_;
     std::multimap<std::uint64_t, watch_record> watches_by_id_;
     std::map<std::pair<std::uint64_t, std::uint32_t>, watch_path> pending_moves_;
+    std::deque<discovery_request> discovery_queue_;
     std::deque<watch_event> ready_events_;
+    bool discovery_queue_overflowed_ = false;
+    std::size_t discovery_queue_overflow_drop_count_ = 0;
 };
 
 #else

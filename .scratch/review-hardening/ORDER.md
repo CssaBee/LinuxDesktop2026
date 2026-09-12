@@ -6,7 +6,6 @@ list below.
 
 ## Current Order
 
-- `116` - Move Recursive Inotify Discovery Off Ingest Path
 - `115` - Bound Settled Event Scheduler State
 - `120` - Define Versioned Settings Lock Domain
 - `119` - Collapse Migration Action Result State Machine
@@ -39,7 +38,6 @@ release:
 
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `115` - Bound Settled Event Scheduler State
-- `116` - Move Recursive Inotify Discovery Off Ingest Path
 - `117` - Make Pre-1.0 CMake Package Compatibility Honest
 - `118` - Unify Or Rename Public App Identity Vocabulary
 - `119` - Collapse Migration Action Result State Machine
@@ -60,6 +58,7 @@ native-backend evidence makes them release-critical:
 
 ## Implemented
 
+- `116` - Move Recursive Inotify Discovery Off Ingest Path
 - `113` - Serialize Watch Callback Delivery
 - `111` - Fix Desktop Exec Field Quoting
 - `112` - Contain Migration Rooted Path Resolution

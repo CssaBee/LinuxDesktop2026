@@ -92,8 +92,16 @@ public:
 
     ld::watch_event wait_for_path(ld::event_kind kind, const std::filesystem::path& absolute)
     {
+        return wait_for_path_for(kind, absolute, std::chrono::seconds(3));
+    }
+
+    ld::watch_event wait_for_path_for(
+        ld::event_kind kind,
+        const std::filesystem::path& absolute,
+        std::chrono::milliseconds timeout)
+    {
         std::unique_lock<std::mutex> lock(mutex_);
-        const bool found = cv_.wait_for(lock, std::chrono::seconds(3), [&] {
+        const bool found = cv_.wait_for(lock, timeout, [&] {
             for (const auto& event : events_) {
                 if (event.kind == kind && event.path.absolute == absolute) {
                     return true;
@@ -375,6 +383,63 @@ void native_recursive_emulation_handles_directory_rename_with_existing_child()
         "renamed directory expansion should mark synthetic child discovery");
 }
 
+void native_recursive_large_move_in_keeps_root_activity_flowing()
+{
+    const auto root = test_root();
+    const auto staging = root.parent_path() / "linuxdesktop2026-watch-inotify-staging";
+    std::error_code cleanup_ec;
+    std::filesystem::remove_all(staging, cleanup_ec);
+    std::filesystem::create_directories(staging);
+
+    const auto source = staging / "large-source";
+    constexpr int directory_count = 96;
+    constexpr int files_per_directory = 3;
+    for (int directory_index = 0; directory_index < directory_count; ++directory_index) {
+        const auto directory = source / ("dir-" + std::to_string(directory_index));
+        std::filesystem::create_directories(directory);
+        for (int file_index = 0; file_index < files_per_directory; ++file_index) {
+            writes_file(directory / ("file-" + std::to_string(file_index) + ".txt"), "inside");
+        }
+    }
+
+    event_collector collector;
+    ld::watcher watcher;
+    watcher.set_callback([&](const ld::watch_event& event) {
+        collector.push(event);
+    });
+
+    ld::watch_options options;
+    options.path = root;
+    options.recursive = ld::recursive_policy::emulate;
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "native recursive emulation should start for large move-in stress");
+
+    const auto moved = root / "large-moved";
+    std::filesystem::rename(source, moved);
+
+    std::vector<std::filesystem::path> concurrent_files;
+    constexpr int concurrent_count = 24;
+    for (int index = 0; index < concurrent_count; ++index) {
+        const auto path = root / ("concurrent-" + std::to_string(index) + ".txt");
+        writes_file(path, "root activity");
+        concurrent_files.push_back(path);
+    }
+
+    for (const auto& path : concurrent_files) {
+        const auto event = collector.wait_for_path_for(ld::event_kind::created, path, std::chrono::seconds(2));
+        require(event.path.absolute == path, "root activity should continue while recursive discovery reconciles");
+        require(!has_diagnostic(event.diagnostics, "watch.queue.overflow"),
+            "root activity should not require discovery overflow recovery");
+    }
+
+    const auto nested = moved / "dir-95" / "file-2.txt";
+    const auto discovered = collector.wait_for_path(ld::event_kind::created, nested);
+    require(discovered.path.root_relative == std::filesystem::path("large-moved/dir-95/file-2.txt"),
+        "large move-in discovery should preserve root-relative paths");
+    require(has_diagnostic(discovered.diagnostics, "watch.recursive.discovered"),
+        "large move-in discovery should mark synthetic discovered paths");
+}
+
 void native_remove_and_rename_churn_preserves_watch()
 {
     const auto root = test_root();
@@ -532,6 +597,7 @@ int main()
         native_recursive_emulation_expands_new_directories();
         native_recursive_emulation_reports_deep_tree_created_before_expansion();
         native_recursive_emulation_handles_directory_rename_with_existing_child();
+        native_recursive_large_move_in_keeps_root_activity_flowing();
         native_recursive_emulation_skips_symlinked_directories();
         native_recursive_emulation_skips_duplicate_existing_directories();
         native_remove_and_rename_churn_preserves_watch();
