@@ -4,7 +4,7 @@
 coalescing and overload diagnostics that product adapters can translate
 without logging one discarded native event per source notification.
 
-**Blocked by:** `122` - Measure Large-Tree Watch Noise And Coalescing.
+**Blocked by:** None; unblocked by implemented ticket `122`.
 
 **Status:** proposed
 

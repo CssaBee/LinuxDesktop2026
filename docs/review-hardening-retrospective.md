@@ -58,6 +58,7 @@ about:
 | `88` Windows registration posture | Public-claim drift: does Windows capability reporting distinguish artifacts from live system effects? | CI plus docs ledger |
 | `89` versioned settings contract | Failure mode: what write contract handles stale user-edited state? | Maintained proof plus source review |
 | `90` versioned settings implementation | Failure mode: does the accepted contract reject stale and mismatched writes? | Maintained proof plus unit test |
+| `122` large-tree watch noise | Workload shape: do raw queue, settled pending work, and product validation counts stay distinguishable under noisy large-tree pressure? | Performance probe plus docs ledger |
 
 ## Pre-Ticket Checklist
 

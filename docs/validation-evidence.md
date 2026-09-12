@@ -210,6 +210,60 @@ watch.performance.inotify.settled.p50_latency_ms=3
 watch.performance.inotify.settled.p95_latency_ms=3
 ```
 
+Large-tree watcher-noise result on 2026-09-12 with GCC 13.3.0:
+
+```text
+watch.performance.simulated.large_tree.modeled_paths=1024
+watch.performance.simulated.large_tree.opt_in_scale=false
+watch.performance.simulated.large_tree.raw.native_events_received=688
+watch.performance.simulated.large_tree.raw.events_delivered=688
+watch.performance.simulated.large_tree.raw.candidate_paths_coalesced=561
+watch.performance.simulated.large_tree.raw.validation_calls=561
+watch.performance.simulated.large_tree.raw.overflow_events=0
+watch.performance.simulated.large_tree.raw.dropped_events_reported=0
+watch.performance.simulated.large_tree.raw.max_queue_depth=17
+watch.performance.simulated.large_tree.raw.max_backend_depth=213
+watch.performance.simulated.large_tree.raw.max_pending=0
+watch.performance.simulated.large_tree.raw.elapsed_us=5573
+watch.performance.simulated.large_tree.raw.equivalent_path_construction_us=465
+watch.performance.simulated.large_tree.raw.rss_growth_kib=296
+watch.performance.simulated.large_tree.settled.native_events_received=688
+watch.performance.simulated.large_tree.settled.events_delivered=657
+watch.performance.simulated.large_tree.settled.candidate_paths_coalesced=561
+watch.performance.simulated.large_tree.settled.validation_calls=561
+watch.performance.simulated.large_tree.settled.overflow_events=0
+watch.performance.simulated.large_tree.settled.dropped_events_reported=0
+watch.performance.simulated.large_tree.settled.max_queue_depth=12
+watch.performance.simulated.large_tree.settled.max_backend_depth=10
+watch.performance.simulated.large_tree.settled.max_pending=490
+watch.performance.simulated.large_tree.settled.p50_latency_ms=14
+watch.performance.simulated.large_tree.settled.p95_latency_ms=18
+watch.performance.simulated.large_tree.settled.elapsed_us=268945
+watch.performance.simulated.large_tree.settled.equivalent_path_construction_us=385
+watch.performance.simulated.large_tree.settled.rss_growth_kib=708
+watch.performance.simulated.large_tree.saturation.native_events_received=768
+watch.performance.simulated.large_tree.saturation.events_delivered=529
+watch.performance.simulated.large_tree.saturation.overflow_events=1
+watch.performance.simulated.large_tree.saturation.dropped_events_reported=239
+watch.performance.simulated.large_tree.saturation.max_queue_depth=512
+watch.performance.simulated.large_tree.saturation.max_backend_depth=63
+watch.performance.simulated.large_tree.saturation.elapsed_us=252873
+watch.performance.simulated.large_tree.saturation.rss_growth_kib=84
+```
+
+The large-tree probe is synthetic by design. The default CI-safe scale models
+1,024 paths; `LD2026_WATCH_LARGE_TREE_LOCAL=1` opts into a roughly 200,000-path
+local run, and `LD2026_WATCH_LARGE_TREE_PATHS=<n>` selects an explicit local
+scale. The workload exercises repeated writes to one file, bursts across many
+files, atomic save-by-replace, attribute-only notifications, recursive
+subdirectory churn, and deliberate queue saturation. It shows three separate
+layers: raw native-like notifications entering `ld_watch`, product-facing
+candidate paths after coalescing, and settled-file pending work. In this run,
+settled delivery reduced product-facing deliveries from 688 raw notifications
+to 657 delivered events while still validating the same 561 final candidate
+paths; the separate saturation pass kept the public queue bounded at 512 and
+reported 239 dropped events through one overflow event.
+
 The native raw measurement waits for 240 distinct file paths and observes 718
 events because `inotify` can report multiple create/write state transitions per
 path. Kernel queue depth is not exposed by this local probe, so only

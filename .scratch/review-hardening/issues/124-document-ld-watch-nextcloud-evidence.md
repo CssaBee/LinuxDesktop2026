@@ -4,8 +4,8 @@
 `ld_watch` evidence and update release-facing docs only after the probe or
 measurements produce concrete results.
 
-**Blocked by:** Ticket `122` for measurement claims; unblocked for the
-source-anchor notes by implemented ticket `121`.
+**Blocked by:** None; unblocked for source-anchor notes by implemented ticket
+`121` and for measurement claims by implemented ticket `122`.
 
 **Status:** proposed
 
