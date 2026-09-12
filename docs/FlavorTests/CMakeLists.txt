@@ -96,3 +96,5 @@ add_flavor_product(endless_sky
 add_flavor_product(minifox
     LinuxDesktop2026::ld_root
     LinuxDesktop2026::ld_paths)
+add_flavor_product(nextcloud
+    LinuxDesktop2026::ld_watch)

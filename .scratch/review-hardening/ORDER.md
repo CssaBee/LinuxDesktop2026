@@ -13,13 +13,12 @@ public-claim problem.
 
 ## Current Order
 
-1. `issues/121-add-nextcloud-watcher-overload-flavortest-probe.md`
-2. `issues/122-measure-large-tree-watch-noise-and-coalescing.md`
-3. `issues/123-add-watch-coalescing-diagnostics-for-product-boundaries.md`
-4. `issues/124-document-ld-watch-nextcloud-evidence.md`
-5. `issues/82-reduce-bus-factor-and-write-governance.md`
-6. `issues/15-validate-apis-with-one-maintained-consumer-branch.md`
-7. `issues/17-reopen-roadmap-only-from-consumer-evidence.md`
+1. `issues/122-measure-large-tree-watch-noise-and-coalescing.md`
+2. `issues/123-add-watch-coalescing-diagnostics-for-product-boundaries.md`
+3. `issues/124-document-ld-watch-nextcloud-evidence.md`
+4. `issues/82-reduce-bus-factor-and-write-governance.md`
+5. `issues/15-validate-apis-with-one-maintained-consumer-branch.md`
+6. `issues/17-reopen-roadmap-only-from-consumer-evidence.md`
 
 ## Evidence Cadence
 

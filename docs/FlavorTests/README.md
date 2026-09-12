@@ -119,6 +119,10 @@ Selected upstream subprojects:
   `.cache/` roots. It keeps launch profiles, subprocess lifecycle, console
   parsing, GPU runtime detection, and ZLUDA replacement/restoration policy in
   product code while using `ld_root` for portable roots and diagnostics.
+- `nextcloud/`: probes a Nextcloud Desktop-shaped watcher overload seam. It
+  keeps sync-candidate validation, metadata comparison, rescan policy, and log
+  summarization in product vocabulary while using `ld_watch` only as the raw
+  event delivery boundary.
 
 Each subproject contains its own `src/` and `test/` directories. The tests are
 intentionally written against the refactored production-shaped classes and
@@ -142,6 +146,7 @@ methods rather than against generic helper functions:
 - `amiberry_flavor_tests`
 - `endless_sky_flavor_tests`
 - `minifox_flavor_tests`
+- `nextcloud_flavor_tests`
 
 See `SOURCES.md` for the upstream method/class anchors used by each slice.
 See `API_FRICTION.md` for the remaining per-flavor API friction. Maintainers

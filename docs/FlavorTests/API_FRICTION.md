@@ -45,9 +45,9 @@ Affected flavors:
   translate staged artifacts, unsupported effects, activation steps, and cleanup
   outcomes.
 - KeePassXC, FreeCAD, PrusaSlicer, OpenRGB, OBS, Walnut, OpenIPC Dashboard,
-  CtrlrX, SmartServoFramework, KickCAT, Amiberry, Endless Sky, and Minifox now
-  keep LinuxDesktop2026 reports private, but each still pays translation cost at
-  the adapter edge.
+  CtrlrX, SmartServoFramework, KickCAT, Amiberry, Endless Sky, Minifox, and
+  Nextcloud Desktop now keep LinuxDesktop2026 reports private, but each still
+  pays translation cost at the adapter edge.
 
 `0.2.0` decision: accept this. Translation is the price of not leaking framework
 types into products.
@@ -230,6 +230,22 @@ research-only.
 Future ticket trigger: open module-design work only when repeated integrations
 show the same narrow seam and an existing-tool decision explains why mature
 toolkit or OS APIs are not enough.
+
+### Watch Delivery Stops At The Sync Boundary
+
+The Nextcloud-shaped watcher probe shows that `ld_watch` should stay a delivery
+and coalescing layer. It can report overflow, bounded pending paths, and raw
+event pressure, but product code still owns metadata comparison, sync-candidate
+filtering, rescan policy, and user-facing log summarization.
+
+Affected flavor:
+
+- Nextcloud Desktop-shaped watcher overload validates final path state in the
+  product adapter after raw watch events are coalesced.
+
+`0.2.1` disposition: non-blocking evidence. Keep `ld_watch` from growing a
+generic sync engine unless more maintained products repeat the same validation
+contract.
 
 ## Per-Product Review
 
@@ -452,6 +468,24 @@ Current pain:
 `0.2.0` disposition: acceptable. This is future pressure for `ld_process`, but
 not enough evidence to add that module.
 
+### Nextcloud Desktop
+
+Current pain:
+
+- `ld_watch` can deliver and coalesce noisy path events, but the product must
+  still validate final file state before deciding that sync work exists.
+- Aggregate overload status matters more than per-event detail. A product
+  adapter should be able to summarize ignored spurious candidates without
+  recreating the log volume that caused the pressure.
+- The synthetic probe is useful source-anchored evidence, but it is not a
+  maintained Nextcloud branch and must not become a public claim that
+  LinuxDesktop2026 fixes Nextcloud Desktop issue `#7873`.
+
+`0.2.1` disposition: non-blocking evidence. Keep sync validation,
+rescan policy, and user-facing log wording in Nextcloud-shaped code; use future
+watcher measurement tickets to decide whether aggregate diagnostics need public
+API support.
+
 ## Dependency Guardrails
 
 The desired dependency shape is:
@@ -466,7 +500,9 @@ The desired dependency shape is:
 - link `LinuxDesktop2026::ld_migration` when the caller needs dry-run
   application-settings copy/move/import planning;
 - link `LinuxDesktop2026::ld_desktop` for desktop effects such as autostart,
-  policy, and experimental desktop registration bundles.
+  policy, and experimental desktop registration bundles;
+- link `LinuxDesktop2026::ld_watch` only when the caller needs file watch
+  delivery, overflow/rescan signals, or settled/coalesced path readiness.
 
 Install-tree consumers and FlavorTests should stay module-specific enough to
 catch accidental public-header or CMake interface coupling. A settings-only

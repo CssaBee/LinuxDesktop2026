@@ -4,7 +4,8 @@
 `ld_watch` evidence and update release-facing docs only after the probe or
 measurements produce concrete results.
 
-**Blocked by:** `121` - Add Nextcloud Watcher Overload FlavorTest Probe.
+**Blocked by:** Ticket `122` for measurement claims; unblocked for the
+source-anchor notes by implemented ticket `121`.
 
 **Status:** proposed
 

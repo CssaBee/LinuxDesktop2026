@@ -4,7 +4,7 @@
 noisy-event workload that distinguishes raw native notifications, coalesced
 paths, delivered events, and product validation calls.
 
-**Blocked by:** `121` - Add Nextcloud Watcher Overload FlavorTest Probe.
+**Blocked by:** None; unblocked by implemented ticket `121`.
 
 **Status:** proposed
 

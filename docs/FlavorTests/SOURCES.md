@@ -371,3 +371,30 @@ patching. It keeps launch arguments, profile naming, runtime eligibility, forced
 version-switch consequences, and reversible runtime mutation in Minifox-shaped
 code. LinuxDesktop2026 is used only for executable-adjacent portable root
 resolution and path diagnostics.
+
+## Nextcloud Desktop
+
+- Upstream repository: `nextcloud/desktop`
+- Issue anchor: Nextcloud Desktop issue `#7873`, "[Bug]: File watcher thread
+  slows down whole application", opened on 2025-02-17.
+- Upstream files named by the issue: `src/gui/folder.cpp`,
+  `slotWatchedPathChanged()`, and its per-file spurious-notification logging
+  path.
+- Anchors: Linux spurious watcher notifications on a high-file-count account,
+  per-event filtering/validation pressure, "Ignoring spurious notification"
+  logging volume, responsiveness impact, and the expected shape of summarizing
+  ignored notifications after validation.
+- Refactored files: `nextcloud/src/nextcloud_flavor.*`
+- Tests: `nextcloud/test/nextcloud_flavor_tests.cpp`
+
+The extracted slice is synthetic and hermetic. It does not fetch, vendor, or
+copy Nextcloud source, and it does not claim that LinuxDesktop2026 fixes the
+upstream issue. It tests the boundary that matters for `ld_watch`: noisy raw
+watch events are coalesced before product-owned validation decides whether the
+final path state needs sync work, while overload and overflow paths degrade to
+a product rescan instead of emitting per-file log spam.
+
+qBittorrent issue `#24444` remains a watch item only. Its current public issue
+body describes an "open containing folder" regression with logs that mention a
+watched folder, but the symptom still fits `ld_desktop` reveal-folder behavior
+more directly than an `ld_watch` contract.

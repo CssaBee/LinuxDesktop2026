@@ -6,20 +6,20 @@ before the probe measures the seam.
 
 **Blocked by:** None.
 
-**Status:** proposed
+**Status:** implemented
 
-- [ ] Record the source anchor as Nextcloud Desktop issue `#7873`, including
+- [x] Record the source anchor as Nextcloud Desktop issue `#7873`, including
   the reported high-file-count Linux watcher overload and per-event filtering
   pressure.
-- [ ] Add a Nextcloud-shaped watcher adapter under `docs/FlavorTests/` or an
+- [x] Add a Nextcloud-shaped watcher adapter under `docs/FlavorTests/` or an
   adjacent proof location if the normal FlavorTest harness is too heavy for the
   first pass.
-- [ ] Model a product-owned "sync candidate" boundary: native watcher events
+- [x] Model a product-owned "sync candidate" boundary: native watcher events
   enter `ld_watch`, while Nextcloud-style validation decides whether the final
   path state requires sync work.
-- [ ] Keep the first probe synthetic and hermetic. Do not fetch, vendor, or copy
+- [x] Keep the first probe synthetic and hermetic. Do not fetch, vendor, or copy
   Nextcloud source code into the repository.
-- [ ] Mark qBittorrent `#24444` as a watch item only, not an `ld_watch` ticket,
+- [x] Mark qBittorrent `#24444` as a watch item only, not an `ld_watch` ticket,
   unless later source evidence shows watcher involvement instead of
   `ld_desktop` reveal-folder behavior.
 
