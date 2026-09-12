@@ -350,6 +350,12 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         return settle_generations_.size();
     }
+
+    void inject_event_for_tests(watch_event event)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        enqueue_locked(std::move(event));
+    }
 #endif
 
 private:
@@ -1022,6 +1028,11 @@ namespace detail {
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend)
 {
     return watcher(std::move(backend));
+}
+
+void inject_event_for_tests(watcher& watcher, watch_event event)
+{
+    watcher.impl_->inject_event_for_tests(std::move(event));
 }
 
 std::size_t pending_settle_work_for_tests(const watcher& watcher)

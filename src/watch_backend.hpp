@@ -22,6 +22,7 @@ std::shared_ptr<watch_backend> make_libuv_backend();
 std::shared_ptr<watch_backend> make_windows_backend();
 #if defined(LINUXDESKTOP2026_WATCH_ENABLE_TEST_HOOKS)
 watcher make_watcher_for_backend(std::shared_ptr<watch_backend> backend);
+void inject_event_for_tests(watcher& watcher, watch_event event);
 #endif
 
 } // namespace linuxdesktop::watch::detail

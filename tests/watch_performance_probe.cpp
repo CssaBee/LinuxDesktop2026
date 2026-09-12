@@ -624,7 +624,9 @@ large_tree_metrics measure_large_tree_saturation()
     const auto rss_before = current_rss_kib();
     const auto started = std::chrono::steady_clock::now();
     for (int i = 0; i < saturation_events; ++i) {
-        backend->push(backend->make_event(report.id, tree_file_path(i), ld::event_kind::modified, ld::path_type::file));
+        ld::detail::inject_event_for_tests(
+            watcher,
+            backend->make_event(report.id, tree_file_path(i), ld::event_kind::modified, ld::path_type::file));
     }
 
     for (;;) {
