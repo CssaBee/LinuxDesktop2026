@@ -1178,6 +1178,93 @@ void settled_file_burst_for_one_path_keeps_pending_work_bounded()
     require(watcher.poll() == std::nullopt, "same-path settled-file burst should not leave stale events");
 }
 
+void settled_file_capacity_overflow_reports_rescan()
+{
+    const auto root = test_root();
+    constexpr std::size_t accepted_count = 2;
+    constexpr int event_count = static_cast<int>(accepted_count) + 1;
+    for (int i = 0; i < event_count; ++i) {
+        std::ofstream output(root / ("capacity-" + std::to_string(i) + ".txt"), std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{750},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt,
+        accepted_count};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    for (int i = 0; i < event_count; ++i) {
+        backend->push(backend->event_for(report.id, ld::event_kind::modified, "capacity-" + std::to_string(i) + ".txt"));
+    }
+
+    const auto overflow = watcher.wait_for(std::chrono::seconds{2});
+    require(overflow.has_value(), "settled-file capacity overflow should arrive");
+    require(overflow->kind == ld::event_kind::overflow, "settled-file capacity overflow should use overflow kind");
+    require(overflow->state == ld::stream_state::degraded, "settled-file capacity overflow should degrade the stream");
+    require(overflow->rescan_recommended, "settled-file capacity overflow should recommend rescan");
+    require(has_diagnostic(overflow->diagnostics, ld::diagnostic_code::queue_overflow),
+        "settled-file capacity overflow should carry a queue diagnostic");
+    require(ld::detail::pending_settle_work_for_tests(watcher) <= accepted_count,
+        "settled-file scheduler should not exceed configured capacity");
+}
+
+void settled_file_repeated_coalescing_keeps_deadline_state_bounded()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "coalesced-deadline.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{50},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt,
+        1};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    constexpr int burst_count = 256;
+    for (int i = 0; i < burst_count; ++i) {
+        auto event = backend->event_for(report.id, ld::event_kind::modified, "coalesced-deadline.txt");
+        if (i == burst_count - 1) {
+            event.diagnostics.push_back(diagnostic(
+                linuxdesktop::severity::info,
+                "test.deadline.latest",
+                "latest deadline event"));
+        }
+        backend->push(std::move(event));
+    }
+
+    for (int i = 0; i < 200; ++i) {
+        require(ld::detail::pending_settle_work_for_tests(watcher) <= 1,
+            "same-path coalescing should keep one pending settle key");
+        if (ld::detail::pending_settle_work_for_tests(watcher) == 1) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    }
+
+    const auto received = watcher.wait_for(std::chrono::seconds{2});
+    require(received.has_value(), "coalesced deadline event should arrive");
+    require(has_diagnostic(received->diagnostics, "test.deadline.latest"),
+        "coalesced deadline should deliver latest event");
+    require(watcher.poll() == std::nullopt, "coalesced deadline should not leave stale heap entries as events");
+}
+
 void settled_file_slow_path_does_not_block_ready_paths()
 {
     const auto root = test_root();
@@ -1305,6 +1392,8 @@ int main()
         removed_settled_watch_does_not_stop_future_settlement();
         stale_settled_generation_does_not_stop_future_settlement();
         settled_file_burst_for_one_path_keeps_pending_work_bounded();
+        settled_file_capacity_overflow_reports_rescan();
+        settled_file_repeated_coalescing_keeps_deadline_state_bounded();
         settled_file_slow_path_does_not_block_ready_paths();
         settled_file_large_batch_delivers_all_paths();
     } catch (const test_failure& failure) {

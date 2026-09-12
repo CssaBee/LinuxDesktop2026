@@ -130,6 +130,34 @@ watch.performance.inotify.settled.p50_latency_ms=3
 watch.performance.inotify.settled.p95_latency_ms=3
 ```
 
+Bound settled-scheduler result on 2026-09-12 with GCC 13.3.0:
+
+```text
+watch.performance.simulated.raw.delivered=480
+watch.performance.simulated.raw.throughput_events_per_second=160933
+watch.performance.simulated.raw.max_queue_depth=364
+watch.performance.simulated.raw.max_backend_depth=115
+watch.performance.simulated.raw.rss_growth_kib=360
+watch.performance.simulated.settled.delivered=96
+watch.performance.simulated.settled.max_pending=21
+watch.performance.simulated.settled.p50_latency_ms=0
+watch.performance.simulated.settled.p95_latency_ms=1
+watch.performance.native.backend=inotify
+watch.performance.inotify.raw.distinct_paths=240
+watch.performance.inotify.raw.events_observed=718
+watch.performance.inotify.raw.overflow_events=0
+watch.performance.inotify.raw.throughput_paths_per_second=16242.7
+watch.performance.inotify.raw.max_queue_depth=213
+watch.performance.inotify.raw.max_backend_depth=unobservable
+watch.performance.inotify.raw.rss_growth_kib=428
+watch.performance.inotify.raw.elapsed_us=14775
+watch.performance.inotify.raw.equivalent_path_construction_us=522
+watch.performance.inotify.settled.delivered=80
+watch.performance.inotify.settled.max_pending=27
+watch.performance.inotify.settled.p50_latency_ms=3
+watch.performance.inotify.settled.p95_latency_ms=3
+```
+
 The native raw measurement waits for 240 distinct file paths and observes 718
 events because `inotify` can report multiple create/write state transitions per
 path. Kernel queue depth is not exposed by this local probe, so only

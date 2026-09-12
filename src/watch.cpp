@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <thread>
 #include <utility>
@@ -49,6 +50,12 @@ std::string overflow_message(std::size_t dropped_count)
         "; rescan watched roots before trusting further events";
 }
 
+std::string settle_overflow_message(std::size_t capacity)
+{
+    return "Settled-file scheduler exceeded " + std::to_string(capacity) +
+        " pending paths; rescan watched roots before trusting further events";
+}
+
 watch_event make_overflow_event(const watch_event& source, std::size_t dropped_count)
 {
     watch_event event = source;
@@ -60,6 +67,21 @@ watch_event make_overflow_event(const watch_event& source, std::size_t dropped_c
         severity::error,
         std::string(diagnostic_code::queue_overflow),
         overflow_message(dropped_count),
+        source.path.absolute));
+    return event;
+}
+
+watch_event make_settle_overflow_event(const watch_event& source, std::size_t capacity)
+{
+    watch_event event = source;
+    event.kind = event_kind::overflow;
+    event.state = stream_state::degraded;
+    event.rescan_recommended = true;
+    event.diagnostics.clear();
+    event.diagnostics.push_back(make_diagnostic(
+        severity::error,
+        std::string(diagnostic_code::queue_overflow),
+        settle_overflow_message(capacity),
         source.path.absolute));
     return event;
 }
@@ -323,7 +345,7 @@ public:
     std::size_t pending_settle_work_for_tests() const
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        return pending_settle_tasks_.size();
+        return settle_generations_.size();
     }
 #endif
 
@@ -365,6 +387,25 @@ private:
         std::optional<std::uintmax_t> last_size;
         std::optional<std::filesystem::file_time_type> last_write;
         std::optional<std::chrono::steady_clock::time_point> stable_since;
+    };
+
+    struct settle_deadline {
+        std::chrono::steady_clock::time_point next_check_at;
+        std::string key;
+        std::uint64_t generation = 0;
+    };
+
+    struct settle_deadline_less {
+        bool operator()(const settle_deadline& lhs, const settle_deadline& rhs) const
+        {
+            if (lhs.next_check_at != rhs.next_check_at) {
+                return lhs.next_check_at < rhs.next_check_at;
+            }
+            if (lhs.key != rhs.key) {
+                return lhs.key < rhs.key;
+            }
+            return lhs.generation < rhs.generation;
+        }
     };
 
     enum class settle_status {
@@ -448,6 +489,13 @@ private:
     void cancel_settle_tasks_for(watch_id id)
     {
         const auto prefix = std::to_string(id.value) + "\n";
+        for (auto it = settle_deadlines_.begin(); it != settle_deadlines_.end();) {
+            if (it->key.rfind(prefix, 0) == 0) {
+                it = settle_deadlines_.erase(it);
+            } else {
+                ++it;
+            }
+        }
         for (auto it = settle_generations_.begin(); it != settle_generations_.end();) {
             if (it->first.rfind(prefix, 0) == 0) {
                 it = settle_generations_.erase(it);
@@ -471,10 +519,19 @@ private:
             return;
         }
         const auto key = settle_key(event);
-        const auto generation = ++settle_generations_[key];
         const auto options = watches_.at(event.source.value).settle.value();
+        const auto capacity = options.max_pending_paths;
+        if (settle_generations_.find(key) == settle_generations_.end() && settle_generations_.size() >= capacity) {
+            enqueue_settle_overflow_locked(event, capacity);
+            return;
+        }
+
+        const auto generation = ++settle_generations_[key];
         const auto now = std::chrono::steady_clock::now();
         auto it = pending_settle_tasks_.try_emplace(key).first;
+        if (!it->second.key.empty()) {
+            erase_deadline_locked(it->second);
+        }
         it->second.key = key;
         it->second.generation = generation;
         it->second.event = std::move(event);
@@ -484,6 +541,7 @@ private:
         it->second.last_size.reset();
         it->second.last_write.reset();
         it->second.stable_since.reset();
+        insert_deadline_locked(it->second);
         settle_cv_.notify_all();
     }
 
@@ -500,23 +558,23 @@ private:
                     return;
                 }
                 for (;;) {
-                    if (pending_settle_tasks_.empty()) {
+                    if (settle_deadlines_.empty()) {
                         break;
                     }
-                    auto due_it = pending_settle_tasks_.end();
-                    auto next_check_at = std::chrono::steady_clock::time_point::max();
-                    for (auto it = pending_settle_tasks_.begin(); it != pending_settle_tasks_.end(); ++it) {
-                        if (it->second.next_check_at < next_check_at) {
-                            next_check_at = it->second.next_check_at;
-                            due_it = it;
-                        }
-                    }
+                    const auto deadline = *settle_deadlines_.begin();
                     const auto now = std::chrono::steady_clock::now();
-                    if (next_check_at > now) {
-                        settle_cv_.wait_until(lock, next_check_at);
+                    if (deadline.next_check_at > now) {
+                        settle_cv_.wait_until(lock, deadline.next_check_at);
                         if (stopped_) {
                             return;
                         }
+                        continue;
+                    }
+                    settle_deadlines_.erase(settle_deadlines_.begin());
+                    const auto due_it = pending_settle_tasks_.find(deadline.key);
+                    if (due_it == pending_settle_tasks_.end() ||
+                        due_it->second.generation != deadline.generation ||
+                        due_it->second.next_check_at != deadline.next_check_at) {
                         continue;
                     }
                     task = std::move(due_it->second);
@@ -541,14 +599,19 @@ private:
                 return;
             }
             if (result.status == settle_status::deliver &&
-                is_current_settle_task(result.task.key, result.task.generation)) {
+                complete_settle_task_if_current(result.task.key, result.task.generation)) {
                 deliver(std::move(result.task.event));
                 continue;
             }
             if (result.status == settle_status::skip && is_current_settle_task(result.task.key, result.task.generation)) {
                 std::lock_guard<std::mutex> lock(mutex_);
                 if (!stopped_ && is_current_settle_task_locked(result.task.key, result.task.generation)) {
-                    pending_settle_tasks_[result.task.key] = std::move(result.task);
+                    auto [it, inserted] = pending_settle_tasks_.try_emplace(result.task.key, std::move(result.task));
+                    if (!inserted) {
+                        erase_deadline_locked(it->second);
+                        it->second = std::move(result.task);
+                    }
+                    insert_deadline_locked(it->second);
                     settle_cv_.notify_all();
                 }
             }
@@ -568,6 +631,17 @@ private:
     {
         std::lock_guard<std::mutex> lock(mutex_);
         return !stopped_ && is_current_settle_task_locked(key, generation);
+    }
+
+    bool complete_settle_task_if_current(const std::string& key, std::uint64_t generation)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (stopped_ || !is_current_settle_task_locked(key, generation)) {
+            return false;
+        }
+        settle_generations_.erase(key);
+        pending_settle_tasks_.erase(key);
+        return true;
     }
 
     settle_poll_result poll_settle_task(settle_task task) const
@@ -656,6 +730,27 @@ private:
             return;
         }
         enqueue_callback_locked(std::move(event));
+    }
+
+    void enqueue_settle_overflow_locked(const watch_event& event, std::size_t capacity)
+    {
+        auto overflow = make_settle_overflow_event(event, capacity);
+        state_ = stream_state::degraded;
+        if (!callback_) {
+            enqueue_locked(std::move(overflow));
+            return;
+        }
+        enqueue_callback_locked(std::move(overflow));
+    }
+
+    void erase_deadline_locked(const settle_task& task)
+    {
+        settle_deadlines_.erase(settle_deadline{task.next_check_at, task.key, task.generation});
+    }
+
+    void insert_deadline_locked(const settle_task& task)
+    {
+        settle_deadlines_.insert(settle_deadline{task.next_check_at, task.key, task.generation});
     }
 
     void handle_callback_exception(const watch_event& event, const std::string& reason)
@@ -829,6 +924,7 @@ private:
     event_callback callback_;
     std::map<std::uint64_t, watch_options> watches_;
     std::map<std::string, settle_task> pending_settle_tasks_;
+    std::set<settle_deadline, settle_deadline_less> settle_deadlines_;
     std::map<std::string, std::uint64_t> settle_generations_;
     std::uint64_t next_id_ = 1;
     stream_state state_ = stream_state::clean;

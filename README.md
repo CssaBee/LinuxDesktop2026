@@ -41,7 +41,7 @@ See [API and ABI stability](docs/plan/api-stability.md) for the full policy.
 | `ld_settings` | `LinuxDesktop2026::ld_settings` | Supported prototype | Settings/config roots, config-default hydration, validated writes, backup behavior, config layers, versioned whole-file commits, and settings diagnostics. |
 | `ld_paths` | `LinuxDesktop2026::ld_paths` | Supported prototype | Application path resolution, standard user paths, executable/resource roots, candidate reports, path lists, plugin search roots, and opt-in directory creation. |
 | `ld_root` | `LinuxDesktop2026::ld_root` | Supported prototype | App/user root topology, portable-root policy, named roots, component roots, request builders, and non-mutating root reports. |
-| `ld_watch` | `LinuxDesktop2026::ld_watch` | Supported prototype | File watching with native Linux and Windows backends, optional libuv, bounded pull delivery, deadline-scheduled settled-file coalescing by path, and recursive-watch honesty. |
+| `ld_watch` | `LinuxDesktop2026::ld_watch` | Supported prototype | File watching with native Linux and Windows backends, optional libuv, bounded pull delivery, capacity-bounded settled-file coalescing by deadline/path, and recursive-watch honesty. |
 | `ld_desktop` | `LinuxDesktop2026::ld_desktop` | Experimental extraction | Desktop/session integration effects such as autostart and managed/enforced policy, with broader desktop registration still experimental. |
 | `ld_migration` | `LinuxDesktop2026::ld_migration` | Experimental extraction | Dry-run-first application-settings migration for regular files/directories and app-settings Registry snapshot/import/export compatibility. |
 

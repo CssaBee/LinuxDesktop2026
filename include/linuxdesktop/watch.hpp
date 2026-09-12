@@ -121,6 +121,7 @@ struct settle_options {
     std::chrono::milliseconds stable_for = std::chrono::milliseconds{0};
     std::chrono::milliseconds poll_interval = std::chrono::milliseconds{100};
     std::optional<std::chrono::milliseconds> timeout_after;
+    std::size_t max_pending_paths = 512;
 };
 
 struct watch_options {
@@ -185,8 +186,8 @@ class watcher {
 public:
     // Pull delivery is bounded by event depth. If it falls behind far enough, the
     // watcher drops queued events, emits a degraded overflow event, and expects
-    // the caller to rescan. Settled-file readiness is coalesced by distinct
-    // pending (watch_id, path) keys.
+    // the caller to rescan. Settled-file readiness is coalesced and capacity
+    // bounded by distinct pending (watch_id, path) keys.
     watcher();
     ~watcher();
 
