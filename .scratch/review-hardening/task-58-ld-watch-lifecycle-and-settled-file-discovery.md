@@ -59,8 +59,8 @@ ctest --test-dir build-task58-libuv -R ld_watch --output-on-failure
 
 ## Follow-Up
 
-- Add a non-blocking follow-up ticket after task 60 to remove the settled-file
-  option aggregate-initializer warnings from watcher tests.
+- The settled-file option aggregate-initializer warning cleanup was completed
+  during later watcher hardening and is summarized in `HISTORY.md`.
 
 No ADR is needed for this pass. The accepted lifecycle and settled-file terms
 are glossary-level language, and the test results did not force a hard-to-reverse
