@@ -5,20 +5,38 @@ watcher, or explicitly choose and test a concurrent callback contract.
 
 **Blocked by:** None.
 
-**Status:** pending
+**Status:** implemented
 
-- [ ] Decide whether one watcher callback may execute concurrently on multiple
+- [x] Decide whether one watcher callback may execute concurrently on multiple
   internal delivery threads.
-- [ ] Prefer one bounded delivery queue and one callback execution context per
+- [x] Prefer one bounded delivery queue and one callback execution context per
   watcher, with backend events and settled-file readiness both feeding that
   context.
-- [ ] Preserve callback exception containment and existing callback-safe
+- [x] Preserve callback exception containment and existing callback-safe
   mutation operations.
-- [ ] Add adversarial tests for mixed raw and settled delivery, stateful
+- [x] Add adversarial tests for mixed raw and settled delivery, stateful
   callbacks, callback replacement, `stop()`, `remove_watch()`, and facade
   destruction under load.
-- [ ] If concurrent callbacks remain intentional, document the concurrency
-  contract prominently and prove the shutdown/reentrant matrix with tests.
+- [x] Document the chosen serialized callback contract prominently and keep the
+  shutdown/reentrant matrix covered by tests.
+
+## Implementation Notes
+
+Implemented a serialized callback contract: callbacks now run on one
+watcher-owned delivery thread, and backend events plus settled-file readiness
+enqueue callback work into that single context. Pull delivery remains on the
+existing bounded queue when no callback is installed.
+
+The callback delivery queue is bounded and emits the same degraded
+`watch.queue.overflow` event shape when callbacks fall behind. Callback
+exceptions still clear the callback, degrade the stream, and surface a queued
+diagnostic error event.
+
+Added `mixed_raw_and_settled_callbacks_are_serialized()` to prove that a raw
+event callback can block while settled-file readiness becomes available without
+re-entering user callback code concurrently. Existing callback tests continue to
+cover replacement, `stop()`, `remove_watch()`, and last-owner facade destruction
+from callback context.
 
 ## Review Anchor
 

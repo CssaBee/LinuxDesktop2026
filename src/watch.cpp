@@ -21,6 +21,7 @@ diagnostic make_diagnostic(severity level, std::string code, std::string message
 }
 
 constexpr std::size_t max_queue_depth = 512;
+constexpr std::size_t max_callback_queue_depth = 512;
 
 watch_event make_failure_event(
     const watch_event& source,
@@ -229,11 +230,13 @@ public:
         }
         cv_.notify_all();
         settle_cv_.notify_all();
+        delivery_cv_.notify_all();
         std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
         // If stop() is called from a worker callback, detaching is safe only because
         // the worker entry lambdas below retain a strong impl owner until they exit.
         join_or_detach_for_stop(worker_, current_thread);
         join_or_detach_for_stop(settle_worker_, current_thread);
+        join_or_detach_for_stop(delivery_worker_, current_thread);
     }
 
     void join_or_detach_for_stop(std::thread& worker, std::thread::id current_thread)
@@ -346,6 +349,9 @@ private:
         });
         settle_worker_ = std::thread([self] {
             self->run_settle();
+        });
+        delivery_worker_ = std::thread([self] {
+            self->run_delivery();
         });
     }
 
@@ -641,25 +647,15 @@ private:
 
     void deliver(watch_event event)
     {
-        event_callback callback;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (event.state == stream_state::degraded) {
-                state_ = stream_state::degraded;
-            }
-            callback = callback_;
-            if (!callback) {
-                enqueue_locked(std::move(event));
-                return;
-            }
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (event.state == stream_state::degraded) {
+            state_ = stream_state::degraded;
         }
-        try {
-            callback(event);
-        } catch (const std::exception& ex) {
-            handle_callback_exception(event, ex.what());
-        } catch (...) {
-            handle_callback_exception(event, "callback threw an unknown exception");
+        if (!callback_) {
+            enqueue_locked(std::move(event));
+            return;
         }
+        enqueue_callback_locked(std::move(event));
     }
 
     void handle_callback_exception(const watch_event& event, const std::string& reason)
@@ -672,6 +668,73 @@ private:
             std::string(diagnostic_code::callback_exception),
             reason,
             false));
+    }
+
+    void run_delivery()
+    {
+        for (;;) {
+            watch_event event;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                delivery_cv_.wait(lock, [this] {
+                    return stopped_ || !callback_queue_.empty();
+                });
+                if (stopped_) {
+                    return;
+                }
+                event = std::move(callback_queue_.front());
+                callback_queue_.pop_front();
+                if (event.kind == event_kind::overflow && has_queue_overflow_diagnostic(event)) {
+                    callback_queue_overflowed_ = false;
+                    callback_queue_overflow_drop_count_ = 0;
+                }
+            }
+            deliver_to_callback_or_queue(std::move(event));
+        }
+    }
+
+    void deliver_to_callback_or_queue(watch_event event)
+    {
+        event_callback callback;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stopped_) {
+                return;
+            }
+            callback = callback_;
+            if (!callback) {
+                enqueue_locked(std::move(event));
+                return;
+            }
+        }
+
+        try {
+            callback(event);
+        } catch (const std::exception& ex) {
+            handle_callback_exception(event, ex.what());
+        } catch (...) {
+            handle_callback_exception(event, "callback threw an unknown exception");
+        }
+    }
+
+    void enqueue_callback_locked(watch_event event)
+    {
+        if (callback_queue_overflowed_) {
+            ++callback_queue_overflow_drop_count_;
+            refresh_callback_overflow_diagnostic_locked();
+            return;
+        }
+        if (callback_queue_.size() >= max_callback_queue_depth) {
+            callback_queue_.pop_front();
+            callback_queue_overflow_drop_count_ = 1;
+            callback_queue_.push_front(make_overflow_event(event, callback_queue_overflow_drop_count_));
+            state_ = stream_state::degraded;
+            callback_queue_overflowed_ = true;
+            delivery_cv_.notify_all();
+            return;
+        }
+        callback_queue_.push_back(std::move(event));
+        delivery_cv_.notify_all();
     }
 
     void enqueue_locked(watch_event event)
@@ -735,14 +798,34 @@ private:
         }
     }
 
+    void refresh_callback_overflow_diagnostic_locked()
+    {
+        if (callback_queue_.empty()) {
+            return;
+        }
+        auto& event = callback_queue_.front();
+        if (event.kind != event_kind::overflow) {
+            return;
+        }
+        for (auto& diagnostic : event.diagnostics) {
+            if (diagnostic.code == diagnostic_code::queue_overflow) {
+                diagnostic.message = overflow_message(callback_queue_overflow_drop_count_);
+                return;
+            }
+        }
+    }
+
     mutable std::mutex mutex_;
     std::mutex lifecycle_mutex_;
     std::condition_variable cv_;
     mutable std::condition_variable settle_cv_;
+    std::condition_variable delivery_cv_;
     std::shared_ptr<detail::watch_backend> backend_;
     std::thread worker_;
     std::thread settle_worker_;
+    std::thread delivery_worker_;
     std::deque<watch_event> queue_;
+    std::deque<watch_event> callback_queue_;
     event_callback callback_;
     std::map<std::uint64_t, watch_options> watches_;
     std::map<std::string, settle_task> pending_settle_tasks_;
@@ -752,6 +835,8 @@ private:
     bool stopped_ = false;
     bool queue_overflowed_ = false;
     std::size_t queue_overflow_drop_count_ = 0;
+    bool callback_queue_overflowed_ = false;
+    std::size_t callback_queue_overflow_drop_count_ = 0;
 };
 
 watcher::watcher()

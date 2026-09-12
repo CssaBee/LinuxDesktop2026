@@ -544,6 +544,82 @@ void callback_exception_is_caught_and_falls_back_to_queue()
     require(watcher.state() == ld::stream_state::degraded, "callback failure should degrade the watcher");
 }
 
+void mixed_raw_and_settled_callbacks_are_serialized()
+{
+    const auto root = test_root();
+    {
+        std::ofstream output(root / "settled.txt", std::ios::binary | std::ios::trunc);
+        output << "stable";
+    }
+    const auto backend = make_backend();
+    auto watcher = ld::detail::make_watcher_for_backend(backend);
+
+    ld::watch_options options;
+    options.path = root;
+    options.settle = ld::settle_options{
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{0},
+        std::chrono::milliseconds{10},
+        std::nullopt};
+    const auto report = watcher.add_watch(options);
+    require(report.ok, "settled-file watch should start");
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool release_first = false;
+    int active_callbacks = 0;
+    int max_active_callbacks = 0;
+    int calls = 0;
+    std::vector<ld::event_kind> kinds;
+
+    watcher.set_callback([&](const ld::watch_event& event) {
+        std::unique_lock<std::mutex> lock(mutex);
+        ++active_callbacks;
+        max_active_callbacks = std::max(max_active_callbacks, active_callbacks);
+        ++calls;
+        kinds.push_back(event.kind);
+        cv.notify_all();
+        if (calls == 1) {
+            cv.wait(lock, [&] {
+                return release_first;
+            });
+        }
+        --active_callbacks;
+        cv.notify_all();
+    });
+
+    backend->push(backend->overflow_for(report.id));
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return calls == 1; }),
+            "first raw callback should start");
+    }
+
+    backend->push(backend->event_for(report.id, ld::event_kind::modified, "settled.txt"));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds{150});
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        require(calls == 1, "settled callback should wait behind the active raw callback");
+        require(max_active_callbacks == 1, "watcher callbacks must not overlap");
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        release_first = true;
+    }
+    cv.notify_all();
+
+    std::unique_lock<std::mutex> lock(mutex);
+    require(cv.wait_for(lock, std::chrono::seconds(2), [&] { return calls == 2 && active_callbacks == 0; }),
+        "settled callback should run after raw callback exits");
+    require(max_active_callbacks == 1, "callback delivery should remain single-threaded");
+    require(kinds.size() == 2, "both callback events should be delivered");
+    require(kinds[0] == ld::event_kind::overflow, "raw event should be delivered first");
+    require(kinds[1] == ld::event_kind::modified, "settled event should be delivered second");
+}
+
 void pull_queue_overflow_emits_rescan_hint()
 {
     const auto root = test_root();
@@ -1212,6 +1288,7 @@ int main()
         callback_last_owner_release_is_safe();
         callback_replacement_applies_to_future_events();
         callback_exception_is_caught_and_falls_back_to_queue();
+        mixed_raw_and_settled_callbacks_are_serialized();
         pull_queue_overflow_emits_rescan_hint();
         pull_queue_overflow_preserves_queued_events_and_counts_drops();
         maps_rename_and_overflow_state();
