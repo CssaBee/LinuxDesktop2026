@@ -50,4 +50,4 @@ semantic ambiguity hardening into a long-lived public surface.
 
 ## Release Gate
 
-Blocks `0.2.1`.
+Resolved for `0.2.1`.

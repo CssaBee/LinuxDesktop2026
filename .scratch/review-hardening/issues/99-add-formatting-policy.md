@@ -29,4 +29,4 @@ unreviewable style drift in a growing pre-1.0 C++ surface.
 
 ## Release Gate
 
-Blocks `0.2.0`.
+Resolved for `0.2.0`.

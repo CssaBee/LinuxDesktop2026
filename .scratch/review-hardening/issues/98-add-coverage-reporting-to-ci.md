@@ -31,4 +31,4 @@ support when only local instrumentation exists.
 
 ## Release Gate
 
-Blocks `0.2.0`.
+Resolved for `0.2.0`.

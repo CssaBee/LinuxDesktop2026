@@ -29,5 +29,5 @@ enough that raw options are clearer than a fluent builder.
 
 ## Release Gate
 
-Blocks `0.2.0`. This is the small roadmap-clarity ticket that keeps the root
+Resolved for `0.2.0`. This is the small roadmap-clarity ticket that keeps the root
 module from looking arbitrary after the FlavorTest round.

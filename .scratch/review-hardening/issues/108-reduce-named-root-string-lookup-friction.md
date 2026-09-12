@@ -55,4 +55,4 @@ content fan-out and plugin fallback order outside LinuxDesktop2026.
 
 ## Release Gate
 
-Blocks `0.2.0`; implemented.
+Resolved for `0.2.0`.

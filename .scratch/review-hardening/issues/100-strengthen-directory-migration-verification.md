@@ -39,4 +39,4 @@ source settings after an incomplete copied tree.
 
 ## Release Gate
 
-Blocks `0.2.0`.
+Resolved for `0.2.0`.

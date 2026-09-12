@@ -42,4 +42,4 @@ or other filesystem state.
 
 ## Release Gate
 
-Blocks `0.2.0`.
+Resolved for `0.2.0`.

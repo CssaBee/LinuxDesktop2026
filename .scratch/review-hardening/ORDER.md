@@ -25,10 +25,11 @@ problem into the release gate.
 
 ## 0.2.1 Release Gate
 
-These tickets block `0.2.1` because the September 6, 2026 clean re-review
-classified each as a major finding. They must be fixed, deliberately rescoped,
-or retired with new source-level evidence before publishing the next patch
-release:
+There is no current review-hardening ticket blocking `0.2.1`.
+
+The September 6, 2026 clean re-review originally classified these tickets as
+major findings, but they have since been fixed, deliberately rescoped, or
+retired with source-level evidence:
 
 - `114` - Reconsider Watch Callback Self-Destruction Contract
 - `117` - Make Pre-1.0 CMake Package Compatibility Honest
@@ -36,11 +37,11 @@ release:
 
 ## 0.2.0 Release Gate
 
-These tickets block `0.2.0` because they protect the release's public support
-matrix, parser contract, mutation guarantees, CI evidence, or contributor
-baseline:
-
 There is no current review-hardening ticket blocking the `0.2.0` support line.
+
+Historical `0.2.0` gate tickets protected the release's public support matrix,
+parser contract, mutation guarantees, CI evidence, or contributor baseline.
+They are now tracked as implemented or earlier implemented below.
 
 These review follow-ups do not block `0.2.0` unless new maintained-consumer or
 native-backend evidence makes them release-critical:
